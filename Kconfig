@@ -1,3 +1,13 @@
 menu "Espressif Video Development Framework Configuration"
 
+    choice ESP_VIDEO_BOARD_SELECTION
+        prompt "Video Development Board Selection"
+        default ESP_VIDEO_BOARD_SIMULATION
+        help
+            Select espressif video development board.
+
+        config ESP_VIDEO_BOARD_SIMULATION
+            bool "Simulation"
+            select ESP_TIMER_SUPPORTS_ISR_DISPATCH_METHOD
+    endchoice
 endmenu
