@@ -258,22 +258,24 @@ uint8_t *esp_video_alloc_buffer(struct esp_video *video);
  *
  * @param video  Video object
  * @param buffer Video buffer allocated by "esp_video_alloc_buffer"
+ * @param size   Actual received data size
  *
  * @return None
  */
-void esp_video_recvdone_buffer(struct esp_video *video, uint8_t *buffer);
+void esp_video_recvdone_buffer(struct esp_video *video, uint8_t *buffer, size_t size);
 
 /**
  * @brief Receive buffer from video device. 
  *
  * @param video Video object
  * @param ticks Wait OS tick
+ * @param size  Actual received data size
  *
  * @return
  *      - Video buffer object pointer on success
  *      - NULL if failed
  */
-uint8_t *esp_video_recv_buffer(struct esp_video *video, uint32_t ticks);
+uint8_t *esp_video_recv_buffer(struct esp_video *video, size_t *recv_size, uint32_t ticks);
 
 /**
  * @brief Free one video buffer.

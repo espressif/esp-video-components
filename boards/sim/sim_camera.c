@@ -35,7 +35,7 @@ static void sim_camera_capture_timer_isr(void *arg)
     }
 
     memcpy(buffer, sim_picture_jpeg, sim_picture_jpeg_len);
-    esp_video_recvdone_buffer(video, buffer);
+    esp_video_recvdone_buffer(video, buffer, sim_picture_jpeg_len);
 }
 
 static esp_err_t sim_camera_init(struct esp_video *video)
