@@ -8,7 +8,7 @@
 #include <string.h>
 #include <sys/lock.h>
 #include "esp_heap_caps.h"
-#include "esp_log.h"
+#include "private/esp_video_log.h"
 #include "esp_video_buffer.h"
 
 #define ALLOC_RAM_ATTR                      (MALLOC_CAP_8BIT)
@@ -30,10 +30,10 @@ static const char *TAG = "esp_video_buffer";
  *      - Video buffer object pointer on success
  *      - NULL if failed
  */
-struct esp_video_buffer *esp_video_buffer_create(size_t count, size_t size)
+struct esp_video_buffer *esp_video_buffer_create(uint32_t count, uint32_t size)
 {
-    size_t mem_size;
-    size_t element_size;
+    uint32_t mem_size;
+    uint32_t element_size;
     struct esp_video_buffer *buffer;
 
     size  = ESP_VIDEO_BUFFER_ALIGN(size);
@@ -43,7 +43,7 @@ struct esp_video_buffer *esp_video_buffer_create(size_t count, size_t size)
 
     buffer = heap_caps_malloc(mem_size, ALLOC_RAM_ATTR);
     if (!buffer) {
-        ESP_LOGE(TAG, "Failed to malloc for video buffer");
+        ESP_VIDEO_LOGE("Failed to malloc for video buffer");
         return NULL;
     }
 
@@ -54,6 +54,8 @@ struct esp_video_buffer *esp_video_buffer_create(size_t count, size_t size)
     for (int i = 0; i < count; i++) {
         struct esp_video_buffer_element *element =
             (struct esp_video_buffer_element *)((char *)buffer->element + element_size * i);     
+
+        element->index = i;
         SLIST_INSERT_HEAD(&buffer->free_list, element, node);
     }
 
@@ -71,8 +73,8 @@ struct esp_video_buffer *esp_video_buffer_create(size_t count, size_t size)
  */
 struct esp_video_buffer *esp_video_buffer_clone(const struct esp_video_buffer *buffer)
 {
-    size_t count = buffer->element_count;
-    size_t size = buffer->element_size;
+    uint32_t count = buffer->element_count;
+    uint32_t size = buffer->element_size;
 
     return esp_video_buffer_create(count, size);
 }
@@ -127,9 +129,9 @@ void esp_video_buffer_free(struct esp_video_buffer *buffer, struct esp_video_buf
  *
  * @return Free element number
  */
-size_t esp_video_buffer_get_element_num(struct esp_video_buffer *buffer)
+uint32_t esp_video_buffer_get_element_num(struct esp_video_buffer *buffer)
 {
-    size_t num = 0;
+    uint32_t num = 0;
     struct esp_video_buffer_element *element;
 
     portENTER_CRITICAL(&buffer->lock);
@@ -152,7 +154,7 @@ size_t esp_video_buffer_get_element_num(struct esp_video_buffer *buffer)
  */
 esp_err_t esp_video_buffer_destroy(struct esp_video_buffer *buffer)
 {
-    size_t n;
+    uint32_t n;
     
     n = esp_video_buffer_get_element_num(buffer);
     if (n != buffer->element_count) {

@@ -10,4 +10,71 @@ menu "Espressif Video Development Framework Configuration"
             bool "Simulation"
             select ESP_TIMER_SUPPORTS_ISR_DISPATCH_METHOD
     endchoice
+
+    choice ESP_VIDEO_API_SELECTION
+        prompt "Video API Selection"
+        default ESP_VIDEO_API_LINUX
+        help
+            Select espressif video SDK API.
+    
+        config ESP_VIDEO_API_LINUX
+            bool "Linux POSIX API with L4V2"
+            help
+                Select this option, users can use POSIX API with L4V2.
+        
+        config ESP_VIDEO_API_CORE
+            bool "Espressif Video Core API"
+            help
+                Select this option, users can use espressif video core API.
+    endchoice
+
+    if ESP_VIDEO_BOARD_SIMULATION
+        menu "Simulation Camera Configuration"
+
+            config ESP_VIDEO_SIMULATION_CAMERA_NAME
+                string "Simulation Camera Name"
+                default "sim_camera"
+            
+            config ESP_VIDEO_SIMULATION_CAMERA_BUFFER_COUNT
+                int "Simulation Camera Buffer Count"
+                default 4
+            
+            config ESP_VIDEO_SIMULATION_CAMERA_COUNT
+                int "Simulation Camera Count"
+                default 4
+        endmenu
+    endif
+
+    menuconfig ESP_VIDEO_LOG
+        bool "Enable Video Log"
+        default y
+        help
+            Enable video log.
+
+    if ESP_VIDEO_LOG
+        config ESP_VIDEO_LOG_ERROR
+            bool "Enable Video Error Log"
+            default y
+            help
+                Enable video error log.
+
+        config ESP_VIDEO_LOG_INFO
+            bool "Enable Video Information Log"
+            default y
+            help
+                Enable video information log.
+
+        config ESP_VIDEO_LOG_DEBUG
+            bool "Enable Video Debug Log"
+            default y
+            help
+                Enable video debug log.
+    endif
+
+    config ESP_VIDEO_CHECK_PARAMETERS
+        bool "Check Video Function Parameters"
+        default y
+        help
+            Select this option, espressif video core functions will check
+            input parameters.
 endmenu

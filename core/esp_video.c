@@ -8,8 +8,10 @@
 #include <string.h>
 #include <sys/lock.h>
 #include "esp_heap_caps.h"
-#include "esp_log.h"
 #include "esp_video.h"
+#include "private/esp_video_log.h"
+#include "private/esp_video_bsp.h"
+#include "private/esp_video_vfs.h"
 
 #define ALLOC_RAM_ATTR              (MALLOC_CAP_8BIT | MALLOC_CAP_INTERNAL)
 #define VIDEO_OPERATION_CHECK       1
@@ -34,6 +36,7 @@ esp_err_t esp_video_init(void)
 
     ret = esp_video_bsp_init();
     if (ret != ESP_OK) {
+        ESP_VIDEO_LOGE("Failed to initialize video BSP");
         return ret;
     }
 
@@ -53,50 +56,64 @@ esp_err_t esp_video_init(void)
  *      - Video object pointer on success
  *      - NULL if failed
  */
-struct esp_video *esp_video_create(const char *name, const struct esp_video_ops *ops, void *priv, size_t buffer_count, size_t buffer_size)
+struct esp_video *esp_video_create(const char *name, const struct esp_video_ops *ops, void *priv, uint32_t buffer_count, uint32_t buffer_size)
 {
+    esp_err_t ret;
     bool found = false;
     struct esp_video *video;
-    size_t size;
+    uint32_t size;
+    int id = -1;
 
+#ifdef CONFIG_ESP_VIDEO_CHECK_PARAMETERS
     if (!name || !ops || !buffer_count || !buffer_size) {
-        ESP_LOGE(TAG, "Input arguments are invalid");
+        ESP_VIDEO_LOGE("Input arguments are invalid");
         return NULL;
     }
 
     _lock_acquire(&s_video_lock);
+
     SLIST_FOREACH(video, &s_video_list, node) {
         if (!strcmp(video->dev_name, name)) {
             found = true;
             break;
         }
     }
-    _lock_release(&s_video_lock);
 
     if (found) {
-        ESP_LOGE(TAG, "video name=%s has been registered", name);
+        ESP_VIDEO_LOGE("video name=%s has been registered", name);
         goto errout_video_exits;
+    }
+#else
+    _lock_acquire(&s_video_lock);
+#endif
+
+    /* Search valid ID */
+
+    for (int i = 0; i < INT32_MAX; i++) {
+        found = false;
+
+        SLIST_FOREACH(video, &s_video_list, node) {
+            if (i == video->id) {
+                found = true;
+                break;
+            }
+        }
+    
+        if (!found) {
+            id = i;
+            break;
+        }
     }
 
     size = sizeof(struct esp_video) + strlen(name) + 1;
-    video = heap_caps_malloc(size, ALLOC_RAM_ATTR);
+    video = heap_caps_calloc(1, size, ALLOC_RAM_ATTR);
     if (!video) {
-        ESP_LOGE(TAG, "Failed to malloc for video");
+        ESP_VIDEO_LOGE("Failed to malloc for video");
         goto errout_video_exits;
     }
 
-    video->buffer = esp_video_buffer_create(buffer_count, buffer_size);
-    if (!video->buffer) {
-        ESP_LOGE(TAG, "Failed to malloc for video");
-        goto errout_no_buffer;
-    }
-
-    video->done_sem = xSemaphoreCreateCounting(buffer_count, 0);
-    if (!video->done_sem) {
-        heap_caps_free(video);
-        ESP_LOGE(TAG, "Failed to create done_sem for video");
-        goto errout_no_semaphore;
-    }
+    video->min_buffer_count = buffer_count;
+    video->min_buffer_size  = buffer_size;
 
     portMUX_INITIALIZE(&video->lock);
     SLIST_INIT(&video->done_list);
@@ -104,18 +121,35 @@ struct esp_video *esp_video_create(const char *name, const struct esp_video_ops 
     strcpy(video->dev_name, name);
     video->ops      = ops;
     video->priv     = priv;
-
-    _lock_acquire(&s_video_lock);
+    video->id       = id;
     SLIST_INSERT_HEAD(&s_video_list, video, node);
-    _lock_release(&s_video_lock);
 
+#ifdef CONFIG_ESP_VIDEO_API_LINUX
+    char vfs_name[8];
+
+    ret = snprintf(vfs_name, sizeof(vfs_name), "video%d", id);
+    if (ret <= 0) {
+        ESP_VIDEO_LOGE("Failed to register video VFS dev");
+        goto errout_register_vfs;
+    }
+
+    ret = esp_vfs_dev_video_register(vfs_name, video);
+    if (ret != ESP_OK) {
+        ESP_VIDEO_LOGE("Failed to register video VFS dev name=%s", vfs_name);
+        goto errout_register_vfs;
+    }
+#endif
+
+    _lock_release(&s_video_lock);
     return video;
 
-errout_no_semaphore:
-    esp_video_buffer_destroy(video->buffer);
-errout_no_buffer:
+#ifdef CONFIG_ESP_VIDEO_API_LINUX
+errout_register_vfs:
+    SLIST_REMOVE(&s_video_list, video, esp_video, node);
     heap_caps_free(video);
+#endif
 errout_video_exits:
+    _lock_release(&s_video_lock);
     return NULL;
 }
 
@@ -130,17 +164,16 @@ errout_video_exits:
  */
 esp_err_t esp_video_destroy(struct esp_video *video)
 {
-#if VIDEO_OPERATION_CHECK
+    esp_err_t ret;
+#ifdef CONFIG_ESP_VIDEO_CHECK_PARAMETERS
     bool found = false;
     struct esp_video *it, *tmp;
-#endif
 
     if (!video) {
-        ESP_LOGE(TAG, "Input arguments are invalid");
+        ESP_VIDEO_LOGE("Input arguments are invalid");
         return ESP_ERR_INVALID_ARG;
     }
 
-#if VIDEO_OPERATION_CHECK
     _lock_acquire(&s_video_lock);
     SLIST_FOREACH_SAFE(it, &s_video_list, node, tmp) {
         if (it == video) {
@@ -152,7 +185,7 @@ esp_err_t esp_video_destroy(struct esp_video *video)
     _lock_release(&s_video_lock);
 
     if (!found) {
-        ESP_LOGE(TAG, "Not find video=%p", video);
+        ESP_VIDEO_LOGE("Not find video=%p", video);
         return ESP_ERR_INVALID_ARG;
     }
 #else
@@ -161,8 +194,21 @@ esp_err_t esp_video_destroy(struct esp_video *video)
     _lock_release(&s_video_lock);
 #endif
 
-    vSemaphoreDelete(video->done_sem);
-    esp_video_buffer_destroy(video->buffer);
+#ifdef CONFIG_ESP_VIDEO_API_LINUX
+    char vfs_name[8];
+
+    ret = snprintf(vfs_name, sizeof(vfs_name), "video%d", video->id);
+    if (ret <= 0) {
+        return ESP_ERR_NO_MEM;
+    }
+
+    ret = esp_vfs_dev_video_unregister(vfs_name);
+    if (ret <= 0) {
+        ESP_VIDEO_LOGE("Failed to unregister video VFS dev name=%s", vfs_name);
+        return ESP_ERR_NO_MEM;
+    }
+#endif
+
     heap_caps_free(video);
 
     return ESP_OK;
@@ -193,18 +239,23 @@ struct esp_video *esp_video_open(const char *name)
     _lock_release(&s_video_lock);
 
     if (!found) {
-        ESP_LOGE(TAG, "Not find video=%p", video);
+        ESP_VIDEO_LOGE("Not find video=%s", name);
         return NULL;
     }
 
     if (video->ops->init) {
         ret = video->ops->init(video);
         if (ret != ESP_OK) {
-            ESP_LOGE(TAG, "Failed to initialize video lowlevel ret=%x", ret);
+            ESP_VIDEO_LOGE("video->ops->init=%x", ret);
             return NULL;
+        } else {
+            memset(&video->format, 0, sizeof(struct esp_video_format));
+            video->buffer_size  = video->min_buffer_size;
+            video->buffer_count = video->min_buffer_count;
+            video->buffer       = NULL;
         }
     } else {
-        ESP_LOGI(TAG, "video->ops->init=NULL");
+        ESP_VIDEO_LOGI("video->ops->init=NULL");
     }
 
     return video;
@@ -222,18 +273,15 @@ struct esp_video *esp_video_open(const char *name)
 esp_err_t esp_video_close(struct esp_video *video)
 {
     esp_err_t ret;
-    struct esp_video_buffer_element *element;
-#if VIDEO_OPERATION_CHECK
+#ifdef CONFIG_ESP_VIDEO_CHECK_PARAMETERS
     bool found = false;
     struct esp_video *it;
-#endif
 
     if (!video) {
-        ESP_LOGE(TAG, "Input arguments are invalid");
+        ESP_VIDEO_LOGE("Input arguments are invalid");
         return ESP_ERR_INVALID_ARG;
     }
 
-#if VIDEO_OPERATION_CHECK
     _lock_acquire(&s_video_lock);
     SLIST_FOREACH(it, &s_video_list, node) {
         if (it == video) {
@@ -244,7 +292,7 @@ esp_err_t esp_video_close(struct esp_video *video)
     _lock_release(&s_video_lock);
 
     if (!found) {
-        ESP_LOGE(TAG, "Not find video=%p", video);
+        ESP_VIDEO_LOGE("Not find video=%p", video);
         return ESP_ERR_INVALID_ARG;
     }
 #endif
@@ -252,15 +300,22 @@ esp_err_t esp_video_close(struct esp_video *video)
     if (video->ops->deinit) {
         ret = video->ops->deinit(video);
         if (ret != ESP_OK) {
-            ESP_LOGE(TAG, "Failed to de-initialize video lowlevel ret=%x", ret);
+            ESP_VIDEO_LOGE("video->ops->deinit=%x", ret);
             return ret;
+        } else {
+            if (video->done_sem) {
+                vSemaphoreDelete(video->done_sem);
+                video->done_sem = NULL;
+            }
+            
+            if (video->buffer) {
+                SLIST_INIT(&video->done_list);
+                esp_video_buffer_destroy(video->buffer);
+                video->buffer = NULL;
+            }
         }
     } else {
-        ESP_LOGI(TAG, "video->ops->deinit=NULL");
-    }
-
-    SLIST_FOREACH(element, &video->done_list, node) {
-        esp_video_buffer_free(video->buffer, element);
+        ESP_VIDEO_LOGI("video->ops->deinit=NULL");
     }
 
     return ESP_OK;
@@ -278,17 +333,15 @@ esp_err_t esp_video_close(struct esp_video *video)
 esp_err_t esp_video_start_capture(struct esp_video *video)
 {
     esp_err_t ret;
-#if VIDEO_OPERATION_CHECK
+#ifdef CONFIG_ESP_VIDEO_CHECK_PARAMETERS
     bool found = false;
     struct esp_video *it;
-#endif
 
     if (!video) {
-        ESP_LOGE(TAG, "Input arguments are invalid");
+        ESP_VIDEO_LOGE("Input arguments are invalid");
         return ESP_ERR_INVALID_ARG;
     }
 
-#if VIDEO_OPERATION_CHECK
     _lock_acquire(&s_video_lock);
     SLIST_FOREACH(it, &s_video_list, node) {
         if (it == video) {
@@ -299,7 +352,7 @@ esp_err_t esp_video_start_capture(struct esp_video *video)
     _lock_release(&s_video_lock);
 
     if (!found) {
-        ESP_LOGE(TAG, "Not find video=%p", video);
+        ESP_VIDEO_LOGE("Not find video=%p", video);
         return ESP_ERR_INVALID_ARG;
     }
 #endif
@@ -307,11 +360,11 @@ esp_err_t esp_video_start_capture(struct esp_video *video)
     if (video->ops->start_capture) {
         ret = video->ops->start_capture(video);
         if (ret != ESP_OK) {
-            ESP_LOGE(TAG, "Failed to start capture video lowlevel ret=%x", ret);
+            ESP_VIDEO_LOGE("ideo->ops->start_capture=%x", ret);
             return ret;
         }
     } else {
-        ESP_LOGI(TAG, "video->ops->start_capture=NULL");
+        ESP_VIDEO_LOGI("video->ops->start_capture=NULL");
     }
 
     return ESP_OK;
@@ -329,17 +382,15 @@ esp_err_t esp_video_start_capture(struct esp_video *video)
 esp_err_t esp_video_stop_capture(struct esp_video *video)
 {
     esp_err_t ret;
-#if VIDEO_OPERATION_CHECK
+#ifdef CONFIG_ESP_VIDEO_CHECK_PARAMETERS
     bool found = false;
     struct esp_video *it;
-#endif
 
     if (!video) {
-        ESP_LOGE(TAG, "Input arguments are invalid");
+        ESP_VIDEO_LOGE("Input arguments are invalid");
         return ESP_ERR_INVALID_ARG;
     }
 
-#if VIDEO_OPERATION_CHECK
     _lock_acquire(&s_video_lock);
     SLIST_FOREACH(it, &s_video_list, node) {
         if (it == video) {
@@ -350,7 +401,7 @@ esp_err_t esp_video_stop_capture(struct esp_video *video)
     _lock_release(&s_video_lock);
 
     if (!found) {
-        ESP_LOGE(TAG, "Not find video=%p", video);
+        ESP_VIDEO_LOGE("Not find video=%p", video);
         return ESP_ERR_INVALID_ARG;
     }
 #endif
@@ -358,117 +409,11 @@ esp_err_t esp_video_stop_capture(struct esp_video *video)
     if (video->ops->stop_capture) {
         ret = video->ops->stop_capture(video);
         if (ret != ESP_OK) {
-            ESP_LOGE(TAG, "Failed to stop capture video lowlevel ret=%x", ret);
+            ESP_VIDEO_LOGE("video->ops->stop_capture=%x", ret);
             return ret;
         }
     } else {
-        ESP_LOGI(TAG, "video->ops->stop_capture=NULL");
-    }
-
-    return ESP_OK;
-}
-
-/**
- * @brief Set video data stream attribution.
- *
- * @param video Video object
- * @param cmd   Video set command
- * @param arg   Video set parameters pointer
- *
- * @return
- *      - ESP_OK on success
- *      - Others if failed
- */
-esp_err_t esp_video_set_attr(struct esp_video *video, int cmd, void *arg)
-{
-    esp_err_t ret;
-#if VIDEO_OPERATION_CHECK
-    bool found = false;
-    struct esp_video *it;
-#endif
-
-    if (!video) {
-        ESP_LOGE(TAG, "Input arguments are invalid");
-        return ESP_ERR_INVALID_ARG;
-    }
-
-#if VIDEO_OPERATION_CHECK
-    _lock_acquire(&s_video_lock);
-    SLIST_FOREACH(it, &s_video_list, node) {
-        if (it == video) {
-            found = true;
-            break;
-        }
-    }
-    _lock_release(&s_video_lock);
-
-    if (!found) {
-        ESP_LOGE(TAG, "Not find video=%p", video);
-        return ESP_ERR_INVALID_ARG;
-    }
-#endif
-
-    if (video->ops->set_attr) {
-        ret = video->ops->set_attr(video, cmd, arg);
-        if (ret != ESP_OK) {
-            ESP_LOGE(TAG, "Failed to set attribution video lowlevel ret=%x", ret);
-            return ret;
-        }
-    } else {
-        ESP_LOGI(TAG, "video->ops->set_attr=NULL");
-    }
-
-    return ESP_OK;
-}
-
-/**
- * @brief Get video data stream attribution.
- *
- * @param video Video object
- * @param cmd   Video get command
- * @param arg   Video get parameters pointer
- *
- * @return
- *      - ESP_OK on success
- *      - Others if failed
- */
-esp_err_t esp_video_get_attr(struct esp_video *video, int cmd, void *arg)
-{
-    esp_err_t ret;
-#if VIDEO_OPERATION_CHECK
-    bool found = false;
-    struct esp_video *it;
-#endif
-
-    if (!video) {
-        ESP_LOGE(TAG, "Input arguments are invalid");
-        return ESP_ERR_INVALID_ARG;
-    }
-
-#if VIDEO_OPERATION_CHECK
-    _lock_acquire(&s_video_lock);
-    SLIST_FOREACH(it, &s_video_list, node) {
-        if (it == video) {
-            found = true;
-            break;
-        }
-    }
-    _lock_release(&s_video_lock);
-
-    if (!found) {
-        ESP_LOGE(TAG, "Not find video=%p", video);
-        return ESP_ERR_INVALID_ARG;
-    }
-#endif
-
-    if (video->ops->get_attr) {
-        ret = video->ops->get_attr(video, cmd, arg);
-        if (ret != ESP_OK) {
-            ESP_LOGE(TAG, "Failed to get attribution video lowlevel ret=%x", ret);
-            return ret;
-        }
-    } else {
-        ESP_LOGI(TAG, "video->ops->get_attr=NULL");
+        ESP_VIDEO_LOGI("video->ops->stop_capture=NULL");
     }
 
     return ESP_OK;
@@ -487,17 +432,15 @@ esp_err_t esp_video_get_attr(struct esp_video *video, int cmd, void *arg)
 esp_err_t esp_video_get_capability(struct esp_video *video, struct esp_video_capability *capability)
 {
     esp_err_t ret;
-#if VIDEO_OPERATION_CHECK
+#ifdef CONFIG_ESP_VIDEO_CHECK_PARAMETERS
     bool found = false;
     struct esp_video *it;
-#endif
 
-    if (!video) {
-        ESP_LOGE(TAG, "Input arguments are invalid");
+    if (!video || !capability) {
+        ESP_VIDEO_LOGE("Input arguments are invalid");
         return ESP_ERR_INVALID_ARG;
     }
 
-#if VIDEO_OPERATION_CHECK
     _lock_acquire(&s_video_lock);
     SLIST_FOREACH(it, &s_video_list, node) {
         if (it == video) {
@@ -508,7 +451,7 @@ esp_err_t esp_video_get_capability(struct esp_video *video, struct esp_video_cap
     _lock_release(&s_video_lock);
 
     if (!found) {
-        ESP_LOGE(TAG, "Not find video=%p", video);
+        ESP_VIDEO_LOGE("Not find video=%p", video);
         return ESP_ERR_INVALID_ARG;
     }
 #endif
@@ -516,11 +459,11 @@ esp_err_t esp_video_get_capability(struct esp_video *video, struct esp_video_cap
     if (video->ops->capability) {
         ret = video->ops->capability(video, capability);
         if (ret != ESP_OK) {
-            ESP_LOGE(TAG, "Failed to get capability video lowlevel ret=%x", ret);
+            ESP_VIDEO_LOGE("video->ops->capability=%x", ret);
             return ret;
         }
     } else {
-        ESP_LOGI(TAG, "video->ops->capability=NULL");
+        ESP_VIDEO_LOGI("video->ops->capability=NULL");
     }
 
     return ESP_OK;
@@ -540,17 +483,15 @@ esp_err_t esp_video_get_capability(struct esp_video *video, struct esp_video_cap
 esp_err_t esp_video_get_description(struct esp_video *video, char *buffer, uint16_t size)
 {
     esp_err_t ret;
-#if VIDEO_OPERATION_CHECK
+#ifdef CONFIG_ESP_VIDEO_CHECK_PARAMETERS
     bool found = false;
     struct esp_video *it;
-#endif
 
-    if (!video) {
-        ESP_LOGE(TAG, "Input arguments are invalid");
+    if (!video || !buffer || !size) {
+        ESP_VIDEO_LOGE("Input arguments are invalid");
         return ESP_ERR_INVALID_ARG;
     }
 
-#if VIDEO_OPERATION_CHECK
     _lock_acquire(&s_video_lock);
     SLIST_FOREACH(it, &s_video_list, node) {
         if (it == video) {
@@ -561,7 +502,7 @@ esp_err_t esp_video_get_description(struct esp_video *video, char *buffer, uint1
     _lock_release(&s_video_lock);
 
     if (!found) {
-        ESP_LOGE(TAG, "Not find video=%p", video);
+        ESP_VIDEO_LOGE("Not find video=%p", video);
         return ESP_ERR_INVALID_ARG;
     }
 #endif
@@ -569,12 +510,281 @@ esp_err_t esp_video_get_description(struct esp_video *video, char *buffer, uint1
     if (video->ops->description) {
         ret = video->ops->description(video, buffer, size);
         if (ret != ESP_OK) {
-            ESP_LOGE(TAG, "Failed to get description video lowlevel ret=%x", ret);
+            ESP_VIDEO_LOGE("video->ops->description=%x", ret);
             return ret;
         }
     } else {
-        ESP_LOGI(TAG, "video->ops->description=NULL");
+        ESP_VIDEO_LOGI("video->ops->description=NULL");
     }
+
+    return ESP_OK;
+}
+
+/**
+ * @brief Get video format information.
+ *
+ * @param video  Video object
+ * @param format Format object
+ *
+ * @return
+ *      - ESP_OK on success
+ *      - Others if failed
+ */
+esp_err_t esp_video_get_format(struct esp_video *video, struct esp_video_format *format)
+{
+#ifdef CONFIG_ESP_VIDEO_CHECK_PARAMETERS
+    bool found = false;
+    struct esp_video *it;
+
+    if (!video || !format) {
+        ESP_VIDEO_LOGE("Input arguments are invalid");
+        return ESP_ERR_INVALID_ARG;
+    }
+
+    _lock_acquire(&s_video_lock);
+    SLIST_FOREACH(it, &s_video_list, node) {
+        if (it == video) {
+            found = true;
+            break;
+        }
+    }
+    _lock_release(&s_video_lock);
+
+    if (!found) {
+        ESP_VIDEO_LOGE("Not find video=%p", video);
+        return ESP_ERR_INVALID_ARG;
+    }
+#endif
+
+    memcpy(format, &video->format, sizeof(struct esp_video_format));
+
+    return ESP_OK;
+}
+
+/**
+ * @brief Set video format information.
+ *
+ * @param video  Video object
+ * @param format Format object
+ *
+ * @return
+ *      - ESP_OK on success
+ *      - Others if failed
+ */
+esp_err_t esp_video_set_format(struct esp_video *video, const struct esp_video_format *format)
+{
+    esp_err_t ret;
+#ifdef CONFIG_ESP_VIDEO_CHECK_PARAMETERS
+    bool found = false;
+    struct esp_video *it;
+
+    if (!video || !format) {
+        ESP_VIDEO_LOGE("Input arguments are invalid");
+        return ESP_ERR_INVALID_ARG;
+    }
+
+    _lock_acquire(&s_video_lock);
+    SLIST_FOREACH(it, &s_video_list, node) {
+        if (it == video) {
+            found = true;
+            break;
+        }
+    }
+    _lock_release(&s_video_lock);
+
+    if (!found) {
+        ESP_VIDEO_LOGE("Not find video=%p", video);
+        return ESP_ERR_INVALID_ARG;
+    }
+#endif
+
+    if (video->ops->set_format) {
+        ret = video->ops->set_format(video, format);
+        if (ret != ESP_OK) {
+            ESP_VIDEO_LOGE("video->ops->set_format=%x", ret);
+            return ret;
+        } else {
+            memcpy(&video->format, format, sizeof(struct esp_video_format));
+        }
+    } else {
+        ESP_VIDEO_LOGI("video->ops->set_format=NULL");
+    }
+
+    return ESP_OK;
+}
+
+/**
+ * @brief Setup video buffer.
+ *
+ * @param video Video object
+ * @param count Buffer count
+ *
+ * @return
+ *      - ESP_OK on success
+ *      - Others if failed
+ */
+esp_err_t esp_video_setup_buffer(struct esp_video *video, uint32_t count)
+{
+#ifdef CONFIG_ESP_VIDEO_CHECK_PARAMETERS
+    bool found = false;
+    struct esp_video *it;
+
+    _lock_acquire(&s_video_lock);
+    SLIST_FOREACH(it, &s_video_list, node) {
+        if (it == video) {
+            found = true;
+            break;
+        }
+    }
+    _lock_release(&s_video_lock);
+
+    if (!found) {
+        ESP_VIDEO_LOGE("Not find video=%p", video);
+        return ESP_ERR_INVALID_ARG;
+    }
+
+    if (count < video->min_buffer_count) {
+        ESP_VIDEO_LOGE("count=%d < %d", (int)count, (int)video->min_buffer_count);
+        return ESP_ERR_INVALID_ARG;
+    }
+#endif
+
+    video->buffer_count = count;
+
+    if (video->done_sem) {
+        vSemaphoreDelete(video->done_sem);
+    }
+    
+    if (video->buffer) {
+        SLIST_INIT(&video->done_list);
+        esp_video_buffer_destroy(video->buffer);
+    }
+
+    video->done_sem = xSemaphoreCreateCounting(video->buffer_count, 0);
+    if (!video->done_sem) {
+        ESP_VIDEO_LOGE("Failed to create done_sem for video");
+        return ESP_ERR_NO_MEM;
+    }
+
+    video->buffer = esp_video_buffer_create(video->buffer_count, video->buffer_size);
+    if (!video->buffer) {
+        vSemaphoreDelete(video->done_sem);
+        video->done_sem = NULL;
+        ESP_VIDEO_LOGE("Failed to create buffer");
+        return ESP_ERR_NO_MEM;
+    }
+
+    return ESP_OK;
+}
+
+/**
+ * @brief Get video buffer count.
+ *
+ * @param video Video object
+ * @param count Buffer count pointer
+ *
+ * @return
+ *      - ESP_OK on success
+ *      - Others if failed
+ */
+esp_err_t esp_video_get_buffer_count(struct esp_video *video, uint32_t *count)
+{
+#ifdef CONFIG_ESP_VIDEO_CHECK_PARAMETERS
+    bool found = false;
+    struct esp_video *it;
+
+    _lock_acquire(&s_video_lock);
+    SLIST_FOREACH(it, &s_video_list, node) {
+        if (it == video) {
+            found = true;
+            break;
+        }
+    }
+    _lock_release(&s_video_lock);
+
+    if (!found) {
+        ESP_VIDEO_LOGE("Not find video=%p", video);
+        return ESP_ERR_INVALID_ARG;
+    }
+#endif
+
+    *count = video->buffer_count;
+
+    return ESP_OK;
+}
+
+/**
+ * @brief Get video buffer length.
+ *
+ * @param video Video object
+ * @param index Video buffer index
+ * @param length Buffer length pointer
+ *
+ * @return
+ *      - ESP_OK on success
+ *      - Others if failed
+ */
+esp_err_t esp_video_get_buffer_length(struct esp_video *video, uint32_t index, uint32_t *length)
+{
+#ifdef CONFIG_ESP_VIDEO_CHECK_PARAMETERS
+    bool found = false;
+    struct esp_video *it;
+
+    _lock_acquire(&s_video_lock);
+    SLIST_FOREACH(it, &s_video_list, node) {
+        if (it == video) {
+            found = true;
+            break;
+        }
+    }
+    _lock_release(&s_video_lock);
+
+    if (!found) {
+        ESP_VIDEO_LOGE("Not find video=%p", video);
+        return ESP_ERR_INVALID_ARG;
+    }
+#endif
+
+    *length = video->buffer_size;
+
+    return ESP_OK;
+}
+
+/**
+ * @brief Get video buffer offset.
+ *
+ * @param video Video object
+ * @param index Video buffer index
+ * @param count Buffer length pointer
+ *
+ * @return
+ *      - ESP_OK on success
+ *      - Others if failed
+ */
+esp_err_t esp_video_get_buffer_offset(struct esp_video *video, uint32_t index, uint32_t *offset)
+{
+    struct esp_video_buffer_element *element;
+#ifdef CONFIG_ESP_VIDEO_CHECK_PARAMETERS
+    bool found = false;
+    struct esp_video *it;
+
+    _lock_acquire(&s_video_lock);
+    SLIST_FOREACH(it, &s_video_list, node) {
+        if (it == video) {
+            found = true;
+            break;
+        }
+    }
+    _lock_release(&s_video_lock);
+
+    if (!found) {
+        ESP_VIDEO_LOGE("Not find video=%p", video);
+        return ESP_ERR_INVALID_ARG;
+    }
+#endif
+
+    element = esp_video_buffer_get_element_by_index(video->buffer, index);
+    *offset = esp_video_buffer_get_element_offset(video->buffer, element);
 
     return ESP_OK;
 }
@@ -597,7 +807,7 @@ uint8_t *esp_video_alloc_buffer(struct esp_video *video)
         return NULL;
     }
 
-    return element->buffer;
+    return esp_video_buffer_element_get_buffer(element);
 }
 
 /**
@@ -609,7 +819,7 @@ uint8_t *esp_video_alloc_buffer(struct esp_video *video)
  *
  * @return None
  */
-void esp_video_recvdone_buffer(struct esp_video *video, uint8_t *buffer, size_t size)
+void esp_video_recvdone_buffer(struct esp_video *video, uint8_t *buffer, uint32_t size)
 {
     struct esp_video_buffer_element *element = 
         container_of(buffer, struct esp_video_buffer_element, buffer);
@@ -644,6 +854,21 @@ void esp_video_free_buffer(struct esp_video *video, uint8_t *buffer)
 }
 
 /**
+ * @brief Free one video buffer by index.
+ *
+ * @param video Video object
+ * @param index Video buffer index
+ *
+ * @return None
+ */
+void esp_video_free_buffer_index(struct esp_video *video, uint32_t index)
+{
+    struct esp_video_buffer_element *element = esp_video_buffer_get_element_by_index(video->buffer, index);
+
+    esp_video_buffer_free(video->buffer, element);
+}
+
+/**
  * @brief Receive buffer from video device. 
  *
  * @param video Video object
@@ -654,7 +879,7 @@ void esp_video_free_buffer(struct esp_video *video, uint8_t *buffer)
  *      - Video buffer object pointer on success
  *      - NULL if failed
  */
-uint8_t *esp_video_recv_buffer(struct esp_video *video, size_t *recv_size, uint32_t ticks)
+uint8_t *esp_video_recv_buffer(struct esp_video *video, uint32_t *recv_size, uint32_t ticks)
 {
     BaseType_t ret;
     struct esp_video_buffer_element *element;
@@ -672,4 +897,27 @@ uint8_t *esp_video_recv_buffer(struct esp_video *video, size_t *recv_size, uint3
     *recv_size = esp_video_buffer_element_get_valid_size(element);
 
     return element->buffer;
+}
+
+/**
+ * @brief Get video buffer data index
+ *
+ * @param video Video object
+ * @param buffer Video data buffer
+ *
+ * @return Video buffer data index
+ */
+uint32_t esp_video_get_buffer_index(struct esp_video *video, uint8_t *buffer)
+{
+    struct esp_video_buffer_element *element = 
+        container_of(buffer, struct esp_video_buffer_element, buffer);
+    
+    return esp_video_buffer_element_get_index(element);
+}
+
+uint8_t *esp_video_get_buffer_by_offset(struct esp_video *video, uint32_t offset)
+{
+    struct esp_video_buffer_element *element = esp_video_buffer_get_element_by_offset(video->buffer, offset);
+
+    return esp_video_buffer_element_get_buffer(element);
 }
