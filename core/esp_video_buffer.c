@@ -5,6 +5,7 @@
  */
 
 #include <stdio.h>
+#include <string.h>
 #include <sys/lock.h>
 #include "esp_heap_caps.h"
 #include "esp_log.h"
@@ -49,7 +50,7 @@ struct esp_video_buffer *esp_video_buffer_create(size_t count, size_t size)
     portMUX_INITIALIZE(&buffer->lock);
     SLIST_INIT(&buffer->free_list);
     buffer->element_count = count;
-    buffer->element_size  = element_size;
+    buffer->element_size  = size;
     for (int i = 0; i < count; i++) {
         struct esp_video_buffer_element *element =
             (struct esp_video_buffer_element *)((char *)buffer->element + element_size * i);     
@@ -72,7 +73,7 @@ struct esp_video_buffer *esp_video_buffer_create(size_t count, size_t size)
 struct esp_video_buffer *esp_video_buffer_clone(const struct esp_video_buffer *buffer)
 {
     size_t count = buffer->element_count;
-    size_t size = buffer->element_size - sizeof(struct esp_video_buffer_element);
+    size_t size = buffer->element_size;
 
     return esp_video_buffer_create(count, size);
 }
@@ -96,6 +97,9 @@ struct esp_video_buffer_element *esp_video_buffer_alloc(struct esp_video_buffer 
         SLIST_REMOVE(&buffer->free_list, element, esp_video_buffer_element, node); 
     }
     portEXIT_CRITICAL(&buffer->lock);
+
+    element->video_buffer = buffer;
+    element->valid_size = 0;
 
     return element;
 }
@@ -157,4 +161,26 @@ esp_err_t esp_video_buffer_destroy(struct esp_video_buffer *buffer)
     heap_caps_free(buffer);
 
     return ESP_OK;
+}
+
+/**
+ * @brief Clone a new video buffer element
+ *
+ * @param element Video buffer element object
+ *
+ * @return None
+ */
+const struct esp_video_buffer_element *esp_video_buffer_element_clone(const struct esp_video_buffer_element *element)
+{
+    struct esp_video_buffer_element *new_element;
+
+    new_element = esp_video_buffer_alloc(element->video_buffer);
+    if (!new_element) {
+        return NULL;
+    }
+
+    new_element->valid_size = element->valid_size;
+    memcpy(new_element->buffer, element->buffer, element->valid_size);
+
+    return new_element;
 }

@@ -605,15 +605,22 @@ uint8_t *esp_video_alloc_buffer(struct esp_video *video)
  *
  * @param video  Video object
  * @param buffer Video buffer allocated by "esp_video_alloc_buffer"
+ * @param size   Actual received data size
  *
  * @return None
  */
-void esp_video_recvdone_buffer(struct esp_video *video, uint8_t *buffer)
+void esp_video_recvdone_buffer(struct esp_video *video, uint8_t *buffer, size_t size)
 {
     struct esp_video_buffer_element *element = 
         container_of(buffer, struct esp_video_buffer_element, buffer);
 
+    /* Check if the buffer is overflow */
+    if (size > esp_video_buffer_element_get_buffer_size(element)) {
+        abort();
+    }
+
     portENTER_CRITICAL(&video->lock);
+    esp_video_buffer_element_set_valid_size(element, size);
     SLIST_INSERT_HEAD(&video->done_list, element, node);
     portEXIT_CRITICAL(&video->lock);
 
@@ -641,12 +648,13 @@ void esp_video_free_buffer(struct esp_video *video, uint8_t *buffer)
  *
  * @param video Video object
  * @param ticks Wait OS tick
+ * @param size  Actual received data size
  *
  * @return
  *      - Video buffer object pointer on success
  *      - NULL if failed
  */
-uint8_t *esp_video_recv_buffer(struct esp_video *video, uint32_t ticks)
+uint8_t *esp_video_recv_buffer(struct esp_video *video, size_t *recv_size, uint32_t ticks)
 {
     BaseType_t ret;
     struct esp_video_buffer_element *element;
@@ -660,6 +668,8 @@ uint8_t *esp_video_recv_buffer(struct esp_video *video, uint32_t ticks)
     element = SLIST_FIRST(&video->done_list);
     SLIST_REMOVE(&video->done_list, element, esp_video_buffer_element, node); 
     portEXIT_CRITICAL(&video->lock);
+
+    *recv_size = esp_video_buffer_element_get_valid_size(element);
 
     return element->buffer;
 }

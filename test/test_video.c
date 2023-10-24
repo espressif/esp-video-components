@@ -11,6 +11,7 @@
 
 #define VIDEO_DEVICE_NAME       "sim_camera"
 #define VIDEO_BUFFER_NUM        4
+#define VIDEO_BUFFER_SIZE       6078
 #define BUFFER_SIZE             128
 #define FPS_DEFAULT             20
 
@@ -34,6 +35,7 @@ TEST_CASE("video basic operation", "[video]")
     int fps;
     int count;
     TickType_t tick;
+    size_t recv_size;
 
     /* Initialize esp-video system */
 
@@ -57,10 +59,11 @@ TEST_CASE("video basic operation", "[video]")
     count = 0;
     tick = xTaskGetTickCount();
     while (xTaskGetTickCount() - tick < (1000 / portTICK_PERIOD_MS)) {
-        uint8_t *buffer = esp_video_recv_buffer(video, 100);
+        uint8_t *buffer = esp_video_recv_buffer(video, &recv_size, 100);
         if (buffer) {
             count++;
             esp_video_free_buffer(video, buffer);
+            TEST_ASSERT_EQUAL_INT(VIDEO_BUFFER_SIZE, recv_size);
         } else {
             break;
         }
@@ -81,10 +84,11 @@ TEST_CASE("video basic operation", "[video]")
     count = 0;
     tick = xTaskGetTickCount();
     while (xTaskGetTickCount() - tick < (1000 / portTICK_PERIOD_MS)) {
-        uint8_t *buffer = esp_video_recv_buffer(video, 100);
+        uint8_t *buffer = esp_video_recv_buffer(video, &recv_size, 100);
         if (buffer) {
             count++;
             esp_video_free_buffer(video, buffer);
+            TEST_ASSERT_EQUAL_INT(VIDEO_BUFFER_SIZE, recv_size);
         } else {
             break;
         }
