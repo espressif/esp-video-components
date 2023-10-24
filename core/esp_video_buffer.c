@@ -50,11 +50,10 @@ struct esp_video_buffer *esp_video_buffer_create(size_t count, size_t size)
     portMUX_INITIALIZE(&buffer->lock);
     SLIST_INIT(&buffer->free_list);
     buffer->element_count = count;
-    buffer->element_size  = size;
+    buffer->element_size = size;
     for (int i = 0; i < count; i++) {
         struct esp_video_buffer_element *element =
             (struct esp_video_buffer_element *)((char *)buffer->element + element_size * i);     
-
         SLIST_INSERT_HEAD(&buffer->free_list, element, node);
     }
 
@@ -98,8 +97,10 @@ struct esp_video_buffer_element *esp_video_buffer_alloc(struct esp_video_buffer 
     }
     portEXIT_CRITICAL(&buffer->lock);
 
-    element->video_buffer = buffer;
-    element->valid_size = 0;
+    if (element) {
+        element->video_buffer = buffer;
+        element->valid_size = 0;
+    }
 
     return element;
 }
@@ -170,7 +171,7 @@ esp_err_t esp_video_buffer_destroy(struct esp_video_buffer *buffer)
  *
  * @return None
  */
-const struct esp_video_buffer_element *esp_video_buffer_element_clone(const struct esp_video_buffer_element *element)
+struct esp_video_buffer_element *esp_video_buffer_element_clone(const struct esp_video_buffer_element *element)
 {
     struct esp_video_buffer_element *new_element;
 
