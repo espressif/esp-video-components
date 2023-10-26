@@ -6,14 +6,14 @@
 
 #include <stdlib.h>
 #include <string.h>
-#include "esp_log.h"
 #include "esp_timer.h"
 #include "esp_video.h"
+#include "private/esp_video_log.h"
 #include "sim_picture.h"
 
-#define SIM_CAMERA_DEVICE_NAME      "sim_camera"
-#define SIM_CAMERA_FPS_DEFAULT      20
-#define SIM_CAMERA_BUFFER_COUNT     4
+#define SIM_CAMERA_DEVICE_NAME      CONFIG_ESP_VIDEO_SIMULATION_CAMERA_NAME
+#define SIM_CAMERA_BUFFER_COUNT     CONFIG_ESP_VIDEO_SIMULATION_CAMERA_BUFFER_COUNT
+#define SIM_CAMERA_COUNT            CONFIG_ESP_VIDEO_SIMULATION_CAMERA_COUNT
 #define SIM_CAMERA_BUFFER_SIZE      (sim_picture_jpeg_len)
 
 struct sim_camera {
@@ -44,7 +44,7 @@ static esp_err_t sim_camera_init(struct esp_video *video)
     struct sim_camera *camera = (struct sim_camera *)video->priv;
 
     camera->capture_timer = NULL;
-    camera->fps = SIM_CAMERA_FPS_DEFAULT;
+    camera->fps = 0;
 
     esp_timer_create_args_t capture_timer_args = {
         .callback = sim_camera_capture_timer_isr,
@@ -55,7 +55,7 @@ static esp_err_t sim_camera_init(struct esp_video *video)
 
     ret = esp_timer_create(&capture_timer_args, &camera->capture_timer);
     if (ret != ESP_OK) {
-        ESP_LOGE(TAG, "Failed to create timer ret=%x", ret);
+        ESP_VIDEO_LOGE("Failed to create timer ret=%x", ret);
         return ret;
     }
 
@@ -69,7 +69,7 @@ static esp_err_t sim_camera_deinit(struct esp_video *video)
     
     ret = esp_timer_delete(camera->capture_timer);
     if (ret != ESP_OK) {
-        ESP_LOGE(TAG, "Failed to delete timer ret=%x", ret);
+        ESP_VIDEO_LOGE("Failed to delete ret=%x", ret);
         return ret;
     }
 
@@ -85,7 +85,7 @@ static esp_err_t sim_camera_start_capture(struct esp_video *video)
     
     ret = esp_timer_start_periodic(camera->capture_timer, 1000000 / camera->fps);
     if (ret != ESP_OK) {
-        ESP_LOGE(TAG, "Failed to start timer ret=%x", ret);
+        ESP_VIDEO_LOGE("Failed to start timer ret=%x", ret);
         return ret;
     }
 
@@ -99,63 +99,26 @@ static esp_err_t sim_camera_stop_capture(struct esp_video *video)
     
     ret = esp_timer_stop(camera->capture_timer);
     if (ret != ESP_OK) {
-        ESP_LOGE(TAG, "Failed to stop timer ret=%x", ret);
+        ESP_VIDEO_LOGE("Failed to stop timer ret=%x", ret);
         return ret;
     }
 
     return ESP_OK;
 }
 
-static esp_err_t sim_camera_set_attr(struct esp_video *video, int cmd, void *arg)
+static esp_err_t sim_camera_set_format(struct esp_video *video, const struct esp_video_format *format)
 {
-    esp_err_t ret = ESP_FAIL;
     struct sim_camera *camera = (struct sim_camera *)video->priv;
 
-    switch (cmd) {
-        case ESP_VIDEO_CTRL_FPS:
-            if (!arg) {
-                ESP_LOGE(TAG, "arg=NULL");
-                return ESP_ERR_INVALID_ARG;
-            }
+    camera->fps = (int)format->fps;
 
-            camera->fps = *(int *)arg;
-            ret = ESP_OK;
-            break;
-        default:
-            ESP_LOGE(TAG, "cmd=%d is not supported", cmd);
-            break;
-    }
-
-    return ret;
-}
-
-static esp_err_t sim_camera_get_attr(struct esp_video *video, int cmd, void *arg)
-{
-    esp_err_t ret = ESP_FAIL;
-    struct sim_camera *camera = (struct sim_camera *)video->priv;
-
-    switch (cmd) {
-        case ESP_VIDEO_CTRL_FPS:
-            if (!arg) {
-                ESP_LOGE(TAG, "arg=NULL");
-                return ESP_ERR_INVALID_ARG;
-            }
-
-            *(int *)arg = camera->fps;
-            ret = ESP_OK;
-            break;
-        default:
-            ESP_LOGE(TAG, "cmd=%d is not supported", cmd);
-            break;
-    }
-
-    return ret;
+    return ESP_OK;
 }
 
 static esp_err_t sim_camera_capability(struct esp_video *video, struct esp_video_capability *capability)
 {
     if (!capability) {
-        ESP_LOGE(TAG, "capability=NULL");
+        ESP_VIDEO_LOGE("capability=NULL");
         return ESP_ERR_INVALID_ARG;
     }
 
@@ -165,7 +128,7 @@ static esp_err_t sim_camera_capability(struct esp_video *video, struct esp_video
     return ESP_OK;
 }
 
-static esp_err_t sim_camera_description(struct esp_video *video, char *buffer, size_t size)
+static esp_err_t sim_camera_description(struct esp_video *video, char *buffer, uint32_t size)
 {
     int ret;
 
@@ -182,27 +145,29 @@ static const struct esp_video_ops s_sim_camera_ops = {
     .deinit        = sim_camera_deinit,
     .start_capture = sim_camera_start_capture,
     .stop_capture  = sim_camera_stop_capture,
-    .set_attr      = sim_camera_set_attr,
-    .get_attr      = sim_camera_get_attr,
+    .set_format    = sim_camera_set_format,
     .capability    = sim_camera_capability,
     .description   = sim_camera_description
 };
 
 esp_err_t sim_initialize_camera(void)
 {
+    int ret;
+    char *name;
     struct esp_video *video;
     struct sim_camera *camera;
 
-    camera = heap_caps_malloc(sizeof(struct sim_camera), MALLOC_CAP_8BIT | MALLOC_CAP_INTERNAL);
-    if (!camera) {
-        return ESP_ERR_NO_MEM;
-    }
+    for (int i = 0; i < SIM_CAMERA_COUNT; i++) {
+        ret = asprintf(&name, "%s%d", SIM_CAMERA_DEVICE_NAME, i);
+        assert(ret > 0);
 
-    video = esp_video_create(SIM_CAMERA_DEVICE_NAME, &s_sim_camera_ops, camera,
-                             SIM_CAMERA_BUFFER_COUNT, SIM_CAMERA_BUFFER_SIZE);
-    if (!video) {
-        heap_caps_free(camera);
-        return ESP_FAIL;
+        camera = heap_caps_malloc(sizeof(struct sim_camera), MALLOC_CAP_8BIT | MALLOC_CAP_INTERNAL);
+        assert(camera);
+
+        video = esp_video_create(name, &s_sim_camera_ops, camera,
+                                 SIM_CAMERA_BUFFER_COUNT, SIM_CAMERA_BUFFER_SIZE);
+        assert(video);
+        free(name);
     }
 
     return ESP_OK;
