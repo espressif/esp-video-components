@@ -1,5 +1,5 @@
 
-set(srcs "core/esp_video.c" "core/esp_video_buffer.c")
+set(srcs "core/esp_video.c" "core/esp_video_buffer.c" "core/esp_media.c")
 set(include_dirs "include")
 set(priv_requires "esp_timer")
 set(requires "")

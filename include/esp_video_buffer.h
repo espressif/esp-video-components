@@ -144,7 +144,7 @@ static inline void esp_video_buffer_element_free(struct esp_video_buffer_element
  *
  * @return None
  */
-const struct esp_video_buffer_element *esp_video_buffer_element_clone(const struct esp_video_buffer_element *element);
+struct esp_video_buffer_element *esp_video_buffer_element_clone(const struct esp_video_buffer_element *element);
 
 
 /**
