@@ -310,7 +310,7 @@ uint8_t *esp_video_alloc_buffer(struct esp_video *video);
  *
  * @return None
  */
-void esp_video_recvdone_buffer(struct esp_video *video, uint8_t *buffer, uint32_t size);
+void esp_video_recvdone_buffer(struct esp_video *video, uint8_t *buffer, uint32_t size, uint32_t offset);
 
 /**
  * @brief Receive buffer from video device. 
@@ -323,7 +323,7 @@ void esp_video_recvdone_buffer(struct esp_video *video, uint8_t *buffer, uint32_
  *      - Video buffer object pointer on success
  *      - NULL if failed
  */
-uint8_t *esp_video_recv_buffer(struct esp_video *video, uint32_t *recv_size, uint32_t ticks);
+uint8_t *esp_video_recv_buffer(struct esp_video *video, uint32_t *recv_size, uint32_t *offset, uint32_t ticks);
 
 /**
  * @brief Free one video buffer.

@@ -8,7 +8,7 @@ set(EXTRA_COMPONENT_DIRS ../..
                         ../../drivers/sccb
                         ../../drivers/isp
                         ../../sensors)
-                        
+
 include($ENV{IDF_PATH}/tools/cmake/project.cmake)
 
-project(pipeline_test)
+project(camera_test)

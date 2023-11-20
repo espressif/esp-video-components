@@ -11,10 +11,25 @@
 #include "private/esp_video_log.h"
 #include "sim_picture.h"
 
+#include "mipi_csi.h"
+#include "esp_sensor.h"
+
+#include "sys_clkrst_struct.h"
+#include "hp_clkrst_struct.h"
+#include "peri2_clkrst_struct.h"
+#include "hp_sys_struct.h"
+#include "esp_heap_caps.h"
+#include "esp_timer.h"
+#include "esp_log.h"
+
+#include "sccb.h"
+
+#include "camera_isp.h"
+
 #define SIM_CAMERA_DEVICE_NAME      CONFIG_ESP_VIDEO_SIMULATION_CAMERA_NAME
 #define SIM_CAMERA_BUFFER_COUNT     CONFIG_ESP_VIDEO_SIMULATION_CAMERA_BUFFER_COUNT
 #define SIM_CAMERA_COUNT            CONFIG_ESP_VIDEO_SIMULATION_CAMERA_COUNT
-#define SIM_CAMERA_BUFFER_SIZE      (sim_picture_jpeg_len)
+#define SIM_CAMERA_BUFFER_SIZE      1843200 + 16// 10 * 1024// (sim_picture_jpeg_len)
 
 struct sim_camera {
     esp_timer_handle_t capture_timer;
@@ -23,55 +38,151 @@ struct sim_camera {
 
 static const char *TAG = "sim_camera";
 
-static void sim_camera_capture_timer_isr(void *arg)
-{
-    uint8_t *buffer;
-    struct esp_video *video = (struct esp_video *)arg;
+extern esp_mipi_csi_handle_t csi_test_handle;
 
-    buffer = esp_video_alloc_buffer(video);
-    if (!buffer) {
-        ESP_EARLY_LOGE(TAG, "Failed to allocte video buffer");
-        return;
+static struct esp_video * g_video;
+esp_err_t sim_camera_recv_vb(uint8_t *buffer, uint32_t offset, uint32_t len)
+{
+    esp_video_recvdone_buffer(g_video, buffer, len, offset);
+
+    return ESP_OK;
+}
+
+uint8_t* IRAM_ATTR sim_camera_get_new_vb(uint32_t len)
+{
+    if (len > g_video->buffer_size) {
+        return NULL;
     }
 
-    memcpy(buffer, sim_picture_jpeg, sim_picture_jpeg_len);
-    esp_video_recvdone_buffer(video, buffer, sim_picture_jpeg_len);
+    return esp_video_alloc_buffer(g_video);
+}
+
+static void esp32p4_system_clk_config(void)
+{
+    HP_CLKRST.sys_ctrl.sys_clk_div_num = (480000000 / 240000000) - 1;
+    HP_CLKRST.peri1_ctrl.peri1_clk_div_num = (480000000 / 120000000) - 1;
+    HP_CLKRST.peri2_ctrl.peri2_clk_div_num = (480000000 / 240000000) - 1;
+
+    SYS_CLKRST.gdma_ctrl.gdma_clk_div_num = (480000000 / 240000000) - 1;
+    SYS_CLKRST.jpeg_ctrl.jpeg_clk_div_num = (480000000 / 240000000) - 1;
+
+    PERI2_CLKRST.peri2_apb_clk_div_ctrl.peri2_apb_clk_div_num = (240000000 / 120000000) - 1;
+
+    printf("cpu_clk: %d\n", HP_CLKRST.cpu_ctrl.cpu_clk_div_num);
+    printf("sys_clk: %d\n", HP_CLKRST.sys_ctrl.sys_clk_div_num);
+    printf("peri1_clk: %d\n", HP_CLKRST.peri1_ctrl.peri1_clk_div_num);
+    printf("peri2_clk: %d\n", HP_CLKRST.peri2_ctrl.peri2_clk_div_num);
+
+    HP_CLKRST.hp_ctrl.hp_sys_root_clk_sel = 2;
+
+    printf("hp_sys_root_clk_sel: %d\n", HP_CLKRST.hp_ctrl.hp_sys_root_clk_sel);
+    printf("hp_cpu_root_clk_sel: %d\n", HP_CLKRST.hp_ctrl.hp_cpu_root_clk_sel);
 }
 
 static esp_err_t sim_camera_init(struct esp_video *video)
 {
-    esp_err_t ret;
     struct sim_camera *camera = (struct sim_camera *)video->priv;
 
     camera->capture_timer = NULL;
     camera->fps = 0;
 
-    esp_timer_create_args_t capture_timer_args = {
-        .callback = sim_camera_capture_timer_isr,
-        .dispatch_method = ESP_TIMER_ISR,
-        .arg = video,
-        .name = "camera_capture",
-    };
+    // esp_timer_create_args_t capture_timer_args = {
+    //     .callback = sim_camera_capture_timer_isr,
+    //     .dispatch_method = ESP_TIMER_ISR,
+    //     .arg = video,
+    //     .name = "camera_capture",
+    // };
 
-    ret = esp_timer_create(&capture_timer_args, &camera->capture_timer);
-    if (ret != ESP_OK) {
-        ESP_VIDEO_LOGE("Failed to create timer ret=%x", ret);
-        return ret;
+    // ret = esp_timer_create(&capture_timer_args, &camera->capture_timer);
+    // if (ret != ESP_OK) {
+    //     ESP_VIDEO_LOGE("Failed to create timer ret=%x", ret);
+    //     return ret;
+    // }
+    {
+        esp_err_t ret = ESP_OK;
+        esp32p4_system_clk_config();
+        sccb_bus_init(18, 19);
+        // This should auto detect, not call it in manual
+        extern esp_sensor_device_t sc2336_detect();
+        esp_sensor_device_t device = sc2336_detect();
+        if (device) {
+            uint8_t name[SENSOR_NAME_MAX_LEN];
+            size_t size = sizeof(name);
+            esp_sensor_ioctl(device, CAM_SENSOR_G_NAME, name, &size);
+        }
+        /*Query caps*/
+        sensor_capability_t caps = {0};
+        esp_sensor_ioctl(device, CAM_SENSOR_G_CAP, &caps, NULL);
+        printf("cap = %u\n", caps.fmt_raw);
+
+        /*Query formats and set/get format*/
+        sensor_format_array_info_t formats = {0};
+        esp_sensor_ioctl(device, CAM_SENSOR_G_FORMAT_ARRAY, &formats, NULL);
+        printf("format count = %d\n", formats.count);
+        const sensor_format_t *parray = formats.format_array;
+        for (int i = 0; i < formats.count; i++) {
+            PRINT_CAM_SENSOR_FORMAT_INFO(&(parray[i].index));
+        }
+        esp_sensor_ioctl(device, CAM_SENSOR_S_FORMAT, (void *)&(parray[0].index), NULL);
+
+        const sensor_format_t *current_format = NULL;
+        ret = esp_sensor_ioctl(device, CAM_SENSOR_G_FORMAT, &current_format, NULL);
+        if (ret != ESP_OK) {
+            ESP_LOGE(TAG, "Format get fail");
+        } else {
+            PRINT_CAM_SENSOR_FORMAT_INFO(current_format);
+        }
+
+        int enable_flag = 1;
+        /*Start sensor stream*/
+        ret = esp_sensor_ioctl(device, CAM_SENSOR_S_STREAM, &enable_flag, NULL);
+        if (ret != ESP_OK) {
+            ESP_LOGE(TAG, "Start stream fail");
+        }
+
+        /*Init cam interface*/
+        mipi_csi_port_config_t mipi_if_cfg = {
+            .frame_height = current_format->height,
+            .frame_width = current_format->width,
+            .mipi_clk_freq_hz = current_format->mipi_info.mipi_clk,
+        };
+        if (current_format->format == CAM_SENSOR_PIXFORMAT_RAW10) {
+            mipi_if_cfg.in_type = PIXFORMAT_RAW10;
+        } else if (current_format->format == CAM_SENSOR_PIXFORMAT_RAW8) {
+            mipi_if_cfg.in_type = PIXFORMAT_RAW8;
+        }
+        if (current_format->isp_info) {
+            mipi_if_cfg.isp_enable = true;
+            // Todo, copy ISP info to ISP processor
+        }
+        if (current_format->port == MIPI_CSI_OUTPUT_LANE1) {
+            mipi_if_cfg.lane_num = 1;
+        } else if (current_format->port == MIPI_CSI_OUTPUT_LANE2) {
+            mipi_if_cfg.lane_num = 2;
+        }
+        mipi_if_cfg.out_type = PIXFORMAT_RGB565;
+        ret = esp_mipi_csi_driver_install(MIPI_CSI_PORT0, &mipi_if_cfg, 0, &csi_test_handle);
+        if (ret != ESP_OK) {
+            ESP_LOGE(TAG, "csi init fail[%d]", ret);
+            return;
+        }
+
+        isp_init(mipi_if_cfg.frame_width, mipi_if_cfg.frame_height, mipi_if_cfg.in_type, mipi_if_cfg.out_type, mipi_if_cfg.isp_enable, NULL);
     }
 
+    g_video = video;
     return ESP_OK;
 }
 
 static esp_err_t sim_camera_deinit(struct esp_video *video)
 {
-    esp_err_t ret;
     struct sim_camera *camera = (struct sim_camera *)video->priv;
     
-    ret = esp_timer_delete(camera->capture_timer);
-    if (ret != ESP_OK) {
-        ESP_VIDEO_LOGE("Failed to delete ret=%x", ret);
-        return ret;
-    }
+    // ret = esp_timer_delete(camera->capture_timer);
+    // if (ret != ESP_OK) {
+    //     ESP_VIDEO_LOGE("Failed to delete ret=%x", ret);
+    //     return ret;
+    // }
 
     camera->capture_timer = NULL;
 
@@ -80,28 +191,32 @@ static esp_err_t sim_camera_deinit(struct esp_video *video)
 
 static esp_err_t sim_camera_start_capture(struct esp_video *video)
 {
-    esp_err_t ret;
     struct sim_camera *camera = (struct sim_camera *)video->priv;
     
-    ret = esp_timer_start_periodic(camera->capture_timer, 1000000 / camera->fps);
-    if (ret != ESP_OK) {
-        ESP_VIDEO_LOGE("Failed to start timer ret=%x", ret);
-        return ret;
-    }
-
+    // ret = esp_timer_start_periodic(camera->capture_timer, 1000000 / camera->fps);
+    // if (ret != ESP_OK) {
+    //     ESP_VIDEO_LOGE("Failed to start timer ret=%x", ret);
+    //     return ret;
+    // }
+    esp_mipi_csi_ops_t ops = {
+        .alloc_buffer = sim_camera_get_new_vb,
+        .recved_data = sim_camera_recv_vb,
+    };
+    printf("%s %d line\r\n", __func__, __LINE__);
+    esp_mipi_csi_ops_regist(csi_test_handle, &ops);
+    esp_mipi_csi_start(csi_test_handle);
     return ESP_OK;
 }
 
 static esp_err_t sim_camera_stop_capture(struct esp_video *video)
 {
-    esp_err_t ret;
     struct sim_camera *camera = (struct sim_camera *)video->priv;
     
-    ret = esp_timer_stop(camera->capture_timer);
-    if (ret != ESP_OK) {
-        ESP_VIDEO_LOGE("Failed to stop timer ret=%x", ret);
-        return ret;
-    }
+    // ret = esp_timer_stop(camera->capture_timer);
+    // if (ret != ESP_OK) {
+    //     ESP_VIDEO_LOGE("Failed to stop timer ret=%x", ret);
+    //     return ret;
+    // }
 
     return ESP_OK;
 }
@@ -152,10 +267,10 @@ static const struct esp_video_ops s_sim_camera_ops = {
 
 esp_err_t sim_initialize_camera(void)
 {
-    int ret;
     char *name;
     struct esp_video *video;
     struct sim_camera *camera;
+    int ret = 0;
 
     for (int i = 0; i < SIM_CAMERA_COUNT; i++) {
         ret = asprintf(&name, "%s%d", SIM_CAMERA_DEVICE_NAME, i);
