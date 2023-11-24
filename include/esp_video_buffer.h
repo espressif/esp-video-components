@@ -46,6 +46,7 @@ struct esp_video_buffer_element {
     struct esp_video_buffer *video_buffer;          /*!< Source buffer object */
     uint32_t index;                                 /*!< List node index */
     uint32_t valid_size;                            /*!< Valid data size */
+    uint32_t valid_offset;                            /*!< Valid data offset */
     uint8_t buffer[0];                              /*!< Buffer space to fill data */ 
 };
 

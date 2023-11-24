@@ -1,0 +1,11 @@
+menu "ESP Camera sensors"
+    menu "Camera sensor select"
+        config SC2336_SUPPORT
+        bool "Support SC2336 2MP"
+        default y
+        help
+            Enable this option if you want to use the SC2336.
+            Disable this option to save memory.
+
+    endmenu
+endmenu
