@@ -17,7 +17,7 @@
 #include "esp_log.h"
 
 #include "sccb.h"
-#include "esp_sensor.h"
+#include "esp_camera.h"
 
 #include "camera_isp.h"
 
@@ -101,30 +101,30 @@ void app_main(void)
     esp32p4_system_clk_config();
     sccb_bus_init(18, 19);
     // This should auto detect, not call it in manual
-    extern esp_sensor_device_t sc2336_detect();
-    esp_sensor_device_t device = sc2336_detect();
+    extern esp_camera_device_t sc2336_detect();
+    esp_camera_device_t device = sc2336_detect();
     if (device) {
         uint8_t name[SENSOR_NAME_MAX_LEN];
         size_t size = sizeof(name);
-        esp_sensor_ioctl(device, CAM_SENSOR_G_NAME, name, &size);
+        esp_camera_ioctl(device, CAM_SENSOR_G_NAME, name, &size);
     }
     /*Query caps*/
     sensor_capability_t caps = {0};
-    esp_sensor_ioctl(device, CAM_SENSOR_G_CAP, &caps, NULL);
+    esp_camera_ioctl(device, CAM_SENSOR_G_CAP, &caps, NULL);
     printf("cap = %u\n", caps.fmt_raw);
 
     /*Query formats and set/get format*/
     sensor_format_array_info_t formats = {0};
-    esp_sensor_ioctl(device, CAM_SENSOR_G_FORMAT_ARRAY, &formats, NULL);
+    esp_camera_ioctl(device, CAM_SENSOR_G_FORMAT_ARRAY, &formats, NULL);
     printf("format count = %d\n", formats.count);
     const sensor_format_t *parray = formats.format_array;
     for (int i = 0; i < formats.count; i++) {
         PRINT_CAM_SENSOR_FORMAT_INFO(&(parray[i].index));
     }
-    esp_sensor_ioctl(device, CAM_SENSOR_S_FORMAT, (void *)&(parray[0].index), NULL);
+    esp_camera_ioctl(device, CAM_SENSOR_S_FORMAT, (void *)&(parray[0].index), NULL);
 
     const sensor_format_t *current_format = NULL;
-    ret = esp_sensor_ioctl(device, CAM_SENSOR_G_FORMAT, &current_format, NULL);
+    ret = esp_camera_ioctl(device, CAM_SENSOR_G_FORMAT, &current_format, NULL);
     if (ret != ESP_OK) {
         ESP_LOGE(TAG, "Format get fail");
     } else {
@@ -133,7 +133,7 @@ void app_main(void)
 
     int enable_flag = 1;
     /*Start sensor stream*/
-    ret = esp_sensor_ioctl(device, CAM_SENSOR_S_STREAM, &enable_flag, NULL);
+    ret = esp_camera_ioctl(device, CAM_SENSOR_S_STREAM, &enable_flag, NULL);
     if (ret != ESP_OK) {
         ESP_LOGE(TAG, "Start stream fail");
     }

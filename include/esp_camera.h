@@ -1,3 +1,9 @@
+/*
+ * SPDX-FileCopyrightText: 2023-2024 Espressif Systems (Shanghai) CO LTD
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
 #pragma once
 #include <stdint.h>
 #include <stdbool.h>
@@ -361,7 +367,7 @@ typedef struct sensor_ops_s {
     int (*get_format)               (void *ret_format);
     int (*priv_ioctl)               (unsigned int cmd, void *arg);
     int (*get_name)                 (void *name, size_t *size);
-} esp_sensor_ops_t;
+} esp_camera_ops_t;
 
 typedef struct _sensor_probe_gpio_desc {
     int pin_xclk;                                                                               // Sensor input clk pin. Set to -1 if the sensor does not use the clock provided by the base board
@@ -381,7 +387,7 @@ typedef struct _sensor_c_t {
 
 typedef struct _sensor_t {
     sensor_common_t sensor_common;
-    esp_sensor_ops_t *ops;
+    esp_camera_ops_t *ops;
 } sensor_t;
 
 #if 0
@@ -421,13 +427,13 @@ typedef struct _sensor_t {
     } while(0);
 #endif
 
-struct esp_sensor {
-    esp_sensor_ops_t ops;
+struct esp_camera {
+    esp_camera_ops_t ops;
 };
 
-typedef struct esp_sensor *esp_sensor_device_t;
+typedef struct esp_camera *esp_camera_device_t;
 
-esp_err_t esp_sensor_ioctl(esp_sensor_device_t handle, uint32_t cmd, void *value, size_t *size);
+esp_err_t esp_camera_ioctl(esp_camera_device_t handle, uint32_t cmd, void *value, size_t *size);
 
 #ifdef __cplusplus
 }

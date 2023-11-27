@@ -1,7 +1,6 @@
-set(COMPONENT_ADD_INCLUDEDIRS include)
-# set(COMPONENT_PRIV_INCLUDEDIRS "private_include")
-set(COMPONENT_SRCS "sc2336.c")
+idf_component_register(SRCS "sc2336.c"
+                       PRIV_INCLUDE_DIRS "private_include"
+                       PRIV_REQUIRES "esp-video")
 
-set(COMPONENT_REQUIRES sccb)
-
-register_component()
+include(package_manager)
+cu_pkg_define_version(${CMAKE_CURRENT_LIST_DIR})   

@@ -1,5 +1,11 @@
+/*
+ * SPDX-FileCopyrightText: 2023-2024 Espressif Systems (Shanghai) CO LTD
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
 #include <string.h>
-#include "include/sc2336_settings.h"
+#include "sc2336_settings.h"
 #include "sccb.h"
 #include "esp_log.h"
 
@@ -245,7 +251,7 @@ int get_name(void *name, size_t *size)
     return 0;
 }
 
-static esp_sensor_ops_t sc2336_ops = {
+static esp_camera_ops_t sc2336_ops = {
     .query_support_formats = query_support_formats,
     .query_support_capability = query_support_capability,
     .set_format = set_format,
@@ -255,7 +261,7 @@ static esp_sensor_ops_t sc2336_ops = {
 };
 
 // We need manage these devices, and maybe need to add it into the private member of esp_device
-esp_sensor_device_t sc2336_detect(void)
+esp_camera_device_t sc2336_detect(void)
 {
     /*Providing the correct power-on sequence and clock for the sensor can the sensor work properly.*/
     sensor_probe_gpio_desc_t gpio_config = {
@@ -282,7 +288,7 @@ esp_sensor_device_t sc2336_detect(void)
         return NULL;
     }
 
-    esp_sensor_device_t handle = (esp_sensor_device_t)&sc2336_ops;
+    esp_camera_device_t handle = (esp_camera_device_t)&sc2336_ops;
 
     return handle;
 }

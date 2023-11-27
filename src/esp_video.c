@@ -9,9 +9,9 @@
 #include <sys/lock.h>
 #include "esp_heap_caps.h"
 #include "esp_video.h"
-#include "private/esp_video_log.h"
-#include "private/esp_video_bsp.h"
-#include "private/esp_video_vfs.h"
+#include "esp_video_log.h"
+#include "esp_video_bsp.h"
+#include "esp_video_vfs.h"
 
 #include "freertos/portmacro.h"
 

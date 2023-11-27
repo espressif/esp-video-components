@@ -8,11 +8,11 @@
 #include <string.h>
 #include "esp_timer.h"
 #include "esp_video.h"
-#include "private/esp_video_log.h"
+// #include "private/esp_video_log.h"
 #include "sim_picture.h"
 
 #include "mipi_csi.h"
-#include "esp_sensor.h"
+#include "esp_camera.h"
 
 #include "sys_clkrst_struct.h"
 #include "hp_clkrst_struct.h"
@@ -103,30 +103,30 @@ static esp_err_t sim_camera_init(struct esp_video *video)
         esp32p4_system_clk_config();
         sccb_bus_init(18, 19);
         // This should auto detect, not call it in manual
-        extern esp_sensor_device_t sc2336_detect();
-        esp_sensor_device_t device = sc2336_detect();
+        extern esp_camera_device_t sc2336_detect();
+        esp_camera_device_t device = sc2336_detect();
         if (device) {
             uint8_t name[SENSOR_NAME_MAX_LEN];
             size_t size = sizeof(name);
-            esp_sensor_ioctl(device, CAM_SENSOR_G_NAME, name, &size);
+            esp_camera_ioctl(device, CAM_SENSOR_G_NAME, name, &size);
         }
         /*Query caps*/
         sensor_capability_t caps = {0};
-        esp_sensor_ioctl(device, CAM_SENSOR_G_CAP, &caps, NULL);
+        esp_camera_ioctl(device, CAM_SENSOR_G_CAP, &caps, NULL);
         printf("cap = %u\n", caps.fmt_raw);
 
         /*Query formats and set/get format*/
         sensor_format_array_info_t formats = {0};
-        esp_sensor_ioctl(device, CAM_SENSOR_G_FORMAT_ARRAY, &formats, NULL);
+        esp_camera_ioctl(device, CAM_SENSOR_G_FORMAT_ARRAY, &formats, NULL);
         printf("format count = %d\n", formats.count);
         const sensor_format_t *parray = formats.format_array;
         for (int i = 0; i < formats.count; i++) {
             PRINT_CAM_SENSOR_FORMAT_INFO(&(parray[i].index));
         }
-        esp_sensor_ioctl(device, CAM_SENSOR_S_FORMAT, (void *)&(parray[0].index), NULL);
+        esp_camera_ioctl(device, CAM_SENSOR_S_FORMAT, (void *)&(parray[0].index), NULL);
 
         const sensor_format_t *current_format = NULL;
-        ret = esp_sensor_ioctl(device, CAM_SENSOR_G_FORMAT, &current_format, NULL);
+        ret = esp_camera_ioctl(device, CAM_SENSOR_G_FORMAT, &current_format, NULL);
         if (ret != ESP_OK) {
             ESP_LOGE(TAG, "Format get fail");
         } else {
@@ -135,7 +135,7 @@ static esp_err_t sim_camera_init(struct esp_video *video)
 
         int enable_flag = 1;
         /*Start sensor stream*/
-        ret = esp_sensor_ioctl(device, CAM_SENSOR_S_STREAM, &enable_flag, NULL);
+        ret = esp_camera_ioctl(device, CAM_SENSOR_S_STREAM, &enable_flag, NULL);
         if (ret != ESP_OK) {
             ESP_LOGE(TAG, "Start stream fail");
         }
@@ -233,7 +233,7 @@ static esp_err_t sim_camera_set_format(struct esp_video *video, const struct esp
 static esp_err_t sim_camera_capability(struct esp_video *video, struct esp_video_capability *capability)
 {
     if (!capability) {
-        ESP_VIDEO_LOGE("capability=NULL");
+        ESP_LOGE(TAG, "capability=NULL");
         return ESP_ERR_INVALID_ARG;
     }
 

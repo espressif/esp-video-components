@@ -6,7 +6,7 @@
 
 #include <sys/ioctl.h>
 #include <sys/mman.h>
-#include "private/esp_video_vfs.h"
+#include "esp_video_vfs.h"
 
 /**
  * @brief This is only used for video device to map video buffer to user side.

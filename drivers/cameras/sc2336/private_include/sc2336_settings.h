@@ -1,10 +1,16 @@
+/*
+ * SPDX-FileCopyrightText: 2023-2024 Espressif Systems (Shanghai) CO LTD
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
 #pragma once
 
 #include <stdio.h>
 #include <stdint.h>
 #include <sdkconfig.h>
 #include "sc2336_regs.h"
-#include "esp_sensor.h"
+#include "esp_camera.h"
 
 #define DRIVER_VERSION		0x0001 // [3~2]:Main Version, [1~0]:Mini Version
 

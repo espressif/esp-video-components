@@ -8,7 +8,7 @@
 #include <string.h>
 #include <sys/lock.h>
 #include "esp_heap_caps.h"
-#include "private/esp_video_log.h"
+#include "esp_video_log.h"
 #include "esp_video_buffer.h"
 
 #if ESP_IDF_VERSION < ESP_IDF_VERSION_VAL(5, 0, 0)
