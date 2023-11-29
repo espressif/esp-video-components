@@ -1,11 +1,19 @@
-menu "ESP Camera sensors"
-    menu "Camera sensor select"
-        config SC2336_SUPPORT
-        bool "Support SC2336 2MP"
-        default y
-        help
-            Enable this option if you want to use the SC2336.
-            Disable this option to save memory.
+menuconfig CAMERA_SC2336
+    bool "SC2336"
+    default y
+    help
+        Enabling this option will add the support for SC2336.
 
+    menu "Interface"
+        depends on CAMERA_SC2336
+        config CAMERA_SC2336_INTERFACE_CSI
+            bool "CSI"
+            default y
+            help
+                If enabled, the SC2336 will be connected to the CSI interface.
+        config CAMERA_SC2336_INTERFACE_DVP
+            bool "DVP"
+            default n
+            help
+                If enabled, the SC2336 will be connected to the DVP interface.
     endmenu
-endmenu

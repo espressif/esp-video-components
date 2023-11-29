@@ -1,5 +1,8 @@
 dependencies:
   idf: ">=4.4"
+  ov5640:
+    version: "~0.0.1"
+    override_path: "../../../drivers/cameras/ov5640"
   sc2336:
     version: "~0.0.1"
     override_path: "../../../drivers/cameras/sc2336"

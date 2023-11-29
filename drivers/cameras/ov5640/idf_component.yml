@@ -1,8 +1,8 @@
 version: "0.0.1"
-description: esp-video compatible camera driver for SC2336
+description: esp-video compatible camera driver for OV5640
 targets:
   - esp32p4
-url: https://github.com/espressif/esp-video/tree/master/drivers/cameras/sc2336
+url: https://github.com/espressif/esp-video/tree/master/drivers/cameras/ov5640
 repository: https://github.com/espressif/esp-video.git
 issues: https://github.com/espressif/esp-video/issues
 dependencies:
