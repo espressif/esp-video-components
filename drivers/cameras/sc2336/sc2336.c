@@ -5,11 +5,15 @@
  */
 
 #include <string.h>
+#include <freertos/FreeRTOS.h>
+#include <freertos/task.h>
+#include "driver/gpio.h"
 #include "sc2336_settings.h"
 #include "sccb.h"
 #include "esp_log.h"
 
 static const char *TAG = "sc2336";
+
 #define SC2336_IO_MUX_LOCK
 #define SC2336_IO_MUX_UNLOCK
 #define CAMERA_ENABLE_OUT_CLOCK(pin,clk)
@@ -18,8 +22,15 @@ static const char *TAG = "sc2336";
 #define SC2336_SCCB_ADDR   0x30
 #define SC2336_PID         0xcb3a
 #define SC2336_SENSOR_NAME "SC2336"
-#define SC2336_OBJ_INDEX0 (0)
-static sensor_t *s_sc2336_sensors[SENSOR_NUM_MAX];
+#ifndef portTICK_RATE_MS
+#define portTICK_RATE_MS portTICK_PERIOD_MS
+#endif
+
+#define SC2336_SUPPORT_NUM 2
+
+static sensor_t *s_sc2336_sensors[SC2336_SUPPORT_NUM];
+
+static uint8_t s_sc2336_index;
 
 static void delay_us(uint32_t t)
 {
@@ -112,16 +123,42 @@ static int sc2336_set_stream(int enable)
         ret = sc2336_write(SC2336_REG_SLEEP_MODE, 0x00);
     }
     // sc2335_set_pattern(sccb_port, 1);
-    s_sc2336_sensors[SC2336_OBJ_INDEX0]->sensor_common.stream_status = enable;
+    s_sc2336_sensors[SC2336_INDEX_DEFAULT]->sensor_common.stream_status = enable;
     ESP_LOGD(TAG, "Stream=%d", enable);
     return ret;
 }
 
-static int sc2336_hw_power_on(sensor_probe_gpio_desc_t *gpios, int sccb_port, int xclk_freq_hz)
+static int power_on(esp_camera_csi_config_t *config)
 {
     int ret = 0;
-    if (gpios->pin_xclk >= 0) {
-        CAMERA_ENABLE_OUT_CLOCK(gpios->pin_xclk, xclk_freq_hz);
+
+    if (config->xclk_pin >= 0) {
+        CAMERA_ENABLE_OUT_CLOCK(config->xclk_pin, config->xclk_freq_hz);
+    }
+
+    if (config->pwdn_pin >= 0) {
+        gpio_config_t conf = { 0 };
+        conf.pin_bit_mask = 1LL << config->pwdn_pin;
+        conf.mode = GPIO_MODE_OUTPUT;
+        gpio_config(&conf);
+
+        // carefull, logic is inverted compared to reset pin
+        gpio_set_level(config->pwdn_pin, 1);
+        vTaskDelay(10 / portTICK_RATE_MS);
+        gpio_set_level(config->pwdn_pin, 0);
+        vTaskDelay(10 / portTICK_RATE_MS);
+    }
+
+    if (config->reset_pin >= 0) {
+        gpio_config_t conf = { 0 };
+        conf.pin_bit_mask = 1LL << config->reset_pin;
+        conf.mode = GPIO_MODE_OUTPUT;
+        gpio_config(&conf);
+
+        gpio_set_level(config->reset_pin, 0);
+        vTaskDelay(10 / portTICK_RATE_MS);
+        gpio_set_level(config->reset_pin, 1);
+        vTaskDelay(10 / portTICK_RATE_MS);
     }
 
     return ret;
@@ -180,7 +217,7 @@ static int set_format(void *format)
         return ESP_CAM_SENSOR_FAILED_TO_S_FORMAT;
     }
 
-    s_sc2336_sensors[SC2336_OBJ_INDEX0]->sensor_common.cur_format = fmt;
+    s_sc2336_sensors[SC2336_INDEX_DEFAULT]->sensor_common.cur_format = fmt;
 
     return ret;
 }
@@ -189,8 +226,8 @@ static int get_format(void *ret_format)
 {
     int ret = -1;
     sensor_format_t **format = (sensor_format_t **)ret_format;
-    if (s_sc2336_sensors[SC2336_OBJ_INDEX0]->sensor_common.cur_format != NULL) {
-        *format = (void *)s_sc2336_sensors[SC2336_OBJ_INDEX0]->sensor_common.cur_format;
+    if (s_sc2336_sensors[SC2336_INDEX_DEFAULT]->sensor_common.cur_format != NULL) {
+        *format = (void *)s_sc2336_sensors[SC2336_INDEX_DEFAULT]->sensor_common.cur_format;
         ret = 0;
     }
     return ret;
@@ -263,15 +300,17 @@ static esp_camera_ops_t sc2336_ops = {
 // We need manage these devices, and maybe need to add it into the private member of esp_device
 esp_camera_device_t sc2336_csi_detect(esp_camera_csi_config_t *config)
 {
-    /*Providing the correct power-on sequence and clock for the sensor can the sensor work properly.*/
-    sensor_probe_gpio_desc_t gpio_config = {
-        .pin_pwdn = -1,
-        .pin_reset = -1,
-        .pin_xclk = -1,
-    };
-    int clk = 24000000;
+    if (config == NULL) {
+        return NULL;
+    }
+
+    if (s_sc2336_index >= SC2336_SUPPORT_NUM) {
+        ESP_LOGE(TAG, "Only support max %d cameras", SC2336_SUPPORT_NUM);
+        return NULL;
+    }
+    
     // Configure sensor power, clock, and I2C port
-    sc2336_hw_power_on(&gpio_config, 0, clk);
+    power_on(config);
 
     uint8_t pid_h = 0, pid_l = 0;
     sccb_read_reg16(SC2336_SCCB_ADDR, SC2336_REG_SENSOR_ID_H, 1, &pid_h);
@@ -281,12 +320,14 @@ esp_camera_device_t sc2336_csi_detect(esp_camera_csi_config_t *config)
         return NULL;
     }
 
-    s_sc2336_sensors[SC2336_OBJ_INDEX0] = (sensor_t *)calloc(sizeof(sensor_t), 1);
-    if (s_sc2336_sensors[SC2336_OBJ_INDEX0] == NULL) {
+    s_sc2336_sensors[s_sc2336_index] = (sensor_t *)calloc(sizeof(sensor_t), 1);
+    if (s_sc2336_sensors[s_sc2336_index] == NULL) {
         ESP_LOGE(TAG, "Sensor obj calloc fail");
         // return ESP_ERR_NO_MEM;
         return NULL;
     }
+
+    s_sc2336_index++;
 
     esp_camera_device_t handle = (esp_camera_device_t)&sc2336_ops;
 
