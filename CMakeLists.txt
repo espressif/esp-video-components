@@ -1,16 +1,17 @@
-
-set(srcs "src/esp_video.c" "src/esp_video_buffer.c" "src/esp_media.c")
+set(srcs "src/esp_camera.c"
+         "src/esp_color_format.c"
+         "src/esp_media.c"
+         "src/esp_video.c"
+         "src/esp_video_buffer.c" 
+         )
 set(include_dirs "include" "include/drivers" "include/soc")
-# set(priv_requires "esp_timer" "vfs")
-set(priv_requires "esp_timer" "vfs" "sccb" "isp")
+set(priv_include_dirs "private_include")
+set(priv_requires "esp_timer" "vfs")
 set(requires "")
 
-list(APPEND srcs "drivers/csi/${IDF_TARGET}/mipi_csi.c" "drivers/csi/${IDF_TARGET}/mipi_csi_hal.c")
-list(APPEND srcs "src/esp_color_format.c")
-
-list(APPEND srcs "src/esp_camera.c")
-
-list(APPEND srcs "drivers/cameras/sc2336/sc2336.c")
+include(${COMPONENT_DIR}/drivers/isp/sources.cmake)
+include(${COMPONENT_DIR}/drivers/mipi/csi/sources.cmake)
+include(${COMPONENT_DIR}/drivers/sccb/sources.cmake)
 
 if(CONFIG_ESP_VIDEO_BOARD_SIMULATION)
     list(APPEND srcs "boards/sim/sim_init.c" "boards/sim/sim_camera.c")
@@ -22,6 +23,7 @@ endif()
 
 idf_component_register(SRCS ${srcs}
                        INCLUDE_DIRS ${include_dirs}
+                       PRIV_INCLUDE_DIRS ${priv_include_dirs}
                        PRIV_REQUIRES ${priv_requires}
                        REQUIRES ${requires}
                        LDFRAGMENTS linker.lf)

@@ -15,8 +15,8 @@
 #include "linux/videodev2.h"
 #include "esp_vfs.h"
 #include "esp_vfs_dev.h"
-#include "private/esp_video_vfs.h"
-#include "private/esp_video_log.h"
+#include "esp_video_vfs.h"
+#include "esp_video_log.h"
 
 #include "mipi_csi.h"
 

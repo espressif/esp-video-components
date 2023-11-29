@@ -1,0 +1,12 @@
+menu "MIPI-CSI configuration"
+    depends on IDF_TARGET_ESP32P4
+
+    menu "MIPI D-PHY Config"
+        config MIPI_CSI_LINESYNC_SUPPORT
+        bool "Line Sync Enabled"
+        default n
+        help
+            Enable this option if the mipi camera sensor send line short packet for each line.
+
+    endmenu
+endmenu

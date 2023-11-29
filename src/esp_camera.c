@@ -1,13 +1,19 @@
-#include "esp_sensor.h"
+/*
+ * SPDX-FileCopyrightText: 2023-2024 Espressif Systems (Shanghai) CO LTD
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
 
-esp_err_t esp_sensor_ioctl(esp_sensor_device_t handle, uint32_t cmd, void *value, size_t *size)
+#include "esp_camera.h"
+
+esp_err_t esp_camera_ioctl(esp_camera_device_t handle, uint32_t cmd, void *value, size_t *size)
 {
     esp_err_t ret = ESP_OK;
     if (handle == NULL) {
         return ESP_ERR_INVALID_ARG;
     }
 
-    esp_sensor_ops_t *ops = (esp_sensor_ops_t *)handle;
+    esp_camera_ops_t *ops = (esp_camera_ops_t *)handle;
     switch (cmd) {
     case CAM_SENSOR_G_NAME:
         if (ops->get_name) {
