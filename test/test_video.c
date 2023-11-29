@@ -20,9 +20,10 @@
 #include "freertos/semphr.h"
 #include "esp_video.h"
 
-#define VIDEO_COUNT             CONFIG_ESP_VIDEO_SIMULATION_CAMERA_COUNT
-#define VIDEO_DEVICE_NAME       CONFIG_ESP_VIDEO_SIMULATION_CAMERA_NAME
-#define VIDEO_BUFFER_NUM        CONFIG_ESP_VIDEO_SIMULATION_CAMERA_BUFFER_COUNT
+#ifdef CONFIG_SIMULATED_INTF
+#define VIDEO_COUNT             CONFIG_SIMULATED_INTF_DEVICE_COUNT
+#define VIDEO_DEVICE_NAME       CONFIG_SIMULATED_INTF_DEVICE_NAME
+#define VIDEO_BUFFER_NUM        CONFIG_SIMULATED_INTF_DEVICE_BUFFER_COUNT
 #define VIDEO_BUFFER_SIZE       sim_picture_jpeg_len
 #define VIDEO_BUFFER_DATA       sim_picture_jpeg
 #define VIDEO_DESC_BUFFER_SIZE  128
@@ -61,6 +62,7 @@ static void test_video_basic_operation_task(void *p)
     int count;
     TickType_t tick;
     uint32_t recv_size;
+    uint32_t offset;
     char buffer[VIDEO_DESC_BUFFER_SIZE];
 
     printf("task=%s starts\n", pcTaskGetName(NULL));
@@ -87,7 +89,7 @@ static void test_video_basic_operation_task(void *p)
     count = 0;
     tick = xTaskGetTickCount();
     while (xTaskGetTickCount() - tick < (1000 / portTICK_PERIOD_MS)) {
-        uint8_t *buffer = esp_video_recv_buffer(video, &recv_size, 100);
+        uint8_t *buffer = esp_video_recv_buffer(video, &recv_size, &offset, 100);
         if (buffer) {
             TEST_ASSERT_EQUAL_MEMORY(VIDEO_BUFFER_DATA, buffer, VIDEO_BUFFER_SIZE);
             count++;
@@ -114,7 +116,7 @@ static void test_video_basic_operation_task(void *p)
     count = 0;
     tick = xTaskGetTickCount();
     while (xTaskGetTickCount() - tick < (1000 / portTICK_PERIOD_MS)) {
-        uint8_t *buffer = esp_video_recv_buffer(video, &recv_size, 100);
+        uint8_t *buffer = esp_video_recv_buffer(video, &recv_size, &offset, 100);
         if (buffer) {
             TEST_ASSERT_EQUAL_MEMORY(VIDEO_BUFFER_DATA, buffer, VIDEO_BUFFER_SIZE);
             count++;
@@ -312,3 +314,4 @@ TEST_CASE("Linux POSIX with V4L2 operation", "[video]")
         TEST_ASSERT_EQUAL_INT(pdPASS, ret);
     }
 }
+#endif /* CONFIG_SIMULATED_INTF */

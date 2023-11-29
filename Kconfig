@@ -1,16 +1,5 @@
 menu "Espressif Video Development Framework Configuration"
 
-    choice ESP_VIDEO_BOARD_SELECTION
-        prompt "Video Development Board Selection"
-        default ESP_VIDEO_BOARD_SIMULATION
-        help
-            Select espressif video development board.
-
-        config ESP_VIDEO_BOARD_SIMULATION
-            bool "Simulation"
-            select ESP_TIMER_SUPPORTS_ISR_DISPATCH_METHOD
-    endchoice
-
     choice ESP_VIDEO_API_SELECTION
         prompt "Video API Selection"
         default ESP_VIDEO_API_LINUX
@@ -27,23 +16,6 @@ menu "Espressif Video Development Framework Configuration"
             help
                 Select this option, users can use espressif video core API.
     endchoice
-
-    if ESP_VIDEO_BOARD_SIMULATION
-        menu "Simulation Camera Configuration"
-
-            config ESP_VIDEO_SIMULATION_CAMERA_NAME
-                string "Simulation Camera Name"
-                default "sim_camera"
-            
-            config ESP_VIDEO_SIMULATION_CAMERA_BUFFER_COUNT
-                int "Simulation Camera Buffer Count"
-                default 4
-            
-            config ESP_VIDEO_SIMULATION_CAMERA_COUNT
-                int "Simulation Camera Count"
-                default 4
-        endmenu
-    endif
 
     menuconfig ESP_VIDEO_LOG
         bool "Enable Video Log"
@@ -78,6 +50,7 @@ menu "Espressif Video Development Framework Configuration"
             Select this option, espressif video core functions will check
             input parameters.
     
+    rsource "drivers/sim/Kconfig.sim"
     rsource "drivers/isp/Kconfig.isp"
     rsource "drivers/sccb/Kconfig.sccb"
     rsource "drivers/mipi/csi/Kconfig.csi"

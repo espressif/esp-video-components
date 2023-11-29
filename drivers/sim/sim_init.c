@@ -8,7 +8,7 @@
 
 esp_err_t esp_video_bsp_init(void)
 {
-    ESP_ERROR_CHECK(sim_initialize_camera());
+    ESP_ERROR_CHECK(sim_initialize_video_device());
 
     return ESP_OK;
 }

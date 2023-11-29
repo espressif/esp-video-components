@@ -15,7 +15,11 @@
 #define portMUX_INITIALIZE(mux)             spinlock_initialize(mux)
 #endif
 
-#define ALLOC_RAM_ATTR                      (MALLOC_CAP_SPIRAM) // (MALLOC_CAP_8BIT)
+#ifdef CONFIG_SPIRAM
+#define ALLOC_RAM_ATTR                      MALLOC_CAP_SPIRAM
+#else
+#define ALLOC_RAM_ATTR                      MALLOC_CAP_8BIT
+#endif
 
 #define __ESP_VIDEO_BUFFER_ALIGN(s, a)      (((s) + ((a) - 1)) & (~((a) - 1)))
 #define ESP_VIDEO_BUFFER_ALIGN_SIZE         8
@@ -45,7 +49,7 @@ struct esp_video_buffer *esp_video_buffer_create(uint32_t count, uint32_t size)
     element_size = size + sizeof(struct esp_video_buffer_element);
     mem_size = sizeof(struct esp_video_buffer) + element_size * count;
 
-    buffer = heap_caps_malloc(mem_size, MALLOC_CAP_SPIRAM);
+    buffer = heap_caps_malloc(mem_size, ALLOC_RAM_ATTR);
     if (!buffer) {
         ESP_VIDEO_LOGE("Failed to malloc for video buffer");
         return NULL;
@@ -62,7 +66,7 @@ struct esp_video_buffer *esp_video_buffer_create(uint32_t count, uint32_t size)
         element->index = i;
         SLIST_INSERT_HEAD(&buffer->free_list, element, node);
     }
-    printf("buffer->lock=0x%p, 0x%p", buffer->lock, &buffer->lock);
+
     return buffer;
 }
 

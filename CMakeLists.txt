@@ -12,10 +12,7 @@ set(requires "")
 include(${COMPONENT_DIR}/drivers/isp/sources.cmake)
 include(${COMPONENT_DIR}/drivers/mipi/csi/sources.cmake)
 include(${COMPONENT_DIR}/drivers/sccb/sources.cmake)
-
-if(CONFIG_ESP_VIDEO_BOARD_SIMULATION)
-    list(APPEND srcs "boards/sim/sim_init.c" "boards/sim/sim_camera.c")
-endif()
+include(${COMPONENT_DIR}/drivers/sim/sources.cmake)
 
 if(CONFIG_ESP_VIDEO_API_LINUX)
     list(APPEND srcs "src/esp_video_vfs.c" "src/esp_video_mman.c")
