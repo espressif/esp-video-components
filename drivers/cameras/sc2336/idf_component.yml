@@ -2,6 +2,7 @@ version: "0.0.1"
 description: esp-video compatible camera driver for SC2336
 targets:
   - esp32p4
+  - esp32s3
 url: https://github.com/espressif/esp-video/tree/master/drivers/cameras/sc2336
 repository: https://github.com/espressif/esp-video.git
 issues: https://github.com/espressif/esp-video/issues

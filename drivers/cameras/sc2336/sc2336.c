@@ -261,7 +261,7 @@ static esp_camera_ops_t sc2336_ops = {
 };
 
 // We need manage these devices, and maybe need to add it into the private member of esp_device
-esp_camera_device_t sc2336_detect(void)
+esp_camera_device_t sc2336_csi_detect(esp_camera_csi_config_t *config)
 {
     /*Providing the correct power-on sequence and clock for the sensor can the sensor work properly.*/
     sensor_probe_gpio_desc_t gpio_config = {
@@ -292,3 +292,22 @@ esp_camera_device_t sc2336_detect(void)
 
     return handle;
 }
+
+esp_camera_device_t sc2336_dvp_detect(esp_camera_dvp_config_t *config)
+{
+    ESP_LOGI(TAG, "ov2640_dvp_detect");
+
+    return NULL;
+}
+
+#if CONFIG_CAMERA_SC2336_AUTO_DETECT
+ESP_CAMERA_DETECT_FN(sc2336_csi_detect, CAMERA_INF_CSI)
+{
+    return sc2336_csi_detect(config);
+}
+
+ESP_CAMERA_DETECT_FN(sc2336_dvp_detect, CAMERA_INF_DVP)
+{
+    return sc2336_dvp_detect(config);
+}
+#endif
