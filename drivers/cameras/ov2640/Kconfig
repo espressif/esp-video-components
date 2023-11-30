@@ -1,0 +1,22 @@
+menuconfig CAMERA_OV2640
+    bool "OV2640"
+    default y
+    help
+        Enabling this option will add the support for OV2640.
+
+    config CAMERA_OV2640_AUTO_DETECT
+        bool "Auto detect OV2640"
+        default y
+        depends on CAMERA_OV2640
+        help
+            When enabled, you don't need to call ov5640_detect manaually, OV2640 will be automatically detected
+            when esp_camera_init is called.
+
+    menu "Interface"
+        depends on CAMERA_OV2640
+        config CAMERA_OV5640_INTERFACE_DVP
+            bool "DVP"
+            default y
+            help
+                If enabled, the OV2640 will be connected to the DVP interface.
+    endmenu
