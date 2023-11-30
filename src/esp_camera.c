@@ -4,7 +4,12 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+#include "esp_err.h"
+#include "esp_log.h"
+
 #include "esp_camera.h"
+
+static const char *TAG = "esp_camera";
 
 esp_err_t esp_camera_ioctl(esp_camera_device_t handle, uint32_t cmd, void *value, size_t *size)
 {
@@ -47,4 +52,43 @@ esp_err_t esp_camera_ioctl(esp_camera_device_t handle, uint32_t cmd, void *value
         break;
     }
     return ret;
+}
+
+esp_err_t esp_camera_init(const esp_camera_config_t *config)
+{
+    extern esp_camera_detect_fn_t __esp_camera_detect_fn_array_start;
+    extern esp_camera_detect_fn_t __esp_camera_detect_fn_array_end;
+
+    esp_camera_detect_fn_t *p;
+
+    for (p = &__esp_camera_detect_fn_array_start; p < &__esp_camera_detect_fn_array_end; ++p) {
+        if (p->inf == CAMERA_INF_CSI && config->csi != NULL) {
+            esp_camera_device_t device = (*(p->fn))(config->csi);
+
+            // ToDo: initialize the csi driver and video layer
+        }
+
+        if (p->inf == CAMERA_INF_DVP && config->dvp_num > 0 && config->dvp != NULL) {
+            for (size_t i = 0; i < config->dvp_num; i++) {
+                // ToDo: define the number according to the chip
+                if (i == 2) {
+                    ESP_LOGW(TAG, "Support for a maximum of %d DVP cameras only.", i);
+                    break;
+                }
+                esp_camera_device_t device = (*(p->fn))(config->dvp + i);
+
+                // ToDo: initialize the dvp and video layer
+            }
+        }
+
+        if (p->inf == CAMERA_INF_SIM && config->sim_num && config->sim != NULL) {
+            for (size_t i = 0; i < config->sim_num; i++) {
+                esp_camera_device_t device = (*(p->fn))(config->sim + i);
+
+                // ToDo: initialize the sim & video layer
+            }
+        }
+    }
+
+    return ESP_OK;
 }

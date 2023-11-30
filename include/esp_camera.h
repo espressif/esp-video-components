@@ -5,10 +5,12 @@
  */
 
 #pragma once
+
 #include <stdint.h>
 #include <stdbool.h>
 #include "esp_err.h"
 #include "esp_check.h"
+#include "esp_attr.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -434,6 +436,62 @@ struct esp_camera {
 typedef struct esp_camera *esp_camera_device_t;
 
 esp_err_t esp_camera_ioctl(esp_camera_device_t handle, uint32_t cmd, void *value, size_t *size);
+
+typedef enum {
+    CAMERA_INF_CSI,
+    CAMERA_INF_DVP,
+    CAMERA_INF_SIM
+} camera_inf_t;
+
+/**
+ * Internal structure describing ESP_SYSTEM_INIT_FN startup functions
+ */
+typedef struct {
+    esp_camera_device_t (*fn)(void *);   /*!< Pointer to the detect function */
+    camera_inf_t inf;                    /*!< Interface of the camera */
+} esp_camera_detect_fn_t;
+
+/**
+ * @brief Define a camera detect function which will be executed when esp_camera_init() is called.
+ *
+ * @param f  function name (identifier)
+ * @param i  interface which is used to communicate with the camera
+ * @param (varargs)  optional, additional attributes for the function declaration (such as IRAM_ATTR)
+ *
+ * The function defined using this macro must return esp_camera_device_t on success. Any other value will be
+ * logged and the esp_camera_init process will abort.
+ *
+ * There should be at lease one undefined symble to be added in the camera driver in order to avoid
+ * the optimization of the linker. Because otherwise the linker will ignore camera driver as it has
+ * no other files depending on any symbols in it.
+ * 
+ * Some thing like this should be added in the CMakeLists.txt of the camera driver:
+ *  target_link_libraries(${COMPONENT_LIB} INTERFACE "-u ov2640_detect")
+ */
+#define ESP_CAMERA_DETECT_FN(f, i, ...) \
+    static esp_camera_device_t __VA_ARGS__ __esp_camera_detect_fn_##f(void *config); \
+    static __attribute__((used)) _SECTION_ATTR_IMPL(".esp_camera_detect_fn", __COUNTER__) \
+        esp_camera_detect_fn_t esp_camera_detect_fn_##f = { .fn = ( __esp_camera_detect_fn_##f), .inf = (i) }; \
+    static esp_camera_device_t __esp_camera_detect_fn_##f(void *config)
+
+typedef struct {
+} esp_camera_csi_config_t;
+
+typedef struct {
+} esp_camera_dvp_config_t;
+
+typedef struct {
+} esp_camera_sim_config_t;
+
+typedef struct {
+    esp_camera_csi_config_t *csi;
+    uint8_t dvp_num;                /*!< Specify the numbers of dvp cameras */
+    esp_camera_dvp_config_t *dvp;
+    uint8_t sim_num;                /*!< Specify the numbers of simulated cameras */
+    esp_camera_sim_config_t *sim;
+} esp_camera_config_t;
+
+esp_err_t esp_camera_init(const esp_camera_config_t *config);
 
 #ifdef __cplusplus
 }
