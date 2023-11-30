@@ -1,0 +1,16 @@
+menuconfig CAMERA_SIM
+    bool "SIM"
+    default y
+    help
+        Enabling this option will add the support for a simulator camera.
+
+    choice CAMERA_SIM_INTERFACE
+        prompt "Interface"
+        default CAMERA_SIM_INTERFACE_SIM
+        depends on CAMERA_SIM
+        help
+            Choose the interface type to the host.
+
+        config CAMERA_SIM_INTERFACE_SIM
+            bool "SIM"
+    endchoice
