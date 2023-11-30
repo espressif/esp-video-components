@@ -4,6 +4,14 @@ menuconfig CAMERA_SC2336
     help
         Enabling this option will add the support for SC2336.
 
+    config CAMERA_SC2336_AUTO_DETECT
+        bool "Auto detect SC2336"
+        default y
+        depends on CAMERA_SC2336
+        help
+            When enabled, you don't need to call sc2336_detect manaually, SC2336 will be automatically detected
+            when esp_camera_init is called.
+
     menu "Interface"
         depends on CAMERA_SC2336
         config CAMERA_SC2336_INTERFACE_CSI
