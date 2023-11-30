@@ -4,13 +4,19 @@ menuconfig CAMERA_SIM
     help
         Enabling this option will add the support for a simulator camera.
 
-    choice CAMERA_SIM_INTERFACE
-        prompt "Interface"
-        default CAMERA_SIM_INTERFACE_SIM
+    config CAMERA_SIM_AUTO_DETECT
+        bool "Auto detect SIM"
+        default y
         depends on CAMERA_SIM
         help
-            Choose the interface type to the host.
+            When enabled, you don't need to call sim_detect manaually, SIM will be automatically detected
+            when esp_camera_init is called.
 
+    menu "Interface"
+        depends on CAMERA_SIM
         config CAMERA_SIM_INTERFACE_SIM
             bool "SIM"
-    endchoice
+            default y
+            help
+                If enabled, the SIM camera will be connected to the SIM interface.
+    endmenu

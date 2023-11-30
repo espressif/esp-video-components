@@ -8,8 +8,15 @@
 
 static const char *TAG = "sim";
 
-esp_camera_device_t sim_detect(void)
+esp_camera_device_t sim_detect(const esp_camera_sim_config_t *config)
 {
     ESP_LOGI(TAG, "sim_detect");
     return NULL;
 }
+
+#if CONFIG_CAMERA_SIM_AUTO_DETECT
+ESP_CAMERA_DETECT_FN(sim_detect, CAMERA_INF_SIM)
+{
+    return sim_detect(config);
+}
+#endif
