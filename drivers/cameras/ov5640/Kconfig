@@ -1,0 +1,14 @@
+menuconfig CAMERA_OV5640
+    bool "OV5640"
+    default y
+    help
+        Enabling this option will add the support for OV5640.
+
+    menu "Interface"
+        depends on CAMERA_OV5640
+        config CAMERA_OV5640_INTERFACE_CSI
+            bool "CSI"
+            default y
+            help
+                If enabled, the OV5640 will be connected to the CSI interface.
+    endmenu
