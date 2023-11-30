@@ -475,15 +475,27 @@ typedef struct {
     static esp_camera_device_t __esp_camera_detect_fn_##f(void *config)
 
 typedef struct {
+    uint8_t sccb_config_index;          /*!< Specify the index number of esp_camera_sccb_config_t */
 } esp_camera_csi_config_t;
 
 typedef struct {
+    uint8_t sccb_config_index;          /*!< Specify the index number of esp_camera_sccb_config_t */
 } esp_camera_dvp_config_t;
 
 typedef struct {
 } esp_camera_sim_config_t;
 
 typedef struct {
+    uint8_t  i2c_or_i3c;        /*!< Use I2C or I3C for SCCB, 0: I2C, 1: I3C, don't use other values. For I3C, it's only applied to the chips with I3C. */
+    int8_t   scl_pin;           /*!< Specify the SCCB SCL pin number, use -1 when the SCCB port is initialized in application level. */
+    int8_t   sda_pin;           /*!< Specify the SCCB SDA pin number, use -1 when the SCCB port is initialized in application level. */
+    uint8_t  i2c_port;          /*!< Specify the I2C port number of SCCB */
+    uint32_t i2c_freq;          /*!< Specify the I2C frequency of SCCB, setting to 0 will use the default freq defined in SCCB driver. */
+} esp_camera_sccb_config_t;
+
+typedef struct {
+    uint8_t sccb_num;               /*!< Specify the numbers of SCCB used by cameras, if there are two same type cameras connected, it should be 2, otherwise, set it to 1. */
+    esp_camera_sccb_config_t *sccb;
     esp_camera_csi_config_t *csi;
     uint8_t dvp_num;                /*!< Specify the numbers of dvp cameras */
     esp_camera_dvp_config_t *dvp;
