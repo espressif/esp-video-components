@@ -4,6 +4,14 @@ menuconfig CAMERA_OV5640
     help
         Enabling this option will add the support for OV5640.
 
+    config CAMERA_OV5640_AUTO_DETECT
+        bool "Auto detect OV5640"
+        default y
+        depends on CAMERA_OV5640
+        help
+            When enabled, you don't need to call ov5640_detect manaually, OV5640 will be automatically detected
+            when esp_camera_init is called.
+
     menu "Interface"
         depends on CAMERA_OV5640
         config CAMERA_OV5640_INTERFACE_CSI
