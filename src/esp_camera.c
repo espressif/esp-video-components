@@ -61,23 +61,31 @@ esp_err_t esp_camera_init(const esp_camera_config_t *config)
 
     esp_camera_detect_fn_t *p;
 
+    if (config == NULL || config->sccb_num > 2 || config->dvp_num > 2) {
+        ESP_LOGW(TAG, "Please validate camera config");
+        return ESP_ERR_INVALID_ARG;
+    }
+
+    for (size_t i = 0; i < config->sccb_num; i++) {
+        if (config->sccb[i].sda_pin != -1 && config->sccb[i].scl_pin != -1) {
+            ESP_LOGI(TAG, "Initializing SCCB[%d]", i);
+
+            // ToDo: initialize the sccb driver, if i2c_freq == 0, using the default freq of 100000
+        }
+    }
+
     for (p = &__esp_camera_detect_fn_array_start; p < &__esp_camera_detect_fn_array_end; ++p) {
-        if (p->inf == CAMERA_INF_CSI && config->csi != NULL) {
+        if (p->inf == CAMERA_INF_CSI &&  config->sccb_num != 0 && config->csi != NULL) {
             esp_camera_device_t device = (*(p->fn))(config->csi);
 
             // ToDo: initialize the csi driver and video layer
         }
 
-        if (p->inf == CAMERA_INF_DVP && config->dvp_num > 0 && config->dvp != NULL) {
+        if (p->inf == CAMERA_INF_DVP &&  config->sccb_num != 0 && config->dvp_num > 0 && config->dvp != NULL) {
             for (size_t i = 0; i < config->dvp_num; i++) {
-                // ToDo: define the number according to the chip
-                if (i == 2) {
-                    ESP_LOGW(TAG, "Support for a maximum of %d DVP cameras only.", i);
-                    break;
-                }
                 esp_camera_device_t device = (*(p->fn))(config->dvp + i);
 
-                // ToDo: initialize the dvp and video layer
+                // ToDo: initialize the dvp driver and video layer
             }
         }
 
