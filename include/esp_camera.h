@@ -30,7 +30,6 @@ extern "C" {
 #define ESP_CAM_SENSOR_NOT_SUPPORTED            (ESP_CAM_SENSOR_BASE + 4)
 #define ESP_CAM_SENSOR_RESET_FAIL               (ESP_CAM_SENSOR_BASE + 5)
 
-#define SENSOR_NUM_MAX (2)
 #define SENSOR_NAME_MAX_LEN (32)
 #define SENSOR_ISP_INFO_VERSION_DEFAULT (1)
 
@@ -371,12 +370,6 @@ typedef struct sensor_ops_s {
     int (*get_name)                 (void *name, size_t *size);
 } esp_camera_ops_t;
 
-typedef struct _sensor_probe_gpio_desc {
-    int pin_xclk;                                                                               // Sensor input clk pin. Set to -1 if the sensor does not use the clock provided by the base board
-    int pin_reset;
-    int pin_pwdn;
-} sensor_probe_gpio_desc_t;
-
 typedef struct _sensor_c_t {
     const char *name;
     sensor_id_t id;                                                                             // Sensor ID.
@@ -475,6 +468,10 @@ typedef struct {
     static esp_camera_device_t __esp_camera_detect_fn_##f(void *config)
 
 typedef struct {
+    int8_t  xclk_pin;
+    int8_t  reset_pin;
+    int8_t  pwdn_pin;
+    int32_t xclk_freq_hz;
     uint8_t sccb_config_index;          /*!< Specify the index number of esp_camera_sccb_config_t */
 } esp_camera_csi_config_t;
 
