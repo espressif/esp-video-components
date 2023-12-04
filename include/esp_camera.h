@@ -358,32 +358,30 @@ typedef struct sensor_format_info_array_s {
 
 typedef struct sensor_ops_s {
     /* ISP */
-    int (*get_supported_para_value) (uint32_t para_id, sensor_para_supported_value_t *value);
-    int (*get_para_value)           (uint32_t para_id, uint32_t size, sensor_para_value_t *value);
-    int (*set_para_value)           (uint32_t para_id, uint32_t size, sensor_para_value_t value);
+    int (*get_supported_para_value) (esp_camera_device_t *dev, uint32_t para_id, sensor_para_supported_value_t *value);
+    int (*get_para_value)           (esp_camera_device_t *dev, uint32_t para_id, uint32_t size, sensor_para_value_t *value);
+    int (*set_para_value)           (esp_camera_device_t *dev, uint32_t para_id, uint32_t size, sensor_para_value_t value);
     /* Common */
-    int (*query_support_formats)    (void *parry);
-    int (*query_support_capability) (void *arg);
-    int (*set_format)               (void *format);
-    int (*get_format)               (void *ret_format);
-    int (*priv_ioctl)               (unsigned int cmd, void *arg);
-    int (*get_name)                 (void *name, size_t *size);
+    int (*query_support_formats)    (esp_camera_device_t *dev, void *parry);
+    int (*query_support_capability) (esp_camera_device_t *dev, void *arg);
+    int (*set_format)               (esp_camera_device_t *dev, void *format);
+    int (*get_format)               (esp_camera_device_t *dev, void *ret_format);
+    int (*priv_ioctl)               (esp_camera_device_t *dev, unsigned int cmd, void *arg);
+    int (*get_name)                 (esp_camera_device_t *dev, void *name, size_t *size);
 } esp_camera_ops_t;
 
-typedef struct _sensor_c_t {
-    const char *name;
-    sensor_id_t id;                                                                             // Sensor ID.
-    uint8_t slv_addr;                                                                           // Sensor I2C slave address.
-    int sccb_port;
+typedef struct {
+    uint8_t sccb_port;
+    int8_t  xclk_pin;
+    int8_t  reset_pin;
+    int8_t  pwdn_pin;
     sensor_format_t *cur_format;                                                                // current format
+    sensor_id_t id;                                                                             // Sensor ID.
     uint8_t stream_status;
     // struct mutex lock;                                                                       // io mutex lock
-} sensor_common_t;
-
-typedef struct _sensor_t {
-    sensor_common_t sensor_common;
     esp_camera_ops_t *ops;
-} sensor_t;
+    void *priv
+} esp_camera_device_t;
 
 #if 0
 #define CAM_SENSOR_INIT_COMMON(SENSOR_NAME)  \
@@ -422,13 +420,7 @@ typedef struct _sensor_t {
     } while(0);
 #endif
 
-struct esp_camera {
-    esp_camera_ops_t ops;
-};
-
-typedef struct esp_camera *esp_camera_device_t;
-
-esp_err_t esp_camera_ioctl(esp_camera_device_t handle, uint32_t cmd, void *value, size_t *size);
+esp_err_t esp_camera_ioctl(esp_camera_device_t *dev, uint32_t cmd, void *value, size_t *size);
 
 typedef enum {
     CAMERA_INF_CSI,
@@ -468,15 +460,27 @@ typedef struct {
     static esp_camera_device_t __esp_camera_detect_fn_##f(void *config)
 
 typedef struct {
+    uint8_t sccb_port;                  /*!< Specify I2C/I3C port used for SCCB */
     int8_t  xclk_pin;
     int8_t  reset_pin;
     int8_t  pwdn_pin;
     int32_t xclk_freq_hz;
+} esp_camera_driver_config_t;
+
+typedef struct {
     uint8_t sccb_config_index;          /*!< Specify the index number of esp_camera_sccb_config_t */
+    int8_t  xclk_pin;
+    int8_t  reset_pin;
+    int8_t  pwdn_pin;
+    int32_t xclk_freq_hz;
 } esp_camera_csi_config_t;
 
 typedef struct {
     uint8_t sccb_config_index;          /*!< Specify the index number of esp_camera_sccb_config_t */
+    int8_t  xclk_pin;
+    int8_t  reset_pin;
+    int8_t  pwdn_pin;
+    int32_t xclk_freq_hz;
 } esp_camera_dvp_config_t;
 
 typedef struct {
