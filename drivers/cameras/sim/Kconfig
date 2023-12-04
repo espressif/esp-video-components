@@ -12,11 +12,17 @@ menuconfig CAMERA_SIM
             When enabled, you don't need to call sim_detect manaually, SIM will be automatically detected
             when esp_camera_init is called.
 
+    config CAMERA_SIM_NAME
+        string "Name for this simulated camera"
+        default "sim_cam"
+        depends on CAMERA_SIM
+
     menu "Interface"
         depends on CAMERA_SIM
         config CAMERA_SIM_INTERFACE_SIM
             bool "SIM"
             default y
+            select SIMULATED_INTF
             help
                 If enabled, the SIM camera will be connected to the SIM interface.
     endmenu

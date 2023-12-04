@@ -28,41 +28,22 @@ static SLIST_HEAD(esp_video_list, esp_video) s_video_list = SLIST_HEAD_INITIALIZ
 static const char *TAG = "esp_video";
 
 /**
- * @brief Initialize video system.
- *
- * @param None
- *
- * @return
- *      - ESP_OK on success
- *      - Others if failed
- */
-esp_err_t esp_video_init(void)
-{
-    esp_err_t ret;
-
-    ret = esp_video_bsp_init();
-    if (ret != ESP_OK) {
-        ESP_VIDEO_LOGE("Failed to initialize video BSP");
-        return ret;
-    }
-
-    return ESP_OK;
-}
-
-/**
  * @brief Create video object.
  *
  * @param name         video device name
+ * @param cam_dev      camera devcie
  * @param ops          video operations
- * @param priv         video private data
  * @param buffer_count video buffer count for lowlevel driver
  * @param buffer_size  video buffer size for lowlevel driver
+ * @param priv         video private data
  *
  * @return
  *      - Video object pointer on success
  *      - NULL if failed
  */
-struct esp_video *esp_video_create(const char *name, const struct esp_video_ops *ops, void *priv, uint32_t buffer_count, uint32_t buffer_size)
+struct esp_video *esp_video_create(const char *name, esp_camera_device_t *cam_dev,
+                                   const struct esp_video_ops *ops, uint32_t buffer_count,
+                                   uint32_t buffer_size,  void *priv)
 {
     esp_err_t ret;
     bool found = false;
@@ -128,6 +109,7 @@ struct esp_video *esp_video_create(const char *name, const struct esp_video_ops 
     video->ops      = ops;
     video->priv     = priv;
     video->id       = id;
+    video->cam_dev  = cam_dev;
     SLIST_INSERT_HEAD(&s_video_list, video, node);
 
 #ifdef CONFIG_ESP_VIDEO_API_LINUX
@@ -825,7 +807,7 @@ uint8_t *IRAM_ATTR esp_video_alloc_buffer(struct esp_video *video)
  *
  * @return None
  */
-void esp_video_recvdone_buffer(struct esp_video *video, uint8_t *buffer, uint32_t size, uint32_t offset)
+void IRAM_ATTR esp_video_recvdone_buffer(struct esp_video *video, uint8_t *buffer, uint32_t size, uint32_t offset)
 {
     struct esp_video_buffer_element *element =
         container_of(buffer, struct esp_video_buffer_element, buffer);

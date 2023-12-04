@@ -4,10 +4,14 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+#include <inttypes.h>
 #include "esp_err.h"
 #include "esp_log.h"
 
 #include "esp_camera.h"
+#ifdef CONFIG_SIMULATED_INTF
+#include "sim_video.h"
+#endif
 
 static const char *TAG = "esp_camera";
 
@@ -59,6 +63,7 @@ esp_err_t esp_camera_init(const esp_camera_config_t *config)
     extern esp_camera_detect_fn_t __esp_camera_detect_fn_array_start;
     extern esp_camera_detect_fn_t __esp_camera_detect_fn_array_end;
 
+    esp_err_t ret;
     esp_camera_detect_fn_t *p;
 
     if (config == NULL || config->sccb_num > 2 || config->dvp_num > 2) {
@@ -85,6 +90,10 @@ esp_err_t esp_camera_init(const esp_camera_config_t *config)
             esp_camera_device_t *cam_dev = (*(p->fn))(&cfg);
 
             // ToDo: initialize the csi driver and video layer
+
+            // Avoid compiling warning
+            if (cam_dev) {
+            }
         }
 
         if (p->intf == CAMERA_INTF_DVP &&  config->sccb_num != 0 && config->dvp_num > 0 && config->dvp != NULL) {
@@ -98,17 +107,34 @@ esp_err_t esp_camera_init(const esp_camera_config_t *config)
                 esp_camera_device_t *cam_dev = (*(p->fn))(&cfg);
 
                 // ToDo: initialize the dvp driver and video layer
+
+                // Avoid compiling warning
+                if (cam_dev) {
+                }
             }
         }
 
+#ifdef CONFIG_CAMERA_SIM
         if (p->intf == CAMERA_INTF_SIM && config->sim_num && config->sim != NULL) {
             for (size_t i = 0; i < config->sim_num; i++) {
-                esp_camera_driver_config_t cfg = {0};
+                esp_camera_sim_config_t cfg = {
+                    .id = config->sim[i].id
+                };
                 esp_camera_device_t *cam_dev = (*(p->fn))(&cfg);
 
-                // ToDo: initialize the sim & video layer
+                if (cam_dev) {
+                    ret = sim_create_camera_video_device(cam_dev);
+                    if (ret != ESP_OK) {
+                        ESP_LOGE(TAG, "failed to create sim camera video device=%p", cam_dev);
+                        return ret;
+                    }
+                } else {
+                    ESP_LOGE(TAG, "failed to initialize sim camera%d", i);
+                    return ESP_FAIL;
+                }
             }
         }
+#endif
     }
 
     return ESP_OK;
