@@ -122,7 +122,6 @@ struct esp_video *esp_video_create(const char *name, const struct esp_video_ops 
     video->min_buffer_size  = buffer_size;
 
     portMUX_INITIALIZE(&video->lock);
-    printf("video->lock=0x%p, 0x%p", video->lock, &video->lock);
     SLIST_INIT(&video->done_list);
     video->dev_name = (char *)&video[1];
     strcpy(video->dev_name, name);
@@ -674,7 +673,6 @@ esp_err_t esp_video_setup_buffer(struct esp_video *video, uint32_t count)
     }
 
     video->buffer = esp_video_buffer_create(video->buffer_count, video->buffer_size);
-    printf("%s %d line %p\r\n", __func__, __LINE__, video->buffer);
     if (!video->buffer) {
         vSemaphoreDelete(video->done_sem);
         video->done_sem = NULL;

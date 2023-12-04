@@ -1,3 +1,25 @@
-menu "SIM configuration"
+menu "Simulated Interface Configuration"
 
+    config SIMULATED_INTF
+        bool "Enable Simulated Interface"
+        default n
+        select ESP_TIMER_SUPPORTS_ISR_DISPATCH_METHOD
+        help
+            Selecting this option adds a software-simulated interface equivalent to MIPI-CSI.
+            To work with the simulated interface, a simulated camera device should be added.
+            This mode can be used as a substitute for real hardware.
+
+    if SIMULATED_INTF
+        config SIMULATED_INTF_DEVICE_NAME
+            string "Video Simulation Device Name"
+            default "sim_video"
+
+        config SIMULATED_INTF_DEVICE_COUNT
+            int "Video Simulation Device Count"
+            default 4        
+    
+        config SIMULATED_INTF_DEVICE_BUFFER_COUNT
+            int "Buffer count"
+            default 4
+    endif
 endmenu

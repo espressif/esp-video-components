@@ -12,7 +12,7 @@
 extern "C" {
 #endif
 
-esp_err_t sim_initialize_camera(void);
+esp_err_t sim_initialize_video_device(void);
 
 #ifdef __cplusplus
 }
