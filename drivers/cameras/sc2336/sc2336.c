@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2023-2024 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2023 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -298,7 +298,7 @@ static esp_camera_ops_t sc2336_ops = {
 };
 
 // We need manage these devices, and maybe need to add it into the private member of esp_device
-esp_camera_device_t sc2336_csi_detect(esp_camera_driver_config_t *config)
+esp_camera_device_t *sc2336_csi_detect(esp_camera_driver_config_t *config)
 {
     esp_camera_device_t *dev = NULL;
 
@@ -350,7 +350,7 @@ err_free_handler:
     return NULL;
 }
 
-esp_camera_device_t sc2336_dvp_detect(esp_camera_dvp_config_t *config)
+esp_camera_device_t *sc2336_dvp_detect(esp_camera_driver_config_t *config)
 {
     ESP_LOGI(TAG, "sc2336_dvp_detect");
     s_sc2336_index++;
@@ -359,12 +359,12 @@ esp_camera_device_t sc2336_dvp_detect(esp_camera_dvp_config_t *config)
 }
 
 #if CONFIG_CAMERA_SC2336_AUTO_DETECT
-ESP_CAMERA_DETECT_FN(sc2336_csi_detect, CAMERA_INF_CSI)
+ESP_CAMERA_DETECT_FN(sc2336_csi_detect, CAMERA_INTF_CSI)
 {
     return sc2336_csi_detect(config);
 }
 
-ESP_CAMERA_DETECT_FN(sc2336_dvp_detect, CAMERA_INF_DVP)
+ESP_CAMERA_DETECT_FN(sc2336_dvp_detect, CAMERA_INTF_DVP)
 {
     return sc2336_dvp_detect(config);
 }

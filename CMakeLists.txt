@@ -6,7 +6,7 @@ set(srcs "src/esp_camera.c"
          )
 set(include_dirs "include" "include/drivers" "include/soc")
 set(priv_include_dirs "private_include")
-set(priv_requires "esp_timer" "vfs")
+set(priv_requires "esp_timer" "vfs" "driver")
 set(requires "")
 
 include(${COMPONENT_DIR}/drivers/isp/sources.cmake)

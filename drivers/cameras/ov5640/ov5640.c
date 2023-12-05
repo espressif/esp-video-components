@@ -8,14 +8,14 @@
 
 static const char *TAG = "ov5640";
 
-esp_camera_device_t ov5640_csi_detect(const esp_camera_csi_config_t *config)
+esp_camera_device_t *ov5640_csi_detect(const esp_camera_driver_config_t *config)
 {
     ESP_LOGI(TAG, "ov5640_csi_detect");
     return NULL;
 }
 
 #if CONFIG_CAMERA_OV5640_AUTO_DETECT
-ESP_CAMERA_DETECT_FN(ov5640_csi_detect, CAMERA_INF_CSI)
+ESP_CAMERA_DETECT_FN(ov5640_csi_detect, CAMERA_INTF_CSI)
 {
     return ov5640_csi_detect(config);
 }
