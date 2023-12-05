@@ -28,8 +28,8 @@ extern "C" {
  * @param prot   Video ignores this parameter, it's recommended to fixedly set (PROT_READ | PROT_WRITE)
  * @param flags  Video ignores this parameter, it's recommended to fixedly set MAP_SHARED
  * @param fd     Video device file description
- * @param offset Video buffer offset 
- * 
+ * @param offset Video buffer offset
+ *
  * @return
  *      - Mapped video buffer pointer on success
  *      - NULL if failed
@@ -39,7 +39,7 @@ void *mmap(void *addr, size_t length, int prot, int flags,
 
 /**
  * @brief Free mapped video buffer
- * 
+ *
  * @param addr   Mapped video buffer pointer
  * @param length Mapped buffer length should <= video buffer length
  *

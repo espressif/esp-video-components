@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2023-2024 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2023 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -38,7 +38,7 @@ static void delay_us(uint32_t t)
 {
     ets_delay_us(t);
 }
-#else 
+#else
 typedef uint8_t sem_t;
 #define ets_printf printf
 static void delay_us(uint32_t t)
@@ -122,13 +122,13 @@ while (1) {
 
     if (status.end_detect) {
         give_sem(&i2c_sem.end);
-    } 
+    }
     if(status.nack) {
         give_sem(&i2c_sem.nack);
     }
     if (status.trans_complete) {
         give_sem(&i2c_sem.trans_complete);
-    } 
+    }
     if (status.scl_st_to || status.scl_main_st_to || status.time_out) {
         I2C0.scl_sp_conf.scl_rst_slv_en = 0;
         I2C0.ctr.conf_upgate = 1;
@@ -163,13 +163,13 @@ static void i2c_isr(void *arg)
 
     if (status.end_detect) {
         give_sem(&i2c_sem.end);
-    } 
+    }
     if(status.nack) {
         give_sem(&i2c_sem.nack);
     }
     if (status.trans_complete) {
         give_sem(&i2c_sem.trans_complete);
-    } 
+    }
     if (status.scl_st_to || status.scl_main_st_to || status.time_out) {
         I2C0.scl_sp_conf.scl_rst_slv_en = 0;
         I2C0.ctr.conf_upgate = 1;
@@ -361,12 +361,12 @@ int i2c_read(uint32_t addr, size_t len, uint8_t *data)
                 I2C0.command[0].val = 0;
                 I2C0.command[0].op_code = I2C_OP_READ; // read
                 I2C0.command[0].ack_val = 0;
-                I2C0.command[0].byte_num = len % 32 - 1; 
+                I2C0.command[0].byte_num = len % 32 - 1;
 
                 I2C0.command[1].val = 0;
                 I2C0.command[1].op_code = I2C_OP_READ; // read
                 I2C0.command[1].ack_val = 1;
-                I2C0.command[1].byte_num = 1; 
+                I2C0.command[1].byte_num = 1;
 
                 I2C0.command[2].val = 0;
                 I2C0.command[2].op_code = I2C_OP_STOP; // stop
@@ -580,12 +580,12 @@ int i2c_read_mem(uint32_t addr, uint8_t reg, size_t len, uint8_t *data)
                 I2C0.command[0].val = 0;
                 I2C0.command[0].op_code = I2C_OP_READ; // read
                 I2C0.command[0].ack_val = 0;
-                I2C0.command[0].byte_num = len % 32 - 1; 
+                I2C0.command[0].byte_num = len % 32 - 1;
 
                 I2C0.command[1].val = 0;
                 I2C0.command[1].op_code = I2C_OP_READ; // read
                 I2C0.command[1].ack_val = 1;
-                I2C0.command[1].byte_num = 1; 
+                I2C0.command[1].byte_num = 1;
 
                 I2C0.command[2].val = 0;
                 I2C0.command[2].op_code = I2C_OP_STOP; // stop
@@ -805,12 +805,12 @@ int i2c_read_mem16(uint32_t addr, uint16_t reg, size_t len, uint8_t *data)
                 I2C0.command[0].val = 0;
                 I2C0.command[0].op_code = I2C_OP_READ; // read
                 I2C0.command[0].ack_val = 0;
-                I2C0.command[0].byte_num = len % 32 - 1; 
+                I2C0.command[0].byte_num = len % 32 - 1;
 
                 I2C0.command[1].val = 0;
                 I2C0.command[1].op_code = I2C_OP_READ; // read
                 I2C0.command[1].ack_val = 1;
-                I2C0.command[1].byte_num = 1; 
+                I2C0.command[1].byte_num = 1;
 
                 I2C0.command[2].val = 0;
                 I2C0.command[2].op_code = I2C_OP_STOP; // stop
@@ -838,13 +838,13 @@ int i2c_read_mem16(uint32_t addr, uint16_t reg, size_t len, uint8_t *data)
 int i2c_write_reg(uint32_t addr, uint8_t reg, uint32_t len, ...)
 {
     int ret = -1;
-    va_list arg_ptr; 
-    uint8_t data[len]; 
+    va_list arg_ptr;
+    uint8_t data[len];
     va_start(arg_ptr, len);
     for (int x = 0; x < len; x++) {
         data[x] = va_arg(arg_ptr, int);
     }
-    va_end(arg_ptr); 
+    va_end(arg_ptr);
 
     ret = i2c_write_mem(addr, reg, len, data);
 
@@ -854,14 +854,14 @@ int i2c_write_reg(uint32_t addr, uint8_t reg, uint32_t len, ...)
 int i2c_read_reg(uint32_t addr, uint8_t reg, uint32_t len, ...)
 {
     int ret = -1;
-    va_list arg_ptr; 
+    va_list arg_ptr;
     uint8_t data[len];
-    uint8_t *datap[len]; 
+    uint8_t *datap[len];
     va_start(arg_ptr, len);
     for (int x = 0; x < len; x++) {
         datap[x] = va_arg(arg_ptr, int);
     }
-    va_end(arg_ptr); 
+    va_end(arg_ptr);
 
     ret = i2c_read_mem(addr, reg, len, data);
 
@@ -875,13 +875,13 @@ int i2c_read_reg(uint32_t addr, uint8_t reg, uint32_t len, ...)
 int i2c_write_reg16(uint32_t addr, uint16_t reg, uint32_t len, ...)
 {
     int ret = -1;
-    va_list arg_ptr; 
-    uint8_t data[len]; 
+    va_list arg_ptr;
+    uint8_t data[len];
     va_start(arg_ptr, len);
     for (int x = 0; x < len; x++) {
         data[x] = va_arg(arg_ptr, int);
     }
-    va_end(arg_ptr); 
+    va_end(arg_ptr);
 
     ret = i2c_write_mem16(addr, reg, len, data);
 
@@ -891,14 +891,14 @@ int i2c_write_reg16(uint32_t addr, uint16_t reg, uint32_t len, ...)
 int i2c_read_reg16(uint32_t addr, uint16_t reg, uint32_t len, ...)
 {
     int ret = -1;
-    va_list arg_ptr; 
+    va_list arg_ptr;
     uint8_t data[len];
-    uint8_t *datap[len]; 
+    uint8_t *datap[len];
     va_start(arg_ptr, len);
     for (int x = 0; x < len; x++) {
         datap[x] = va_arg(arg_ptr, int);
     }
-    va_end(arg_ptr); 
+    va_end(arg_ptr);
 
     ret = i2c_read_mem16(addr, reg, len, data);
 
@@ -973,7 +973,7 @@ void i2c_init(int rate, int io_scl, int io_sda)
     PERI1_CLKRST.peri1_clk_en_ctrl.i2c0_clk_en = 1;
     PERI1_CLKRST.peri1_rst_ctrl.i2c0_rstn = 0;
     PERI1_CLKRST.peri1_rst_ctrl.i2c0_rstn = 1;
-    
+
     // div = 1;
     I2C0.clk_conf.sclk_div_num = 4 - 1;
     I2C0.clk_conf.sclk_div_b = 0;
@@ -981,7 +981,7 @@ void i2c_init(int rate, int io_scl, int io_sda)
     I2C0.clk_conf.sclk_sel = 0;
     I2C0.clk_conf.sclk_active = 1;
 
-    uint32_t half_cycle = (40000000 / (I2C0.clk_conf.sclk_div_num + 1)) / rate / 2; 
+    uint32_t half_cycle = (40000000 / (I2C0.clk_conf.sclk_div_num + 1)) / rate / 2;
 
     //scl period
     I2C0.scl_low_period.period = half_cycle - 1;
@@ -1033,7 +1033,7 @@ void i2c_init(int rate, int io_scl, int io_sda)
 
     I2C0.int_ena.val = 0;
     I2C0.int_clr.val = ~0;
-    
+
 
 #if TEST_WITH_OS
     i2c_sem.trans_complete = xSemaphoreCreateBinary();

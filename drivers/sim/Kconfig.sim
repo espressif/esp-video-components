@@ -16,8 +16,8 @@ menu "Simulated Interface Configuration"
 
         config SIMULATED_INTF_DEVICE_COUNT
             int "Video Simulation Device Count"
-            default 4        
-    
+            default 4
+
         config SIMULATED_INTF_DEVICE_BUFFER_COUNT
             int "Buffer count"
             default 4

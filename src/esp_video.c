@@ -104,7 +104,7 @@ struct esp_video *esp_video_create(const char *name, const struct esp_video_ops 
                 break;
             }
         }
-    
+
         if (!found) {
             id = i;
             break;
@@ -313,7 +313,7 @@ esp_err_t esp_video_close(struct esp_video *video)
                 vSemaphoreDelete(video->done_sem);
                 video->done_sem = NULL;
             }
-            
+
             if (video->buffer) {
                 SLIST_INIT(&video->done_list);
                 esp_video_buffer_destroy(video->buffer);
@@ -660,7 +660,7 @@ esp_err_t esp_video_setup_buffer(struct esp_video *video, uint32_t count)
     if (video->done_sem) {
         vSemaphoreDelete(video->done_sem);
     }
-    
+
     if (video->buffer) {
         SLIST_INIT(&video->done_list);
         esp_video_buffer_destroy(video->buffer);
@@ -817,7 +817,7 @@ uint8_t *IRAM_ATTR esp_video_alloc_buffer(struct esp_video *video)
 }
 
 /**
- * @brief Process a video buffer which receives data done. 
+ * @brief Process a video buffer which receives data done.
  *
  * @param video  Video object
  * @param buffer Video buffer allocated by "esp_video_alloc_buffer"
@@ -827,14 +827,14 @@ uint8_t *IRAM_ATTR esp_video_alloc_buffer(struct esp_video *video)
  */
 void esp_video_recvdone_buffer(struct esp_video *video, uint8_t *buffer, uint32_t size, uint32_t offset)
 {
-    struct esp_video_buffer_element *element = 
+    struct esp_video_buffer_element *element =
         container_of(buffer, struct esp_video_buffer_element, buffer);
 
     /* Check if the buffer is overflow */
     if (size + offset > esp_video_buffer_element_get_buffer_size(element)) {
         abort();
     }
-    
+
     portENTER_CRITICAL_SAFE(&video->lock);
     element->valid_offset = offset;
     esp_video_buffer_element_set_valid_size(element, size);
@@ -853,7 +853,7 @@ void esp_video_recvdone_buffer(struct esp_video *video, uint8_t *buffer, uint32_
  */
 void esp_video_free_buffer(struct esp_video *video, uint8_t *buffer)
 {
-    struct esp_video_buffer_element *element = 
+    struct esp_video_buffer_element *element =
         container_of(buffer, struct esp_video_buffer_element, buffer);
 
     esp_video_buffer_free(video->buffer, element);
@@ -875,7 +875,7 @@ void esp_video_free_buffer_index(struct esp_video *video, uint32_t index)
 }
 
 /**
- * @brief Receive buffer from video device. 
+ * @brief Receive buffer from video device.
  *
  * @param video Video object
  * @param ticks Wait OS tick
@@ -897,7 +897,7 @@ uint8_t *esp_video_recv_buffer(struct esp_video *video, uint32_t *recv_size, uin
 
     portENTER_CRITICAL_SAFE(&video->lock);
     element = SLIST_FIRST(&video->done_list);
-    SLIST_REMOVE(&video->done_list, element, esp_video_buffer_element, node); 
+    SLIST_REMOVE(&video->done_list, element, esp_video_buffer_element, node);
     portEXIT_CRITICAL_SAFE(&video->lock);
 
     *recv_size = esp_video_buffer_element_get_valid_size(element);
@@ -916,9 +916,9 @@ uint8_t *esp_video_recv_buffer(struct esp_video *video, uint32_t *recv_size, uin
  */
 uint32_t esp_video_get_buffer_index(struct esp_video *video, uint8_t *buffer)
 {
-    struct esp_video_buffer_element *element = 
+    struct esp_video_buffer_element *element =
         container_of(buffer, struct esp_video_buffer_element, buffer);
-    
+
     return esp_video_buffer_element_get_index(element);
 }
 

@@ -12,4 +12,3 @@ esp_err_t esp_video_bsp_init(void)
 
     return ESP_OK;
 }
-

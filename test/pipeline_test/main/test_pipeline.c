@@ -1,3 +1,8 @@
+/*
+ * SPDX-FileCopyrightText: 2023 Espressif Systems (Shanghai) CO LTD
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
 // test on macos
 // cmd:
 //     gcc media.c test.c -g  -o test.o
@@ -28,14 +33,14 @@ void* test1(void* arg)
     // esp_event_post(ESP_MESH_LITE_EVENT, ESP_MEIDA_EVENT_DATA_RECV, pipeline2->entry_pad, sizeof(esp_pad_t), 0);
     event.pad = esp_pipeline_get_entry_entity(pipeline1);
     esp_media_event_post(&event, 0);
-    
+
     event.pad = esp_pipeline_get_entry_entity(pipeline2);
     esp_media_event_post(&event, 0);
 
     event.pad = esp_pipeline_get_entry_entity(pipeline3);
     esp_media_event_post(&event, 0);
 
-    while(1) 
+    while(1)
     {
         event.cmd = ESP_MEIDA_EVENT_CMD_DATA_RECV;
         count++;
@@ -50,7 +55,7 @@ void* test1(void* arg)
             event.pad = esp_pipeline_get_entry_entity(pipeline3);
             event.param = esp_video_buffer_alloc_from_pipeline(pipeline3);
         }
-        
+
         printf("%s %d line event.pad=%p, %p, %d\r\n", __func__, __LINE__, event.pad, event.param, count);
         // esp_event_post(ESP_MESH_LITE_EVENT, ESP_MEIDA_EVENT_DATA_RECV, g_event.pad, sizeof(esp_pad_t), 0);
         esp_media_event_post(&event, 0);

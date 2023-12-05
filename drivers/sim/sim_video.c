@@ -66,7 +66,7 @@ static esp_err_t sim_video_deinit(struct esp_video *video)
 {
     esp_err_t ret;
     struct sim_video *sim_video = (struct sim_video *)video->priv;
-    
+
     ret = esp_timer_delete(sim_video->capture_timer);
     if (ret != ESP_OK) {
         ESP_VIDEO_LOGE("Failed to delete ret=%x", ret);
@@ -82,7 +82,7 @@ static esp_err_t sim_video_start_capture(struct esp_video *video)
 {
     esp_err_t ret;
     struct sim_video *sim_video = (struct sim_video *)video->priv;
-    
+
     ret = esp_timer_start_periodic(sim_video->capture_timer, 1000000 / sim_video->fps);
     if (ret != ESP_OK) {
         ESP_VIDEO_LOGE("Failed to start timer ret=%x", ret);
@@ -96,7 +96,7 @@ static esp_err_t sim_video_stop_capture(struct esp_video *video)
 {
     esp_err_t ret;
     struct sim_video *sim_video = (struct sim_video *)video->priv;
-    
+
     ret = esp_timer_stop(sim_video->capture_timer);
     if (ret != ESP_OK) {
         ESP_VIDEO_LOGE("Failed to stop timer ret=%x", ret);

@@ -1,3 +1,8 @@
+/*
+ * SPDX-FileCopyrightText: 2023 Espressif Systems (Shanghai) CO LTD
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
 /* MIPI Camera Dump Data Example
 
    This example code is in the Public Domain (or CC0 licensed, at your option.)

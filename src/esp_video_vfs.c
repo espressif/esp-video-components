@@ -121,7 +121,7 @@ static int esp_video_vfs_ioctl_reqbufs(struct esp_video *video, struct v4l2_requ
 
     if (req_bufs->type != V4L2_BUF_TYPE_VIDEO_CAPTURE) {
         errno = EINVAL;
-        return -1; 
+        return -1;
     }
 
     if (req_bufs->count == 0) {
@@ -154,13 +154,13 @@ static int esp_video_vfs_ioctl_querybuf(struct esp_video *video, struct v4l2_buf
 
     if (vbuf->type != V4L2_BUF_TYPE_VIDEO_CAPTURE) {
         errno = EINVAL;
-        return -1; 
+        return -1;
     }
 
     ret = esp_video_get_buffer_count(video, &count);
     if (ret != ESP_OK) {
         errno = EIO;
-        return -1; 
+        return -1;
     }
 
     if (vbuf->index >= count) {
@@ -171,13 +171,13 @@ static int esp_video_vfs_ioctl_querybuf(struct esp_video *video, struct v4l2_buf
     ret = esp_video_get_buffer_length(video, vbuf->index, &vbuf->length);
     if (ret != ESP_OK) {
         errno = EIO;
-        return -1; 
+        return -1;
     }
 
     ret = esp_video_get_buffer_offset(video, vbuf->index, &vbuf->m.offset);
     if (ret != ESP_OK) {
         errno = EIO;
-        return -1; 
+        return -1;
     }
 
     return 0;
@@ -219,20 +219,20 @@ static int esp_video_vfs_ioctl_qbuf(struct esp_video *video, struct v4l2_buffer 
 
     if (vbuf->type != V4L2_BUF_TYPE_VIDEO_CAPTURE) {
         errno = EINVAL;
-        return -1; 
+        return -1;
     }
 
     ret = esp_video_get_buffer_count(video, &count);
     if (ret != ESP_OK) {
         errno = EIO;
-        return -1; 
+        return -1;
     }
 
     if (vbuf->index >= count) {
         errno = EINVAL;
         return -1;
     }
-    
+
     esp_video_free_buffer_index(video, vbuf->index);
 
 #ifndef CONFIG_SIMULATED_INTF
@@ -261,20 +261,20 @@ static int esp_video_vfs_ioctl_dqbuf(struct esp_video *video, struct v4l2_buffer
 
     if (vbuf->type != V4L2_BUF_TYPE_VIDEO_CAPTURE) {
         errno = EINVAL;
-        return -1; 
+        return -1;
     }
 
     ret = esp_video_get_buffer_count(video, &count);
     if (ret != ESP_OK) {
         errno = EIO;
-        return -1; 
+        return -1;
     }
 
     if (vbuf->index >= count) {
         errno = EINVAL;
         return -1;
     }
-    
+
     recv_buf = esp_video_recv_buffer(video, &recv_size, &offset, ticks);
     if (!recv_buf) {
         errno = EIO;

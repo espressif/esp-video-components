@@ -33,7 +33,7 @@ menu "Example Configuration"
         config SENSOR_FORMAT_RGB888
             bool "RGB888"
     endchoice
-    
+
     config EXAMPLE_CAM_HSIZE
         int "cam image width"
         default 800

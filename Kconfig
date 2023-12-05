@@ -5,12 +5,12 @@ menu "Espressif Video Development Framework Configuration"
         default ESP_VIDEO_API_LINUX
         help
             Select espressif video SDK API.
-    
+
         config ESP_VIDEO_API_LINUX
             bool "Linux POSIX API with L4V2"
             help
                 Select this option, users can use POSIX API with L4V2.
-        
+
         config ESP_VIDEO_API_CORE
             bool "Espressif Video Core API"
             help
@@ -49,7 +49,7 @@ menu "Espressif Video Development Framework Configuration"
         help
             Select this option, espressif video core functions will check
             input parameters.
-    
+
     rsource "drivers/sim/Kconfig.sim"
     rsource "drivers/isp/Kconfig.isp"
     rsource "drivers/sccb/Kconfig.sccb"

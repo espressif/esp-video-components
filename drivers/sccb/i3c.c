@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2023-2024 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2023 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -43,7 +43,7 @@ static void delay_us(uint32_t t)
 {
     ets_delay_us(t);
 }
-#else 
+#else
 typedef uint8_t sem_t;
 #define ets_printf printf
 static void delay_us(uint32_t t)
@@ -232,7 +232,7 @@ int i3c_read(uint32_t addr, size_t len, uint8_t *data)
     TEST_I3C_MST.device_ctrl.trans_start = 0;
 
     while (!TEST_I3C_MST.int_st.transfer_complete);
-    
+
     for (x = 0; x < len / 4; x++) {
         i3c_mst_rx_data[x] = TEST_I3C_MST_MEM.rx_data_port;
         // printf("i3c_mst_rx_data[%d]: 0x%x\n", x, i3c_mst_rx_data[x]);
@@ -278,7 +278,7 @@ int i3c_write_mem(uint32_t addr, uint8_t reg, size_t len, uint8_t *data)
 
     TEST_I3C_MST_MEM.command_buf_port = command[0].cmd_l.val;
     TEST_I3C_MST_MEM.command_buf_port = command[0].cmd_h.val;
-    
+
     if (len >= 3) {
         i3c_mst_tx_data[0] = reg | (data[0] << 8) | (data[1] << 16) | (data[2] << 24);
         TEST_I3C_MST_MEM.tx_data_port = i3c_mst_tx_data[0];
@@ -339,7 +339,7 @@ int i3c_read_mem(uint32_t addr, uint8_t reg, size_t len, uint8_t *data)
 
     TEST_I3C_MST.reset_ctrl.val = ~(0x1);
     TEST_I3C_MST.reset_ctrl.val = 0;
-    
+
     // printf("table: 0x%x\n", &TEST_I3C_MST_MEM.dev_addr_table[0]);
 
     TEST_I3C_MST_MEM.dev_addr_table[0].val = addr_table[0].dat.val;
@@ -357,7 +357,7 @@ int i3c_read_mem(uint32_t addr, uint8_t reg, size_t len, uint8_t *data)
     TEST_I3C_MST.device_ctrl.trans_start = 0;
 
     while (!TEST_I3C_MST.int_st.transfer_complete);
-    
+
     for (x = 0; x < len / 4; x++) {
         i3c_mst_rx_data[x] = TEST_I3C_MST_MEM.rx_data_port;
         // printf("i3c_mst_rx_data[%d]: 0x%x\n", x, i3c_mst_rx_data[x]);
@@ -403,7 +403,7 @@ int i3c_write_mem16(uint32_t addr, uint16_t reg, size_t len, uint8_t *data)
 
     TEST_I3C_MST_MEM.command_buf_port = command[0].cmd_l.val;
     TEST_I3C_MST_MEM.command_buf_port = command[0].cmd_h.val;
-    
+
     if (len >= 2) {
         i3c_mst_tx_data[0] = ((reg << 8) & 0xFF00) | ((reg >> 8) & 0xFF) | (data[0] << 16) | (data[1] << 24);
         TEST_I3C_MST_MEM.tx_data_port = i3c_mst_tx_data[0];
@@ -461,7 +461,7 @@ int i3c_read_mem16(uint32_t addr, uint16_t reg, size_t len, uint8_t *data)
 
     TEST_I3C_MST.reset_ctrl.val = ~(0x1);
     TEST_I3C_MST.reset_ctrl.val = 0;
-    
+
     // printf("table: 0x%x\n", &TEST_I3C_MST_MEM.dev_addr_table[0]);
 
     TEST_I3C_MST_MEM.dev_addr_table[0].val = addr_table[0].dat.val;
@@ -479,7 +479,7 @@ int i3c_read_mem16(uint32_t addr, uint16_t reg, size_t len, uint8_t *data)
     TEST_I3C_MST.device_ctrl.trans_start = 0;
 
     while (!TEST_I3C_MST.int_st.transfer_complete);
-    
+
     for (x = 0; x < len / 4; x++) {
         i3c_mst_rx_data[x] = TEST_I3C_MST_MEM.rx_data_port;
         // printf("i3c_mst_rx_data[%d]: 0x%x\n", x, i3c_mst_rx_data[x]);
@@ -505,13 +505,13 @@ int i3c_read_mem16(uint32_t addr, uint16_t reg, size_t len, uint8_t *data)
 int i3c_write_reg16(uint32_t addr, uint16_t reg, uint32_t len, ...)
 {
     int ret = -1;
-    va_list arg_ptr; 
-    uint8_t data[len]; 
+    va_list arg_ptr;
+    uint8_t data[len];
     va_start(arg_ptr, len);
     for (int x = 0; x < len; x++) {
         data[x] = va_arg(arg_ptr, int);
     }
-    va_end(arg_ptr); 
+    va_end(arg_ptr);
 
     ret = i3c_write_mem16(addr, reg, len, data);
 
@@ -521,14 +521,14 @@ int i3c_write_reg16(uint32_t addr, uint16_t reg, uint32_t len, ...)
 int i3c_read_reg16(uint32_t addr, uint16_t reg, uint32_t len, ...)
 {
     int ret = -1;
-    va_list arg_ptr; 
+    va_list arg_ptr;
     uint8_t data[len];
-    uint8_t *datap[len]; 
+    uint8_t *datap[len];
     va_start(arg_ptr, len);
     for (int x = 0; x < len; x++) {
         datap[x] = va_arg(arg_ptr, int);
     }
-    va_end(arg_ptr); 
+    va_end(arg_ptr);
 
     ret = i3c_read_mem16(addr, reg, len, data);
 
@@ -633,7 +633,7 @@ void i3c_init(int rate, int io_scl, int io_sda)
     i3c_mst_module_enable(&TEST_I3C_MST);
 
     i3c_set_pin(io_scl, io_sda, 0);
-    
+
     // TEST_I3C_MST CONFIG
     TEST_I3C_MST.reset_ctrl.val = ~0;
     TEST_I3C_MST.reset_ctrl.val = 0;

@@ -61,7 +61,7 @@ struct esp_video_buffer *esp_video_buffer_create(uint32_t count, uint32_t size)
     buffer->element_size = size;
     for (int i = 0; i < count; i++) {
         struct esp_video_buffer_element *element =
-            (struct esp_video_buffer_element *)((char *)buffer->element + element_size * i);     
+            (struct esp_video_buffer_element *)((char *)buffer->element + element_size * i);
 
         element->index = i;
         SLIST_INSERT_HEAD(&buffer->free_list, element, node);
@@ -103,7 +103,7 @@ struct esp_video_buffer_element *IRAM_ATTR esp_video_buffer_alloc(struct esp_vid
     portENTER_CRITICAL_SAFE(&buffer->lock);
     if (!SLIST_EMPTY(&buffer->free_list)) {
         element = SLIST_FIRST(&buffer->free_list);
-        SLIST_REMOVE(&buffer->free_list, element, esp_video_buffer_element, node); 
+        SLIST_REMOVE(&buffer->free_list, element, esp_video_buffer_element, node);
     }
     portEXIT_CRITICAL_SAFE(&buffer->lock);
 
@@ -163,7 +163,7 @@ uint32_t esp_video_buffer_get_element_num(struct esp_video_buffer *buffer)
 esp_err_t esp_video_buffer_destroy(struct esp_video_buffer *buffer)
 {
     uint32_t n;
-    
+
     n = esp_video_buffer_get_element_num(buffer);
     if (n != buffer->element_count) {
         return ESP_ERR_INVALID_STATE;
