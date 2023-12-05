@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2023-2024 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2023 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -167,7 +167,7 @@ esp_err_t esp_entity_pad_bridge(esp_pad_t* source, esp_pad_t* sink)
     esp_list_t* list = source->bridge_pads;
     esp_list_t* last_list = NULL;
     esp_list_t* new_source_bridge_list = NULL;
-    esp_list_t* new_sink_bridge_list = NULL; 
+    esp_list_t* new_sink_bridge_list = NULL;
 
     while (list) {
         if (list->payload == sink) {
@@ -265,7 +265,7 @@ esp_err_t esp_pads_link(esp_pad_t* source, esp_pad_t* sink)
             return ESP_FAIL;
         }
     }
-    
+
     if (!sink_remote) {
         if (__esp_insert_remote_pad(sink, source) != ESP_OK) {
             __esp_remove_remote_pad(source, sink);
@@ -540,7 +540,7 @@ static esp_err_t entities_walk(esp_pad_t* pad, esp_media_event_cmd_t cmd, struct
     if (entity->ops && entity->ops->event_cb) {
         struct esp_video_buffer_element* out = vb;
         esp_err_t err = entity->ops->event_cb(pad, cmd, vb, (void**)&out);
-        
+
         if (err == ESP_ERR_NOT_FINISHED) {
             return ESP_ERR_NOT_FINISHED;
         }

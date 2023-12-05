@@ -177,7 +177,7 @@ static esp_err_t sim_camera_init(struct esp_video *video)
 static esp_err_t sim_camera_deinit(struct esp_video *video)
 {
     struct sim_camera *camera = (struct sim_camera *)video->priv;
-    
+
     // ret = esp_timer_delete(camera->capture_timer);
     // if (ret != ESP_OK) {
     //     ESP_VIDEO_LOGE("Failed to delete ret=%x", ret);
@@ -192,7 +192,7 @@ static esp_err_t sim_camera_deinit(struct esp_video *video)
 static esp_err_t sim_camera_start_capture(struct esp_video *video)
 {
     struct sim_camera *camera = (struct sim_camera *)video->priv;
-    
+
     // ret = esp_timer_start_periodic(camera->capture_timer, 1000000 / camera->fps);
     // if (ret != ESP_OK) {
     //     ESP_VIDEO_LOGE("Failed to start timer ret=%x", ret);
@@ -211,7 +211,7 @@ static esp_err_t sim_camera_start_capture(struct esp_video *video)
 static esp_err_t sim_camera_stop_capture(struct esp_video *video)
 {
     struct sim_camera *camera = (struct sim_camera *)video->priv;
-    
+
     // ret = esp_timer_stop(camera->capture_timer);
     // if (ret != ESP_OK) {
     //     ESP_VIDEO_LOGE("Failed to stop timer ret=%x", ret);

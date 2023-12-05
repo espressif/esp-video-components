@@ -28,7 +28,7 @@ struct esp_video_buffer_element;
 /**
  * @brief Video buffer element.
  */
-typedef SLIST_ENTRY(esp_video_buffer_element) esp_video_buffer_node_t; 
+typedef SLIST_ENTRY(esp_video_buffer_element) esp_video_buffer_node_t;
 
 /**
  * @brief Video buffer list.
@@ -47,18 +47,18 @@ struct esp_video_buffer_element {
     uint32_t index;                                 /*!< List node index */
     uint32_t valid_size;                            /*!< Valid data size */
     uint32_t valid_offset;                            /*!< Valid data offset */
-    uint8_t buffer[0];                              /*!< Buffer space to fill data */ 
+    uint8_t buffer[0];                              /*!< Buffer space to fill data */
 };
 
 /**
  * @brief Video buffer object.
  */
 struct esp_video_buffer {
-    esp_video_buffer_list_t free_list;              /*!< Free buffer elements list  */ 
+    esp_video_buffer_list_t free_list;              /*!< Free buffer elements list  */
     portMUX_TYPE lock;                              /*!< Buffer lock */
 
-    uint32_t element_count;                         /*!< Element count */ 
-    uint32_t element_size;                          /*!< Element buffer size without other member */ 
+    uint32_t element_count;                         /*!< Element count */
+    uint32_t element_size;                          /*!< Element buffer size without other member */
 
     struct esp_video_buffer_element element[0];     /*!< Element buffer */
 };
@@ -222,7 +222,7 @@ static inline struct esp_video_buffer_element *esp_video_buffer_get_element_by_i
 {
     uint32_t element_size = buffer->element_size + sizeof(struct esp_video_buffer_element);
     struct esp_video_buffer_element *element;
-    
+
     element = (struct esp_video_buffer_element *)((char *)buffer->element + element_size * index);
 
     return element;

@@ -449,7 +449,7 @@ typedef struct {
  * There should be at lease one undefined symble to be added in the camera driver in order to avoid
  * the optimization of the linker. Because otherwise the linker will ignore camera driver as it has
  * no other files depending on any symbols in it.
- * 
+ *
  * Some thing like this should be added in the CMakeLists.txt of the camera driver:
  *  target_link_libraries(${COMPONENT_LIB} INTERFACE "-u ov2640_detect")
  */

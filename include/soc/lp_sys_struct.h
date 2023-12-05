@@ -58,7 +58,7 @@ typedef volatile struct {
 1'b1:20M RC oscillator
 1'b0:40M XTAL divide 2*/
             uint32_t reserved9                     :    7;
-            uint32_t ena_sw_sel_sys_clk            :    1;  /*Enable Software to select lp_sys_clk source: 
+            uint32_t ena_sw_sel_sys_clk            :    1;  /*Enable Software to select lp_sys_clk source:
 1'b0: lp_sys_clk source is selected by HW, this is the default setting
 1'b1: lp_sys_clk source is selected by software*/
             uint32_t sw_sys_clk_src_sel            :    1;  /*lp_sys_clk source selection by software:
@@ -339,7 +339,7 @@ Bit[8]: sdio slave wakeup*/
     } hp_wakeup_ctrl;
     union {
         struct {
-            uint32_t lp_wakeup_src_en              :    15;  /*Bit[14]: monitor_timer3_wakeup enable  
+            uint32_t lp_wakeup_src_en              :    15;  /*Bit[14]: monitor_timer3_wakeup enable
 Bit[13]: monitor_timer2_wakeup enable
 Bit[12]: monitor_timer1_wakeup enable
 Bit[11]: monitor_timer0_wakeup enable

@@ -302,7 +302,7 @@ esp_err_t esp_video_get_buffer_offset(struct esp_video *video, uint32_t index, u
 uint8_t *esp_video_alloc_buffer(struct esp_video *video);
 
 /**
- * @brief Process a video buffer which receives data done. 
+ * @brief Process a video buffer which receives data done.
  *
  * @param video  Video object
  * @param buffer Video buffer allocated by "esp_video_alloc_buffer"
@@ -313,7 +313,7 @@ uint8_t *esp_video_alloc_buffer(struct esp_video *video);
 void esp_video_recvdone_buffer(struct esp_video *video, uint8_t *buffer, uint32_t size, uint32_t offset);
 
 /**
- * @brief Receive buffer from video device. 
+ * @brief Receive buffer from video device.
  *
  * @param video Video object
  * @param ticks Wait OS tick

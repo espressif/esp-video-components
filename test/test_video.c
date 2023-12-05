@@ -193,11 +193,11 @@ static void test_linux_posix_with_v4l2_operation_task(void *p)
 
         TEST_ASSERT_EQUAL_INT(VIDEO_BUFFER_SIZE, buf.length);
 
-        video_buffer_ptr[i] = mmap(NULL, 
-								   buf.length, 
-								   PROT_READ | PROT_WRITE, 
-								   MAP_SHARED, 
-								   fd, 
+        video_buffer_ptr[i] = mmap(NULL,
+								   buf.length,
+								   PROT_READ | PROT_WRITE,
+								   MAP_SHARED,
+								   fd,
 								   buf.m.offset);
         TEST_ASSERT_NOT_NULL(video_buffer_ptr[i]);
     }
@@ -223,7 +223,7 @@ static void test_linux_posix_with_v4l2_operation_task(void *p)
 		buf.memory = V4L2_MEMORY_MMAP;
 		ret = ioctl(fd, VIDIOC_DQBUF, &buf);
 		TEST_ESP_OK(ret);
-            
+
         TEST_ASSERT_EQUAL_INT(VIDEO_BUFFER_SIZE, buf.bytesused);
         TEST_ASSERT_EQUAL_MEMORY(VIDEO_BUFFER_DATA, video_buffer_ptr[buf.index], buf.bytesused);
         memset(video_buffer_ptr[buf.index], 0, buf.bytesused);

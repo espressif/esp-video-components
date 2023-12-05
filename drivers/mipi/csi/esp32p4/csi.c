@@ -278,7 +278,7 @@ static int esp_mipi_csi_gdma_config(esp_mipi_csi_obj_t *driv_obj)
     // Destination master select
     GDMA.ch[driv_obj->dma_channel_num].ctl0.dms = GDMA_BUFFER_MASTER;
 
-    // Source address increment. 1: no change, 0: increment. 
+    // Source address increment. 1: no change, 0: increment.
     GDMA.ch[driv_obj->dma_channel_num].ctl0.sinc = 0x1;
     // Destination address increment. 1: no change, 0: increment
     GDMA.ch[driv_obj->dma_channel_num].ctl0.dinc = 0x0;
@@ -298,7 +298,7 @@ static int esp_mipi_csi_gdma_config(esp_mipi_csi_obj_t *driv_obj)
     // Source burst length
     GDMA.ch[driv_obj->dma_channel_num].ctl1.arlen = 16;
     GDMA.ch[driv_obj->dma_channel_num].ctl1.arlen_en = 1;
-    // Destination burst length 
+    // Destination burst length
     GDMA.ch[driv_obj->dma_channel_num].ctl1.awlen = 16;
     GDMA.ch[driv_obj->dma_channel_num].ctl1.awlen_en = 1;
 
