@@ -11,42 +11,41 @@
 
 static const char *TAG = "esp_camera";
 
-esp_err_t esp_camera_ioctl(esp_camera_device_t handle, uint32_t cmd, void *value, size_t *size)
+esp_err_t esp_camera_ioctl(esp_camera_device_t *dev, uint32_t cmd, void *value, size_t *size)
 {
     esp_err_t ret = ESP_OK;
     if (handle == NULL) {
         return ESP_ERR_INVALID_ARG;
     }
 
-    esp_camera_ops_t *ops = (esp_camera_ops_t *)handle;
     switch (cmd) {
     case CAM_SENSOR_G_NAME:
         if (ops->get_name) {
-            ops->get_name(value, size);
+            ops->get_name(dev, value, size);
         }
         break;
     case CAM_SENSOR_G_FORMAT_ARRAY:
-        if (ops->query_support_formats(value)) {
+        if (ops->query_support_formats(dev, value)) {
             ret = ESP_FAIL;
         }
         break;
     case CAM_SENSOR_G_FORMAT:
-        if (ops->get_format(value)) {
+        if (ops->get_format(dev, value)) {
             ret = ESP_FAIL;
         }
         break;
     case CAM_SENSOR_G_CAP:
-        if (ops->query_support_capability(value)) {
+        if (ops->query_support_capability(dev, value)) {
             ret = ESP_FAIL;
         }
         break;
     case CAM_SENSOR_S_FORMAT:
-        if (ops->set_format(value)) {
+        if (ops->set_format(dev, value)) {
             ret = ESP_FAIL;
         }
         break;
     default:
-        if (ops->priv_ioctl(cmd, value)) {
+        if (ops->priv_ioctl(dev, cmd, value)) {
             ret = ESP_FAIL;
         }
         break;
@@ -60,6 +59,8 @@ esp_err_t esp_camera_init(const esp_camera_config_t *config)
     extern esp_camera_detect_fn_t __esp_camera_detect_fn_array_end;
 
     esp_camera_detect_fn_t *p;
+
+    esp_camera_driver_config_t cfg;
 
     if (config == NULL || config->sccb_num > 2 || config->dvp_num > 2) {
         ESP_LOGW(TAG, "Please validate camera config");
@@ -76,14 +77,26 @@ esp_err_t esp_camera_init(const esp_camera_config_t *config)
 
     for (p = &__esp_camera_detect_fn_array_start; p < &__esp_camera_detect_fn_array_end; ++p) {
         if (p->inf == CAMERA_INF_CSI &&  config->sccb_num != 0 && config->csi != NULL) {
-            esp_camera_device_t device = (*(p->fn))(config->csi);
+            cfg = {
+                .sccb_port = config->sccb[config->csi->sccb_config_index].port,
+                .xclk_pin = config->csi->xclk_pin,
+                .reset_pin = config->csi->reset_pin,
+                .pwdn_pin = config->csi->pwdn_pin,
+            };
+            esp_camera_device_t *cam_dev = (*(p->fn))(&cfg);
 
             // ToDo: initialize the csi driver and video layer
         }
 
         if (p->inf == CAMERA_INF_DVP &&  config->sccb_num != 0 && config->dvp_num > 0 && config->dvp != NULL) {
             for (size_t i = 0; i < config->dvp_num; i++) {
-                esp_camera_device_t device = (*(p->fn))(config->dvp + i);
+                cfg = {
+                    .sccb_port = config->sccb[config->dvp->sccb_config_index].port,
+                    .xclk_pin = config->dvp[i]->xclk_pin,
+                    .reset_pin = config->dvp[i]->reset_pin,
+                    .pwdn_pin = config->dvp[i]->pwdn_pin,
+                };
+                esp_camera_device_t *cam_dev = (*(p->fn))(&cfg);
 
                 // ToDo: initialize the dvp driver and video layer
             }
@@ -91,7 +104,8 @@ esp_err_t esp_camera_init(const esp_camera_config_t *config)
 
         if (p->inf == CAMERA_INF_SIM && config->sim_num && config->sim != NULL) {
             for (size_t i = 0; i < config->sim_num; i++) {
-                esp_camera_device_t device = (*(p->fn))(config->sim + i);
+                cfg = {};
+                esp_camera_device_t *cam_dev = (*(p->fn))(&cfg);
 
                 // ToDo: initialize the sim & video layer
             }
