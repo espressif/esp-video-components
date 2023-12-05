@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2023-2024 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2023 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -356,19 +356,7 @@ typedef struct sensor_format_info_array_s {
     const sensor_format_t *format_array;
 } sensor_format_array_info_t;
 
-typedef struct sensor_ops_s {
-    /* ISP */
-    int (*get_supported_para_value) (esp_camera_device_t *dev, uint32_t para_id, sensor_para_supported_value_t *value);
-    int (*get_para_value)           (esp_camera_device_t *dev, uint32_t para_id, uint32_t size, sensor_para_value_t *value);
-    int (*set_para_value)           (esp_camera_device_t *dev, uint32_t para_id, uint32_t size, sensor_para_value_t value);
-    /* Common */
-    int (*query_support_formats)    (esp_camera_device_t *dev, void *parry);
-    int (*query_support_capability) (esp_camera_device_t *dev, void *arg);
-    int (*set_format)               (esp_camera_device_t *dev, void *format);
-    int (*get_format)               (esp_camera_device_t *dev, void *ret_format);
-    int (*priv_ioctl)               (esp_camera_device_t *dev, unsigned int cmd, void *arg);
-    int (*get_name)                 (esp_camera_device_t *dev, void *name, size_t *size);
-} esp_camera_ops_t;
+typedef struct _esp_camera_ops esp_camera_ops_t;
 
 typedef struct {
     uint8_t sccb_port;
@@ -382,6 +370,20 @@ typedef struct {
     esp_camera_ops_t *ops;
     void *priv
 } esp_camera_device_t;
+
+typedef struct _esp_camera_ops {
+    /* ISP */
+    int (*get_supported_para_value) (esp_camera_device_t *dev, uint32_t para_id, sensor_para_supported_value_t *value);
+    int (*get_para_value)           (esp_camera_device_t *dev, uint32_t para_id, uint32_t size, sensor_para_value_t *value);
+    int (*set_para_value)           (esp_camera_device_t *dev, uint32_t para_id, uint32_t size, sensor_para_value_t value);
+    /* Common */
+    int (*query_support_formats)    (esp_camera_device_t *dev, void *parry);
+    int (*query_support_capability) (esp_camera_device_t *dev, void *arg);
+    int (*set_format)               (esp_camera_device_t *dev, void *format);
+    int (*get_format)               (esp_camera_device_t *dev, void *ret_format);
+    int (*priv_ioctl)               (esp_camera_device_t *dev, unsigned int cmd, void *arg);
+    int (*get_name)                 (esp_camera_device_t *dev, void *name, size_t *size);
+} esp_camera_ops_t;
 
 #if 0
 #define CAM_SENSOR_INIT_COMMON(SENSOR_NAME)  \
@@ -423,17 +425,17 @@ typedef struct {
 esp_err_t esp_camera_ioctl(esp_camera_device_t *dev, uint32_t cmd, void *value, size_t *size);
 
 typedef enum {
-    CAMERA_INF_CSI,
-    CAMERA_INF_DVP,
-    CAMERA_INF_SIM
-} camera_inf_t;
+    CAMERA_INTF_CSI,
+    CAMERA_INTF_DVP,
+    CAMERA_INTF_SIM
+} camera_intf_t;
 
 /**
  * Internal structure describing ESP_SYSTEM_INIT_FN startup functions
  */
 typedef struct {
-    esp_camera_device_t (*fn)(void *);   /*!< Pointer to the detect function */
-    camera_inf_t inf;                    /*!< Interface of the camera */
+    esp_camera_device_t *(*fn)(void *);   /*!< Pointer to the detect function */
+    camera_intf_t intf;                   /*!< Interface of the camera */
 } esp_camera_detect_fn_t;
 
 /**
@@ -454,10 +456,10 @@ typedef struct {
  *  target_link_libraries(${COMPONENT_LIB} INTERFACE "-u ov2640_detect")
  */
 #define ESP_CAMERA_DETECT_FN(f, i, ...) \
-    static esp_camera_device_t __VA_ARGS__ __esp_camera_detect_fn_##f(void *config); \
+    static esp_camera_device_t * __VA_ARGS__ __esp_camera_detect_fn_##f(void *config); \
     static __attribute__((used)) _SECTION_ATTR_IMPL(".esp_camera_detect_fn", __COUNTER__) \
-        esp_camera_detect_fn_t esp_camera_detect_fn_##f = { .fn = ( __esp_camera_detect_fn_##f), .inf = (i) }; \
-    static esp_camera_device_t __esp_camera_detect_fn_##f(void *config)
+        esp_camera_detect_fn_t esp_camera_detect_fn_##f = { .fn = ( __esp_camera_detect_fn_##f), .intf = (i) }; \
+    static esp_camera_device_t *__esp_camera_detect_fn_##f(void *config)
 
 typedef struct {
     uint8_t sccb_port;                  /*!< Specify I2C/I3C port used for SCCB */
