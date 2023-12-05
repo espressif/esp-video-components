@@ -11,7 +11,7 @@ set(requires "")
 
 include(${COMPONENT_DIR}/drivers/isp/sources.cmake)
 include(${COMPONENT_DIR}/drivers/mipi/csi/sources.cmake)
-include(${COMPONENT_DIR}/drivers/sccb/sources.cmake)
+include(${COMPONENT_DIR}/drivers/sccb_idf_master/sources.cmake)
 include(${COMPONENT_DIR}/drivers/sim/sources.cmake)
 
 if(CONFIG_ESP_VIDEO_API_LINUX)
