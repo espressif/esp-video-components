@@ -1,21 +1,8 @@
 menu "SCCB configuration"
-    choice SCCB_PERIPHERAL_DRIVER
-        bool "Peripherals used to implement SCCB"
-        default SCCB_IMPLEMENT_I2C
+    config SCCB_BASED_I3C_ENABLED
+        bool "Enable SCCB implemented by I3C "
+        default n
+        depends on IDF_TARGET_ESP32P4
         help
-            Select the peripheral driver used to implement SCCB.
-
-        config SCCB_IMPLEMENT_I2C
-            bool "I2C"
-        config SCCB_IMPLEMENT_I3C
-            bool "I3C"
-    endchoice
-
-    config SCCB_CLK_FREQ
-    int "SCCB clk frequency"
-    default 100000
-    range 100000 400000
-    help
-        Increasing this value can reduce the initialization time of the sensor.
-        Please refer to the relevant instructions of the sensor to adjust the value.
+            When enabled, I3C can be used to implement a SCCB port.
 endmenu

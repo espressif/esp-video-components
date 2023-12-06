@@ -4,7 +4,7 @@ endif()
 
 idf_component_register(SRCS ${srcs}
                        PRIV_INCLUDE_DIRS "private_include"
-                       PRIV_REQUIRES "esp-video"
+                       PRIV_REQUIRES "esp-video" "driver"
                        )
 
 if(CONFIG_CAMERA_SC2336_AUTO_DETECT)

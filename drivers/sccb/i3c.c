@@ -48,7 +48,7 @@ typedef uint8_t sem_t;
 #define ets_printf printf
 static void delay_us(uint32_t t)
 {
-    for (uint32_t tu = 0; tu < 10*t; tu++);
+    for (uint32_t tu = 0; tu < 10 * t; tu++);
 }
 #endif
 
@@ -237,14 +237,14 @@ int i3c_read(uint32_t addr, size_t len, uint8_t *data)
         i3c_mst_rx_data[x] = TEST_I3C_MST_MEM.rx_data_port;
         // printf("i3c_mst_rx_data[%d]: 0x%x\n", x, i3c_mst_rx_data[x]);
         for (y = 0; y < 4; y++) {
-            data[4*x + y] = (i3c_mst_rx_data[x] >> (8 * y)) & 0xFF;
+            data[4 * x + y] = (i3c_mst_rx_data[x] >> (8 * y)) & 0xFF;
         }
     }
     if (len % 4) {
         i3c_mst_rx_data[x] = TEST_I3C_MST_MEM.rx_data_port;
         // printf("i3c_mst_rx_data[%d]: 0x%x\n", x, i3c_mst_rx_data[x]);
         for (y = 0; y < len % 4; y++) {
-            data[4*x + y] = (i3c_mst_rx_data[x] >> (8 * y)) & 0xFF;
+            data[4 * x + y] = (i3c_mst_rx_data[x] >> (8 * y)) & 0xFF;
         }
     }
 
@@ -362,14 +362,14 @@ int i3c_read_mem(uint32_t addr, uint8_t reg, size_t len, uint8_t *data)
         i3c_mst_rx_data[x] = TEST_I3C_MST_MEM.rx_data_port;
         // printf("i3c_mst_rx_data[%d]: 0x%x\n", x, i3c_mst_rx_data[x]);
         for (y = 0; y < 4; y++) {
-            data[4*x + y] = (i3c_mst_rx_data[x] >> (8 * y)) & 0xFF;
+            data[4 * x + y] = (i3c_mst_rx_data[x] >> (8 * y)) & 0xFF;
         }
     }
     if (len % 4) {
         i3c_mst_rx_data[x] = TEST_I3C_MST_MEM.rx_data_port;
         // printf("i3c_mst_rx_data[%d]: 0x%x\n", x, i3c_mst_rx_data[x]);
         for (y = 0; y < len % 4; y++) {
-            data[4*x + y] = (i3c_mst_rx_data[x] >> (8 * y)) & 0xFF;
+            data[4 * x + y] = (i3c_mst_rx_data[x] >> (8 * y)) & 0xFF;
         }
     }
 
@@ -484,14 +484,14 @@ int i3c_read_mem16(uint32_t addr, uint16_t reg, size_t len, uint8_t *data)
         i3c_mst_rx_data[x] = TEST_I3C_MST_MEM.rx_data_port;
         // printf("i3c_mst_rx_data[%d]: 0x%x\n", x, i3c_mst_rx_data[x]);
         for (y = 0; y < 4; y++) {
-            data[4*x + y] = (i3c_mst_rx_data[x] >> (8 * y)) & 0xFF;
+            data[4 * x + y] = (i3c_mst_rx_data[x] >> (8 * y)) & 0xFF;
         }
     }
     if (len % 4) {
         i3c_mst_rx_data[x] = TEST_I3C_MST_MEM.rx_data_port;
         // printf("i3c_mst_rx_data[%d]: 0x%x\n", x, i3c_mst_rx_data[x]);
         for (y = 0; y < len % 4; y++) {
-            data[4*x + y] = (i3c_mst_rx_data[x] >> (8 * y)) & 0xFF;
+            data[4 * x + y] = (i3c_mst_rx_data[x] >> (8 * y)) & 0xFF;
         }
     }
 

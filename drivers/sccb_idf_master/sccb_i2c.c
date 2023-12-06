@@ -15,12 +15,11 @@
 
 #define LITTLETOBIG(x)          ((x<<8)|(x>>8))
 
- // support IDF 5.x
+// support IDF 5.x
 #ifndef portTICK_RATE_MS
 #define portTICK_RATE_MS portTICK_PERIOD_MS
 #endif
 
-#define SCCB_FREQ               CONFIG_SCCB_CLK_FREQ  /*!< I2C master frequency*/
 #define WRITE_BIT               I2C_MASTER_WRITE      /*!< I2C master write */
 #define READ_BIT                I2C_MASTER_READ       /*!< I2C master read */
 #define ACK_CHECK_EN            0x1                   /*!< I2C master will check ack from slave*/
@@ -30,7 +29,7 @@
 
 static const char *TAG = "SCCB";
 
-esp_err_t sccb_i2c_init(int port, int pin_sda, int pin_scl)
+esp_err_t sccb_i2c_init(int port, int pin_sda, int pin_scl, uint32_t freq)
 {
     i2c_config_t conf;
     esp_err_t ret;
@@ -42,7 +41,7 @@ esp_err_t sccb_i2c_init(int port, int pin_sda, int pin_scl)
     conf.sda_pullup_en = GPIO_PULLUP_ENABLE;
     conf.scl_io_num = pin_scl;
     conf.scl_pullup_en = GPIO_PULLUP_ENABLE;
-    conf.master.clk_speed = SCCB_FREQ;
+    conf.master.clk_speed = freq;
 
     if ((ret = i2c_param_config((i2c_port_t)port, &conf)) != ESP_OK) {
         return ret;
@@ -67,7 +66,9 @@ uint8_t i2c_read_reg8_val8(int port, uint8_t slv_addr, uint8_t reg)
     i2c_master_stop(cmd);
     ret = i2c_master_cmd_begin(port, cmd, 1000 / portTICK_RATE_MS);
     i2c_cmd_link_delete(cmd);
-    if (ret != ESP_OK) return -1;
+    if (ret != ESP_OK) {
+        return -1;
+    }
     cmd = i2c_cmd_link_create();
     i2c_master_start(cmd);
     i2c_master_write_byte(cmd, (slv_addr << 1) | READ_BIT, ACK_CHECK_EN);
@@ -112,7 +113,9 @@ uint8_t i2c_read_reg16_val8(int port, uint8_t slv_addr, uint16_t reg)
     i2c_master_stop(cmd);
     ret = i2c_master_cmd_begin(port, cmd, 1000 / portTICK_RATE_MS);
     i2c_cmd_link_delete(cmd);
-    if (ret != ESP_OK) return -1;
+    if (ret != ESP_OK) {
+        return -1;
+    }
     cmd = i2c_cmd_link_create();
     i2c_master_start(cmd);
     i2c_master_write_byte(cmd, (slv_addr << 1) | READ_BIT, ACK_CHECK_EN);
@@ -162,7 +165,9 @@ uint16_t i2c_read_reg16_val16(int port, uint8_t slv_addr, uint16_t reg)
     i2c_master_stop(cmd);
     ret = i2c_master_cmd_begin(port, cmd, 1000 / portTICK_RATE_MS);
     i2c_cmd_link_delete(cmd);
-    if (ret != ESP_OK) return -1;
+    if (ret != ESP_OK) {
+        return -1;
+    }
 
     cmd = i2c_cmd_link_create();
     i2c_master_start(cmd);
@@ -213,7 +218,9 @@ uint16_t i2c_read_reg8_val16(int port, uint8_t slv_addr, uint8_t reg)
     i2c_master_stop(cmd);
     ret = i2c_master_cmd_begin(port, cmd, 1000 / portTICK_RATE_MS);
     i2c_cmd_link_delete(cmd);
-    if (ret != ESP_OK) return -1;
+    if (ret != ESP_OK) {
+        return -1;
+    }
 
     cmd = i2c_cmd_link_create();
     i2c_master_start(cmd);

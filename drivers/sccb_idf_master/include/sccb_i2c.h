@@ -25,7 +25,7 @@ extern "C" {
  *     - ESP_ERR_INVALID_ARG Parameter error
  *     - ESP_FAIL Driver installation error
  */
-esp_err_t sccb_i2c_init(int port, int pin_sda, int pin_scl);
+esp_err_t sccb_i2c_init(int port, int pin_sda, int pin_scl, uint32_t freq);
 
 /**
  * @brief Delete I2C driver used by SCCB bus
