@@ -13,6 +13,7 @@
 #include "freertos/semphr.h"
 #include "esp_err.h"
 #include "esp_video_buffer.h"
+#include "esp_camera.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -103,6 +104,8 @@ struct esp_video {
     uint32_t buffer_count;                  /*!< User configured buffer count */
     uint32_t buffer_size;                   /*!< User configured buffer size */
 
+    esp_camera_device_t *cam_dev;           /*!< Camera device object */
+
     esp_video_buffer_list_t done_list;      /*!< Done buffer elements list  */
     portMUX_TYPE lock;                      /*!< Buffer lock */
     SemaphoreHandle_t done_sem;             /*!< Buffer sync semaphore */
@@ -111,30 +114,22 @@ struct esp_video {
 };
 
 /**
- * @brief Initialize video system.
- *
- * @param None
- *
- * @return
- *      - ESP_OK on success
- *      - Others if failed
- */
-esp_err_t esp_video_init(void);
-
-/**
  * @brief Create video object.
  *
  * @param name         video device name
+ * @param cam_dev      camera devcie
  * @param ops          video operations
- * @param priv         video private data
  * @param buffer_count video buffer count for lowlevel driver
  * @param buffer_size  video buffer size for lowlevel driver
+ * @param priv         video private data
  *
  * @return
  *      - Video object pointer on success
  *      - NULL if failed
  */
-struct esp_video *esp_video_create(const char *name, const struct esp_video_ops *ops, void *priv, uint32_t buffer_count, uint32_t buffer_size);
+struct esp_video *esp_video_create(const char *name, esp_camera_device_t *cam_dev,
+                                   const struct esp_video_ops *ops, uint32_t buffer_count,
+                                   uint32_t buffer_size,  void *priv);
 
 /**
  * @brief Destroy video object.

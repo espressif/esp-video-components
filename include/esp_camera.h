@@ -61,6 +61,7 @@ extern "C" {
 #define    CAM_SENSOR_OPS_CLASS_3A       0X01
 #define    CAM_SENSOR_OPS_CLASS_LENS     0X02
 #define    CAM_SENSOR_OPS_CLASS_LED      0X03
+#define    CAM_SENSOR_OPS_CLASS_SIM      0X04   /*!< Used for simulation camera */
 
 /* Set ops */
 #define    CAM_SENSOR_S_HW_RESET         _SENSOR_IOW(CAM_SENSOR_OPS_CLASS_DEFAULT,0x01)  // Hardware reset
@@ -125,6 +126,15 @@ extern "C" {
 #define    CAM_SENSOR_G_INT_TIME        _SENSOR_IOR(CAM_SENSOR_OPS_CLASS_3A,0x03)         // Integral time
 #define    CAM_SENSOR_G_FLASH_LED       _SENSOR_IOR(CAM_SENSOR_OPS_CLASS_LED,0x01)
 #define    CAM_SENSOR_G_LENS            _SENSOR_IOR(CAM_SENSOR_OPS_CLASS_LENS,0x01)
+
+/*!< Simulation camera commands */
+#define    CAM_SIM_S_RXCB               _SENSOR_IOW(CAM_SENSOR_OPS_CLASS_SIM, 0x01)     /*!< Set receive callback function */
+
+/*!< Simulation camera receive callback parameters */
+struct sim_cam_rx {
+    void (*cb)(void *priv, const uint8_t *buffer, size_t n);    /*!< Callback function */
+    void *priv;                                                 /*!< Callback private data */
+};
 
 typedef enum {
     GAINCEILING_2X,
@@ -486,6 +496,7 @@ typedef struct {
 } esp_camera_dvp_config_t;
 
 typedef struct {
+    int id;
 } esp_camera_sim_config_t;
 
 typedef struct {

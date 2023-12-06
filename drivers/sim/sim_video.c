@@ -6,86 +6,59 @@
 
 #include <stdlib.h>
 #include <string.h>
-#include "esp_timer.h"
 #include "esp_video.h"
 #include "esp_video_log.h"
-#include "sim_picture.h"
 
-#define SIM_CAMERA_DEVICE_NAME      CONFIG_SIMULATED_INTF_DEVICE_NAME
 #define SIM_CAMERA_BUFFER_COUNT     CONFIG_SIMULATED_INTF_DEVICE_BUFFER_COUNT
-#define SIM_CAMERA_COUNT            CONFIG_SIMULATED_INTF_DEVICE_COUNT
 #define SIM_CAMERA_BUFFER_SIZE      (sim_picture_jpeg_len)
 
-struct sim_video {
-    esp_timer_handle_t capture_timer;
-    int fps;
-};
+extern unsigned int sim_picture_jpeg_len;
 
 static const char *TAG = "sim_video";
 
-static void sim_video_capture_timer_isr(void *arg)
+static void IRAM_ATTR sim_video_rxcb(void *arg, const uint8_t *buffer, size_t n)
 {
-    uint8_t *buffer;
+    uint8_t *video_buffer;
     struct esp_video *video = (struct esp_video *)arg;
 
-    buffer = esp_video_alloc_buffer(video);
-    if (!buffer) {
+    assert(n <= SIM_CAMERA_BUFFER_SIZE);
+
+    video_buffer = esp_video_alloc_buffer(video);
+    if (!video_buffer) {
         ESP_EARLY_LOGE(TAG, "Failed to allocte video buffer");
         return;
     }
 
-    memcpy(buffer, sim_picture_jpeg, sim_picture_jpeg_len);
-    esp_video_recvdone_buffer(video, buffer, sim_picture_jpeg_len, 0);
+    memcpy(video_buffer, buffer, n);
+    esp_video_recvdone_buffer(video, video_buffer, n, 0);
 }
 
 static esp_err_t sim_video_init(struct esp_video *video)
 {
-    esp_err_t ret;
-    struct sim_video *sim_video = (struct sim_video *)video->priv;
-
-    sim_video->capture_timer = NULL;
-    sim_video->fps = 0;
-
-    esp_timer_create_args_t capture_timer_args = {
-        .callback = sim_video_capture_timer_isr,
-        .dispatch_method = ESP_TIMER_ISR,
-        .arg = video,
-        .name = "sim_video_capture",
-    };
-
-    ret = esp_timer_create(&capture_timer_args, &sim_video->capture_timer);
-    if (ret != ESP_OK) {
-        ESP_VIDEO_LOGE("Failed to create timer ret=%x", ret);
-        return ret;
-    }
-
     return ESP_OK;
 }
 
 static esp_err_t sim_video_deinit(struct esp_video *video)
 {
-    esp_err_t ret;
-    struct sim_video *sim_video = (struct sim_video *)video->priv;
-
-    ret = esp_timer_delete(sim_video->capture_timer);
-    if (ret != ESP_OK) {
-        ESP_VIDEO_LOGE("Failed to delete ret=%x", ret);
-        return ret;
-    }
-
-    sim_video->capture_timer = NULL;
-
     return ESP_OK;
 }
 
 static esp_err_t sim_video_start_capture(struct esp_video *video)
 {
     esp_err_t ret;
-    struct sim_video *sim_video = (struct sim_video *)video->priv;
+    int flags = 1;
+    struct sim_cam_rx param = {
+        .cb   = sim_video_rxcb,
+        .priv = video
+    };
 
-    ret = esp_timer_start_periodic(sim_video->capture_timer, 1000000 / sim_video->fps);
+    ret = esp_camera_ioctl(video->cam_dev, CAM_SIM_S_RXCB, &param, NULL);
     if (ret != ESP_OK) {
-        ESP_VIDEO_LOGE("Failed to start timer ret=%x", ret);
+        return ret;
+    }
+
+    ret = esp_camera_ioctl(video->cam_dev, CAM_SENSOR_S_STREAM, &flags, NULL);
+    if (ret != ESP_OK) {
         return ret;
     }
 
@@ -95,11 +68,10 @@ static esp_err_t sim_video_start_capture(struct esp_video *video)
 static esp_err_t sim_video_stop_capture(struct esp_video *video)
 {
     esp_err_t ret;
-    struct sim_video *sim_video = (struct sim_video *)video->priv;
+    int flags = 0;
 
-    ret = esp_timer_stop(sim_video->capture_timer);
+    ret = esp_camera_ioctl(video->cam_dev, CAM_SENSOR_S_STREAM, &flags, NULL);
     if (ret != ESP_OK) {
-        ESP_VIDEO_LOGE("Failed to stop timer ret=%x", ret);
         return ret;
     }
 
@@ -108,9 +80,13 @@ static esp_err_t sim_video_stop_capture(struct esp_video *video)
 
 static esp_err_t sim_video_set_format(struct esp_video *video, const struct esp_video_format *format)
 {
-    struct sim_video *sim_video = (struct sim_video *)video->priv;
+    esp_err_t ret;
+    int fps = format->fps;
 
-    sim_video->fps = (int)format->fps;
+    ret = esp_camera_ioctl(video->cam_dev, CAM_SENSOR_S_FPS, &fps, NULL);
+    if (ret != ESP_OK) {
+        return ret;
+    }
 
     return ESP_OK;
 }
@@ -150,24 +126,22 @@ static const struct esp_video_ops s_sim_video_ops = {
     .description   = sim_video_description
 };
 
-esp_err_t sim_initialize_video_device(void)
+esp_err_t sim_create_camera_video_device(esp_camera_device_t *cam_dev)
 {
-    int ret;
-    char *name;
+    esp_err_t ret;
+    char name[64];
+    size_t n;
     struct esp_video *video;
-    struct sim_video *sim_video;
 
-    for (int i = 0; i < SIM_CAMERA_COUNT; i++) {
-        ret = asprintf(&name, "%s%d", SIM_CAMERA_DEVICE_NAME, i);
-        assert(ret > 0);
+    ret = esp_camera_ioctl(cam_dev, CAM_SENSOR_G_NAME, name, &n);
+    if (ret != ESP_OK) {
+        return ret;
+    }
 
-        sim_video = heap_caps_malloc(sizeof(struct sim_video), MALLOC_CAP_8BIT | MALLOC_CAP_INTERNAL);
-        assert(sim_video);
-
-        video = esp_video_create(name, &s_sim_video_ops, sim_video,
-                                 SIM_CAMERA_BUFFER_COUNT, SIM_CAMERA_BUFFER_SIZE);
-        assert(video);
-        free(name);
+    video = esp_video_create(name, cam_dev, &s_sim_video_ops, SIM_CAMERA_BUFFER_COUNT,
+                             SIM_CAMERA_BUFFER_SIZE, NULL);
+    if (!video) {
+        return ESP_FAIL;
     }
 
     return ESP_OK;

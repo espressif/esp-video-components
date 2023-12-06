@@ -42,7 +42,6 @@ void esp32p4_hw_init(void);
 static void init(void)
 {
     if (!s_inited) {
-        TEST_ESP_OK(esp_video_init());
         // esp32p4_hw_init();
         for (int i = 0; i < VIDEO_COUNT; i++) {
             s_done_sem[i] = xSemaphoreCreateBinary();
@@ -62,14 +61,14 @@ static bool camera_test_fps(int fd, uint16_t times)
     for (size_t i = 0; i < times; i++) {
         struct v4l2_buffer buf;
 
-		memset(&buf, 0, sizeof(buf));
-		buf.type   = type;
-		buf.memory = V4L2_MEMORY_MMAP;
+        memset(&buf, 0, sizeof(buf));
+        buf.type   = type;
+        buf.memory = V4L2_MEMORY_MMAP;
         // printf("%s %d line\r\n", __func__, __LINE__);
-		ret = ioctl(fd, VIDIOC_DQBUF, &buf);
-		TEST_ESP_OK(ret);
-		ret = ioctl(fd, VIDIOC_QBUF, &buf);
-		TEST_ESP_OK(ret);
+        ret = ioctl(fd, VIDIOC_DQBUF, &buf);
+        TEST_ESP_OK(ret);
+        ret = ioctl(fd, VIDIOC_QBUF, &buf);
+        TEST_ESP_OK(ret);
         num++;
     }
     tick = xTaskGetTickCount() - tick;
@@ -90,8 +89,8 @@ static void test_linux_posix_with_v4l2_operation_task(void *p)
     char *name;
     int count;
     TickType_t tick;
-	struct v4l2_requestbuffers req;
-	struct v4l2_capability cap;
+    struct v4l2_requestbuffers req;
+    struct v4l2_capability cap;
     struct v4l2_streamparm param;
     uint8_t *video_buffer_ptr[VIDEO_BUFFER_NUM];
 
@@ -105,9 +104,9 @@ static void test_linux_posix_with_v4l2_operation_task(void *p)
     TEST_ASSERT_GREATER_OR_EQUAL(0, fd);
     printf("fd=%d\r\n", fd);
 
-	memset(&cap, 0, sizeof(cap));
-	ret = ioctl(fd, VIDIOC_QUERYCAP, &cap);
-	TEST_ESP_OK(ret);
+    memset(&cap, 0, sizeof(cap));
+    ret = ioctl(fd, VIDIOC_QUERYCAP, &cap);
+    TEST_ESP_OK(ret);
 
     ret = asprintf(&name, "%s%d", VIDEO_DEVICE_NAME, index);
     TEST_ASSERT_GREATER_THAN(0, ret);
@@ -116,11 +115,11 @@ static void test_linux_posix_with_v4l2_operation_task(void *p)
     TEST_ASSERT_EQUAL_STRING(name, cap.driver);
     free(name);
 
-	memset(&req, 0, sizeof(req));
-	req.count  = VIDEO_BUFFER_NUM;
-	req.type   = type;
-	req.memory = V4L2_MEMORY_MMAP;
-	ret = ioctl(fd, VIDIOC_REQBUFS, &req);
+    memset(&req, 0, sizeof(req));
+    req.count  = VIDEO_BUFFER_NUM;
+    req.type   = type;
+    req.memory = V4L2_MEMORY_MMAP;
+    ret = ioctl(fd, VIDIOC_REQBUFS, &req);
     TEST_ESP_OK(ret);
 
     for (int i = 0; i < VIDEO_BUFFER_NUM; i++) {
@@ -136,11 +135,11 @@ static void test_linux_posix_with_v4l2_operation_task(void *p)
         // TEST_ASSERT_EQUAL_INT(VIDEO_BUFFER_SIZE, buf.length);
 
         video_buffer_ptr[i] = mmap(NULL,
-								   buf.length,
-								   PROT_READ | PROT_WRITE,
-								   MAP_SHARED,
-								   fd,
-								   buf.m.offset);
+                                   buf.length,
+                                   PROT_READ | PROT_WRITE,
+                                   MAP_SHARED,
+                                   fd,
+                                   buf.m.offset);
         TEST_ASSERT_NOT_NULL(video_buffer_ptr[i]);
     }
 
@@ -149,7 +148,7 @@ static void test_linux_posix_with_v4l2_operation_task(void *p)
     param.type                                  = type;
     param.parm.capture.timeperframe.numerator   = 1;
     param.parm.capture.timeperframe.denominator = fps;
-	ret = ioctl(fd, VIDIOC_S_PARM, &param);
+    ret = ioctl(fd, VIDIOC_S_PARM, &param);
     TEST_ESP_OK(ret);
 
     ret = ioctl(fd, VIDIOC_STREAMON, &type);
@@ -161,12 +160,12 @@ static void test_linux_posix_with_v4l2_operation_task(void *p)
     while (1) {
         struct v4l2_buffer buf;
 
-		memset(&buf, 0, sizeof(buf));
-		buf.type   = type;
-		buf.memory = V4L2_MEMORY_MMAP;
+        memset(&buf, 0, sizeof(buf));
+        buf.type   = type;
+        buf.memory = V4L2_MEMORY_MMAP;
         // printf("%s %d line\r\n", __func__, __LINE__);
-		ret = ioctl(fd, VIDIOC_DQBUF, &buf);
-		TEST_ESP_OK(ret);
+        ret = ioctl(fd, VIDIOC_DQBUF, &buf);
+        TEST_ESP_OK(ret);
 
         // TEST_ASSERT_EQUAL_INT(VIDEO_BUFFER_SIZE, buf.bytesused);
         // TEST_ASSERT_EQUAL_MEMORY(VIDEO_BUFFER_DATA, video_buffer_ptr[buf.index], buf.bytesused);
@@ -176,7 +175,7 @@ static void test_linux_posix_with_v4l2_operation_task(void *p)
         for (uint32_t loop = buf.m.offset; loop < buf.m.offset + 16; loop++) {
             printf("%02x ", video_buffer_ptr[buf.index][loop]);
         }
-         printf("\r\n");
+        printf("\r\n");
 
         // printf("\r\ndata2:\r\n");
         // for (uint32_t loop = buf.bytesused - 16; loop < buf.bytesused; loop++) {
@@ -184,8 +183,8 @@ static void test_linux_posix_with_v4l2_operation_task(void *p)
         // }
         // printf("\r\n");
         memset(video_buffer_ptr[buf.index], 0, buf.bytesused);
-		ret = ioctl(fd, VIDIOC_QBUF, &buf);
-		TEST_ESP_OK(ret);
+        ret = ioctl(fd, VIDIOC_QBUF, &buf);
+        TEST_ESP_OK(ret);
 
         count++;
         // sleep(1);
