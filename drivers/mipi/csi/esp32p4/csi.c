@@ -12,28 +12,22 @@
 #include "esp_intr_alloc.h"
 #include "esp_log.h"
 #include "esp_check.h"
-
-#include "soc/gdma_struct.h"
 #include "rom/cache.h"
-
-#include "soc/lp_sys_struct.h"
-#include "soc/sys_clkrst_struct.h"
-#include "soc/periph_addr.h"
-
-#include "soc/core0_interrupt_reg.h"
+#include "soc/dw_gdma_struct.h"
+#include "soc/interrupt_core0_reg.h"
 
 #include "mipi_csi_hal.h"
-
 #include "mipi_csi.h"
-
 #include "esp_color_formats.h"
 
 #define MIPI_CSI_HANDLE_NULL_ERROR_STR               "cam handle can't be NULL"
 #define MIPI_CSI_NULL_POINTER_CHECK(tag, p)          ESP_RETURN_ON_FALSE((p), ESP_ERR_INVALID_ARG, tag, "input parameter '"#p"' is NULL")
 
-#define MIPI_CSI_DMA_TRANS_SAR  (DR_REG_MIPI_CSI_MEM_BASE)
-#define GDMA_INTR_SOURCE        (((CORE0_INTERRUPT_GDMA_INT_MAP_REG - DR_REG_CORE0_INTERRUPT_BASE) / 4))
-#define GDMA_BUFFER_MASTER      (1)
+extern uint32_t MIPI_CSI_MEM;
+#define MIPI_CSI_DMA_TRANS_SAR  &MIPI_CSI_MEM
+
+#define GDMA_INTR_SOURCE        (((INTERRUPT_CORE0_GDMA_INT_MAP_REG - DR_REG_INTERRUPT_CORE0_BASE) / 4))
+#define DW_GDMA_BUFFER_MASTER   (1)
 #define CONFIG_CSI_TR_WIDTH     (64)
 
 #define AXI_DMA_CH_ENA_S        (0)
@@ -67,35 +61,27 @@ typedef struct esp_mipi_csi_obj {
 
 const char *MIPI_CSI_TAG = "MIPI_CSI";
 
-static inline void delay_us(uint32_t t)
+static inline void axi_dma_ll_channel_ena(uint8_t channel)
 {
-    ets_delay_us(t);
+    DW_GDMA.chen0.val = 0x101 << channel;
 }
 
-static inline void axi_dma_ll_channel_ena(uint32_t ch_mask)
+static inline void axi_dma_ll_channel_disable(uint8_t channel)
 {
-    typeof(GDMA.chen0) chen_reg0 = GDMA.chen0;
-    chen_reg0.val |= ((ch_mask << AXI_DMA_CH_ENA_S) | (ch_mask << AXI_DMA_CH_ENA_WE_S));
-    GDMA.chen0 = chen_reg0;
-}
-
-static inline void axi_dma_ll_channel_disable(uint32_t ch_mask)
-{
-    typeof(GDMA.chen0) chen_reg0 = GDMA.chen0;
-    chen_reg0.val &= ~(ch_mask << AXI_DMA_CH_ENA_S);
-    chen_reg0.val |= (ch_mask << AXI_DMA_CH_ENA_WE_S);
-    GDMA.chen0 = chen_reg0;
+    DW_GDMA.chen0.val = 0x100 << channel;
+    return;
 }
 
 static inline void esp_mipi_csi_enable_gdma_with_addr(esp_mipi_csi_obj_t *csi_cam_obj, uint32_t start_gdma_addr)
 {
-    GDMA.ch[csi_cam_obj->dma_channel_num].dar0 = start_gdma_addr;
-    axi_dma_ll_channel_ena((0x1 << csi_cam_obj->dma_channel_num));
+    DW_GDMA.ch[csi_cam_obj->dma_channel_num].dar0.dar0 = start_gdma_addr;
+    axi_dma_ll_channel_ena(csi_cam_obj->dma_channel_num);
+    return;
 }
 
 static inline void esp_mipi_csi_disable_gdma(esp_mipi_csi_obj_t *csi_cam_obj)
 {
-    axi_dma_ll_channel_disable((0x1 << csi_cam_obj->dma_channel_num));
+    axi_dma_ll_channel_disable(csi_cam_obj->dma_channel_num);
 }
 
 static inline uint8_t esp_mipi_csi_get_dma_align(void)
@@ -133,7 +119,7 @@ static inline bool esp_mipi_csi_get_next_free_framebuf(esp_mipi_csi_obj_t *csi_c
             }
             csi_cam_obj->frames.fb.len = csi_cam_obj->driver_config->fb_size;
             Cache_WriteBack_Addr(CACHE_MAP_L1_DCACHE | CACHE_MAP_L2_CACHE,
-                (uint32_t)csi_cam_obj->frames.fb.buf + csi_cam_obj->frames.fb_offset, csi_cam_obj->driver_config->fb_size);
+                                 (uint32_t)csi_cam_obj->frames.fb.buf + csi_cam_obj->frames.fb_offset, csi_cam_obj->driver_config->fb_size);
             csi_cam_obj->frames.dma_buf_addr = dma_access_addr_map((uint32_t)csi_cam_obj->frames.fb.buf + csi_cam_obj->frames.fb_offset);// get dma addr;
             // esp_rom_printf("%s %d line 0x%x\r\n", __func__, __LINE__, csi_cam_obj->frames.dma_buf_addr);
             return true;
@@ -180,11 +166,11 @@ static mipi_csi_driv_config_t *mipi_csi_new_driver_cfg(mipi_csi_port_config_t *c
     if (fb_size_in_bits % 8) {
         ESP_LOGD(MIPI_CSI_TAG, "framesize not 8bit aligned");
         free(cfg);
-        return cfg;
+        return NULL;
     }
 
     cfg->fb_size = fb_size_in_bits >> 3;
-    ESP_LOGD(MIPI_CSI_TAG, "FB Size=%d", cfg->fb_size);
+    // ESP_LOGD(MIPI_CSI_TAG, "FB Size=%u", cfg->fb_size);
     return cfg;
 }
 
@@ -197,116 +183,94 @@ static esp_err_t mipi_csi_del_driver_cfg(mipi_csi_driv_config_t *config)
     return ESP_OK;
 }
 
-static void mipi_csi_driv_grab_mode_gdma_init(void)
-{
-    // VDDIO2, VDDIO3 2.5V for D-PHY
-    // VDDIO(V) = (dref < 9) ? ((0.5 + dref * 0.05) * (1 + 0.25 * mul)) : ((1 + (dref - 9) * 0.1) * (1 + 0.25 * mul));
-    LP_SYS.io_ldo_ctrl0.ana_0p1a_dref_0 = 9;
-    LP_SYS.io_ldo_ctrl0.ana_0p1a_mul_0 = 6;
-    LP_SYS.io_ldo_ctrl0.ana_0p1a_xpd_0 = 1;
-
-    LP_SYS.io_ldo_ctrl0.ana_0p1a_dref_1 = 9;
-    LP_SYS.io_ldo_ctrl0.ana_0p1a_mul_1 = 6;
-    LP_SYS.io_ldo_ctrl0.ana_0p1a_xpd_1 = 1;
-
-    SYS_CLKRST.gdma_ctrl.gdma_apb_clk_en = 1;
-    SYS_CLKRST.gdma_ctrl.gdma_clk_en = 1;
-    SYS_CLKRST.gdma_ctrl.gdma_clk_sync_en = 1;
-    SYS_CLKRST.gdma_ctrl.gdma_clk_force_sync_en = 1;
-    SYS_CLKRST.gdma_ctrl.gdma_rstn = 0;
-    SYS_CLKRST.gdma_ctrl.gdma_rstn = 1;
-}
-
 static int esp_mipi_csi_gdma_config(esp_mipi_csi_obj_t *driv_obj)
 {
     // Block transfer size
     uint32_t csi_block_ts;
-
-    mipi_csi_driv_grab_mode_gdma_init();
 
     // To do, find a free channle to use. if not, just return err.
     driv_obj->dma_channel_num = TEST_AXIDMA_CH;
 
     // if ISP used, this should be ISP output bits_per_pixel. otherwise this should be sensor output bits_per_pixel
     csi_block_ts = driv_obj->driver_config->width * driv_obj->driver_config->height * driv_obj->driver_config->out_type_bits_per_pixel / CONFIG_CSI_TR_WIDTH;
-    ESP_LOGD(MIPI_CSI_TAG, "DMA Ch=%u, csi block trans size=%u", driv_obj->dma_channel_num, csi_block_ts);
+    // ESP_LOGD(MIPI_CSI_TAG, "DMA Ch=%u, csi block trans size=%u", driv_obj->dma_channel_num, csi_block_ts);
 
     // Enable GDMA(global control)
-    GDMA.cfg0.val = 0x0;
-    GDMA.cfg0.int_en = 0x1;
-    GDMA.cfg0.dmac_en = 0x1;
+
+    DW_GDMA.cfg0.val = 0x0;
+    DW_GDMA.cfg0.int_en = 0x1;
+    DW_GDMA.cfg0.dmac_en = 0x1;
 
     // CSI DMA interrupt enable
     // INTSTATUS_ENABLEREG
-    GDMA.ch[driv_obj->dma_channel_num].int_st_ena0.val = 0x0;
+    DW_GDMA.ch[driv_obj->dma_channel_num].int_st_ena0.val = 0x0;
     // INTSIGNAL_ENABLEREG
-    GDMA.ch[driv_obj->dma_channel_num].int_sig_ena0.val = 0x0;
+    DW_GDMA.ch[driv_obj->dma_channel_num].int_sig_ena0.val = 0x0;
     // INTSTATUS_ENABLEREG, enable trans done interrupt
-    GDMA.ch[driv_obj->dma_channel_num].int_st_ena0.dma_tfr_done = 0x1;
+    DW_GDMA.ch[driv_obj->dma_channel_num].int_st0.dma_tfr_done_intstat = 0x1;
     // enable trans done single
-    GDMA.ch[driv_obj->dma_channel_num].int_sig_ena0.dma_tfr_done = 0x1;
+    DW_GDMA.ch[driv_obj->dma_channel_num].int_sig_ena0.enable_dma_tfr_done_intsignal = 0x1;
 
-    GDMA.ch[driv_obj->dma_channel_num].cfg0.val = 0x0;
+    DW_GDMA.ch[driv_obj->dma_channel_num].cfg0.val = 0x0;
     // Define the number of AXI Unique ID's supported for the AXI write/read channel
-    GDMA.ch[driv_obj->dma_channel_num].cfg0.wr_uid = 0x2;
-    GDMA.ch[driv_obj->dma_channel_num].cfg0.rd_uid = 0x2;
+    DW_GDMA.ch[driv_obj->dma_channel_num].cfg0.wr_uid = 0x2;
+    DW_GDMA.ch[driv_obj->dma_channel_num].cfg0.rd_uid = 0x2;
     // Source Mutil Block Transfer Type, 0x00 is contiguous
-    GDMA.ch[driv_obj->dma_channel_num].cfg0.src_multblk_type = 0x0;
+    DW_GDMA.ch[driv_obj->dma_channel_num].cfg0.src_multblk_type = 0x0;
     // Destination Mutil Block Transfer Type, 0x00 is contiguous
-    GDMA.ch[driv_obj->dma_channel_num].cfg0.dst_multblk_type = 0x0;
-    GDMA.ch[driv_obj->dma_channel_num].cfg1.val = 0x0;
+    DW_GDMA.ch[driv_obj->dma_channel_num].cfg0.dst_multblk_type = 0x0;
+    DW_GDMA.ch[driv_obj->dma_channel_num].cfg1.val = 0x0;
     // Transfer type and flow control, 0x4: transfer type is peripheral to memory and flow controller is source peripheral
-    GDMA.ch[driv_obj->dma_channel_num].cfg1.tt_fc = 0x4;
-    GDMA.ch[driv_obj->dma_channel_num].cfg1.hs_sel_src = 0x0;
-    GDMA.ch[driv_obj->dma_channel_num].cfg1.hs_sel_dst = 0x0;
+    DW_GDMA.ch[driv_obj->dma_channel_num].cfg1.tt_fc = 0x4;
+    DW_GDMA.ch[driv_obj->dma_channel_num].cfg1.hs_sel_src = 0x0;
+    DW_GDMA.ch[driv_obj->dma_channel_num].cfg1.hs_sel_dst = 0x0;
     // Assigns a hardware handshaking interface
-    GDMA.ch[driv_obj->dma_channel_num].cfg1.src_per = 0x1;
-    GDMA.ch[driv_obj->dma_channel_num].cfg1.dst_per = 0x0;
+    DW_GDMA.ch[driv_obj->dma_channel_num].cfg1.src_per = 0x1;
+    DW_GDMA.ch[driv_obj->dma_channel_num].cfg1.dst_per = 0x0;
     // Source outstanding request limit
-    GDMA.ch[driv_obj->dma_channel_num].cfg1.src_osr_lmt = 0x1;
-    GDMA.ch[driv_obj->dma_channel_num].cfg1.dst_osr_lmt = 0x4;
+    DW_GDMA.ch[driv_obj->dma_channel_num].cfg1.src_osr_lmt = 0x1;
+    DW_GDMA.ch[driv_obj->dma_channel_num].cfg1.dst_osr_lmt = 0x4;
     // Source Address Register
-    GDMA.ch[driv_obj->dma_channel_num].sar0 = MIPI_CSI_DMA_TRANS_SAR;
+    DW_GDMA.ch[driv_obj->dma_channel_num].sar0.sar0 = (uint32_t)MIPI_CSI_DMA_TRANS_SAR;
     // Destination Address Register
-    GDMA.ch[driv_obj->dma_channel_num].dar0 = driv_obj->frames.dma_buf_addr;
+    DW_GDMA.ch[driv_obj->dma_channel_num].dar0.dar0 = driv_obj->frames.dma_buf_addr;
 
     // Block transfer size
-    GDMA.ch[driv_obj->dma_channel_num].block_ts0.val = csi_block_ts - 1;
+    DW_GDMA.ch[driv_obj->dma_channel_num].block_ts0.val = csi_block_ts - 1;
 
-    GDMA.ch[driv_obj->dma_channel_num].ctl0.val = 0x0;
-    GDMA.ch[driv_obj->dma_channel_num].ctl0.sms = 0x0;
+    DW_GDMA.ch[driv_obj->dma_channel_num].ctl0.val = 0x0;
+    DW_GDMA.ch[driv_obj->dma_channel_num].ctl0.sms = 0x0;
     // Destination master select
-    GDMA.ch[driv_obj->dma_channel_num].ctl0.dms = GDMA_BUFFER_MASTER;
+    DW_GDMA.ch[driv_obj->dma_channel_num].ctl0.dms = DW_GDMA_BUFFER_MASTER;
 
     // Source address increment. 1: no change, 0: increment.
-    GDMA.ch[driv_obj->dma_channel_num].ctl0.sinc = 0x1;
+    DW_GDMA.ch[driv_obj->dma_channel_num].ctl0.sinc = 0x1;
     // Destination address increment. 1: no change, 0: increment
-    GDMA.ch[driv_obj->dma_channel_num].ctl0.dinc = 0x0;
+    DW_GDMA.ch[driv_obj->dma_channel_num].ctl0.dinc = 0x0;
 
     // Transfer width. 0x2: transfer width is 32bits, 0x03: trans width is 64bits
-    GDMA.ch[driv_obj->dma_channel_num].ctl0.src_tr_width = (CONFIG_CSI_TR_WIDTH == 64 ? 0x3 : 0x2);
-    GDMA.ch[driv_obj->dma_channel_num].ctl0.dst_tr_width = (CONFIG_CSI_TR_WIDTH == 64 ? 0x3 : 0x2);
+    DW_GDMA.ch[driv_obj->dma_channel_num].ctl0.src_tr_width = (CONFIG_CSI_TR_WIDTH == 64 ? 0x3 : 0x2);
+    DW_GDMA.ch[driv_obj->dma_channel_num].ctl0.dst_tr_width = (CONFIG_CSI_TR_WIDTH == 64 ? 0x3 : 0x2);
     // Burst transaction length. 0x7: 256 Data Item read from Source in the burst transaction
-    GDMA.ch[driv_obj->dma_channel_num].ctl0.src_msize = 0x7;
+    DW_GDMA.ch[driv_obj->dma_channel_num].ctl0.src_msize = 0x7;
     // Burst transaction length. 0x8: 512 Data Item read from Destination in the burst transaction
-    GDMA.ch[driv_obj->dma_channel_num].ctl0.dst_msize = 0x8;
+    DW_GDMA.ch[driv_obj->dma_channel_num].ctl0.dst_msize = 0x8;
     // Interrupt on completion of block transfer, 0 disable block transfer done
-    GDMA.ch[driv_obj->dma_channel_num].ctl1.ioc_blktfr = 0;
+    DW_GDMA.ch[driv_obj->dma_channel_num].ctl1.ioc_blktfr = 0;
     // Source status fetch register
-    GDMA.ch[driv_obj->dma_channel_num].sstatar0 = MIPI_CSI_DMA_TRANS_SAR + 16;
+    DW_GDMA.ch[driv_obj->dma_channel_num].sstatar0.sstatar0 = (uint32_t)MIPI_CSI_DMA_TRANS_SAR + 16;
 
     // Source burst length
-    GDMA.ch[driv_obj->dma_channel_num].ctl1.arlen = 16;
-    GDMA.ch[driv_obj->dma_channel_num].ctl1.arlen_en = 1;
+    DW_GDMA.ch[driv_obj->dma_channel_num].ctl1.arlen = 16;
+    DW_GDMA.ch[driv_obj->dma_channel_num].ctl1.arlen_en = 1;
     // Destination burst length
-    GDMA.ch[driv_obj->dma_channel_num].ctl1.awlen = 16;
-    GDMA.ch[driv_obj->dma_channel_num].ctl1.awlen_en = 1;
+    DW_GDMA.ch[driv_obj->dma_channel_num].ctl1.awlen = 16;
+    DW_GDMA.ch[driv_obj->dma_channel_num].ctl1.awlen_en = 1;
 
     // vTaskDelay((2/portTICK_PERIOD_MS)?(2/portTICK_PERIOD_MS):1);
     vTaskDelay(2 / portTICK_PERIOD_MS);
 
     ESP_LOGI(MIPI_CSI_TAG, "GDMA init done");
-
     return 0;
 }
 
@@ -319,15 +283,15 @@ static esp_err_t esp_mipi_csi_set_config(mipi_csi_interface_t interface, mipi_cs
     }
 
     // Todo, remove this when ESP32-P4 System clk be ready
-    SYS_CLKRST.csi_ctrl.csi_clk_div_num = (480000000 / 240000000) - 1;
-    SYS_CLKRST.csi_ctrl.csi_apb_clk_en = 1;
-    SYS_CLKRST.csi_ctrl.csi_clk_en = 1;
-    SYS_CLKRST.csi_ctrl.csi_clk_sync_en = 1;
-    SYS_CLKRST.csi_ctrl.csi_clk_force_sync_en = 1;
-    SYS_CLKRST.csi_ctrl.csi_rstn = 0;
-    SYS_CLKRST.csi_ctrl.csi_rstn = 1;
-    SYS_CLKRST.csi_ctrl.csi_brg_rstn = 0;
-    SYS_CLKRST.csi_ctrl.csi_brg_rstn = 1;
+    // SYS_CLKRST.csi_ctrl.csi_clk_div_num = (480000000 / 240000000) - 1;
+    // SYS_CLKRST.csi_ctrl.csi_apb_clk_en = 1;
+    // SYS_CLKRST.csi_ctrl.csi_clk_en = 1;
+    // SYS_CLKRST.csi_ctrl.csi_clk_sync_en = 1;
+    // SYS_CLKRST.csi_ctrl.csi_clk_force_sync_en = 1;
+    // SYS_CLKRST.csi_ctrl.csi_rstn = 0;
+    // SYS_CLKRST.csi_ctrl.csi_rstn = 1;
+    // SYS_CLKRST.csi_ctrl.csi_brg_rstn = 0;
+    // SYS_CLKRST.csi_ctrl.csi_brg_rstn = 1;
 
     hal.bridge_dev = MIPI_CSI_BRIDGE_LL_GET_HW(0);
     hal.host_dev = MIPI_CSI_HOST_LL_GET_HW(0);
@@ -365,17 +329,17 @@ static void IRAM_ATTR esp_mipi_csi_grab_mode_gdma_isr(void *arg)
     portBASE_TYPE HPTaskAwoken = pdFALSE;
     camera_fb_t *frame_buffer_event = &driv_obj_ptr->frames.fb;
 
-    typeof(GDMA.ch[driv_obj_ptr->dma_channel_num].int_st0) status = GDMA.ch[driv_obj_ptr->dma_channel_num].int_st0;
-    if (status.dma_tfr_done) { // Is channelx "transfer done" interrupt event.
+    typeof(DW_GDMA.ch[driv_obj_ptr->dma_channel_num].int_st0) status = DW_GDMA.ch[driv_obj_ptr->dma_channel_num].int_st0;
+    if (status.dma_tfr_done_intstat) { // Is channelx "transfer done" interrupt event.
         driv_obj_ptr->frames.fb.len = driv_obj_ptr->driver_config->fb_size;
 #if DEBUG_FB_SEQ
         driv_obj_ptr->frames.fb.frame_trans_cnt++;
 #endif
         Cache_Invalidate_Addr(CACHE_MAP_L1_DCACHE | CACHE_MAP_L2_CACHE, (uint32_t)frame_buffer_event->buf + driv_obj_ptr->frames.fb_offset, driv_obj_ptr->driver_config->fb_size);
         if (driv_obj_ptr->ops.recved_data
-            && (driv_obj_ptr->ops.recved_data(frame_buffer_event->buf, driv_obj_ptr->frames.fb_offset, driv_obj_ptr->driver_config->fb_size) != ESP_OK)) {
+                && (driv_obj_ptr->ops.recved_data(frame_buffer_event->buf, driv_obj_ptr->frames.fb_offset, driv_obj_ptr->driver_config->fb_size) != ESP_OK)) {
             Cache_WriteBack_Addr(CACHE_MAP_L1_DCACHE | CACHE_MAP_L2_CACHE,
-                (uint32_t)driv_obj_ptr->frames.fb.buf + driv_obj_ptr->frames.fb_offset, driv_obj_ptr->driver_config->fb_size);
+                                 (uint32_t)driv_obj_ptr->frames.fb.buf + driv_obj_ptr->frames.fb_offset, driv_obj_ptr->driver_config->fb_size);
             esp_mipi_csi_enable_gdma_with_addr(driv_obj_ptr, driv_obj_ptr->frames.dma_buf_addr);
         } else {
             if (!esp_mipi_csi_start_framebuf_filled(driv_obj_ptr)) {
@@ -384,7 +348,8 @@ static void IRAM_ATTR esp_mipi_csi_grab_mode_gdma_isr(void *arg)
         }
     }
 
-    GDMA.ch[driv_obj_ptr->dma_channel_num].int_clr0.val = 0xffffffff;
+    DW_GDMA.ch[driv_obj_ptr->dma_channel_num].int_clr0.val = 0xffffffff;
+
     // We only need to check here if there is a high-priority task needs to be switched.
     if (HPTaskAwoken == pdTRUE) {
         portYIELD_FROM_ISR();
@@ -397,6 +362,7 @@ esp_err_t esp_mipi_csi_driver_install(mipi_csi_interface_t interface, mipi_csi_p
         return ESP_ERR_INVALID_STATE;
     }
 
+    // printf("MIPI_CSI_DMA_TRANS_SAR=0x%p\r\n", MIPI_CSI_DMA_TRANS_SAR);
     esp_mipi_csi_obj_t *csi_obj_p = (esp_mipi_csi_obj_t *)calloc(sizeof(esp_mipi_csi_obj_t), 1);
     if (csi_obj_p == NULL) {
         return ESP_ERR_NO_MEM;

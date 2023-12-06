@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2023-2024 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2023 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -8,9 +8,9 @@
 #include <math.h>
 
 #include "isp_struct.h"
-#include "soc/sys_clkrst_struct.h"
 #include "camera_isp.h"
 #include "sdkconfig.h"
+#include "soc/hp_sys_clkrst_struct.h"
 
 #include "esp_log.h"
 
@@ -79,10 +79,10 @@ int isp_init(uint32_t frame_width, uint32_t frame_height, pixformat_t in_type, p
 {
     int isp_out_format = get_isp_output_type(out_type);
     int isp_in_format = get_isp_input_type(in_type);
-    SYS_CLKRST.isp_ctrl.isp_clk_div_num = (480000000 / 240000000) - 1;
-    SYS_CLKRST.isp_ctrl.isp_clk_en = 1;
-    SYS_CLKRST.isp_ctrl.isp_rstn = 0;
-    SYS_CLKRST.isp_ctrl.isp_rstn = 1;
+    HP_SYS_CLKRST.peri_clk_ctrl26.reg_isp_clk_div_num = (480000000 / 240000000) - 1;
+    HP_SYS_CLKRST.peri_clk_ctrl25.reg_isp_clk_en = 1;
+    HP_SYS_CLKRST.hp_rst_en0.reg_rst_en_isp = 1;
+    HP_SYS_CLKRST.hp_rst_en0.reg_rst_en_isp = 0;
 
     ISP.cntl.val = 0;
     ISP.cntl.ccm_en = 1;

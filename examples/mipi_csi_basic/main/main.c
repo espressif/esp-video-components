@@ -10,6 +10,7 @@
 #include "sccb.h"
 #include "unity.h"
 #include "esp_camera.h"
+#include "mipi_csi.h"
 
 #ifndef CONFIG_SCCB_BASED_I3C_ENABLED
 #include "driver/i2c.h"
@@ -26,7 +27,7 @@ static const char *TAG = "cam_dump";
 
 void app_main(void)
 {
-    // esp_err_t ret = ESP_OK;
+    esp_err_t ret = ESP_OK;
     if (sccb_init(SCCB_PORT_NUM, SCCB_SDA_IO, SCCB_SCL_IO, FREQ_HZ) != ESP_OK) {
         ESP_LOGE(TAG, "SCCB init failed");
     }
@@ -45,6 +46,15 @@ void app_main(void)
         uint8_t name[SENSOR_NAME_MAX_LEN];
         size_t size = sizeof(name);
         esp_camera_ioctl(device, CAM_SENSOR_G_NAME, name, &size);
+    }
+
+    /*Init cam interface*/
+    mipi_csi_port_config_t mipi_if_cfg = {0};
+    esp_mipi_csi_handle_t handle = NULL;
+    ret = esp_mipi_csi_driver_install(MIPI_CSI_PORT0, &mipi_if_cfg, 0, &handle);
+    if (ret != ESP_OK) {
+        ESP_LOGE(TAG, "csi init fail[%d]", ret);
+        return;
     }
 
     ESP_LOGI(TAG, "Test Done");

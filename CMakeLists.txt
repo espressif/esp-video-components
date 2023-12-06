@@ -4,7 +4,7 @@ set(srcs "src/esp_camera.c"
          "src/esp_video.c"
          "src/esp_video_buffer.c"
          )
-set(include_dirs "include" "include/drivers" "include/soc")
+set(include_dirs "include" "include/drivers")
 set(priv_include_dirs "private_include")
 set(priv_requires "esp_timer" "vfs" "driver")
 set(requires "")
