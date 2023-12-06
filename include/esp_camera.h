@@ -33,9 +33,9 @@ extern "C" {
 #define SENSOR_NAME_MAX_LEN (32)
 #define SENSOR_ISP_INFO_VERSION_DEFAULT (1)
 
-    /*Direction bits*/
-#define SENSOR_IOC_GET	0U
-#define SENSOR_IOC_SET	1U
+/*Direction bits*/
+#define SENSOR_IOC_GET  0U
+#define SENSOR_IOC_SET  1U
 
 #define _SENSOR_IOC_TYPESHIFT (16)
 #define _SENSOR_IOC_IDSHIFT   (8)
@@ -48,14 +48,14 @@ extern "C" {
  * means get info from sensor.
  */
 #define _SENSOR_IOW(class,id) \
-	(((class)  << _SENSOR_IOC_TYPESHIFT) | \
+    (((class)  << _SENSOR_IOC_TYPESHIFT) | \
      ((id)  << _SENSOR_IOC_IDSHIFT) | \
-	 SENSOR_IOC_SET)
+     SENSOR_IOC_SET)
 
 #define _SENSOR_IOR(class,id) \
-	(((class)  << _SENSOR_IOC_TYPESHIFT) | \
+    (((class)  << _SENSOR_IOC_TYPESHIFT) | \
      ((id)  << _SENSOR_IOC_IDSHIFT) | \
-	 SENSOR_IOC_GET)
+     SENSOR_IOC_GET)
 
 #define    CAM_SENSOR_OPS_CLASS_DEFAULT  0X00
 #define    CAM_SENSOR_OPS_CLASS_3A       0X01
@@ -63,17 +63,17 @@ extern "C" {
 #define    CAM_SENSOR_OPS_CLASS_LED      0X03
 
 /* Set ops */
-#define	   CAM_SENSOR_S_HW_RESET         _SENSOR_IOW(CAM_SENSOR_OPS_CLASS_DEFAULT,0x01)  // Hardware reset
+#define    CAM_SENSOR_S_HW_RESET         _SENSOR_IOW(CAM_SENSOR_OPS_CLASS_DEFAULT,0x01)  // Hardware reset
 #define    CAM_SENSOR_S_SF_RESET         _SENSOR_IOW(CAM_SENSOR_OPS_CLASS_DEFAULT,0x02)  // Software reset
-#define	   CAM_SENSOR_S_POWER            _SENSOR_IOW(CAM_SENSOR_OPS_CLASS_DEFAULT,0x03)  // Power on/off
-#define	   CAM_SENSOR_S_XCLK             _SENSOR_IOW(CAM_SENSOR_OPS_CLASS_DEFAULT,0x04)  // For sensors that require a clock provided by the base board
-#define	   CAM_SENSOR_S_SENSOR_MODE      _SENSOR_IOW(CAM_SENSOR_OPS_CLASS_DEFAULT,0x05)
-#define	   CAM_SENSOR_S_REG              _SENSOR_IOW(CAM_SENSOR_OPS_CLASS_DEFAULT,0x06)
-#define	   CAM_SENSOR_S_STREAM           _SENSOR_IOW(CAM_SENSOR_OPS_CLASS_DEFAULT,0x07)  // Start/Stop stream, can be achieved through the bypass on/off or sleep en/dis of the sensor.
-#define	   CAM_SENSOR_S_SUSPEND          _SENSOR_IOW(CAM_SENSOR_OPS_CLASS_DEFAULT,0x08)
+#define    CAM_SENSOR_S_POWER            _SENSOR_IOW(CAM_SENSOR_OPS_CLASS_DEFAULT,0x03)  // Power on/off
+#define    CAM_SENSOR_S_XCLK             _SENSOR_IOW(CAM_SENSOR_OPS_CLASS_DEFAULT,0x04)  // For sensors that require a clock provided by the base board
+#define    CAM_SENSOR_S_SENSOR_MODE      _SENSOR_IOW(CAM_SENSOR_OPS_CLASS_DEFAULT,0x05)
+#define    CAM_SENSOR_S_REG              _SENSOR_IOW(CAM_SENSOR_OPS_CLASS_DEFAULT,0x06)
+#define    CAM_SENSOR_S_STREAM           _SENSOR_IOW(CAM_SENSOR_OPS_CLASS_DEFAULT,0x07)  // Start/Stop stream, can be achieved through the bypass on/off or sleep en/dis of the sensor.
+#define    CAM_SENSOR_S_SUSPEND          _SENSOR_IOW(CAM_SENSOR_OPS_CLASS_DEFAULT,0x08)
 #define    CAM_SENSOR_S_LONG_EXP         _SENSOR_IOW(CAM_SENSOR_OPS_CLASS_DEFAULT,0x09)
-#define	   CAM_SENSOR_S_FPS              _SENSOR_IOW(CAM_SENSOR_OPS_CLASS_DEFAULT,0x0a)
-#define	   CAM_SENSOR_S_HDR_RADIO        _SENSOR_IOW(CAM_SENSOR_OPS_CLASS_DEFAULT,0x0b)
+#define    CAM_SENSOR_S_FPS              _SENSOR_IOW(CAM_SENSOR_OPS_CLASS_DEFAULT,0x0a)
+#define    CAM_SENSOR_S_HDR_RADIO        _SENSOR_IOW(CAM_SENSOR_OPS_CLASS_DEFAULT,0x0b)
 #define    CAM_SENSOR_S_BRIGHTNESS       _SENSOR_IOW(CAM_SENSOR_OPS_CLASS_DEFAULT,0x0c)
 #define    CAM_SENSOR_S_CONTRAST         _SENSOR_IOW(CAM_SENSOR_OPS_CLASS_DEFAULT,0x0d)
 #define    CAM_SENSOR_S_SATURATION       _SENSOR_IOW(CAM_SENSOR_OPS_CLASS_DEFAULT,0x0e)
@@ -85,26 +85,26 @@ extern "C" {
 #define    CAM_SENSOR_S_DENOISE          _SENSOR_IOW(CAM_SENSOR_OPS_CLASS_DEFAULT,0x14)   // Denoise
 #define    CAM_SENSOR_S_DPC              _SENSOR_IOW(CAM_SENSOR_OPS_CLASS_DEFAULT,0x15)
 #define    CAM_SENSOR_S_JPEG_QUALITY     _SENSOR_IOW(CAM_SENSOR_OPS_CLASS_DEFAULT,0x16)
-#define	   CAM_SENSOR_S_BLC              _SENSOR_IOW(CAM_SENSOR_OPS_CLASS_DEFAULT,0x17)
+#define    CAM_SENSOR_S_BLC              _SENSOR_IOW(CAM_SENSOR_OPS_CLASS_DEFAULT,0x17)
 #define    CAM_SENSOR_S_SPECIAL_EFFECT   _SENSOR_IOW(CAM_SENSOR_OPS_CLASS_DEFAULT,0x18)
 #define    CAM_SENSOR_S_LENC             _SENSOR_IOW(CAM_SENSOR_OPS_CLASS_DEFAULT,0x19)
 #define    CAM_SENSOR_S_TEST_PATTERN     _SENSOR_IOW(CAM_SENSOR_OPS_CLASS_DEFAULT,0x1a)
 #define    CAM_SENSOR_S_FORMAT           _SENSOR_IOW(CAM_SENSOR_OPS_CLASS_DEFAULT,0x1b)
 #define    CAM_SENSOR_S_AWB              _SENSOR_IOW(CAM_SENSOR_OPS_CLASS_3A,0x01)       // Auto white balance
 #define    CAM_SENSOR_S_EXPOSURE         _SENSOR_IOW(CAM_SENSOR_OPS_CLASS_3A,0x02)
-#define	   CAM_SENSOR_S_EXP              _SENSOR_IOW(CAM_SENSOR_OPS_CLASS_3A,0x03)
-#define	   CAM_SENSOR_S_VSEXP            _SENSOR_IOW(CAM_SENSOR_OPS_CLASS_3A,0x04)
-#define	   CAM_SENSOR_S_LONG_GAIN        _SENSOR_IOW(CAM_SENSOR_OPS_CLASS_3A,0x05)
+#define    CAM_SENSOR_S_EXP              _SENSOR_IOW(CAM_SENSOR_OPS_CLASS_3A,0x03)
+#define    CAM_SENSOR_S_VSEXP            _SENSOR_IOW(CAM_SENSOR_OPS_CLASS_3A,0x04)
+#define    CAM_SENSOR_S_LONG_GAIN        _SENSOR_IOW(CAM_SENSOR_OPS_CLASS_3A,0x05)
 #define    CAM_SENSOR_S_DGAIN            _SENSOR_IOW(CAM_SENSOR_OPS_CLASS_3A,0x06)       // Dight gain
 #define    CAM_SENSOR_S_ANGAIN           _SENSOR_IOW(CAM_SENSOR_OPS_CLASS_3A,0x07)       // Analog gain
-#define	   CAM_SENSOR_S_VSGAIN           _SENSOR_IOW(CAM_SENSOR_OPS_CLASS_3A,0x08)
+#define    CAM_SENSOR_S_VSGAIN           _SENSOR_IOW(CAM_SENSOR_OPS_CLASS_3A,0x08)
 #define    CAM_SENSOR_S_AEC              _SENSOR_IOW(CAM_SENSOR_OPS_CLASS_3A,0x09)
 #define    CAM_SENSOR_S_AGC              _SENSOR_IOW(CAM_SENSOR_OPS_CLASS_3A,0x0a)
 #define    CAM_SENSOR_S_AF_AUTO          _SENSOR_IOW(CAM_SENSOR_OPS_CLASS_3A,0x0b)       // Auto Focus
 #define    CAM_SENSOR_S_AF_INIT          _SENSOR_IOW(CAM_SENSOR_OPS_CLASS_3A,0x0c)
-#define	   CAM_SENSOR_S_AF_RELEASE       _SENSOR_IOW(CAM_SENSOR_OPS_CLASS_3A,0x0d)
-#define	   CAM_SENSOR_S_AF_START         _SENSOR_IOW(CAM_SENSOR_OPS_CLASS_3A,0x0e)
-#define	   CAM_SENSOR_S_AF_STOP          _SENSOR_IOW(CAM_SENSOR_OPS_CLASS_3A,0x0f)
+#define    CAM_SENSOR_S_AF_RELEASE       _SENSOR_IOW(CAM_SENSOR_OPS_CLASS_3A,0x0d)
+#define    CAM_SENSOR_S_AF_START         _SENSOR_IOW(CAM_SENSOR_OPS_CLASS_3A,0x0e)
+#define    CAM_SENSOR_S_AF_STOP          _SENSOR_IOW(CAM_SENSOR_OPS_CLASS_3A,0x0f)
 #define    CAM_SENSOR_S_WB               _SENSOR_IOW(CAM_SENSOR_OPS_CLASS_3A,0x10)      // White balance mode
 #define    CAM_SENSOR_S_3A_LOCK          _SENSOR_IOW(CAM_SENSOR_OPS_CLASS_3A,0x11)
 #define    CAM_SENSOR_S_FLASH_LED        _SENSOR_IOW(CAM_SENSOR_OPS_CLASS_LED,0x12)
@@ -117,14 +117,14 @@ extern "C" {
 #define    CAM_SENSOR_G_NAME            _SENSOR_IOR(CAM_SENSOR_OPS_CLASS_DEFAULT,0x05)
 #define    CAM_SENSOR_G_FORMAT_ARRAY    _SENSOR_IOR(CAM_SENSOR_OPS_CLASS_DEFAULT,0x06)
 #define    CAM_SENSOR_G_FORMAT          _SENSOR_IOR(CAM_SENSOR_OPS_CLASS_DEFAULT,0x07)
-#define	   CAM_SENSOR_G_CHIP_ID         _SENSOR_IOR(CAM_SENSOR_OPS_CLASS_DEFAULT,0x08)
+#define    CAM_SENSOR_G_CHIP_ID         _SENSOR_IOR(CAM_SENSOR_OPS_CLASS_DEFAULT,0x08)
 #define    CAM_SENSOR_G_FPS             _SENSOR_IOR(CAM_SENSOR_OPS_CLASS_DEFAULT,0x09)
 #define    CAM_SENSOR_G_CAP             _SENSOR_IOR(CAM_SENSOR_OPS_CLASS_DEFAULT,0x0a)
 #define    CAM_SENSOR_G_AF_STATUS       _SENSOR_IOR(CAM_SENSOR_OPS_CLASS_3A,0x01)
 #define    CAM_SENSOR_G_WB              _SENSOR_IOR(CAM_SENSOR_OPS_CLASS_3A,0x02)
 #define    CAM_SENSOR_G_INT_TIME        _SENSOR_IOR(CAM_SENSOR_OPS_CLASS_3A,0x03)         // Integral time
 #define    CAM_SENSOR_G_FLASH_LED       _SENSOR_IOR(CAM_SENSOR_OPS_CLASS_LED,0x01)
-#define	   CAM_SENSOR_G_LENS            _SENSOR_IOR(CAM_SENSOR_OPS_CLASS_LENS,0x01)
+#define    CAM_SENSOR_G_LENS            _SENSOR_IOR(CAM_SENSOR_OPS_CLASS_LENS,0x01)
 
 typedef enum {
     GAINCEILING_2X,
@@ -368,7 +368,7 @@ typedef struct {
     uint8_t stream_status;
     // struct mutex lock;                                                                       // io mutex lock
     esp_camera_ops_t *ops;
-    void *priv
+    void *priv;
 } esp_camera_device_t;
 
 typedef struct _esp_camera_ops {

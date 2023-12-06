@@ -25,30 +25,28 @@ static const char *TAG = "sc2336";
 #ifndef portTICK_RATE_MS
 #define portTICK_RATE_MS portTICK_PERIOD_MS
 #endif
-
+#define delay_ms(ms)  vTaskDelay((ms > portTICK_PERIOD_MS ? ms/ portTICK_PERIOD_MS : 1))
 #define SC2336_SUPPORT_NUM CONFIG_CAMERA_SC2336_MAX_SUPPORT
 
 static esp_camera_device_t *s_sc2336[SC2336_SUPPORT_NUM];
 
 static uint8_t s_sc2336_index;
 
-static void delay_us(uint32_t t)
+static int sc2336_read(uint8_t sccb_port, uint16_t reg, uint8_t *read_buf)
 {
-#if TEST_CSI_FPGA
-    for (uint32_t tu = 0; tu < t; tu++);
-#else
-    ets_delay_us(t);
-#endif
+    int value = -1;
+    value = sccb_read_reg16_val8(sccb_port, SC2336_SCCB_ADDR, reg);
+    if (value == -1) {
+        ESP_LOGD(TAG, "Read err");
+        return value;
+    }
+    *read_buf = value;
+    return 0;
 }
 
-static int sc2336_read(uint8_t sccb_port, uint16_t addr, uint8_t *read_buf)
+static int sc2336_write(uint8_t sccb_port, uint16_t reg, uint8_t data)
 {
-    return sccb_read_reg16(SC2336_SCCB_ADDR, addr, 1, read_buf);
-}
-
-static int sc2336_write(uint8_t sccb_port, uint16_t addr, uint8_t data)
-{
-    return sccb_write_reg16(SC2336_SCCB_ADDR, addr, 1, data);
+    return sccb_write_reg16_val8(sccb_port, SC2336_SCCB_ADDR, reg, data);
 }
 
 /* write a array of registers  */
@@ -57,9 +55,9 @@ static int sc2336_write_array(uint8_t sccb_port, reginfo_t *regarray)
     int i = 0, ret = 0;
     while (!ret && regarray[i].reg != SC2336_REG_END) {
         if (regarray[i].reg != SC2336_REG_DELAY) {
-            ret = sc2336_write(regarray[i].reg, regarray[i].val);
+            ret = sc2336_write(sccb_port, regarray[i].reg, regarray[i].val);
         } else {
-            delay_us(500); // Todo, append delay value.
+            delay_ms(10);
         }
         i++;
     }
@@ -72,13 +70,13 @@ static int sc2336_set_reg_bits(uint8_t sccb_port, uint16_t reg, uint8_t offset, 
     int ret = 0;
     uint8_t reg_data = 0;
 
-    ret = sc2336_read(reg, &reg_data);
+    ret = sc2336_read(sccb_port, reg, &reg_data);
     if (ret < 0) {
         return ret;
     }
     uint8_t mask = ((1 << length) - 1) << offset;
     value = (ret & ~mask) | ((value << offset) & mask);
-    ret = sc2336_write(reg, value);
+    ret = sc2336_write(sccb_port, reg, value);
     return ret;
 }
 
@@ -96,7 +94,7 @@ static int sc2336_set_pattern(esp_camera_device_t *dev, int enable)
 static int sc2336_soft_reset(esp_camera_device_t *dev)
 {
     int ret = sc2336_set_reg_bits(dev->sccb_port, 0x0103, 0, 1, 0x01);
-    delay_us(5); // Todo, append delay value.
+    delay_ms(5);
     return ret;
 }
 
@@ -174,7 +172,7 @@ static int sc2336_set_format(esp_camera_device_t *dev, void *format)
     int ret = 0;
     sensor_format_t *fmt = (sensor_format_t *)format;
 
-    ret = sc2336_write_array((reginfo_t *)fmt->regs);
+    ret = sc2336_write_array(dev->sccb_port, (reginfo_t *)fmt->regs);
 
     if (ret < 0) {
         ESP_CAM_SENSOR_LOGE("Set format regs fail");
@@ -235,7 +233,7 @@ static int sc2336_priv_ioctl(esp_camera_device_t *dev, unsigned int cmd, void *a
             ret = sc2336_read(dev->sccb_port, sc2336_reg->reg, &sc2336_reg->val);
             break;
         case CAM_SENSOR_G_CHIP_ID:
-            ret = sc2336_get_sensor_id(dev, rg);
+            ret = sc2336_get_sensor_id(dev, arg);
             break;
         default:
             break;
@@ -268,9 +266,9 @@ static int sc2336_power_on(esp_camera_device_t *dev)
 
         // carefull, logic is inverted compared to reset pin
         gpio_set_level(dev->pwdn_pin, 1);
-        vTaskDelay(10 / portTICK_RATE_MS);
+        delay_ms(10);
         gpio_set_level(dev->pwdn_pin, 0);
-        vTaskDelay(10 / portTICK_RATE_MS);
+        delay_ms(10);
     }
 
     if (dev->reset_pin >= 0) {
@@ -280,21 +278,21 @@ static int sc2336_power_on(esp_camera_device_t *dev)
         gpio_config(&conf);
 
         gpio_set_level(dev->reset_pin, 0);
-        vTaskDelay(10 / portTICK_RATE_MS);
+        delay_ms(10);
         gpio_set_level(dev->reset_pin, 1);
-        vTaskDelay(10 / portTICK_RATE_MS);
+        delay_ms(10);
     }
 
     return ret;
 }
 
 static esp_camera_ops_t sc2336_ops = {
-    .sc2336_query_support_formats = sc2336_query_support_formats,
-    .sc2336_query_support_capability = sc2336_query_support_capability,
-    .sc2336_set_format = sc2336_set_format,
-    .sc2336_get_format = sc2336_get_format,
-    .sc2336_priv_ioctl = sc2336_priv_ioctl,
-    .sc2336_get_name = sc2336_get_name,
+    .query_support_formats = sc2336_query_support_formats,
+    .query_support_capability = sc2336_query_support_capability,
+    .set_format = sc2336_set_format,
+    .get_format = sc2336_get_format,
+    .priv_ioctl = sc2336_priv_ioctl,
+    .get_name = sc2336_get_name,
 };
 
 // We need manage these devices, and maybe need to add it into the private member of esp_device
@@ -316,8 +314,7 @@ esp_camera_device_t *sc2336_csi_detect(esp_camera_driver_config_t *config)
         ESP_LOGE(TAG, "No memory for camera");
         return NULL;
     }
-
-    dev = s_sc2336 + s_sc2336_index;
+    dev = s_sc2336[s_sc2336_index];
     dev->ops = &sc2336_ops;
     dev->sccb_port = config->sccb_port;
     dev->xclk_pin = config->xclk_pin;
@@ -330,15 +327,14 @@ esp_camera_device_t *sc2336_csi_detect(esp_camera_driver_config_t *config)
         goto err_free_handler;
     }
 
-    if (sc2336_sc2336_get_sensor_id(&dev->sensor_id) != -1) {
+    if (sc2336_get_sensor_id(dev, &dev->id) != -1) {
         ESP_LOGE(TAG, "Camera get sensor ID failed");
         goto err_free_handler;
-    } else if (dev->sensor_id.PID != SC2336_PID) {
-        ESP_LOGE(TAG, "Camera sensor is not SC2336, PID=0x%x", dev->sensor_id.PID);
+    } else if (dev->id.PID != SC2336_PID) {
+        ESP_LOGE(TAG, "Camera sensor is not SC2336, PID=0x%x", dev->id.PID);
         goto err_free_handler;
     }
-
-    ESP_LOGI(TAG, "Detected Camera sensor PID=0x%x with index %d", dev->sensor_id.PID, s_sc2336_index);
+    ESP_LOGI(TAG, "Detected Camera sensor PID=0x%x with index %d", dev->id.PID, s_sc2336_index);
 
     s_sc2336_index++;
 

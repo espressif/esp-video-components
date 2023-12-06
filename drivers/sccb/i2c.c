@@ -113,35 +113,35 @@ static inline void give_sem(sem_t *sem)
 static inline void wait_sem(sem_t *sem)
 {
 #if !TEST_INTERRUPT
-while (1) {
-    typeof(I2C0.int_status) status = I2C0.int_status;
-    if (status.val == 0) {
-        continue;
-    }
-    I2C0.int_clr.val = status.val;
+    while (1) {
+        typeof(I2C0.int_status) status = I2C0.int_status;
+        if (status.val == 0) {
+            continue;
+        }
+        I2C0.int_clr.val = status.val;
 
-    if (status.end_detect) {
-        give_sem(&i2c_sem.end);
+        if (status.end_detect) {
+            give_sem(&i2c_sem.end);
+        }
+        if (status.nack) {
+            give_sem(&i2c_sem.nack);
+        }
+        if (status.trans_complete) {
+            give_sem(&i2c_sem.trans_complete);
+        }
+        if (status.scl_st_to || status.scl_main_st_to || status.time_out) {
+            I2C0.scl_sp_conf.scl_rst_slv_en = 0;
+            I2C0.ctr.conf_upgate = 1;
+            I2C0.scl_sp_conf.scl_rst_slv_num = 9;
+            I2C0.scl_sp_conf.scl_rst_slv_en = 1;
+            I2C0.ctr.conf_upgate = 1;
+            I2C0.ctr.fsm_rst = 1;
+            I2C0.ctr.fsm_rst = 0;
+        }
+        if (status.arbitration_lost) {
+        }
+        break;
     }
-    if(status.nack) {
-        give_sem(&i2c_sem.nack);
-    }
-    if (status.trans_complete) {
-        give_sem(&i2c_sem.trans_complete);
-    }
-    if (status.scl_st_to || status.scl_main_st_to || status.time_out) {
-        I2C0.scl_sp_conf.scl_rst_slv_en = 0;
-        I2C0.ctr.conf_upgate = 1;
-        I2C0.scl_sp_conf.scl_rst_slv_num = 9;
-        I2C0.scl_sp_conf.scl_rst_slv_en = 1;
-        I2C0.ctr.conf_upgate = 1;
-        I2C0.ctr.fsm_rst = 1;
-        I2C0.ctr.fsm_rst = 0;
-    }
-    if(status.arbitration_lost) {
-    }
-    break;
-}
 #endif
 
 #if TEST_WITH_OS
@@ -164,7 +164,7 @@ static void i2c_isr(void *arg)
     if (status.end_detect) {
         give_sem(&i2c_sem.end);
     }
-    if(status.nack) {
+    if (status.nack) {
         give_sem(&i2c_sem.nack);
     }
     if (status.trans_complete) {
@@ -179,7 +179,7 @@ static void i2c_isr(void *arg)
         I2C0.ctr.fsm_rst = 1;
         I2C0.ctr.fsm_rst = 0;
     }
-    if(status.arbitration_lost) {
+    if (status.arbitration_lost) {
     }
 }
 
@@ -197,7 +197,7 @@ int i2c_write(uint32_t addr, size_t len, uint8_t *data)
         I2C0.command[1].ack_exp = 0;
         I2C0.command[1].byte_num = 1 + len;
         I2C0.fifo_data.data = ((uint8_t)addr << 1) | 0x0;
-        for(x = 0; x < len; x++) {
+        for (x = 0; x < len; x++) {
             I2C0.fifo_data.data = data[x];
         }
 
@@ -211,7 +211,7 @@ int i2c_write(uint32_t addr, size_t len, uint8_t *data)
         I2C0.command[1].ack_exp = 0;
         I2C0.command[1].byte_num = 32;
         I2C0.fifo_data.data = ((uint8_t)addr << 1) | 0x0;
-        for(x = 0; x < 31; x++) {
+        for (x = 0; x < 31; x++) {
             I2C0.fifo_data.data = data[x];
         }
 
@@ -227,7 +227,7 @@ int i2c_write(uint32_t addr, size_t len, uint8_t *data)
             I2C0.command[0].ack_en = 1;
             I2C0.command[0].ack_exp = 0;
             I2C0.command[0].byte_num = 32;
-            for(y = 0; y < 32; y++) {
+            for (y = 0; y < 32; y++) {
                 I2C0.fifo_data.data = data[31 + x * 32 + y];
             }
 
@@ -247,7 +247,7 @@ int i2c_write(uint32_t addr, size_t len, uint8_t *data)
             I2C0.command[0].ack_en = 1;
             I2C0.command[0].ack_exp = 0;
             I2C0.command[0].byte_num = len % 32;
-            for(y = 0; y < len % 32; y++) {
+            for (y = 0; y < len % 32; y++) {
                 I2C0.fifo_data.data = data[31 + x * 32 + y];
             }
 
@@ -302,7 +302,7 @@ int i2c_read(uint32_t addr, size_t len, uint8_t *data)
 
         I2C0.ctr.trans_start = 1;
         wait_sem(&i2c_sem.trans_complete);
-        for(x = 0; x < len; x++) {
+        for (x = 0; x < len; x++) {
             data[x] = I2C0.fifo_data.data;
         }
     } else {
@@ -315,7 +315,7 @@ int i2c_read(uint32_t addr, size_t len, uint8_t *data)
         I2C0.command[3].op_code = I2C_OP_END; // end
         I2C0.ctr.trans_start = 1;
         wait_sem(&i2c_sem.end);
-        for(x = 0; x < 32; x++) {
+        for (x = 0; x < 32; x++) {
             data[x] = I2C0.fifo_data.data;
         }
         x = 0;
@@ -352,7 +352,7 @@ int i2c_read(uint32_t addr, size_t len, uint8_t *data)
                 I2C0.ctr.trans_start = 1;
                 wait_sem(&i2c_sem.end);
             }
-            for(y = 0; y < 32; y++) {
+            for (y = 0; y < 32; y++) {
                 data[32 + x * 32 + y] = I2C0.fifo_data.data;
             }
         }
@@ -370,7 +370,7 @@ int i2c_read(uint32_t addr, size_t len, uint8_t *data)
 
                 I2C0.command[2].val = 0;
                 I2C0.command[2].op_code = I2C_OP_STOP; // stop
-            } else{
+            } else {
                 I2C0.command[0].val = 0;
                 I2C0.command[0].op_code = I2C_OP_READ; // read
                 I2C0.command[0].ack_val = 1;
@@ -382,7 +382,7 @@ int i2c_read(uint32_t addr, size_t len, uint8_t *data)
 
             I2C0.ctr.trans_start = 1;
             wait_sem(&i2c_sem.trans_complete);
-            for(y = 0; y < len % 32; y++) {
+            for (y = 0; y < len % 32; y++) {
                 data[32 + x * 32 + y] = I2C0.fifo_data.data;
             }
         }
@@ -411,7 +411,7 @@ int i2c_write_mem(uint32_t addr, uint8_t reg, size_t len, uint8_t *data)
         I2C0.command[2].ack_en = 1;
         I2C0.command[2].ack_exp = 0;
         I2C0.command[2].byte_num = len;
-        for(x = 0; x < len; x++) {
+        for (x = 0; x < len; x++) {
             I2C0.fifo_data.data = data[x];
         }
 
@@ -424,7 +424,7 @@ int i2c_write_mem(uint32_t addr, uint8_t reg, size_t len, uint8_t *data)
         I2C0.command[2].ack_en = 1;
         I2C0.command[2].ack_exp = 0;
         I2C0.command[2].byte_num = 32;
-        for(x = 0; x < 32; x++) {
+        for (x = 0; x < 32; x++) {
             I2C0.fifo_data.data = data[x];
         }
 
@@ -440,7 +440,7 @@ int i2c_write_mem(uint32_t addr, uint8_t reg, size_t len, uint8_t *data)
             I2C0.command[0].ack_en = 1;
             I2C0.command[0].ack_exp = 0;
             I2C0.command[0].byte_num = 32;
-            for(y = 0; y < 32; y++) {
+            for (y = 0; y < 32; y++) {
                 I2C0.fifo_data.data = data[32 + x * 32 + y];
             }
 
@@ -460,7 +460,7 @@ int i2c_write_mem(uint32_t addr, uint8_t reg, size_t len, uint8_t *data)
             I2C0.command[0].ack_en = 1;
             I2C0.command[0].ack_exp = 0;
             I2C0.command[0].byte_num = len % 32;
-            for(y = 0; y < len % 32; y++) {
+            for (y = 0; y < len % 32; y++) {
                 I2C0.fifo_data.data = data[32 + x * 32 + y];
             }
 
@@ -526,7 +526,7 @@ int i2c_read_mem(uint32_t addr, uint8_t reg, size_t len, uint8_t *data)
 
         I2C0.ctr.trans_start = 1;
         wait_sem(&i2c_sem.trans_complete);
-        for(x = 0; x < len; x++) {
+        for (x = 0; x < len; x++) {
             data[x] = I2C0.fifo_data.data;
         }
     } else {
@@ -539,7 +539,7 @@ int i2c_read_mem(uint32_t addr, uint8_t reg, size_t len, uint8_t *data)
         I2C0.command[5].op_code = I2C_OP_END; // end
         I2C0.ctr.trans_start = 1;
         wait_sem(&i2c_sem.end);
-        for(x = 0; x < 32; x++) {
+        for (x = 0; x < 32; x++) {
             data[x] = I2C0.fifo_data.data;
         }
         x = 0;
@@ -571,7 +571,7 @@ int i2c_read_mem(uint32_t addr, uint8_t reg, size_t len, uint8_t *data)
                 I2C0.ctr.trans_start = 1;
                 wait_sem(&i2c_sem.end);
             }
-            for(y = 0; y < 32; y++) {
+            for (y = 0; y < 32; y++) {
                 data[32 + x * 32 + y] = I2C0.fifo_data.data;
             }
         }
@@ -589,7 +589,7 @@ int i2c_read_mem(uint32_t addr, uint8_t reg, size_t len, uint8_t *data)
 
                 I2C0.command[2].val = 0;
                 I2C0.command[2].op_code = I2C_OP_STOP; // stop
-            } else{
+            } else {
                 I2C0.command[0].val = 0;
                 I2C0.command[0].op_code = I2C_OP_READ; // read
                 I2C0.command[0].ack_val = 1;
@@ -601,7 +601,7 @@ int i2c_read_mem(uint32_t addr, uint8_t reg, size_t len, uint8_t *data)
 
             I2C0.ctr.trans_start = 1;
             wait_sem(&i2c_sem.trans_complete);
-            for(y = 0; y < len % 32; y++) {
+            for (y = 0; y < len % 32; y++) {
                 data[32 + x * 32 + y] = I2C0.fifo_data.data;
             }
         }
@@ -634,7 +634,7 @@ int i2c_write_mem16(uint32_t addr, uint16_t reg, size_t len, uint8_t *data)
         I2C0.command[2].ack_en = 1;
         I2C0.command[2].ack_exp = 0;
         I2C0.command[2].byte_num = len;
-        for(x = 0; x < len; x++) {
+        for (x = 0; x < len; x++) {
             I2C0.fifo_data.data = data[x];
         }
 
@@ -647,7 +647,7 @@ int i2c_write_mem16(uint32_t addr, uint16_t reg, size_t len, uint8_t *data)
         I2C0.command[2].ack_en = 1;
         I2C0.command[2].ack_exp = 0;
         I2C0.command[2].byte_num = 32;
-        for(x = 0; x < 32; x++) {
+        for (x = 0; x < 32; x++) {
             I2C0.fifo_data.data = data[x];
         }
 
@@ -663,7 +663,7 @@ int i2c_write_mem16(uint32_t addr, uint16_t reg, size_t len, uint8_t *data)
             I2C0.command[0].ack_en = 1;
             I2C0.command[0].ack_exp = 0;
             I2C0.command[0].byte_num = 32;
-            for(y = 0; y < 32; y++) {
+            for (y = 0; y < 32; y++) {
                 I2C0.fifo_data.data = data[32 + x * 32 + y];
             }
 
@@ -683,7 +683,7 @@ int i2c_write_mem16(uint32_t addr, uint16_t reg, size_t len, uint8_t *data)
             I2C0.command[0].ack_en = 1;
             I2C0.command[0].ack_exp = 0;
             I2C0.command[0].byte_num = len % 32;
-            for(y = 0; y < len % 32; y++) {
+            for (y = 0; y < len % 32; y++) {
                 I2C0.fifo_data.data = data[32 + x * 32 + y];
             }
 
@@ -751,7 +751,7 @@ int i2c_read_mem16(uint32_t addr, uint16_t reg, size_t len, uint8_t *data)
 
         I2C0.ctr.trans_start = 1;
         wait_sem(&i2c_sem.trans_complete);
-        for(x = 0; x < len; x++) {
+        for (x = 0; x < len; x++) {
             data[x] = I2C0.fifo_data.data;
         }
     } else {
@@ -764,7 +764,7 @@ int i2c_read_mem16(uint32_t addr, uint16_t reg, size_t len, uint8_t *data)
         I2C0.command[5].op_code = I2C_OP_END; // end
         I2C0.ctr.trans_start = 1;
         wait_sem(&i2c_sem.end);
-        for(x = 0; x < 32; x++) {
+        for (x = 0; x < 32; x++) {
             data[x] = I2C0.fifo_data.data;
         }
         x = 0;
@@ -796,7 +796,7 @@ int i2c_read_mem16(uint32_t addr, uint16_t reg, size_t len, uint8_t *data)
                 I2C0.ctr.trans_start = 1;
                 wait_sem(&i2c_sem.end);
             }
-            for(y = 0; y < 32; y++) {
+            for (y = 0; y < 32; y++) {
                 data[32 + x * 32 + y] = I2C0.fifo_data.data;
             }
         }
@@ -814,7 +814,7 @@ int i2c_read_mem16(uint32_t addr, uint16_t reg, size_t len, uint8_t *data)
 
                 I2C0.command[2].val = 0;
                 I2C0.command[2].op_code = I2C_OP_STOP; // stop
-            } else{
+            } else {
                 I2C0.command[0].val = 0;
                 I2C0.command[0].op_code = I2C_OP_READ; // read
                 I2C0.command[0].ack_val = 1;
@@ -826,7 +826,7 @@ int i2c_read_mem16(uint32_t addr, uint16_t reg, size_t len, uint8_t *data)
 
             I2C0.ctr.trans_start = 1;
             wait_sem(&i2c_sem.trans_complete);
-            for(y = 0; y < len % 32; y++) {
+            for (y = 0; y < len % 32; y++) {
                 data[32 + x * 32 + y] = I2C0.fifo_data.data;
             }
         }

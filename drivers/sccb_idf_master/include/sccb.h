@@ -9,7 +9,7 @@
 extern "C" {
 #endif
 
-#if CONFIG_SCCB_IMPLEMENT_I2C
+#ifndef CONFIG_SCCB_BASED_I3C_ENABLED
 #include "sccb_i2c.h"
 #define sccb_init sccb_i2c_init
 

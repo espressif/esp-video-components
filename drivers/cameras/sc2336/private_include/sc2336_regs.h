@@ -10,8 +10,8 @@
 #ifndef __SC2336_REG_REGS_H__
 #define __SC2336_REG_REGS_H__
 
-#define SC2336_REG_END		0xffff
-#define SC2336_REG_DELAY	0xfffe
+#define SC2336_REG_END      0xffff
+#define SC2336_REG_DELAY    0xfffe
 
 /* sc2336 registers */
 #define SC2336_REG_SENSOR_ID_H             0x3107
