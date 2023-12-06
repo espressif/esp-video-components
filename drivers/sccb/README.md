@@ -16,7 +16,7 @@ Note: This needs to allow multiple sccb ports to be initialized. SCCB port that 
 
 ## [Examples]()
 
-Similar to I2C and I3C, SCCB allows co-existence of multiple slaves on the same bus. When there are multiple slaves(the camera sensor, as one of the slaves), The `esp_mipi_csi_driver_install()` will decide whether to use an initialized port according to the configured parameter `pin_sccb_sda`.
+Similar to I2C and I3C, SCCB allows co-existence of multiple slaves on the same bus. When there are multiple slaves(the camera sensor, as one of the slaves), The `sccb_init()` will decide whether to use an initialized port according to the configured parameter `pin_sccb_sda`.
 
 ## Using uninitialized sccb port
 
