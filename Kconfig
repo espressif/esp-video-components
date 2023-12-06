@@ -52,6 +52,6 @@ menu "Espressif Video Development Framework Configuration"
 
     rsource "drivers/sim/Kconfig.sim"
     rsource "drivers/isp/Kconfig.isp"
-    rsource "drivers/sccb_idf_master/Kconfig.sccb"
+    rsource "drivers/sccb/Kconfig.sccb"
     rsource "drivers/mipi/csi/Kconfig.csi"
 endmenu
