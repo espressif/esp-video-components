@@ -16,7 +16,6 @@
 
 #include "sys_clkrst_struct.h"
 #include "hp_clkrst_struct.h"
-#include "peri2_clkrst_struct.h"
 #include "hp_sys_struct.h"
 #include "esp_heap_caps.h"
 #include "esp_timer.h"
@@ -40,7 +39,7 @@ static const char *TAG = "sim_camera";
 
 extern esp_mipi_csi_handle_t csi_test_handle;
 
-static struct esp_video * g_video;
+static struct esp_video *g_video;
 esp_err_t sim_camera_recv_vb(uint8_t *buffer, uint32_t offset, uint32_t len)
 {
     esp_video_recvdone_buffer(g_video, buffer, len, offset);
@@ -48,7 +47,7 @@ esp_err_t sim_camera_recv_vb(uint8_t *buffer, uint32_t offset, uint32_t len)
     return ESP_OK;
 }
 
-uint8_t* IRAM_ATTR sim_camera_get_new_vb(uint32_t len)
+uint8_t *IRAM_ATTR sim_camera_get_new_vb(uint32_t len)
 {
     if (len > g_video->buffer_size) {
         return NULL;
@@ -123,7 +122,7 @@ static esp_err_t sim_camera_init(struct esp_video *video)
         for (int i = 0; i < formats.count; i++) {
             PRINT_CAM_SENSOR_FORMAT_INFO(&(parray[i].index));
         }
-        esp_camera_ioctl(device, CAM_SENSOR_S_FORMAT, (void *)&(parray[0].index), NULL);
+        esp_camera_ioctl(device, CAM_SENSOR_S_FORMAT, (void *) & (parray[0].index), NULL);
 
         const sensor_format_t *current_format = NULL;
         ret = esp_camera_ioctl(device, CAM_SENSOR_G_FORMAT, &current_format, NULL);

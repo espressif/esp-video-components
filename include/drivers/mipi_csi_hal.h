@@ -20,8 +20,8 @@ extern "C" {
  * @brief Context of the HAL
  */
 typedef struct {
-    mipi_csi_host_dev_t *host_dev;
-    mipi_csi_bridge_dev_t *bridge_dev;
+    csi_host_dev_t *host_dev;
+    csi_brg_dev_t *bridge_dev;
     uint32_t version;
 
     /**< these need to be configured by `mipi_csi_hal_config_t` via driver layer*/
