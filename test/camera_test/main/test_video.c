@@ -13,16 +13,14 @@
 #include <sys/mman.h>
 #include "linux/videodev2.h"
 #include "unity.h"
-// #include "memory_checks.h"
-// #include "unity_test_utils_memory.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "freertos/semphr.h"
 #include "esp_video.h"
 
-#define VIDEO_COUNT             CONFIG_SIMULATED_INTF_DEVICE_COUNT
-#define VIDEO_DEVICE_NAME       CONFIG_SIMULATED_INTF_DEVICE_NAME
-#define VIDEO_BUFFER_NUM        CONFIG_SIMULATED_INTF_DEVICE_BUFFER_COUNT
+#define VIDEO_COUNT             1
+#define VIDEO_DEVICE_NAME       "sc2336"
+#define VIDEO_BUFFER_NUM        1
 
 #define VIDEO_DESC_BUFFER_SIZE  128
 #define VIDEO_LINUX_CAPS        (V4L2_CAP_VIDEO_CAPTURE | V4L2_CAP_STREAMING | V4L2_CAP_READWRITE)
@@ -88,7 +86,6 @@ static void test_linux_posix_with_v4l2_operation_task(void *p)
     int fd;
     char *name;
     int count;
-    TickType_t tick;
     struct v4l2_requestbuffers req;
     struct v4l2_capability cap;
     struct v4l2_streamparm param;
@@ -155,8 +152,7 @@ static void test_linux_posix_with_v4l2_operation_task(void *p)
     TEST_ESP_OK(ret);
 
     count = 0;
-    tick = xTaskGetTickCount();
-    // camera_test_fps(fd, 90);
+    camera_test_fps(fd, 90);
     while (1) {
         struct v4l2_buffer buf;
 
@@ -170,7 +166,7 @@ static void test_linux_posix_with_v4l2_operation_task(void *p)
         // TEST_ASSERT_EQUAL_INT(VIDEO_BUFFER_SIZE, buf.bytesused);
         // TEST_ASSERT_EQUAL_MEMORY(VIDEO_BUFFER_DATA, video_buffer_ptr[buf.index], buf.bytesused);
         // memset(video_buffer_ptr[buf.index], 0, buf.bytesused);
-        printf("buf.bytesused=%d, %d\r\n", buf.bytesused, buf.m.offset);
+        printf("buf.bytesused=%"PRIu32", %"PRIu32"\r\n", buf.bytesused, buf.m.offset);
         printf("data:");
         for (uint32_t loop = buf.m.offset; loop < buf.m.offset + 16; loop++) {
             printf("%02x ", video_buffer_ptr[buf.index][loop]);

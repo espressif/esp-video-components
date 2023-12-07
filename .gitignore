@@ -29,6 +29,10 @@ examples/**/build/
 examples/**/build_esp*_*/
 examples/**/sdkconfig
 examples/**/sdkconfig.old
+test/**/build/
+test/**/build_esp*_*/
+test/**/sdkconfig
+test/**/sdkconfig.old
 
 # Doc build artifacts
 docs/_build/
