@@ -15,6 +15,10 @@
 #include "esp_video_buffer.h"
 #include "esp_camera.h"
 
+
+#ifdef CONFIG_ESP_VIDEO_MEDIA_CONTROLLER
+#include "esp_media.h"
+#endif
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -111,6 +115,10 @@ struct esp_video {
     SemaphoreHandle_t done_sem;             /*!< Buffer sync semaphore */
 
     struct esp_video_buffer *buffer;        /*!< Video Buffer */
+
+#ifdef CONFIG_ESP_VIDEO_MEDIA_CONTROLLER
+    esp_entity_t *entity;                   /*!< The entity of this device */
+#endif
 };
 
 /**
@@ -305,7 +313,7 @@ uint8_t *esp_video_alloc_buffer(struct esp_video *video);
  *
  * @return None
  */
-void esp_video_recvdone_buffer(struct esp_video *video, uint8_t *buffer, uint32_t size, uint32_t offset);
+void *esp_video_recvdone_buffer(struct esp_video *video, uint8_t *buffer, uint32_t size, uint32_t offset);
 
 /**
  * @brief Receive buffer from video device.
@@ -351,6 +359,8 @@ void esp_video_free_buffer_index(struct esp_video *video, uint32_t index);
 uint32_t esp_video_get_buffer_index(struct esp_video *video, uint8_t *buffer);
 
 uint8_t *esp_video_get_buffer_by_offset(struct esp_video *video, uint32_t offset);
+
+struct esp_video *esp_video_device_get_object(const char *name);
 
 #ifdef __cplusplus
 }

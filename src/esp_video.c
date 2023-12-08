@@ -27,6 +27,22 @@ static SLIST_HEAD(esp_video_list, esp_video) s_video_list = SLIST_HEAD_INITIALIZ
 
 static const char *TAG = "esp_video";
 
+struct esp_video *esp_video_device_get_object(const char *name)
+{
+    struct esp_video *video;
+
+    _lock_acquire(&s_video_lock);
+    SLIST_FOREACH(video, &s_video_list, node) {
+        if (!strcmp(video->dev_name, name)) {
+            _lock_release(&s_video_lock);
+            return video;
+        }
+    }
+
+    _lock_release(&s_video_lock);
+    return NULL;
+}
+
 /**
  * @brief Create video object.
  *
@@ -197,6 +213,10 @@ esp_err_t esp_video_destroy(struct esp_video *video)
     }
 #endif
 
+#ifdef CONFIG_ESP_VIDEO_MEDIA_CONTROLLER
+    esp_entity_delete(video->entity);
+#endif
+
     heap_caps_free(video);
 
     return ESP_OK;
@@ -237,10 +257,10 @@ struct esp_video *esp_video_open(const char *name)
             ESP_VIDEO_LOGE("video->ops->init=%x", ret);
             return NULL;
         } else {
-            memset(&video->format, 0, sizeof(struct esp_video_format));
+            // memset(&video->format, 0, sizeof(struct esp_video_format));
             video->buffer_size  = video->min_buffer_size;
             video->buffer_count = video->min_buffer_count;
-            video->buffer       = NULL;
+            // video->buffer       = NULL;
         }
     } else {
         ESP_VIDEO_LOGI("video->ops->init=NULL");
@@ -295,12 +315,15 @@ esp_err_t esp_video_close(struct esp_video *video)
                 vSemaphoreDelete(video->done_sem);
                 video->done_sem = NULL;
             }
-
+#ifndef CONFIG_ESP_VIDEO_MEDIA_CONTROLLER
             if (video->buffer) {
                 SLIST_INIT(&video->done_list);
                 esp_video_buffer_destroy(video->buffer);
                 video->buffer = NULL;
             }
+#else
+            video->buffer = NULL;
+#endif
         }
     } else {
         ESP_VIDEO_LOGI("video->ops->deinit=NULL");
@@ -654,7 +677,15 @@ esp_err_t esp_video_setup_buffer(struct esp_video *video, uint32_t count)
         return ESP_ERR_NO_MEM;
     }
 
+#ifdef CONFIG_ESP_VIDEO_MEDIA_CONTROLLER
+    esp_err_t esp_pipeline_create_video_buffer(esp_pipeline_t *pipeline, int count);
+    esp_pipeline_t *pipeline = esp_pad_get_pipeline(esp_entity_get_pad_by_index(video->entity, ESP_PAD_TYPE_SINK, 0));
+    esp_pipeline_create_video_buffer(pipeline, video->buffer_count);
+    video->buffer = esp_pipeline_get_video_buffer(pipeline);
+    ESP_VIDEO_LOGI("%s buffer created %p", video->dev_name, video);
+#else
     video->buffer = esp_video_buffer_create(video->buffer_count, video->buffer_size);
+#endif
     if (!video->buffer) {
         vSemaphoreDelete(video->done_sem);
         video->done_sem = NULL;
@@ -807,22 +838,41 @@ uint8_t *IRAM_ATTR esp_video_alloc_buffer(struct esp_video *video)
  *
  * @return None
  */
-void IRAM_ATTR esp_video_recvdone_buffer(struct esp_video *video, uint8_t *buffer, uint32_t size, uint32_t offset)
+void *IRAM_ATTR esp_video_recvdone_buffer(struct esp_video *video, uint8_t *buffer, uint32_t size, uint32_t offset)
 {
     struct esp_video_buffer_element *element =
         container_of(buffer, struct esp_video_buffer_element, buffer);
 
+    bool user_node = true;
+    void *ret_ptr = NULL;
     /* Check if the buffer is overflow */
     if (size + offset > esp_video_buffer_element_get_buffer_size(element)) {
         abort();
     }
 
-    portENTER_CRITICAL_SAFE(&video->lock);
+    // ToDo: Process device data
+    ret_ptr = buffer;
     element->valid_offset = offset;
     esp_video_buffer_element_set_valid_size(element, size);
-    SLIST_INSERT_HEAD(&video->done_list, element, node);
-    portEXIT_CRITICAL_SAFE(&video->lock);
-    xSemaphoreGive(video->done_sem);
+#ifdef CONFIG_ESP_VIDEO_MEDIA_CONTROLLER
+    user_node = esp_entity_is_user_node(video->entity);
+#endif
+    if (user_node) {
+        portENTER_CRITICAL_SAFE(&video->lock);
+        SLIST_INSERT_HEAD(&video->done_list, element, node);
+        portEXIT_CRITICAL_SAFE(&video->lock);
+        if (xPortInIsrContext()) {
+            BaseType_t wakeup;
+            xSemaphoreGiveFromISR(video->done_sem, &wakeup);
+            if (wakeup == pdTRUE) {
+                portYIELD_FROM_ISR();
+            }
+        } else {
+            xSemaphoreGive(video->done_sem);
+        }
+    }
+
+    return ret_ptr;
 }
 
 /**
