@@ -28,4 +28,6 @@ workflow:
   - echo -e "Host gitlab.espressif.cn\n\tStrictHostKeyChecking no\n" >> ~/.ssh/config
 
 include:
+  - '.gitlab/ci/rules.yml'
   - '.gitlab/ci/pre_check.yml'
+  - '.gitlab/ci/build.yml'

@@ -14,7 +14,7 @@ menuconfig CAMERA_OV2640
 
     menu "Interface"
         depends on CAMERA_OV2640
-        config CAMERA_OV5640_INTERFACE_DVP
+        config CAMERA_OV2640_INTERFACE_DVP
             bool "DVP"
             default y
             help

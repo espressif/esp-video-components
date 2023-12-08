@@ -63,7 +63,6 @@ esp_err_t esp_camera_init(const esp_camera_config_t *config)
     extern esp_camera_detect_fn_t __esp_camera_detect_fn_array_start;
     extern esp_camera_detect_fn_t __esp_camera_detect_fn_array_end;
 
-    esp_err_t ret;
     esp_camera_detect_fn_t *p;
 
     if (config == NULL || config->sccb_num > 2 || config->dvp_num > 2) {
@@ -115,6 +114,8 @@ esp_err_t esp_camera_init(const esp_camera_config_t *config)
         }
 
 #ifdef CONFIG_CAMERA_SIM
+        esp_err_t ret;
+
         if (p->intf == CAMERA_INTF_SIM && config->sim_num && config->sim != NULL) {
             for (size_t i = 0; i < config->sim_num; i++) {
                 esp_camera_sim_config_t cfg = {
