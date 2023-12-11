@@ -6,13 +6,18 @@ set(srcs "src/esp_camera.c"
          )
 set(include_dirs "include" "include/drivers")
 set(priv_include_dirs "private_include")
-set(priv_requires "esp_timer" "vfs" "driver")
+set(priv_requires "esp_timer" "vfs" "driver" "json")
 set(requires "")
 
 include(${COMPONENT_DIR}/drivers/isp/sources.cmake)
 include(${COMPONENT_DIR}/drivers/mipi/csi/sources.cmake)
 include(${COMPONENT_DIR}/drivers/sccb/sources.cmake)
 include(${COMPONENT_DIR}/drivers/sim/sources.cmake)
+
+if (NOT "${CONFIG_ESP_VIDEO_MEDIA_EMBED_FILE}" STREQUAL "")
+    set(embed_files "${CONFIG_ESP_VIDEO_MEDIA_EMBED_FILE}")
+    string(REPLACE "." "_" embed_file_c_name "${CONFIG_ESP_VIDEO_MEDIA_EMBED_FILE}")
+endif()
 
 if(CONFIG_ESP_VIDEO_API_LINUX)
     list(APPEND srcs "src/esp_video_vfs.c" "src/esp_video_mman.c")
@@ -23,4 +28,9 @@ idf_component_register(SRCS ${srcs}
                        PRIV_INCLUDE_DIRS ${priv_include_dirs}
                        PRIV_REQUIRES ${priv_requires}
                        REQUIRES ${requires}
-                       LDFRAGMENTS linker.lf)
+                       LDFRAGMENTS linker.lf
+                       EMBED_TXTFILES ${embed_files})
+
+if (NOT "${CONFIG_ESP_VIDEO_MEDIA_EMBED_FILE}" STREQUAL "")
+    add_definitions(-DCONFIG_ESP_VIDEO_MEDIA_EMBED_FILE_NAME="${embed_file_c_name}")
+endif()

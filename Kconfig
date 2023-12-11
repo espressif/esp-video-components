@@ -17,6 +17,19 @@ menu "Espressif Video Development Framework Configuration"
                 Select this option, users can use espressif video core API.
     endchoice
 
+    config ESP_VIDEO_MEDIA_CONTROLLER
+        bool "Media controller enable"
+        default y
+    
+    config ESP_VIDEO_MEDIA_EMBED_FILE
+        string "Configuration file for media pileline"
+        default "default.json"
+        depends on ESP_VIDEO_MEDIA_CONTROLLER
+    
+    config ESP_VIDEO_MEDIA_TODO
+        bool "Todo Macro, will be removed in the next MR"
+        default y
+
     menuconfig ESP_VIDEO_LOG
         bool "Enable Video Log"
         default y

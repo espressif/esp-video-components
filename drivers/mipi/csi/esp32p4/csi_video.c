@@ -39,10 +39,26 @@ static const char *TAG = "sim_camera";
 
 extern esp_mipi_csi_handle_t csi_test_handle;
 
+// Need to be optimized valiables
+extern esp_pad_t *initial_pad = NULL;
 static struct esp_video *g_video;
+
 esp_err_t sim_camera_recv_vb(uint8_t *buffer, uint32_t offset, uint32_t len)
 {
+#ifdef CONFIG_ESP_VIDEO_MEDIA_CONTROLLER
+    struct esp_video_buffer_element *element =
+        container_of(buffer, struct esp_video_buffer_element, buffer);
+    esp_media_event_t event;
+    memset(&event, 0x0, sizeof(event));
+    event.cmd = ESP_MEIDA_EVENT_CMD_DATA_RECV;
+    event.pad = initial_pad;
+    event.param = element;
+    element->valid_offset = offset;
+    element->valid_size = len;
+    esp_media_event_post(&event, 0);
+#else
     esp_video_recvdone_buffer(g_video, buffer, len, offset);
+#endif
 
     return ESP_OK;
 }
