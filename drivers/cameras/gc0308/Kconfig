@@ -1,0 +1,31 @@
+menuconfig CAMERA_GC0308
+    bool "GC0308"
+    default y
+    help
+        Enabling this option will add the support for GC0308.
+
+    config CAMERA_GC0308_AUTO_DETECT
+        bool "Auto detect GC0308"
+        default y
+        depends on CAMERA_GC0308
+        help
+            When enabled, you don't need to call gc0308_detect manaually, GC0308 will be automatically detected
+            when esp_camera_init is called.
+
+    menu "Interface"
+        depends on CAMERA_GC0308
+        config CAMERA_GC0308_INTERFACE_DVP
+            bool "DVP"
+            default y
+            help
+                If enabled, the GC0308 will be connected to the DVP interface.
+    endmenu
+
+    config CAMERA_GC0308_MAX_SUPPORT
+        int "Support for a maximum number of connected GC0308"
+        depends on CAMERA_GC0308
+        default 1
+        range 1 3 if IDF_TARGET_ESP32P4
+        range 1 1 if !IDF_TARGET_ESP32P4
+        help
+            Set the number of connected GC0308.
