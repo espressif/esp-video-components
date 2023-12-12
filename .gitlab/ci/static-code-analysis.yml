@@ -1,0 +1,21 @@
+# pre_check stage
+clang_tidy_check:
+  extends:
+    - .pre_check_template
+    - .before_script:build
+    - .rules:patterns:clang_tidy
+  image:
+    name: espressif/idf:latest
+  artifacts:
+    paths:
+      - clang_tidy_reports/
+    when: always
+    expire_in: 1 day
+  variables:
+    IDF_TOOLCHAIN: clang
+  script:
+    - mkdir clang_tidy_reports
+    - idf.py set-target esp32s3 clang-check -C examples/mipi_csi_basic
+      --include-paths src
+      --include-paths drivers
+    - cp examples/mipi_csi_basic/warnings.txt clang_tidy_reports/

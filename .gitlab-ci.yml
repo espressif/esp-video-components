@@ -2,6 +2,13 @@ stages:
   - pre_check
   - build
 
+variables:
+# System environment
+
+# GitLab-CI environment
+  # Docker images
+  ESP_ENV_IMAGE: "${CI_DOCKER_REGISTRY}/esp-env-v5.3:1"
+
 workflow:
   rules:
     # Disable those non-protected push triggered pipelines
@@ -19,15 +26,30 @@ workflow:
         IS_MR_PIPELINE: 0
     - when: always
 
-.before_script_preparation:
-  - mkdir -p ~/.ssh
-  - chmod 700 ~/.ssh
-  - echo -n $GITLAB_KEY >> ~/.ssh/id_rsa_base64
-  - base64 --decode --ignore-garbage ~/.ssh/id_rsa_base64 > ~/.ssh/id_rsa
-  - chmod 600 ~/.ssh/id_rsa
-  - echo -e "Host gitlab.espressif.cn\n\tStrictHostKeyChecking no\n" >> ~/.ssh/config
+################################################
+# `before_script` and `after_script` Templates #
+################################################
+.common_before_scripts: &common-before_scripts |
+  source tools/ci/utils.sh
+
+.setup_tools_and_idf_python_venv: &setup_tools_and_idf_python_venv |
+  # must use after setup_tools_except_target_test
+  # otherwise the export.sh won't work properly
+
+  # Install esp-clang if necessary
+  if [[ "$IDF_TOOLCHAIN" == "clang" ]]; then
+    $IDF_PATH/tools/idf_tools.py --non-interactive install esp-clang
+  fi
+
+  source $IDF_PATH/export.sh
+
+.before_script:build:
+  before_script:
+    - *common-before_scripts
+    - *setup_tools_and_idf_python_venv
 
 include:
   - '.gitlab/ci/rules.yml'
+  - '.gitlab/ci/static-code-analysis.yml'
   - '.gitlab/ci/pre_check.yml'
   - '.gitlab/ci/build.yml'
