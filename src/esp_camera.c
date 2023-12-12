@@ -13,6 +13,10 @@
 #include "sim_video.h"
 #endif
 
+#ifdef CONFIG_ESP_VIDEO_MEDIA_CONTROLLER
+#include "esp_media.h"
+#endif
+
 static const char *TAG = "esp_camera";
 
 esp_err_t esp_camera_ioctl(esp_camera_device_t *dev, uint32_t cmd, void *value, size_t *size)
@@ -137,6 +141,13 @@ esp_err_t esp_camera_init(const esp_camera_config_t *config)
         }
 #endif
     }
+
+#ifdef CONFIG_ESP_VIDEO_MEDIA_CONTROLLER
+    if (media_start() != ESP_OK) {
+        ESP_LOGE(TAG, "Start media fail");
+        return ESP_FAIL;
+    }
+#endif
 
     return ESP_OK;
 }

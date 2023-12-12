@@ -284,6 +284,17 @@ struct esp_video_buffer *esp_pipeline_get_video_buffer(esp_pipeline_t *pipeline)
 esp_pad_t *esp_pipeline_get_pad_by_entity(esp_pipeline_t *pipeline, esp_entity_t *entity);
 
 /**
+ * @brief Remove and delete the pipeline.
+ *
+ * @param pipeline pipeline to be deleted
+ *
+ * @return
+ *      - ESP_OK if successful
+ *      - Others if failed
+ */
+esp_err_t esp_pipeline_delete(esp_pipeline_t *pipeline);
+
+/**
  * @brief Post an event to media.
  *
  * @param event event will be posted

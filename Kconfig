@@ -23,7 +23,7 @@ menu "Espressif Video Development Framework Configuration"
     
     config ESP_VIDEO_MEDIA_EMBED_FILE
         string "Configuration file for media pileline"
-        default "default.json"
+        default "configs/default.json"
         depends on ESP_VIDEO_MEDIA_CONTROLLER
     
     config ESP_VIDEO_MEDIA_TODO
