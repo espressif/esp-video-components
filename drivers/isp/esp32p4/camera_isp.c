@@ -7,11 +7,10 @@
 #include <stdint.h>
 #include <math.h>
 
-#include "isp_struct.h"
 #include "camera_isp.h"
 #include "sdkconfig.h"
 #include "soc/hp_sys_clkrst_struct.h"
-
+#include "soc/isp_struct.h"
 #include "esp_log.h"
 
 /* ISP OUTPUT mode: 0: RAW8 1: YUV422 2: RGB888 3: YUV420 4: RGB565, see ISP.cntl.out_type*/
@@ -88,14 +87,14 @@ int isp_init(uint32_t frame_width, uint32_t frame_height, pixformat_t in_type, p
     ISP.cntl.ccm_en = 1;
     ISP.cntl.demosaic_en = 1;
     ISP.cntl.dpc_en = 1;
-    ISP.cntl.dpc_check_en = 0;
-    ISP.cntl.dpc_sta_en = 0;
-    ISP.cntl.dpc_dyn_en = 1;
-    ISP.cntl.dpc_black_en = 0;
+    ISP.dpc_ctrl.dpc_check_en = 0;
+    ISP.dpc_ctrl.sta_en = 0;
+    ISP.dpc_ctrl.dyn_en = 1;
+    ISP.dpc_ctrl.dpc_black_en = 0;
     ISP.cntl.median_en = 1;
     ISP.cntl.gamma_en = 1;
     ISP.cntl.sharp_en = 1;
-    ISP.cntl.out_type = isp_out_format;
+    ISP.cntl.isp_out_type = isp_out_format;
     ISP.yuv_format.yuv_mode = 1;
     ISP.yuv_format.yuv_range = 0;
     ISP.cntl.rgb2yuv_en = 1;
@@ -105,8 +104,8 @@ int isp_init(uint32_t frame_width, uint32_t frame_height, pixformat_t in_type, p
     ISP.cntl.blc_en = 1;
     ISP.cntl.bf_en = 1;
     ISP.cntl.lsc_en = 0;
-    ISP.cntl.data_type = isp_in_format;
-    ISP.cntl.in_src = 0;
+    ISP.cntl.isp_data_type = isp_in_format;
+    ISP.cntl.isp_in_src = 0;
     ISP.cntl.mipi_data_en = 1;
     ISP.frame_cfg.hsync_start_exist = CONFIG_MIPI_CSI_LINESYNC_SUPPORT ? 1 : 0; // This must be the same as the sensor configuration. See sensor_config.h.
     ISP.frame_cfg.hsync_end_exist = CONFIG_MIPI_CSI_LINESYNC_SUPPORT ? 1 : 0; // This must be the same as the sensor configuration. See sensor_config.h.
@@ -117,13 +116,13 @@ int isp_init(uint32_t frame_width, uint32_t frame_height, pixformat_t in_type, p
     if ((isp_in_format != -1) && isp_enable) {
         ISP.frame_cfg.hadr_num = frame_width - 1;
         ISP.frame_cfg.vadr_num = frame_height - 1;
-        ISP.cntl.en = 1;
+        ISP.cntl.isp_en = 1;
     } else { // not use ISP module, use bridge fifo, 32bytes align.
         ISP.frame_cfg.hadr_num = ceil((float)(frame_width * pixformat_info_map[in_type].bits_per_pixel) / 32.0) - 1;
         ISP.frame_cfg.vadr_num = frame_height - 1;
-        ISP.cntl.en = 0;
+        ISP.cntl.isp_en = 0;
     }
 
-    ESP_LOGI(TAG, "h_num=%d, v_num=%d, ISP_cntl.en: %d,hadr=%d, vadr=%d", ISP.frame_cfg.hadr_num, ISP.frame_cfg.vadr_num, ISP.cntl.en, ISP.frame_cfg.hadr_num, ISP.frame_cfg.vadr_num);
+    ESP_LOGI(TAG, "h_num=%u, v_num=%u, ISP_cntl.en: %u", ISP.frame_cfg.hadr_num, ISP.frame_cfg.vadr_num, ISP.cntl.isp_en);
     return 0;
 }
