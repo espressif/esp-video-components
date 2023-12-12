@@ -1,5 +1,8 @@
 dependencies:
   idf: ">=4.4"
+  gc0308:
+    version: "~0.0.1"
+    override_path: "../../../drivers/cameras/gc0308"
   ov2640:
     version: "~0.0.1"
     override_path: "../../../drivers/cameras/ov2640"
