@@ -680,7 +680,11 @@ esp_err_t esp_video_setup_buffer(struct esp_video *video, uint32_t count)
 #ifdef CONFIG_ESP_VIDEO_MEDIA_CONTROLLER
     esp_err_t esp_pipeline_create_video_buffer(esp_pipeline_t *pipeline, int count);
     esp_pipeline_t *pipeline = esp_pad_get_pipeline(esp_entity_get_pad_by_index(video->entity, ESP_PAD_TYPE_SINK, 0));
-    esp_pipeline_create_video_buffer(pipeline, video->buffer_count);
+
+    if (!esp_pipeline_get_video_buffer(pipeline)) {
+        esp_pipeline_create_video_buffer(pipeline, video->buffer_count);
+    }
+
     video->buffer = esp_pipeline_get_video_buffer(pipeline);
     ESP_VIDEO_LOGI("%s buffer created %p", video->dev_name, video);
 #else

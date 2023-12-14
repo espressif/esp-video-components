@@ -84,6 +84,7 @@ static esp_err_t entities_walk(esp_pad_t *pad, esp_media_event_cmd_t cmd, struct
 static esp_err_t esp_media_remove_pipeline(esp_media_t *media, esp_pipeline_t *pipeline);
 
 static QueueHandle_t media_queue = NULL;
+static const char *TAG = "esp_media";
 
 static esp_err_t entity_event_default_cb(struct esp_pad *pad, esp_media_event_cmd_t cmd, void *in, void **out)
 {
@@ -111,11 +112,17 @@ static esp_entity_ops_t entity_default_ops = {
 };
 
 esp_pad_t *initial_pad;
-cJSON *esp_media_config_loader(const char *config_string)
+static esp_err_t esp_media_config_loader(const char *config_string)
 {
+    esp_err_t err_ret = ESP_FAIL;
     esp_media_t *media = NULL;
     cJSON *root = NULL;
     if (!config_string) {
+        goto exit;
+    }
+
+    media = esp_media_create();
+    if (!media) {
         goto exit;
     }
 
@@ -152,6 +159,10 @@ cJSON *esp_media_config_loader(const char *config_string)
         cJSON *source_pad_cjson = cJSON_GetObjectItem(entity_cjson, "source_pads");
 
         struct esp_video *video = esp_video_device_get_object(name->valuestring);
+        if (!video) {
+            ESP_LOGE(TAG, "Not found %s device", entity_cjson->valuestring);
+            goto exit;
+        }
         esp_entity_t *entity = esp_entity_create(source_pad_cjson->valueint, sink_pad_cjson->valueint, video);
 
         esp_entity_regist_ops(entity, &entity_default_ops);
@@ -168,14 +179,16 @@ cJSON *esp_media_config_loader(const char *config_string)
 
     // parse pipeline
     cJSON *pipelines = cJSON_GetObjectItem(media_cjson, "pipelines");
-    media = esp_media_create();
     if (!pipelines) {
-        return NULL;
+        goto exit;
     }
     int pipelines_num = cJSON_GetArraySize(pipelines);
 
     for (int index = 0; index < pipelines_num; index++) {
         esp_pipeline_t *pipeline = esp_pipeline_create(0, 0);
+        if (!pipeline) {
+            goto exit;
+        }
         esp_media_add_pipeline(media, pipeline);
         cJSON *pipeline_node = cJSON_GetArrayItem(pipelines, index);
         cJSON *entities = cJSON_GetObjectItem(pipeline_node, "entities");
@@ -191,9 +204,17 @@ cJSON *esp_media_config_loader(const char *config_string)
 
             if (pre_entity_name_cjson) {
                 pre_video = esp_video_device_get_object(pre_entity_name_cjson->valuestring);
+                if (!pre_video) {
+                    ESP_LOGE(TAG, "Not found pre %s device", entity_cjson->valuestring);
+                    goto exit;
+                }
             }
             video = esp_video_device_get_object(entity_cjson->valuestring);
 
+            if (!video) {
+                ESP_LOGE(TAG, "Not found %s device", entity_cjson->valuestring);
+                goto exit;
+            }
             esp_pad_t *pad = esp_entity_get_pad_by_index(video->entity, ESP_PAD_TYPE_SINK, sink_pad_cjson->valueint);
             if (pre_video) {
                 esp_pad_t *pre_pad = esp_pipeline_get_pad_by_entity(pipeline, pre_video->entity);
@@ -206,6 +227,8 @@ cJSON *esp_media_config_loader(const char *config_string)
         esp_media_add_pipeline(media, pipeline);
         initial_pad = pipeline->entry_pad;
     }
+    err_ret = ESP_OK;
+
 exit:
     if (root) {
         cJSON_Delete(root);
@@ -215,11 +238,11 @@ exit:
         esp_list_t *list = media->pipeline;
         while (list) {
             esp_list_t *temp = list->next;
-            esp_media_remove_pipeline(media, list->payload);
+            esp_pipeline_delete(list->payload);
             list = temp;
         }
     }
-    return NULL;
+    return err_ret;
 }
 
 esp_err_t esp_media_async_done_cb(struct esp_pad *pad, esp_media_event_cmd_t cmd, void *in, void *out)
@@ -721,7 +744,7 @@ esp_pad_t *esp_pipeline_get_pad_by_entity(esp_pipeline_t *pipeline, esp_entity_t
             return pad;
         }
 #ifdef CONFIG_ESP_VIDEO_MEDIA_TODO
-        // Todo:
+        // Todo: AEG-1081
 #endif
         esp_pad_t *remote_pad = pad->remote_pads->payload;
         pad = remote_pad->bridge_pads->payload;
@@ -896,8 +919,14 @@ esp_err_t esp_pipeline_delete(esp_pipeline_t *pipeline)
     if (!pipeline) {
         return ESP_FAIL;
     }
+#ifdef CONFIG_ESP_VIDEO_MEDIA_TODO
+    // Todo: AEG-1080 cleanup entity
+#endif
+
     esp_media_remove_pipeline(pipeline->media, pipeline);
-    esp_video_buffer_destroy(pipeline->vb);
+    if (pipeline->vb) {
+        esp_video_buffer_destroy(pipeline->vb);
+    }
     free(pipeline);
 
     return ESP_OK;
@@ -1030,8 +1059,13 @@ esp_err_t esp_pipeline_create_video_buffer(esp_pipeline_t *pipeline, int count)
     }
 
 #ifdef CONFIG_ESP_VIDEO_MEDIA_TODO
-    // Todo:
+    // Todo: AEG-1075
+#ifdef CONFIG_CAMERA_SIM
+    extern unsigned int sim_picture_jpeg_len;
+    pipeline->vb_size = sim_picture_jpeg_len + 16;
+#else
     pipeline->vb_size = 1843200 + 16;
+#endif
 #endif
     pipeline->vb = esp_video_buffer_create(pipeline->vb_num,  pipeline->vb_size);
     return ESP_OK;

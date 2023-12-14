@@ -18,9 +18,14 @@
 #include "freertos/semphr.h"
 #include "esp_video.h"
 
-#define VIDEO_COUNT             1
+#define VIDEO_COUNT             2
+#ifdef CONFIG_CAMERA_SIM
+#define VIDEO_DEVICE_NAME       CONFIG_CAMERA_SIM_NAME
+#define VIDEO_BUFFER_NUM        CONFIG_SIMULATED_INTF_DEVICE_BUFFER_COUNT
+#else
 #define VIDEO_DEVICE_NAME       "sc2336"
-#define VIDEO_BUFFER_NUM        1
+#define VIDEO_BUFFER_NUM        4
+#endif
 
 #define VIDEO_DESC_BUFFER_SIZE  128
 #define VIDEO_LINUX_CAPS        (V4L2_CAP_VIDEO_CAPTURE | V4L2_CAP_STREAMING | V4L2_CAP_READWRITE)
@@ -34,13 +39,34 @@ static SemaphoreHandle_t s_done_sem[VIDEO_COUNT];
 #undef TEST_ESP_OK
 #define TEST_ESP_OK(ret) printf("%s %d line ret=%d\r\n", __func__, __LINE__, ret)
 
-
-void esp32p4_hw_init(void);
-
 static void init(void)
 {
     if (!s_inited) {
-        // esp32p4_hw_init();
+#ifdef CONFIG_CAMERA_SIM
+        esp_camera_sim_config_t sim_camera_config[VIDEO_COUNT] = {
+            {
+                .id = 0
+            }
+#if VIDEO_COUNT > 1
+            ,
+            {
+                .id = 1
+            }
+#endif
+        };
+        esp_camera_config_t config = {
+            .sccb_num = 0,
+            .dvp_num  = 0,
+            .sim_num  = VIDEO_COUNT,
+            .sim      = sim_camera_config
+        };
+#else
+        esp_camera_config_t config;
+        memset(&config, 0x0, sizeof(config));
+#endif
+
+        TEST_ESP_OK(esp_camera_init(&config));
+
         for (int i = 0; i < VIDEO_COUNT; i++) {
             s_done_sem[i] = xSemaphoreCreateBinary();
             TEST_ASSERT_NOT_NULL(s_done_sem[i]);
@@ -148,6 +174,9 @@ static void test_linux_posix_with_v4l2_operation_task(void *p)
     ret = ioctl(fd, VIDIOC_S_PARM, &param);
     TEST_ESP_OK(ret);
 
+    if (index != VIDEO_COUNT - 1) {
+        vTaskDelete(NULL);
+    }
     ret = ioctl(fd, VIDIOC_STREAMON, &type);
     TEST_ESP_OK(ret);
 
