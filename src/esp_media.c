@@ -67,8 +67,7 @@ struct esp_pipeline {
 struct esp_pad {
     esp_list_t *remote_pads;
     int remote_pads_num;
-    esp_list_t *bridge_pads;
-    int bridge_pads_num;
+    esp_pad_t *bridge_pad;
     esp_pad_type_t type;
     esp_entity_t *entity;
     esp_pipeline_t *pipeline;
@@ -218,7 +217,7 @@ static esp_err_t esp_media_config_loader(const char *config_string)
             esp_pad_t *pad = esp_entity_get_pad_by_index(video->entity, ESP_PAD_TYPE_SINK, sink_pad_cjson->valueint);
             if (pre_video) {
                 esp_pad_t *pre_pad = esp_pipeline_get_pad_by_entity(pipeline, pre_video->entity);
-                pre_pad = pre_pad->bridge_pads->payload;
+                pre_pad = pre_pad->bridge_pad;
                 esp_pads_link(pre_pad, pad);
             } else {
                 esp_pipeline_update_entry_entity(pipeline, pad);
@@ -264,7 +263,7 @@ esp_err_t esp_media_async_done_cb(struct esp_pad *pad, esp_media_event_cmd_t cmd
 //////// pad
 esp_pad_t *esp_pad_get_bridge_pad(esp_pad_t *pad)
 {
-    return pad ? pad->bridge_pads->payload : NULL;
+    return pad ? pad->bridge_pad : NULL;
 }
 
 esp_entity_t *esp_pad_get_entity(esp_pad_t *pad)
@@ -330,69 +329,16 @@ esp_err_t esp_entity_pad_bridge(esp_pad_t *source, esp_pad_t *sink)
         return ESP_FAIL;
     }
 
-    esp_list_t *list = source->bridge_pads;
-    esp_list_t *last_list = NULL;
-    esp_list_t *new_source_bridge_list = NULL;
-    esp_list_t *new_sink_bridge_list = NULL;
-
-    while (list) {
-        if (list->payload == sink) {
-            break;
-        }
-        last_list = list;
-        list = list->next;
+    if (source->bridge_pad) {
+        source->bridge_pad->bridge_pad = NULL;
     }
 
-    if (!list) {
-        new_source_bridge_list = (esp_list_t *)malloc(sizeof(esp_list_t));
-        if (!new_source_bridge_list) {
-            return ESP_FAIL;
-        }
-        memset(new_source_bridge_list, 0x0, sizeof(esp_list_t));
-        new_source_bridge_list->payload = sink;
+    if (sink->bridge_pad) {
+        sink->bridge_pad->bridge_pad = NULL;
     }
 
-    list = sink->bridge_pads;
-    while (list) {
-        if (list->payload == source) {
-            break;
-        }
-        last_list = list;
-        list = list->next;
-    }
-
-    if (!list) {
-        new_sink_bridge_list = (esp_list_t *)malloc(sizeof(esp_list_t));
-        if (!new_sink_bridge_list) {
-            if (new_source_bridge_list) {
-                free(new_source_bridge_list);
-            }
-            return ESP_FAIL;
-        }
-        memset(new_sink_bridge_list, 0x0, sizeof(esp_list_t));
-        new_sink_bridge_list->payload = source;
-    }
-
-    if (new_source_bridge_list) {
-        if (!source->bridge_pads) {
-            source->bridge_pads = new_source_bridge_list;
-        } else {
-            last_list->next = new_source_bridge_list;
-            new_source_bridge_list->pre = last_list;
-        }
-        source->bridge_pads_num++;
-    }
-
-    if (new_sink_bridge_list) {
-        if (!sink->bridge_pads) {
-            sink->bridge_pads = new_sink_bridge_list;
-        } else {
-            last_list->next = new_sink_bridge_list;
-            new_sink_bridge_list->pre = last_list;
-        }
-        sink->bridge_pads_num++;
-        source->pipeline = sink->pipeline;
-    }
+    source->bridge_pad = sink;
+    sink->bridge_pad = source;
 
     return ESP_OK;
 }
@@ -743,11 +689,8 @@ esp_pad_t *esp_pipeline_get_pad_by_entity(esp_pipeline_t *pipeline, esp_entity_t
         if (entity_tmp == entity) {
             return pad;
         }
-#ifdef CONFIG_ESP_VIDEO_MEDIA_TODO
-        // Todo: AEG-1081
-#endif
         esp_pad_t *remote_pad = pad->remote_pads->payload;
-        pad = remote_pad->bridge_pads->payload;
+        pad = remote_pad->bridge_pad;
         entity_tmp = esp_pad_get_entity(pad);
     }
 
@@ -802,12 +745,8 @@ static esp_err_t entities_walk(esp_pad_t *pad, esp_media_event_cmd_t cmd, struct
             vb = out;
         }
     }
-    esp_list_t *bridge_list = pad->bridge_pads;
-    while (bridge_list) {
-        esp_pad_t *bridge_pad = bridge_list->payload;
-        pads_walk(bridge_pad, cmd, vb);
-        bridge_list = bridge_list->next;
-    }
+
+    pads_walk(pad->bridge_pad, cmd, vb);
 
     return ESP_OK;
 }
@@ -836,13 +775,8 @@ static esp_err_t entities_iterate_walk_custom(esp_pad_t *pad, entities_iterate_w
     }
 
     cb(pad, param);
-    esp_list_t *bridge_list = pad->bridge_pads;
 
-    while (bridge_list) {
-        esp_pad_t *bridge_pad = bridge_list->payload;
-        pads_iterate_walk_custom(bridge_pad, cb, param);
-        bridge_list = bridge_list->next;
-    }
+    pads_iterate_walk_custom(pad->bridge_pad, cb, param);
 
     return ESP_OK;
 }
@@ -879,7 +813,7 @@ struct esp_video_buffer *esp_pipeline_get_video_buffer(esp_pipeline_t *pipeline)
 
 static esp_err_t esp_pads_bind_pipeline_iterate(esp_pad_t *pad, void *param)
 {
-    esp_pad_t *bridge_pad = pad->bridge_pads->payload;
+    esp_pad_t *bridge_pad = pad->bridge_pad;
     pad->pipeline = param;
     if (bridge_pad) {
         bridge_pad->pipeline = param;
