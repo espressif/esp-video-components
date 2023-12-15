@@ -403,14 +403,14 @@ static int esp_video_vfs_fcntl(void *ctx, int fd, int cmd, int arg)
     assert(fd >= 0);
     assert(video);
 
-    switch(cmd) {
-        case F_GETFL:
-            ret = O_RDONLY;
-            break;
-        default:
-            ret = -1;
-            errno = ENOSYS;
-            break;
+    switch (cmd) {
+    case F_GETFL:
+        ret = O_RDONLY;
+        break;
+    default:
+        ret = -1;
+        errno = ENOSYS;
+        break;
     }
 
     return ret;
@@ -442,48 +442,48 @@ static int esp_video_vfs_ioctl(void *ctx, int fd, int cmd, va_list args)
     }
 
     switch (cmd) {
-        case VIDIOC_QBUF:
-            ret = esp_video_vfs_ioctl_qbuf(video, (struct v4l2_buffer *)arg_ptr);
-            break;
-        case VIDIOC_DQBUF:
-            ret = esp_video_vfs_ioctl_dqbuf(video, (struct v4l2_buffer *)arg_ptr);
-            break;
-        case VIDIOC_QUERYCAP:
-            ret = esp_video_vfs_ioctl_querycap(video, (struct v4l2_capability *)arg_ptr);
-            break;
-        case VIDIOC_G_FMT:
-            ret = esp_video_vfs_ioctl_g_fmt(video, (struct v4l2_format *)arg_ptr);
-            break;
-        case VIDIOC_S_FMT:
-            ret = esp_video_vfs_ioctl_s_fmt(video, (struct v4l2_format *)arg_ptr);
-            break;
-        case VIDIOC_TRY_FMT:
-            ret = esp_video_vfs_ioctl_try_fmt(video, (struct v4l2_format *)arg_ptr);
-            break;
-        case VIDIOC_STREAMON:
-            ret = esp_video_vfs_ioctl_streamon(video, (int *)arg_ptr);
-            break;
-        case VIDIOC_STREAMOFF:
-            ret = esp_video_vfs_ioctl_streamoff(video, (int *)arg_ptr);
-            break;
-        case VIDIOC_REQBUFS:
-            ret = esp_video_vfs_ioctl_reqbufs(video, (struct v4l2_requestbuffers *)arg_ptr);
-            break;
-        case VIDIOC_QUERYBUF:
-            ret = esp_video_vfs_ioctl_querybuf(video, (struct v4l2_buffer *)arg_ptr);
-            break;
-        case VIDIOC_S_PARM:
-            ret = esp_video_vfs_ioctl_s_param(video, (struct v4l2_streamparm *)arg_ptr);
-            break;
-        case VIDIOC_MMAP:
-            ret = esp_video_vfs_ioctl_mmap(video, (struct esp_video_ioctl_mmap *)arg_ptr);
-            break;
-        case VIDIOC_ENUM_FMT:
-        case VIDIOC_ENUM_FRAMESIZES:
-        default:
-            ret = -1;
-            errno = EINVAL;
-            break;
+    case VIDIOC_QBUF:
+        ret = esp_video_vfs_ioctl_qbuf(video, (struct v4l2_buffer *)arg_ptr);
+        break;
+    case VIDIOC_DQBUF:
+        ret = esp_video_vfs_ioctl_dqbuf(video, (struct v4l2_buffer *)arg_ptr);
+        break;
+    case VIDIOC_QUERYCAP:
+        ret = esp_video_vfs_ioctl_querycap(video, (struct v4l2_capability *)arg_ptr);
+        break;
+    case VIDIOC_G_FMT:
+        ret = esp_video_vfs_ioctl_g_fmt(video, (struct v4l2_format *)arg_ptr);
+        break;
+    case VIDIOC_S_FMT:
+        ret = esp_video_vfs_ioctl_s_fmt(video, (struct v4l2_format *)arg_ptr);
+        break;
+    case VIDIOC_TRY_FMT:
+        ret = esp_video_vfs_ioctl_try_fmt(video, (struct v4l2_format *)arg_ptr);
+        break;
+    case VIDIOC_STREAMON:
+        ret = esp_video_vfs_ioctl_streamon(video, (int *)arg_ptr);
+        break;
+    case VIDIOC_STREAMOFF:
+        ret = esp_video_vfs_ioctl_streamoff(video, (int *)arg_ptr);
+        break;
+    case VIDIOC_REQBUFS:
+        ret = esp_video_vfs_ioctl_reqbufs(video, (struct v4l2_requestbuffers *)arg_ptr);
+        break;
+    case VIDIOC_QUERYBUF:
+        ret = esp_video_vfs_ioctl_querybuf(video, (struct v4l2_buffer *)arg_ptr);
+        break;
+    case VIDIOC_S_PARM:
+        ret = esp_video_vfs_ioctl_s_param(video, (struct v4l2_streamparm *)arg_ptr);
+        break;
+    case VIDIOC_MMAP:
+        ret = esp_video_vfs_ioctl_mmap(video, (struct esp_video_ioctl_mmap *)arg_ptr);
+        break;
+    case VIDIOC_ENUM_FMT:
+    case VIDIOC_ENUM_FRAMESIZES:
+    default:
+        ret = -1;
+        errno = EINVAL;
+        break;
     }
 
     return ret;
