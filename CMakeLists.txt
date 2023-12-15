@@ -1,9 +1,13 @@
 set(srcs "src/esp_camera.c"
          "src/esp_color_format.c"
-         "src/esp_media.c"
          "src/esp_video.c"
          "src/esp_video_buffer.c"
          )
+
+if(CONFIG_ESP_VIDEO_MEDIA_CONTROLLER)
+    list(APPEND srcs "src/esp_media.c")
+endif()
+
 set(include_dirs "include" "include/drivers")
 set(priv_include_dirs "private_include")
 set(priv_requires "esp_timer" "vfs" "driver" "json")

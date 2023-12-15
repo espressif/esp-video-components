@@ -8,9 +8,13 @@
 
 #include <stdint.h>
 #include <stdbool.h>
+#include <sys/param.h>
 #include "esp_err.h"
 #include "esp_check.h"
 #include "esp_attr.h"
+#include "linux/ioctl.h"
+#include "linux/v4l2-controls.h"
+#include "linux/videodev2.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -33,107 +37,109 @@ extern "C" {
 #define SENSOR_NAME_MAX_LEN (32)
 #define SENSOR_ISP_INFO_VERSION_DEFAULT (1)
 
-/*Direction bits*/
-#define SENSOR_IOC_GET  0U
-#define SENSOR_IOC_SET  1U
+/*!< Class and ID are 8-bit */
+#define _SENSOR_CLASS_SHIFT 8
+#define _SENSOR_ID_SHIFT    0
 
-#define _SENSOR_IOC_TYPESHIFT (16)
-#define _SENSOR_IOC_IDSHIFT   (8)
-#define _SENSOR_IOC_DIRSHIFT  (1)
+#define V4L2_CTRL_CLASS_PRIV            0x00a60000  /*!< V4L2 Control classes, please refer to "v4l2-controls.h" */
 
-/*
- * Used to create numbers.
- *
- * NOTE: _IOW means changing sensor's para. _SENSOR_IOR
- * means get info from sensor.
+#define _SENSOR_CLASS_ID(class, id) \
+    (((id) << _SENSOR_ID_SHIFT) | \
+     ((class) << _SENSOR_CLASS_SHIFT) | \
+     V4L2_CTRL_CLASS_PRIV)
+
+#define GET_SENSOR_CLASS(val) \
+    (((val) >> _SENSOR_CLASS_SHIFT) & 0xffff)
+
+#define GET_SENSOR_ID(val) \
+    (((val) >> _SENSOR_ID_SHIFT) & 0xffff)
+
+/**
+ * @brief Camera sensor control ID class
  */
-#define _SENSOR_IOW(class,id) \
-    (((class)  << _SENSOR_IOC_TYPESHIFT) | \
-     ((id)  << _SENSOR_IOC_IDSHIFT) | \
-     SENSOR_IOC_SET)
+#define CAM_SENSOR_CID_CLASS_DEFAULT    0X00        /*!< Sensor default control ID class */
+#define CAM_SENSOR_CID_CLASS_3A         0X01        /*!< Sensor 3A control ID class */
+#define CAM_SENSOR_CID_CLASS_LENS       0X02        /*!< Sensor lens control ID class */
+#define CAM_SENSOR_CID_CLASS_LED        0X03        /*!< Sensor flash LED control ID class */
 
-#define _SENSOR_IOR(class,id) \
-    (((class)  << _SENSOR_IOC_TYPESHIFT) | \
-     ((id)  << _SENSOR_IOC_IDSHIFT) | \
-     SENSOR_IOC_GET)
+/**
+ * @brief Camera sensor control ID which is used set/get/query
+ */
+#define CAM_SENSOR_POWER                _SENSOR_CLASS_ID(CAM_SENSOR_CID_CLASS_DEFAULT, 0x01)
+#define CAM_SENSOR_XCLK                 _SENSOR_CLASS_ID(CAM_SENSOR_CID_CLASS_DEFAULT, 0x02)    // For sensors that require a clock provided by the base board
+#define CAM_SENSOR_SENSOR_MODE          _SENSOR_CLASS_ID(CAM_SENSOR_CID_CLASS_DEFAULT, 0x03)
+#define CAM_SENSOR_LONG_EXP             _SENSOR_CLASS_ID(CAM_SENSOR_CID_CLASS_DEFAULT, 0x07)
+#define CAM_SENSOR_FPS                  _SENSOR_CLASS_ID(CAM_SENSOR_CID_CLASS_DEFAULT, 0x08)
+#define CAM_SENSOR_HDR_RADIO            _SENSOR_CLASS_ID(CAM_SENSOR_CID_CLASS_DEFAULT, 0x09)
+#define CAM_SENSOR_BRIGHTNESS           _SENSOR_CLASS_ID(CAM_SENSOR_CID_CLASS_DEFAULT, 0x0a)
+#define CAM_SENSOR_CONTRAST             _SENSOR_CLASS_ID(CAM_SENSOR_CID_CLASS_DEFAULT, 0x0b)
+#define CAM_SENSOR_SATURATION           _SENSOR_CLASS_ID(CAM_SENSOR_CID_CLASS_DEFAULT, 0x0c)
+#define CAM_SENSOR_HUE                  _SENSOR_CLASS_ID(CAM_SENSOR_CID_CLASS_DEFAULT, 0x0d)
+#define CAM_SENSOR_GAMMA                _SENSOR_CLASS_ID(CAM_SENSOR_CID_CLASS_DEFAULT, 0x0e)
+#define CAM_SENSOR_HMIRROR              _SENSOR_CLASS_ID(CAM_SENSOR_CID_CLASS_DEFAULT, 0x0f)
+#define CAM_SENSOR_VFLIP                _SENSOR_CLASS_ID(CAM_SENSOR_CID_CLASS_DEFAULT, 0x10)
+#define CAM_SENSOR_SHARPNESS            _SENSOR_CLASS_ID(CAM_SENSOR_CID_CLASS_DEFAULT, 0x11)
+#define CAM_SENSOR_DENOISE              _SENSOR_CLASS_ID(CAM_SENSOR_CID_CLASS_DEFAULT, 0x12)    // Denoise
+#define CAM_SENSOR_DPC                  _SENSOR_CLASS_ID(CAM_SENSOR_CID_CLASS_DEFAULT, 0x13)
+#define CAM_SENSOR_JPEG_QUALITY         _SENSOR_CLASS_ID(CAM_SENSOR_CID_CLASS_DEFAULT, 0x14)
+#define CAM_SENSOR_BLC                  _SENSOR_CLASS_ID(CAM_SENSOR_CID_CLASS_DEFAULT, 0x15)
+#define CAM_SENSOR_SPECIAL_EFFECT       _SENSOR_CLASS_ID(CAM_SENSOR_CID_CLASS_DEFAULT, 0x16)
+#define CAM_SENSOR_LENC                 _SENSOR_CLASS_ID(CAM_SENSOR_CID_CLASS_DEFAULT, 0x17)
 
-#define    CAM_SENSOR_OPS_CLASS_DEFAULT  0X00
-#define    CAM_SENSOR_OPS_CLASS_3A       0X01
-#define    CAM_SENSOR_OPS_CLASS_LENS     0X02
-#define    CAM_SENSOR_OPS_CLASS_LED      0X03
-#define    CAM_SENSOR_OPS_CLASS_SIM      0X04   /*!< Used for simulation camera */
+#define CAM_SENSOR_AWB                  _SENSOR_CLASS_ID(CAM_SENSOR_CID_CLASS_3A, 0x01)   // Auto white balance
+#define CAM_SENSOR_EXPOSURE             _SENSOR_CLASS_ID(CAM_SENSOR_CID_CLASS_3A, 0x02)
+#define CAM_SENSOR_EXP                  _SENSOR_CLASS_ID(CAM_SENSOR_CID_CLASS_3A, 0x03)
+#define CAM_SENSOR_VSEXP                _SENSOR_CLASS_ID(CAM_SENSOR_CID_CLASS_3A, 0x04)
+#define CAM_SENSOR_LONG_GAIN            _SENSOR_CLASS_ID(CAM_SENSOR_CID_CLASS_3A, 0x05)
+#define CAM_SENSOR_DGAIN                _SENSOR_CLASS_ID(CAM_SENSOR_CID_CLASS_3A, 0x06)   // Dight gain
+#define CAM_SENSOR_ANGAIN               _SENSOR_CLASS_ID(CAM_SENSOR_CID_CLASS_3A, 0x07)   // Analog gain
+#define CAM_SENSOR_VSGAIN               _SENSOR_CLASS_ID(CAM_SENSOR_CID_CLASS_3A, 0x08)
+#define CAM_SENSOR_AEC                  _SENSOR_CLASS_ID(CAM_SENSOR_CID_CLASS_3A, 0x09)
+#define CAM_SENSOR_AGC                  _SENSOR_CLASS_ID(CAM_SENSOR_CID_CLASS_3A, 0x0a)
+#define CAM_SENSOR_AF_AUTO              _SENSOR_CLASS_ID(CAM_SENSOR_CID_CLASS_3A, 0x0b)   // Auto Focus
+#define CAM_SENSOR_AF_INIT              _SENSOR_CLASS_ID(CAM_SENSOR_CID_CLASS_3A, 0x0c)
+#define CAM_SENSOR_AF_RELEASE           _SENSOR_CLASS_ID(CAM_SENSOR_CID_CLASS_3A, 0x0d)
+#define CAM_SENSOR_AF_START             _SENSOR_CLASS_ID(CAM_SENSOR_CID_CLASS_3A, 0x0e)
+#define CAM_SENSOR_AF_STOP              _SENSOR_CLASS_ID(CAM_SENSOR_CID_CLASS_3A, 0x0f)
+#define CAM_SENSOR_WB                   _SENSOR_CLASS_ID(CAM_SENSOR_CID_CLASS_3A, 0x10)  // White balance mode
+#define CAM_SENSOR_3A_LOCK              _SENSOR_CLASS_ID(CAM_SENSOR_CID_CLASS_3A, 0x11)
+#define CAM_SENSOR_AF_STATUS            _SENSOR_CLASS_ID(CAM_SENSOR_CID_CLASS_3A, 0x12)
+#define CAM_SENSOR_INT_TIME             _SENSOR_CLASS_ID(CAM_SENSOR_CID_CLASS_3A, 0x13)         // Integral time
 
-/* Set ops */
-#define    CAM_SENSOR_S_HW_RESET         _SENSOR_IOW(CAM_SENSOR_OPS_CLASS_DEFAULT,0x01)  // Hardware reset
-#define    CAM_SENSOR_S_SF_RESET         _SENSOR_IOW(CAM_SENSOR_OPS_CLASS_DEFAULT,0x02)  // Software reset
-#define    CAM_SENSOR_S_POWER            _SENSOR_IOW(CAM_SENSOR_OPS_CLASS_DEFAULT,0x03)  // Power on/off
-#define    CAM_SENSOR_S_XCLK             _SENSOR_IOW(CAM_SENSOR_OPS_CLASS_DEFAULT,0x04)  // For sensors that require a clock provided by the base board
-#define    CAM_SENSOR_S_SENSOR_MODE      _SENSOR_IOW(CAM_SENSOR_OPS_CLASS_DEFAULT,0x05)
-#define    CAM_SENSOR_S_REG              _SENSOR_IOW(CAM_SENSOR_OPS_CLASS_DEFAULT,0x06)
-#define    CAM_SENSOR_S_STREAM           _SENSOR_IOW(CAM_SENSOR_OPS_CLASS_DEFAULT,0x07)  // Start/Stop stream, can be achieved through the bypass on/off or sleep en/dis of the sensor.
-#define    CAM_SENSOR_S_SUSPEND          _SENSOR_IOW(CAM_SENSOR_OPS_CLASS_DEFAULT,0x08)
-#define    CAM_SENSOR_S_LONG_EXP         _SENSOR_IOW(CAM_SENSOR_OPS_CLASS_DEFAULT,0x09)
-#define    CAM_SENSOR_S_FPS              _SENSOR_IOW(CAM_SENSOR_OPS_CLASS_DEFAULT,0x0a)
-#define    CAM_SENSOR_S_HDR_RADIO        _SENSOR_IOW(CAM_SENSOR_OPS_CLASS_DEFAULT,0x0b)
-#define    CAM_SENSOR_S_BRIGHTNESS       _SENSOR_IOW(CAM_SENSOR_OPS_CLASS_DEFAULT,0x0c)
-#define    CAM_SENSOR_S_CONTRAST         _SENSOR_IOW(CAM_SENSOR_OPS_CLASS_DEFAULT,0x0d)
-#define    CAM_SENSOR_S_SATURATION       _SENSOR_IOW(CAM_SENSOR_OPS_CLASS_DEFAULT,0x0e)
-#define    CAM_SENSOR_S_HUE              _SENSOR_IOW(CAM_SENSOR_OPS_CLASS_DEFAULT,0x0f)
-#define    CAM_SENSOR_S_GAMMA            _SENSOR_IOW(CAM_SENSOR_OPS_CLASS_DEFAULT,0x10)
-#define    CAM_SENSOR_S_HMIRROR          _SENSOR_IOW(CAM_SENSOR_OPS_CLASS_DEFAULT,0x11)
-#define    CAM_SENSOR_S_VFLIP            _SENSOR_IOW(CAM_SENSOR_OPS_CLASS_DEFAULT,0x12)
-#define    CAM_SENSOR_S_SHARPNESS        _SENSOR_IOW(CAM_SENSOR_OPS_CLASS_DEFAULT,0x13)
-#define    CAM_SENSOR_S_DENOISE          _SENSOR_IOW(CAM_SENSOR_OPS_CLASS_DEFAULT,0x14)   // Denoise
-#define    CAM_SENSOR_S_DPC              _SENSOR_IOW(CAM_SENSOR_OPS_CLASS_DEFAULT,0x15)
-#define    CAM_SENSOR_S_JPEG_QUALITY     _SENSOR_IOW(CAM_SENSOR_OPS_CLASS_DEFAULT,0x16)
-#define    CAM_SENSOR_S_BLC              _SENSOR_IOW(CAM_SENSOR_OPS_CLASS_DEFAULT,0x17)
-#define    CAM_SENSOR_S_SPECIAL_EFFECT   _SENSOR_IOW(CAM_SENSOR_OPS_CLASS_DEFAULT,0x18)
-#define    CAM_SENSOR_S_LENC             _SENSOR_IOW(CAM_SENSOR_OPS_CLASS_DEFAULT,0x19)
-#define    CAM_SENSOR_S_TEST_PATTERN     _SENSOR_IOW(CAM_SENSOR_OPS_CLASS_DEFAULT,0x1a)
-#define    CAM_SENSOR_S_FORMAT           _SENSOR_IOW(CAM_SENSOR_OPS_CLASS_DEFAULT,0x1b)
-#define    CAM_SENSOR_S_AWB              _SENSOR_IOW(CAM_SENSOR_OPS_CLASS_3A,0x01)       // Auto white balance
-#define    CAM_SENSOR_S_EXPOSURE         _SENSOR_IOW(CAM_SENSOR_OPS_CLASS_3A,0x02)
-#define    CAM_SENSOR_S_EXP              _SENSOR_IOW(CAM_SENSOR_OPS_CLASS_3A,0x03)
-#define    CAM_SENSOR_S_VSEXP            _SENSOR_IOW(CAM_SENSOR_OPS_CLASS_3A,0x04)
-#define    CAM_SENSOR_S_LONG_GAIN        _SENSOR_IOW(CAM_SENSOR_OPS_CLASS_3A,0x05)
-#define    CAM_SENSOR_S_DGAIN            _SENSOR_IOW(CAM_SENSOR_OPS_CLASS_3A,0x06)       // Dight gain
-#define    CAM_SENSOR_S_ANGAIN           _SENSOR_IOW(CAM_SENSOR_OPS_CLASS_3A,0x07)       // Analog gain
-#define    CAM_SENSOR_S_VSGAIN           _SENSOR_IOW(CAM_SENSOR_OPS_CLASS_3A,0x08)
-#define    CAM_SENSOR_S_AEC              _SENSOR_IOW(CAM_SENSOR_OPS_CLASS_3A,0x09)
-#define    CAM_SENSOR_S_AGC              _SENSOR_IOW(CAM_SENSOR_OPS_CLASS_3A,0x0a)
-#define    CAM_SENSOR_S_AF_AUTO          _SENSOR_IOW(CAM_SENSOR_OPS_CLASS_3A,0x0b)       // Auto Focus
-#define    CAM_SENSOR_S_AF_INIT          _SENSOR_IOW(CAM_SENSOR_OPS_CLASS_3A,0x0c)
-#define    CAM_SENSOR_S_AF_RELEASE       _SENSOR_IOW(CAM_SENSOR_OPS_CLASS_3A,0x0d)
-#define    CAM_SENSOR_S_AF_START         _SENSOR_IOW(CAM_SENSOR_OPS_CLASS_3A,0x0e)
-#define    CAM_SENSOR_S_AF_STOP          _SENSOR_IOW(CAM_SENSOR_OPS_CLASS_3A,0x0f)
-#define    CAM_SENSOR_S_WB               _SENSOR_IOW(CAM_SENSOR_OPS_CLASS_3A,0x10)      // White balance mode
-#define    CAM_SENSOR_S_3A_LOCK          _SENSOR_IOW(CAM_SENSOR_OPS_CLASS_3A,0x11)
-#define    CAM_SENSOR_S_FLASH_LED        _SENSOR_IOW(CAM_SENSOR_OPS_CLASS_LED,0x12)
+#define CAM_SENSOR_LENS                 _SENSOR_CLASS_ID(CAM_SENSOR_CID_CLASS_LENS, 0x01)
 
-/* Get ops*/
-#define    CAM_SENSOR_G_POWER           _SENSOR_IOR(CAM_SENSOR_OPS_CLASS_DEFAULT,0x01)
-#define    CAM_SENSOR_G_XCLK            _SENSOR_IOR(CAM_SENSOR_OPS_CLASS_DEFAULT,0x02)
-#define    CAM_SENSOR_G_SENSOR_MODE     _SENSOR_IOR(CAM_SENSOR_OPS_CLASS_DEFAULT,0x03)
-#define    CAM_SENSOR_G_REG             _SENSOR_IOR(CAM_SENSOR_OPS_CLASS_DEFAULT,0x04)
-#define    CAM_SENSOR_G_NAME            _SENSOR_IOR(CAM_SENSOR_OPS_CLASS_DEFAULT,0x05)
-#define    CAM_SENSOR_G_FORMAT_ARRAY    _SENSOR_IOR(CAM_SENSOR_OPS_CLASS_DEFAULT,0x06)
-#define    CAM_SENSOR_G_FORMAT          _SENSOR_IOR(CAM_SENSOR_OPS_CLASS_DEFAULT,0x07)
-#define    CAM_SENSOR_G_CHIP_ID         _SENSOR_IOR(CAM_SENSOR_OPS_CLASS_DEFAULT,0x08)
-#define    CAM_SENSOR_G_FPS             _SENSOR_IOR(CAM_SENSOR_OPS_CLASS_DEFAULT,0x09)
-#define    CAM_SENSOR_G_CAP             _SENSOR_IOR(CAM_SENSOR_OPS_CLASS_DEFAULT,0x0a)
-#define    CAM_SENSOR_G_AF_STATUS       _SENSOR_IOR(CAM_SENSOR_OPS_CLASS_3A,0x01)
-#define    CAM_SENSOR_G_WB              _SENSOR_IOR(CAM_SENSOR_OPS_CLASS_3A,0x02)
-#define    CAM_SENSOR_G_INT_TIME        _SENSOR_IOR(CAM_SENSOR_OPS_CLASS_3A,0x03)         // Integral time
-#define    CAM_SENSOR_G_FLASH_LED       _SENSOR_IOR(CAM_SENSOR_OPS_CLASS_LED,0x01)
-#define    CAM_SENSOR_G_LENS            _SENSOR_IOR(CAM_SENSOR_OPS_CLASS_LENS,0x01)
+#define CAM_SENSOR_FLASH_LED            _SENSOR_CLASS_ID(CAM_SENSOR_CID_CLASS_LED, 0x01)
 
-/*!< Simulation camera commands */
-#define    CAM_SIM_S_RXCB               _SENSOR_IOW(CAM_SENSOR_OPS_CLASS_SIM, 0x01)     /*!< Set receive callback function */
+/*!< Camera simulation ioctl command */
+#define CAM_SIM_IOC_BASE                0x1
+#define CAM_SIM_IOC_S_RXCB              _IOW(CAM_SIM_IOC_BASE, 0x01, sizeof(struct sim_cam_rx)) /*!< Set receive callback function */
+
+/*!< Camera sensor ioctl command */
+#define CAM_SENSOR_IOC_BASE             0x2
+#define CAM_SENSOR_IOC_HW_RESET         _IOW(CAM_SENSOR_IOC_BASE, 0x01, 0)
+#define CAM_SENSOR_IOC_SW_RESET         _IOW(CAM_SENSOR_IOC_BASE, 0x02, 0)
+#define CAM_SENSOR_IOC_S_STEST_PATTERN  _IOW(CAM_SENSOR_IOC_BASE, 0x03, sizeof(int))
+#define CAM_SENSOR_IOC_S_STREAM         _IOW(CAM_SENSOR_IOC_BASE, 0x04, sizeof(int))
+#define CAM_SENSOR_IOC_S_SUSPEND        _IOW(CAM_SENSOR_IOC_BASE, 0x05, sizeof(int))
+#define CAM_SENSOR_IOC_G_CHIP_ID        _IOW(CAM_SENSOR_IOC_BASE, 0x06, sizeof(struct sensor_chip_id))
+#define CAM_SENSOR_IOC_S_REG            _IOW(CAM_SENSOR_IOC_BASE, 0x07, sizeof(struct sensor_reg_val))
+#define CAM_SENSOR_IOC_G_REG            _IOW(CAM_SENSOR_IOC_BASE, 0x08, sizeof(struct sensor_reg_val))
 
 /*!< Simulation camera receive callback parameters */
 struct sim_cam_rx {
     void (*cb)(void *priv, const uint8_t *buffer, size_t n);    /*!< Callback function */
     void *priv;                                                 /*!< Callback private data */
+};
+
+/*!< Sensor chip ID */
+struct sensor_chip_id {
+    uint32_t id;    /*!< Chip ID value */
+};
+
+/*!< Sensor set/get register value parameters */
+struct sensor_reg_val {
+    uint32_t regaddr;   /*!< Register address */
+    uint32_t value;     /*!< Register value */
 };
 
 typedef enum {
@@ -210,80 +216,6 @@ enum {
     CAM_SENSOR_TYPE_V1,
     CAM_SENSOR_TYPE_MAX,
 };
-
-/* Enumeration for get_supported_value() */
-typedef enum {
-    CAM_SENSOR_CTRL_TYPE_INTEGER = 1,
-    CAM_SENSOR_CTRL_TYPE_BOOLEAN = 2,
-    CAM_SENSOR_CTRL_TYPE_INTEGER64 = 5,
-    CAM_SENSOR_CTRL_TYPE_BITMASK = 8,
-    CAM_SENSOR_CTRL_TYPE_INTEGER_MENU = 9,
-    CAM_SENSOR_CTRL_TYPE_U8FIXEDPOINT_Q7 = 10,
-    CAM_SENSOR_CTRL_TYPE_U16FIXEDPOINT_Q8 = 11,
-    CAM_SENSOR_CTRL_TYPE_INTEGER_TIMES_3 = 12,
-    CAM_SENSOR_CTRL_TYPE_U8 = 0x0100,
-    CAM_SENSOR_CTRL_TYPE_U16 = 0x0101,
-    CAM_SENSOR_CTRL_TYPE_U32 = 0x0102,
-} sensor_para_ctrl_type_t;
-
-/* Structure for sensor parameter. Used for get_supported_value() */
-typedef struct {
-    int32_t  minimum;
-    int32_t  maximum;
-    uint32_t step;
-    int32_t  default_value;
-} sensor_para_capability_range_t;
-
-typedef struct {
-    int8_t  nr_values;
-    const int32_t *values;
-    int32_t default_value;
-} sensor_para_capability_discrete_t;
-
-typedef struct {
-    uint32_t nr_elems;
-    int32_t  minimum;
-    int32_t  maximum;
-    int32_t step;
-} sensor_para_capability_elems_t;
-
-typedef struct {
-    sensor_para_ctrl_type_t type;   /* Control type */
-    union {
-        /* Use 'range' member in the following types cases.
-            *   cam_sensor_CTRL_TYPE_INTEGER
-            *   cam_sensor_CTRL_TYPE_BOOLEAN
-            *   cam_sensor_CTRL_TYPE_INTEGER64
-            *   cam_sensor_CTRL_TYPE_BITMASK
-            *   cam_sensor_CTRL_TYPE_U8FIXEDPOINT_Q7
-            *   cam_sensor_CTRL_TYPE_U16FIXEDPOINT_Q8
-            *   cam_sensor_CTRL_TYPE_INTEGER_TIMES_3
-            */
-
-        sensor_para_capability_range_t    range;
-
-        /* Use 'discrete' member in the following type case.
-            *   sensor_para_CTRL_TYPE_INTEGER_MENU
-            */
-
-        sensor_para_capability_discrete_t discrete;
-
-        /* Use 'elems' member in the following types cases.
-            *   sensor_para_CTRL_TYPE_U8
-            *   sensor_para_CTRL_TYPE_U16
-            *   sensor_para_CTRL_TYPE_U32
-            */
-
-        sensor_para_capability_elems_t    elems;
-    } u;
-} sensor_para_supported_value_t;
-
-typedef union sensor_para_value_u {
-    int32_t  value32;
-    uint8_t *p_u8;
-    uint16_t *p_u16;
-    uint32_t *p_u32;
-} sensor_para_value_t;
 
 enum sensor_hdr_mode_e {
     CAM_SENSOR_HDR_LINEAR,
@@ -369,6 +301,7 @@ typedef struct sensor_format_info_array_s {
 typedef struct _esp_camera_ops esp_camera_ops_t;
 
 typedef struct {
+    char *name;
     uint8_t sccb_port;
     int8_t  xclk_pin;
     int8_t  reset_pin;
@@ -383,16 +316,16 @@ typedef struct {
 
 typedef struct _esp_camera_ops {
     /* ISP */
-    int (*get_supported_para_value) (esp_camera_device_t *dev, uint32_t para_id, sensor_para_supported_value_t *value);
-    int (*get_para_value)           (esp_camera_device_t *dev, uint32_t para_id, uint32_t size, sensor_para_value_t *value);
-    int (*set_para_value)           (esp_camera_device_t *dev, uint32_t para_id, uint32_t size, sensor_para_value_t value);
+    int (*query_para_desc)          (esp_camera_device_t *dev, struct v4l2_query_ext_ctrl *qctrl);
+    int (*get_para_value)           (esp_camera_device_t *dev, struct v4l2_ext_control *ctrl);
+    int (*set_para_value)           (esp_camera_device_t *dev, const struct v4l2_ext_control *ctrl);
+
     /* Common */
     int (*query_support_formats)    (esp_camera_device_t *dev, void *parry);
     int (*query_support_capability) (esp_camera_device_t *dev, void *arg);
-    int (*set_format)               (esp_camera_device_t *dev, void *format);
-    int (*get_format)               (esp_camera_device_t *dev, void *ret_format);
+    int (*set_format)               (esp_camera_device_t *dev, const sensor_format_t *format);
+    int (*get_format)               (esp_camera_device_t *dev, sensor_format_t *format);
     int (*priv_ioctl)               (esp_camera_device_t *dev, unsigned int cmd, void *arg);
-    int (*get_name)                 (esp_camera_device_t *dev, void *name, size_t *size);
 } esp_camera_ops_t;
 
 #if 0
@@ -431,8 +364,6 @@ typedef struct _esp_camera_ops {
         ((sensor_format_t*)p_format)->mipi_info.mipi_clk); \
     } while(0);
 #endif
-
-esp_err_t esp_camera_ioctl(esp_camera_device_t *dev, uint32_t cmd, void *value, size_t *size);
 
 typedef enum {
     CAMERA_INTF_CSI,
@@ -516,6 +447,20 @@ typedef struct {
     uint8_t sim_num;                /*!< Specify the numbers of simulated cameras */
     esp_camera_sim_config_t *sim;
 } esp_camera_config_t;
+
+esp_err_t esp_camera_query_para_desc(esp_camera_device_t *dev, struct v4l2_query_ext_ctrl *qctrl);
+
+esp_err_t esp_camera_get_para_value(esp_camera_device_t *dev, struct v4l2_ext_control *ctrl);
+
+esp_err_t esp_camera_set_para_value(esp_camera_device_t *dev, const struct v4l2_ext_control *ctrl);
+
+esp_err_t esp_camera_set_format(esp_camera_device_t *dev, const sensor_format_t *format);
+
+esp_err_t esp_camera_get_format(esp_camera_device_t *dev, sensor_format_t *format);
+
+esp_err_t esp_camera_ioctl(esp_camera_device_t *dev, uint32_t cmd, void *arg);
+
+const char *esp_camera_get_name(esp_camera_device_t *dev);
 
 esp_err_t esp_camera_init(const esp_camera_config_t *config);
 

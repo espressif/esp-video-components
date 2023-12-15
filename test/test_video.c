@@ -332,4 +332,112 @@ TEST_CASE("Linux POSIX with V4L2 operation", "[video]")
         TEST_ASSERT_EQUAL_INT(pdPASS, ret);
     }
 }
+
+TEST_CASE("V4L2 external controller class set/get", "[video]")
+{
+    int fd;
+    int ret;
+    struct v4l2_ext_controls controls;
+    struct v4l2_ext_control control[1];
+    struct v4l2_query_ext_ctrl qctrl;
+    const int _3a_lock_value = V4L2_LOCK_EXPOSURE | V4L2_LOCK_WHITE_BALANCE | V4L2_LOCK_FOCUS;
+    const uint8_t sim_flash_led_dims[] = {
+        V4L2_FLASH_LED_MODE_NONE,
+        V4L2_FLASH_LED_MODE_FLASH,
+        V4L2_FLASH_LED_MODE_TORCH
+    };
+    const int fps = (uint16_t)random() % 90 + 10;
+
+    /* Initialize esp-video system */
+
+    init();
+
+    fd = open("/dev/video0", O_RDONLY);
+    TEST_ASSERT_GREATER_OR_EQUAL(0, fd);
+
+    qctrl.id = V4L2_CID_3A_LOCK;
+    ret = ioctl(fd, VIDIOC_QUERY_EXT_CTRL, &qctrl);
+    TEST_ESP_OK(ret);
+    TEST_ASSERT_EQUAL_INT(V4L2_CTRL_TYPE_BITMASK, qctrl.type);
+    TEST_ASSERT_EQUAL_INT(0, qctrl.minimum);
+    TEST_ASSERT_EQUAL_INT(0x7, qctrl.maximum);
+    TEST_ASSERT_EQUAL_INT(1, qctrl.step);
+    TEST_ASSERT_EQUAL_INT(0, qctrl.default_value);
+
+    control[0].id       = V4L2_CID_3A_LOCK;
+    control[0].value    = _3a_lock_value;
+    controls.ctrl_class = V4L2_CTRL_CLASS_CAMERA;
+    controls.count      = 1;
+    controls.controls   = control;
+    ret = ioctl(fd, VIDIOC_S_EXT_CTRLS, &controls);
+    TEST_ESP_OK(ret);
+
+    control[0].id       = V4L2_CID_3A_LOCK;
+    control[0].value    = 0;
+    controls.ctrl_class = V4L2_CTRL_CLASS_CAMERA;
+    controls.count      = 1;
+    controls.controls   = control;
+    ret = ioctl(fd, VIDIOC_G_EXT_CTRLS, &controls);
+    TEST_ESP_OK(ret);
+    TEST_ASSERT_EQUAL_INT(_3a_lock_value, control[0].value);
+
+    qctrl.id = V4L2_CID_FLASH_LED_MODE;
+    ret = ioctl(fd, VIDIOC_QUERY_EXT_CTRL, &qctrl);
+    TEST_ESP_OK(ret);
+    TEST_ASSERT_EQUAL_INT(V4L2_CTRL_TYPE_INTEGER_MENU, qctrl.type);
+    TEST_ASSERT_EQUAL_INT(1, qctrl.elem_size);
+    TEST_ASSERT_EQUAL_INT(3, qctrl.elems);
+    TEST_ASSERT_EQUAL_INT(3, qctrl.nr_of_dims);
+    for (int i = 0; i < 3; i++) {
+        TEST_ASSERT_EQUAL_UINT8(sim_flash_led_dims[i], qctrl.dims[i]);
+    }
+    TEST_ASSERT_EQUAL_INT(V4L2_FLASH_LED_MODE_NONE, qctrl.default_value);
+
+    control[0].id       = V4L2_CID_FLASH_LED_MODE;
+    control[0].value    = V4L2_FLASH_LED_MODE_FLASH;
+    controls.ctrl_class = V4L2_CTRL_CLASS_FLASH;
+    controls.count      = 1;
+    controls.controls   = control;
+    ret = ioctl(fd, VIDIOC_S_EXT_CTRLS, &controls);
+    TEST_ESP_OK(ret);
+
+    control[0].id       = V4L2_CID_FLASH_LED_MODE;
+    control[0].value    = 0;
+    controls.ctrl_class = V4L2_CTRL_CLASS_FLASH;
+    controls.count      = 1;
+    controls.controls   = control;
+    ret = ioctl(fd, VIDIOC_G_EXT_CTRLS, &controls);
+    TEST_ESP_OK(ret);
+    TEST_ASSERT_EQUAL_INT(V4L2_FLASH_LED_MODE_FLASH, control[0].value);
+
+    qctrl.id = CAM_SENSOR_FPS;
+    ret = ioctl(fd, VIDIOC_QUERY_EXT_CTRL, &qctrl);
+    TEST_ESP_OK(ret);
+    TEST_ASSERT_EQUAL_INT(V4L2_CTRL_TYPE_INTEGER, qctrl.type);
+    TEST_ASSERT_EQUAL_INT(1, qctrl.minimum);
+    TEST_ASSERT_EQUAL_INT(100, qctrl.maximum);
+    TEST_ASSERT_EQUAL_INT(1, qctrl.step);
+    TEST_ASSERT_EQUAL_INT(1, qctrl.default_value);
+
+    control[0].id       = CAM_SENSOR_FPS;
+    control[0].value    = fps;
+    controls.ctrl_class = V4L2_CTRL_CLASS_PRIV;
+    controls.count      = 1;
+    controls.controls   = control;
+    ret = ioctl(fd, VIDIOC_S_EXT_CTRLS, &controls);
+    TEST_ESP_OK(ret);
+
+    control[0].id       = CAM_SENSOR_FPS;
+    control[0].value    = 0;
+    controls.ctrl_class = V4L2_CTRL_CLASS_PRIV;
+    controls.count      = 1;
+    controls.controls   = control;
+    ret = ioctl(fd, VIDIOC_G_EXT_CTRLS, &controls);
+    TEST_ESP_OK(ret);
+    TEST_ASSERT_EQUAL_INT(fps, control[0].value);
+
+    ret = close(fd);
+    TEST_ESP_OK(ret);
+}
+
 #endif /* CONFIG_SIMULATED_INTF */

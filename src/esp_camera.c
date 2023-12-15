@@ -19,47 +19,91 @@
 
 static const char *TAG = "esp_camera";
 
-esp_err_t esp_camera_ioctl(esp_camera_device_t *dev, uint32_t cmd, void *value, size_t *size)
+esp_err_t esp_camera_query_para_desc(esp_camera_device_t *dev, struct v4l2_query_ext_ctrl *qctrl)
 {
-    esp_err_t ret = ESP_OK;
-
-    if (dev == NULL || dev->ops == NULL) {
+    if (!dev || !dev->ops || !qctrl) {
         return ESP_ERR_INVALID_ARG;
     }
 
-    switch (cmd) {
-    case CAM_SENSOR_G_NAME:
-        if (dev->ops->get_name) {
-            dev->ops->get_name(dev, value, size);
-        }
-        break;
-    case CAM_SENSOR_G_FORMAT_ARRAY:
-        if (dev->ops->query_support_formats(dev, value)) {
-            ret = ESP_FAIL;
-        }
-        break;
-    case CAM_SENSOR_G_FORMAT:
-        if (dev->ops->get_format(dev, value)) {
-            ret = ESP_FAIL;
-        }
-        break;
-    case CAM_SENSOR_G_CAP:
-        if (dev->ops->query_support_capability(dev, value)) {
-            ret = ESP_FAIL;
-        }
-        break;
-    case CAM_SENSOR_S_FORMAT:
-        if (dev->ops->set_format(dev, value)) {
-            ret = ESP_FAIL;
-        }
-        break;
-    default:
-        if (dev->ops->priv_ioctl(dev, cmd, value)) {
-            ret = ESP_FAIL;
-        }
-        break;
+    if (!dev->ops->query_para_desc) {
+        return ESP_ERR_NOT_SUPPORTED;
     }
-    return ret;
+
+    return dev->ops->query_para_desc(dev, qctrl);
+}
+
+esp_err_t esp_camera_get_para_value(esp_camera_device_t *dev, struct v4l2_ext_control *ctrl)
+{
+    if (!dev || !dev->ops || !ctrl) {
+        return ESP_ERR_INVALID_ARG;
+    }
+
+    if (!dev->ops->get_para_value) {
+        return ESP_ERR_NOT_SUPPORTED;
+    }
+
+    return dev->ops->get_para_value(dev, ctrl);
+}
+
+esp_err_t esp_camera_set_para_value(esp_camera_device_t *dev, const struct v4l2_ext_control *ctrl)
+{
+    if (!dev || !dev->ops || !ctrl) {
+        return ESP_ERR_INVALID_ARG;
+    }
+
+    if (!dev->ops->set_para_value) {
+        return ESP_ERR_NOT_SUPPORTED;
+    }
+
+    return dev->ops->set_para_value(dev, ctrl);
+}
+
+esp_err_t esp_camera_set_format(esp_camera_device_t *dev, const sensor_format_t *format)
+{
+    if (!dev || !dev->ops || !format) {
+        return ESP_ERR_INVALID_ARG;
+    }
+
+    if (!dev->ops->set_format) {
+        return ESP_ERR_NOT_SUPPORTED;
+    }
+
+    return dev->ops->set_format(dev, format);
+}
+
+esp_err_t esp_camera_get_format(esp_camera_device_t *dev, sensor_format_t *format)
+{
+    if (!dev || !dev->ops || !format) {
+        return ESP_ERR_INVALID_ARG;
+    }
+
+    if (!dev->ops->get_format) {
+        return ESP_ERR_NOT_SUPPORTED;
+    }
+
+    return dev->ops->get_format(dev, format);
+}
+
+esp_err_t esp_camera_ioctl(esp_camera_device_t *dev, uint32_t cmd, void *arg)
+{
+    if (!dev || !dev->ops) {
+        return ESP_ERR_INVALID_ARG;
+    }
+
+    if (!dev->ops->priv_ioctl) {
+        return ESP_ERR_NOT_SUPPORTED;
+    }
+
+    return dev->ops->priv_ioctl(dev, cmd, arg);
+}
+
+const char *esp_camera_get_name(esp_camera_device_t *dev)
+{
+    if (!dev) {
+        return NULL;
+    }
+
+    return dev->name;
 }
 
 esp_err_t esp_camera_init(const esp_camera_config_t *config)

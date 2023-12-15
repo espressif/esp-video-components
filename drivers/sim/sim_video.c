@@ -52,12 +52,12 @@ static esp_err_t sim_video_start_capture(struct esp_video *video)
         .priv = video
     };
 
-    ret = esp_camera_ioctl(video->cam_dev, CAM_SIM_S_RXCB, &param, NULL);
+    ret = esp_camera_ioctl(video->cam_dev, CAM_SIM_IOC_S_RXCB, &param);
     if (ret != ESP_OK) {
         return ret;
     }
 
-    ret = esp_camera_ioctl(video->cam_dev, CAM_SENSOR_S_STREAM, &flags, NULL);
+    ret = esp_camera_ioctl(video->cam_dev, CAM_SENSOR_IOC_S_STREAM, &flags);
     if (ret != ESP_OK) {
         return ret;
     }
@@ -70,7 +70,7 @@ static esp_err_t sim_video_stop_capture(struct esp_video *video)
     esp_err_t ret;
     int flags = 0;
 
-    ret = esp_camera_ioctl(video->cam_dev, CAM_SENSOR_S_STREAM, &flags, NULL);
+    ret = esp_camera_ioctl(video->cam_dev, CAM_SENSOR_IOC_S_STREAM, &flags);
     if (ret != ESP_OK) {
         return ret;
     }
@@ -81,9 +81,12 @@ static esp_err_t sim_video_stop_capture(struct esp_video *video)
 static esp_err_t sim_video_set_format(struct esp_video *video, const struct esp_video_format *format)
 {
     esp_err_t ret;
-    int fps = format->fps;
+    struct v4l2_ext_control ctrl = {
+        .id = CAM_SENSOR_FPS,
+        .value = format->fps
+    };
 
-    ret = esp_camera_ioctl(video->cam_dev, CAM_SENSOR_S_FPS, &fps, NULL);
+    ret = esp_camera_set_para_value(video->cam_dev, &ctrl);
     if (ret != ESP_OK) {
         return ret;
     }
@@ -128,14 +131,12 @@ static const struct esp_video_ops s_sim_video_ops = {
 
 esp_err_t sim_create_camera_video_device(esp_camera_device_t *cam_dev)
 {
-    esp_err_t ret;
-    char name[64];
-    size_t n;
+    const char *name;
     struct esp_video *video;
 
-    ret = esp_camera_ioctl(cam_dev, CAM_SENSOR_G_NAME, name, &n);
-    if (ret != ESP_OK) {
-        return ret;
+    name = esp_camera_get_name(cam_dev);
+    if (!name) {
+        return ESP_ERR_INVALID_ARG;
     }
 
     video = esp_video_create(name, cam_dev, &s_sim_video_ops, SIM_CAMERA_BUFFER_COUNT,

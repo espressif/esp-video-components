@@ -4,6 +4,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+#include <inttypes.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdarg.h>
@@ -23,9 +24,80 @@
 
 static const char *TAG = "esp_video_vfs";
 
+/**
+ * Todo: AEG-1094
+ */
+static const int s_control_id_map_table[][2] = {
+    { V4L2_CID_3A_LOCK, CAM_SENSOR_3A_LOCK },
+    { V4L2_CID_FLASH_LED_MODE, CAM_SENSOR_FLASH_LED }
+};
+
 #ifndef CONFIG_SIMULATED_INTF
 esp_mipi_csi_handle_t csi_test_handle;
 #endif
+
+static int esp_err_to_libc_errno(esp_err_t err)
+{
+    int libc_errno;
+
+    switch (err) {
+    case ESP_OK:
+        libc_errno = 0;
+        break;
+    case ESP_FAIL:
+        libc_errno = EIO;
+        break;
+    case ESP_ERR_NO_MEM:
+        libc_errno = ENOMEM;
+        break;
+    case ESP_ERR_INVALID_ARG:
+        libc_errno = EINVAL;
+        break;
+    case ESP_ERR_INVALID_STATE:
+        libc_errno = EBUSY;
+        break;
+    case ESP_ERR_INVALID_SIZE:
+        libc_errno = EINVAL;
+        break;
+    case ESP_ERR_NOT_FOUND:
+        libc_errno = ENOENT;
+        break;
+    case ESP_ERR_NOT_SUPPORTED:
+        libc_errno = ENOTSUP;
+        break;
+    case ESP_ERR_TIMEOUT:
+        libc_errno = ETIMEDOUT;
+        break;
+    case ESP_ERR_INVALID_RESPONSE:
+        libc_errno = EBADMSG;
+        break;
+    case ESP_ERR_INVALID_VERSION:
+        libc_errno = EINVAL;
+        break;
+    case ESP_ERR_NOT_FINISHED:
+        libc_errno = EBUSY;
+        break;
+    default:
+        ESP_LOGE(TAG, "esp_err %x is not supported", err);
+        libc_errno = EINVAL;
+        break;
+    }
+
+    return libc_errno;
+}
+
+
+static esp_err_t v4l2_ext_control_id_map(uint32_t *id)
+{
+    for (int i = 0; i < ARRAY_SIZE(s_control_id_map_table); i++) {
+        if (s_control_id_map_table[i][0] == *id) {
+            *id = s_control_id_map_table[i][1];
+            return ESP_OK;
+        }
+    }
+
+    return ESP_ERR_NOT_FOUND;
+}
 
 static int esp_video_vfs_ioctl_querycap(struct esp_video *video, struct v4l2_capability *cap)
 {
@@ -314,6 +386,88 @@ static int esp_video_vfs_ioctl_s_param(struct esp_video *video, struct v4l2_stre
     return 0;
 }
 
+static int esp_video_vfs_ioctl_op_ext_ctrls(struct esp_video *video, struct v4l2_ext_controls *controls, bool set)
+{
+    esp_err_t ret = ESP_ERR_INVALID_ARG;
+    esp_camera_device_t *cam_dev = video->cam_dev;
+
+    for (int i = 0; i < controls->count; i++) {
+        struct v4l2_ext_control *ctrl = &controls->controls[i];
+
+        if (controls->ctrl_class == V4L2_CTRL_CLASS_PRIV) {
+            if (set) {
+                ret = esp_camera_set_para_value(cam_dev, ctrl);
+            } else {
+                ret = esp_camera_get_para_value(cam_dev, ctrl);
+            }
+        } else {
+            uint32_t ctrl_id = ctrl->id;
+            uint32_t new_id = ctrl_id;
+
+            ret = v4l2_ext_control_id_map(&new_id);
+            if (ret != ESP_OK) {
+                break;
+            }
+
+            ctrl->id = new_id;
+            if (set) {
+                ret = esp_camera_set_para_value(cam_dev, ctrl);
+            } else {
+                ret = esp_camera_get_para_value(cam_dev, ctrl);
+            }
+            ctrl->id = ctrl_id;
+
+            if (ret != ESP_OK) {
+                break;
+            }
+        }
+    }
+
+    if (ret != ESP_OK) {
+        errno = esp_err_to_libc_errno(ret);
+        return -1;
+    }
+
+    return 0;
+}
+
+/**
+ * Todo: AEG-1095
+ */
+static int esp_video_vfs_ioctl_query_ext_ctrls(struct esp_video *video, struct v4l2_query_ext_ctrl *qc)
+{
+    esp_err_t ret;
+    esp_camera_device_t *cam_dev = video->cam_dev;
+
+    if (V4L2_CTRL_ID2CLASS(qc->id) == V4L2_CTRL_CLASS_PRIV) {
+        ret = esp_camera_query_para_desc(cam_dev, qc);
+    } else {
+        uint32_t qc_id = qc->id;
+        uint32_t new_id = qc_id;
+
+        ret = v4l2_ext_control_id_map(&new_id);
+        if (ret != ESP_OK) {
+            goto exit;
+        }
+
+        qc->id = new_id;
+        ret = esp_camera_query_para_desc(cam_dev, qc);
+        qc->id = qc_id;
+
+        if (ret != ESP_OK) {
+            goto exit;
+        }
+    }
+
+exit:
+    if (ret != ESP_OK) {
+        errno = esp_err_to_libc_errno(ret);
+        return -1;
+    }
+
+    return 0;
+}
+
 static int esp_video_vfs_open(void *ctx, const char *path, int flags, int mode)
 {
     struct esp_video *video = (struct esp_video *)ctx;
@@ -477,6 +631,15 @@ static int esp_video_vfs_ioctl(void *ctx, int fd, int cmd, va_list args)
         break;
     case VIDIOC_MMAP:
         ret = esp_video_vfs_ioctl_mmap(video, (struct esp_video_ioctl_mmap *)arg_ptr);
+        break;
+    case VIDIOC_G_EXT_CTRLS:
+        ret = esp_video_vfs_ioctl_op_ext_ctrls(video, (struct v4l2_ext_controls *)arg_ptr, false);
+        break;
+    case VIDIOC_S_EXT_CTRLS:
+        ret = esp_video_vfs_ioctl_op_ext_ctrls(video, (struct v4l2_ext_controls *)arg_ptr, true);
+        break;
+    case VIDIOC_QUERY_EXT_CTRL:
+        ret = esp_video_vfs_ioctl_query_ext_ctrls(video, (struct v4l2_query_ext_ctrl *)arg_ptr);
         break;
     case VIDIOC_ENUM_FMT:
     case VIDIOC_ENUM_FRAMESIZES:
