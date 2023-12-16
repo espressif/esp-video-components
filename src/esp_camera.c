@@ -148,14 +148,14 @@ esp_err_t esp_camera_init(const esp_camera_config_t *config)
         if (config->sccb[i].sda_pin != -1 && config->sccb[i].scl_pin != -1) {
             ESP_LOGI(TAG, "Initializing SCCB[%d]", i);
 
-            // ToDo: initialize the sccb driver, if i2c_freq == 0, using the default freq of 100000
+            // ToDo: initialize the sccb driver, if freq == 0, using the default freq of 100000
         }
     }
 
     for (p = &__esp_camera_detect_fn_array_start; p < &__esp_camera_detect_fn_array_end; ++p) {
         if (p->intf == CAMERA_INTF_CSI &&  config->sccb_num != 0 && config->csi != NULL) {
             esp_camera_driver_config_t cfg = {
-                .sccb_port = config->sccb[config->csi->sccb_config_index].i2c_port,
+                .sccb_port = config->sccb[config->csi->sccb_config_index].port,
                 .xclk_pin = config->csi->xclk_pin,
                 .reset_pin = config->csi->reset_pin,
                 .pwdn_pin = config->csi->pwdn_pin,
@@ -172,7 +172,7 @@ esp_err_t esp_camera_init(const esp_camera_config_t *config)
         if (p->intf == CAMERA_INTF_DVP &&  config->sccb_num != 0 && config->dvp_num > 0 && config->dvp != NULL) {
             for (size_t i = 0; i < config->dvp_num; i++) {
                 esp_camera_driver_config_t cfg = {
-                    .sccb_port = config->sccb[config->dvp->sccb_config_index].i2c_port,
+                    .sccb_port = config->sccb[config->dvp->sccb_config_index].port,
                     .xclk_pin = config->dvp[i].xclk_pin,
                     .reset_pin = config->dvp[i].reset_pin,
                     .pwdn_pin = config->dvp[i].pwdn_pin,
