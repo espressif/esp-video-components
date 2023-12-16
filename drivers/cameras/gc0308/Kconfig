@@ -1,6 +1,6 @@
 menuconfig CAMERA_GC0308
     bool "GC0308"
-    default y
+    default n
     help
         Enabling this option will add the support for GC0308.
 
