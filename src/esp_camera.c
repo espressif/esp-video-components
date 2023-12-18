@@ -58,6 +58,32 @@ esp_err_t esp_camera_set_para_value(esp_camera_device_t *dev, const struct v4l2_
     return dev->ops->set_para_value(dev, ctrl);
 }
 
+esp_err_t esp_camera_get_capability(esp_camera_device_t *dev, sensor_capability_t *caps)
+{
+    if (!dev || !dev->ops || !caps) {
+        return ESP_ERR_INVALID_ARG;
+    }
+
+    if (!dev->ops->query_support_capability) {
+        return ESP_ERR_NOT_SUPPORTED;
+    }
+
+    return dev->ops->query_support_capability(dev, caps);
+}
+
+esp_err_t esp_camera_query_format(esp_camera_device_t *dev, sensor_format_array_info_t *format_arry)
+{
+    if (!dev || !dev->ops || !format_arry) {
+        return ESP_ERR_INVALID_ARG;
+    }
+
+    if (!dev->ops->query_support_formats) {
+        return ESP_ERR_NOT_SUPPORTED;
+    }
+
+    return dev->ops->query_support_formats(dev, format_arry);
+}
+
 esp_err_t esp_camera_set_format(esp_camera_device_t *dev, const sensor_format_t *format)
 {
     if (!dev || !dev->ops || !format) {

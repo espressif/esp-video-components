@@ -140,12 +140,12 @@ static int sim_set_para_value(esp_camera_device_t *dev, const struct v4l2_ext_co
     return ret;
 }
 
-static int sim_query_support_formats(esp_camera_device_t *dev, void *parry)
+static int sim_query_support_formats(esp_camera_device_t *dev, sensor_format_array_info_t *format_array)
 {
     return ESP_FAIL;
 }
 
-static int sim_query_support_capability(esp_camera_device_t *dev, void *arg)
+static int sim_query_support_capability(esp_camera_device_t *dev, sensor_capability_t *caps)
 {
     return ESP_FAIL;
 }

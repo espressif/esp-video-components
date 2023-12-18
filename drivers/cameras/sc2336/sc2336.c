@@ -150,46 +150,76 @@ static int sc2336_set_vflip(esp_camera_device_t *dev, int enable)
     return ret;
 }
 
-static int sc2336_query_support_formats(esp_camera_device_t *dev, void *parry)
+static int sc2336_query_para_desc(esp_camera_device_t *dev, struct v4l2_query_ext_ctrl *qctrl)
 {
-    sensor_format_array_info_t *formats = (sensor_format_array_info_t *)parry;
+    return ESP_ERR_NOT_SUPPORTED;
+}
+
+static int sc2336_get_para_value(esp_camera_device_t *dev, struct v4l2_ext_control *ctrl)
+{
+    return ESP_ERR_NOT_SUPPORTED;
+}
+
+static int sc2336_set_para_value(esp_camera_device_t *dev, const struct v4l2_ext_control *ctrl)
+{
+    esp_err_t ret = ESP_OK;
+
+    switch (ctrl->id) {
+    case CAM_SENSOR_VFLIP: {
+        ret = sc2336_set_vflip(dev, ctrl->value);
+        break;
+    }
+    case CAM_SENSOR_HMIRROR: {
+        ret = sc2336_set_mirror(dev, ctrl->value);
+        break;
+    }
+    default: {
+        ESP_LOGE(TAG, "set id=%" PRIx32 " is not supported", ctrl->id);
+        ret = ESP_ERR_INVALID_ARG;
+        break;
+    }
+    }
+
+    return ret;
+}
+
+static int sc2336_query_support_formats(esp_camera_device_t *dev, sensor_format_array_info_t *formats)
+{
     formats->count = ARRAY_SIZE(sc2336_format_info);
     formats->format_array = &sc2336_format_info[0];
     ESP_LOGI(TAG, "f_array=%p", formats->format_array);
     return 0;
 }
 
-static int sc2336_query_support_capability(esp_camera_device_t *dev, void *arg)
+static int sc2336_query_support_capability(esp_camera_device_t *dev, sensor_capability_t *sensor_cap)
 {
-    ESP_CAM_SENSOR_NULL_POINTER_CHECK(TAG, arg);
-    sensor_capability_t *sensor_cap = (sensor_capability_t *)arg;
+    ESP_CAM_SENSOR_NULL_POINTER_CHECK(TAG, sensor_cap);
     sensor_cap->fmt_raw = 1;
     return 0;
 }
 
-static int sc2336_set_format(esp_camera_device_t *dev, void *format)
+static int sc2336_set_format(esp_camera_device_t *dev, const sensor_format_t *format)
 {
     int ret = 0;
-    sensor_format_t *fmt = (sensor_format_t *)format;
 
-    ret = sc2336_write_array(dev->sccb_port, (reginfo_t *)fmt->regs);
+    ret = sc2336_write_array(dev->sccb_port, (reginfo_t *)format->regs);
 
     if (ret < 0) {
         ESP_CAM_SENSOR_LOGE("Set format regs fail");
         return ESP_CAM_SENSOR_FAILED_TO_S_FORMAT;
     }
 
-    dev->cur_format = fmt;
+    dev->cur_format = &sc2336_format_info[format->index];
 
     return ret;
 }
 
-static int sc2336_get_format(esp_camera_device_t *dev, void *ret_format)
+static int sc2336_get_format(esp_camera_device_t *dev, sensor_format_t *format)
 {
     int ret = -1;
-    sensor_format_t **format = (sensor_format_t **)ret_format;
+
     if (dev->cur_format != NULL) {
-        *format = (void *)dev->cur_format;
+        memcpy(format, dev->cur_format, sizeof(sensor_format_t));
         ret = 0;
     }
     return ret;
@@ -198,41 +228,39 @@ static int sc2336_get_format(esp_camera_device_t *dev, void *ret_format)
 static int sc2336_priv_ioctl(esp_camera_device_t *dev, unsigned int cmd, void *arg)
 {
     int ret = 0;
-    reginfo_t *sc2336_reg;
+    uint8_t regval;
+    struct sensor_reg_val *sensor_reg;
     SC2336_IO_MUX_LOCK
 
-    if (cmd & SENSOR_IOC_SET) {
+    if (cmd & (_IOC_WRITE << _IOC_DIRSHIFT)) {
         switch (cmd) {
-        case CAM_SENSOR_S_HW_RESET:
+        case CAM_SENSOR_IOC_HW_RESET:
             ret = 0;
             break;
-        case CAM_SENSOR_S_SF_RESET:
+        case CAM_SENSOR_IOC_SW_RESET:
             ret = sc2336_soft_reset(dev);
             break;
-        case CAM_SENSOR_S_REG:
-            sc2336_reg = (reginfo_t *)arg;
-            ret = sc2336_write(dev->sccb_port, sc2336_reg->reg, sc2336_reg->val);
+        case CAM_SENSOR_IOC_S_REG:
+            sensor_reg = (struct sensor_reg_val *)arg;
+            ret = sc2336_write(dev->sccb_port, sensor_reg->regaddr, sensor_reg->value);
             break;
-        case CAM_SENSOR_S_STREAM:
+        case CAM_SENSOR_IOC_S_STREAM:
             ret = sc2336_set_stream(dev, *(int *)arg);
             break;
-        case CAM_SENSOR_S_VFLIP:
-            ret = sc2336_set_vflip(dev, *(int *)arg);
-            break;
-        case CAM_SENSOR_S_HMIRROR:
-            ret = sc2336_set_mirror(dev, *(int *)arg);
-            break;
-        case CAM_SENSOR_S_TEST_PATTERN:
+        case CAM_SENSOR_IOC_S_TEST_PATTERN:
             ret = sc2336_set_pattern(dev, *(int *)arg);
             break;
         }
     } else {
         switch (cmd) {
-        case CAM_SENSOR_G_REG:
-            sc2336_reg = (reginfo_t *)arg;
-            ret = sc2336_read(dev->sccb_port, sc2336_reg->reg, &sc2336_reg->val);
+        case CAM_SENSOR_IOC_G_REG:
+            sensor_reg = (struct sensor_reg_val *)arg;
+            ret = sc2336_read(dev->sccb_port, sensor_reg->regaddr, &regval);
+            if (ret == ESP_OK) {
+                sensor_reg->value = regval;
+            }
             break;
-        case CAM_SENSOR_G_CHIP_ID:
+        case CAM_SENSOR_IOC_G_CHIP_ID:
             ret = sc2336_get_sensor_id(dev, arg);
             break;
         default:
@@ -241,13 +269,6 @@ static int sc2336_priv_ioctl(esp_camera_device_t *dev, unsigned int cmd, void *a
     }
     SC2336_IO_MUX_UNLOCK
     return ret;
-}
-
-static int sc2336_get_name(esp_camera_device_t *dev, void *name, size_t *size)
-{
-    strcpy((char *)name, SC2336_SENSOR_NAME);
-    *size = strlen(SC2336_SENSOR_NAME);
-    return 0;
 }
 
 static int sc2336_power_on(esp_camera_device_t *dev)
@@ -287,12 +308,14 @@ static int sc2336_power_on(esp_camera_device_t *dev)
 }
 
 static esp_camera_ops_t sc2336_ops = {
+    .query_para_desc = sc2336_query_para_desc,
+    .get_para_value = sc2336_get_para_value,
+    .set_para_value = sc2336_set_para_value,
     .query_support_formats = sc2336_query_support_formats,
     .query_support_capability = sc2336_query_support_capability,
     .set_format = sc2336_set_format,
     .get_format = sc2336_get_format,
-    .priv_ioctl = sc2336_priv_ioctl,
-    .get_name = sc2336_get_name,
+    .priv_ioctl = sc2336_priv_ioctl
 };
 
 // We need manage these devices, and maybe need to add it into the private member of esp_device
@@ -315,6 +338,7 @@ esp_camera_device_t *sc2336_csi_detect(esp_camera_driver_config_t *config)
         return NULL;
     }
     dev = s_sc2336[s_sc2336_index];
+    dev->name = (char *)SC2336_SENSOR_NAME;
     dev->ops = &sc2336_ops;
     dev->sccb_port = config->sccb_port;
     dev->xclk_pin = config->xclk_pin;
