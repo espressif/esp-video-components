@@ -43,9 +43,10 @@ void app_main(void)
 
     esp_camera_device_t *device = sc2336_csi_detect(&drv_config);
     if (device) {
-        uint8_t name[SENSOR_NAME_MAX_LEN];
-        size_t size = sizeof(name);
-        esp_camera_ioctl(device, CAM_SENSOR_G_NAME, name, &size);
+        const char *name = esp_camera_get_name(device);
+        if (name) {
+            ESP_LOGI(TAG, "device name is: %s", name);
+        }
     }
 
     /*Init cam interface*/

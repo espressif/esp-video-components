@@ -121,36 +121,42 @@ static esp_err_t sim_camera_init(struct esp_video *video)
         extern esp_camera_device_t sc2336_detect();
         esp_camera_device_t device = sc2336_detect();
         if (device) {
-            uint8_t name[SENSOR_NAME_MAX_LEN];
-            size_t size = sizeof(name);
-            esp_camera_ioctl(device, CAM_SENSOR_G_NAME, name, &size);
+            const char *name = esp_camera_get_name(device);
+            if (name) {
+                ESP_LOGI(TAG, "device name is: %s", name);
+            }
         }
+        /**
+         * Todo: AEG-1058
+         */
         /*Query caps*/
         sensor_capability_t caps = {0};
-        esp_camera_ioctl(device, CAM_SENSOR_G_CAP, &caps, NULL);
+        esp_camera_get_capability(device, &caps);
         printf("cap = %u\n", caps.fmt_raw);
 
         /*Query formats and set/get format*/
         sensor_format_array_info_t formats = {0};
-        esp_camera_ioctl(device, CAM_SENSOR_G_FORMAT_ARRAY, &formats, NULL);
+        esp_camera_query_format(device, &formats);
         printf("format count = %d\n", formats.count);
         const sensor_format_t *parray = formats.format_array;
         for (int i = 0; i < formats.count; i++) {
             PRINT_CAM_SENSOR_FORMAT_INFO(&(parray[i].index));
         }
-        esp_camera_ioctl(device, CAM_SENSOR_S_FORMAT, (void *) & (parray[0].index), NULL);
 
-        const sensor_format_t *current_format = NULL;
-        ret = esp_camera_ioctl(device, CAM_SENSOR_G_FORMAT, &current_format, NULL);
+        sensor_format_t current_format;
+        current_format.index = parray[0].index;
+        esp_camera_set_format(device, &current_format);
+
+        ret = esp_camera_get_format(device, &current_format);
         if (ret != ESP_OK) {
             ESP_LOGE(TAG, "Format get fail");
         } else {
-            PRINT_CAM_SENSOR_FORMAT_INFO(current_format);
+            PRINT_CAM_SENSOR_FORMAT_INFO(&current_format);
         }
 
         int enable_flag = 1;
         /*Start sensor stream*/
-        ret = esp_camera_ioctl(device, CAM_SENSOR_S_STREAM, &enable_flag, NULL);
+        ret = esp_camera_ioctl(device, CAM_SENSOR_IOC_S_STREAM, &enable_flag);
         if (ret != ESP_OK) {
             ESP_LOGE(TAG, "Start stream fail");
         }
