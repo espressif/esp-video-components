@@ -1,7 +1,8 @@
 .pre_check_template:
   stage: pre_check
-  image: python:3.9
-  tags: ["build", "amd64", "internet"]
+  image: $ESP_ENV_IMAGE
+  tags:
+    - host_test
   dependencies: []
 
 check_pre_commit:
@@ -38,10 +39,9 @@ check_pre_commit:
     - pre-commit run --files $MODIFIED_FILES
 
 check_copyright:
-  stage: pre_check
-  image: python:3.9
-  tags: ["build", "amd64", "internet"]
-  allow_failure: true
+  extends:
+    - .pre_check_template
+  allow_failure: false
   before_script:
     - pip install git+https://github.com/espressif/check-copyright.git@master
   script:

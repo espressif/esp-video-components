@@ -2,6 +2,15 @@
 # Patterns #
 ############
 
+.patterns-c-files: &patterns-c-files
+  - ".gitlab/ci/static-code-analysis.yml"
+
+  - "**/*.{c,C,cpp}"
+  - "**/*.{h,H,hpp}"
+  - "**/Kconfig"
+  - "**/Kconfig.*"
+  - "**/CMakeList.txt"
+
 # build system, if changed, build all apps
 .patterns-build_system: &patterns-build_system
   - "tools/build_apps.py"
@@ -60,6 +69,12 @@
 
 .if_label-deploy: &if-label-deploy
   if: '$BOT_LABEL_DEPLOY || $CI_MERGE_REQUEST_LABELS =~ /^(?:[^,\n\r]+,)*deploy(?:,[^,\n\r]+)*$/i'
+
+.rules:patterns:clang_tidy:
+  rules:
+    - <<: *if-protected
+    - <<: *if-dev-push
+      changes: *patterns-c-files
 
 # rules for examples
 .rules:build:examples:
