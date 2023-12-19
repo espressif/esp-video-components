@@ -1,6 +1,6 @@
 menuconfig CAMERA_SIM
     bool "SIM"
-    default y
+    default n
     help
         Enabling this option will add the support for a simulator camera.
 

@@ -1,0 +1,13 @@
+choice ESP_VIDEO_BOARD
+    prompt "Camera Boards Configuration"
+        default ESP_VIDEO_BOARD_ESP32_EYE   if IDF_TARGET_ESP32
+        default ESP_VIDEO_BOARD_ESP32S3_EYE if IDF_TARGET_ESP32S3
+        help
+            Choose the camera board you want to use, or define a customized camera board.
+
+    rsource "Kconfig.board.esp32_eye"
+    rsource "Kconfig.board.esp32s3_eye"
+    rsource "Kconfig.board.customized"
+
+endchoice
+

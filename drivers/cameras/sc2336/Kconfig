@@ -1,6 +1,6 @@
 menuconfig CAMERA_SC2336
     bool "SC2336"
-    default y
+    default n
     help
         Enabling this option will add the support for SC2336.
 

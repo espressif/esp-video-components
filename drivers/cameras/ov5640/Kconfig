@@ -1,6 +1,6 @@
 menuconfig CAMERA_OV5640
     bool "OV5640"
-    default y
+    default n
     help
         Enabling this option will add the support for OV5640.
 

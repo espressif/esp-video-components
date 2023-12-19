@@ -1,0 +1,161 @@
+config ESP_VIDEO_BOARD_ESP32_EYE
+    bool "ESP32-EYE"
+        depends on IDF_TARGET_ESP32
+        select CAMERA_OV2640
+        help
+            Use ESP32-EYE as the develpment board, you need to add component dependency of ov2640
+            in your project's idf_component.yml.
+
+menu "SCCB"
+    depends on ESP_VIDEO_BOARD_ESP32_EYE
+
+    config ESP_VIDEO_CAMERA_SCCB_NUM
+        int "Number of SCCB interfaces used"
+        default 1
+        range 1 1
+        help
+            ESP32-EYE only use 1 SCCB interface.
+
+    menu "SCCB0 Interface"
+        depends on ESP_VIDEO_CAMERA_SCCB_NUM > 0
+
+        choice ESP_VIDEO_CAMERA_SCCB0_I2C_I3C_PORT
+            bool "I2C Peripheral used for SCCB0"
+            default ESP_VIDEO_CAMERA_SCCB0_I2C_PORT0
+
+            config ESP_VIDEO_CAMERA_SCCB0_I2C_PORT0
+                bool "I2C0"
+            config ESP_VIDEO_CAMERA_SCCB0_I2C_PORT1
+                bool "I2C1"
+        endchoice
+
+        config ESP_VIDEO_CAMERA_SCCB0_I2C_I3C
+            int
+            default 0
+
+        config ESP_VIDEO_CAMERA_SCCB0_I2C_I3C_PORT
+            int
+            default 0 if ESP_VIDEO_CAMERA_SCCB0_I2C_PORT0
+            default 1 if ESP_VIDEO_CAMERA_SCCB0_I2C_PORT1
+
+        config ESP_VIDEO_CAMERA_SCCB0_I2C_I3C_SCL_PIN
+            int "I2C SCL pin"
+            default 23
+            range -1 33
+
+        config ESP_VIDEO_CAMERA_SCCB0_I2C_I3C_SDA_PIN
+            int "I2C SDA pin"
+            default 18
+            range -1 33
+
+        config ESP_VIDEO_CAMERA_SCCB0_I2C_I3C_FREQ
+            int "I2C frequency used for SCCB0"
+            default 100000
+            range 100000 400000
+            help
+                Increasing this value can reduce the initialization time of the camera sensor.
+                Please refer to the relevant instructions of the camera sensor to adjust the value.
+    endmenu
+endmenu
+
+config ESP_VIDEO_CAMERA_INTF_CSI
+    bool
+    default n
+    depends on ESP_VIDEO_BOARD_ESP32_EYE
+
+config ESP_VIDEO_CAMERA_INTF_CSI_NUM
+    int
+    default 0
+    depends on ESP_VIDEO_BOARD_ESP32_EYE
+
+menu "DVP"
+    depends on ESP_VIDEO_BOARD_ESP32_EYE
+
+    config ESP_VIDEO_CAMERA_INTF_DVP_NUM
+        int "Number of DVP Interfaces used"
+        default 1
+        range 1 1
+
+    menu "DVP0 Interface"
+        depends on ESP_VIDEO_CAMERA_INTF_DVP_NUM > 0
+
+        config ESP_VIDEO_CAMERA_INTF_DVP0
+            bool
+            default y
+
+        choice ESP_VIDEO_CAMERA_DVP0_SCCB_INDEX
+            bool "Choose SCCB Interface Index"
+            default ESP_VIDEO_CAMERA_DVP0_SCCB_INDEX0
+
+            config ESP_VIDEO_CAMERA_DVP0_SCCB_INDEX0
+                bool "SCCB0 Interface"
+        endchoice
+
+        config ESP_VIDEO_CAMERA_DVP0_SCCB_INDEX
+            int
+            default 0 if ESP_VIDEO_CAMERA_DVP0_SCCB_INDEX0
+
+        config ESP_VIDEO_CAMERA_DVP0_XCLK_FREQ
+            int "Frequency of XCLK signal"
+            default 16000000
+            range 0 20000000
+            help
+                Frequency of XCLK signal, in Hz.
+
+        config ESP_VIDEO_CAMERA_DVP0_PWDN_PIN
+            int
+            default -1
+
+        config ESP_VIDEO_CAMERA_DVP0_RESET_PIN
+            int
+            default -1
+
+        config ESP_VIDEO_CAMERA_DVP0_XCLK_PIN
+            int
+            default 4
+
+        config ESP_VIDEO_CAMERA_DVP0_PCLK_PIN
+            int
+            default 25
+
+        config ESP_VIDEO_CAMERA_DVP0_VSYNC_PIN
+            int
+            default 5
+
+        config ESP_VIDEO_CAMERA_DVP0_HREF_PIN
+            int
+            default 27
+
+        config ESP_VIDEO_CAMERA_DVP0_D0_PIN
+            int
+            default 34
+
+        config ESP_VIDEO_CAMERA_DVP0_D1_PIN
+            int
+            default 13
+
+        config ESP_VIDEO_CAMERA_DVP0_D2_PIN
+            int
+            default 14
+
+        config ESP_VIDEO_CAMERA_DVP0_D3_PIN
+            int
+            default 35
+
+        config ESP_VIDEO_CAMERA_DVP0_D4_PIN
+            int
+            default 39
+
+        config ESP_VIDEO_CAMERA_DVP0_D5_PIN
+            int
+            default 38
+
+        config ESP_VIDEO_CAMERA_DVP0_D6_PIN
+            int
+            default 37
+
+        config ESP_VIDEO_CAMERA_DVP0_D7_PIN
+            int
+            default 36
+    endmenu
+endmenu

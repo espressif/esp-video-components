@@ -1,4 +1,6 @@
-menu "Espressif Video Development Framework Configuration"
+menu "Espressif Video Configuration"
+
+    rsource "boards/Kconfig.boards"
 
     choice ESP_VIDEO_API_SELECTION
         prompt "Video API Selection"
