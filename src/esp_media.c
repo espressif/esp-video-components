@@ -75,12 +75,10 @@ struct esp_pad {
 
 // internal
 typedef esp_err_t (*entities_iterate_walk_cb_t)(esp_pad_t *pad, void *param);
-static esp_err_t entities_iterate_walk_custom(esp_pad_t *pad, entities_iterate_walk_cb_t cb, void *param);
+static esp_err_t esp_pipeline_entities_iterate_walk_custom(esp_pad_t *pad, entities_iterate_walk_cb_t cb, entities_iterate_walk_cb_t completed_cb, void *param);
 static esp_err_t esp_pads_bind_pipeline_iterate(esp_pad_t *pad, void *param);
-static esp_err_t pads_iterate_walk_custom(esp_pad_t *pad, entities_iterate_walk_cb_t cb, void *param);
 
 static esp_err_t entities_walk(esp_pad_t *pad, esp_media_event_cmd_t cmd, struct esp_video_buffer_element *vb);
-static esp_err_t esp_media_remove_pipeline(esp_media_t *media, esp_pipeline_t *pipeline);
 
 static QueueHandle_t media_queue = NULL;
 static const char *TAG = "esp_media";
@@ -164,7 +162,7 @@ static esp_err_t esp_media_config_loader(const char *config_string)
         }
         esp_entity_t *entity = esp_entity_create(source_pad_cjson->valueint, sink_pad_cjson->valueint, video);
 
-        esp_entity_regist_ops(entity, &entity_default_ops);
+        esp_entity_register_ops(entity, &entity_default_ops);
         cJSON *bridges = cJSON_GetObjectItem(entity_cjson, "bridges");
         int bridges_num = cJSON_GetArraySize(bridges);
         for (int i = 0; i < bridges_num; i++) {
@@ -223,24 +221,22 @@ static esp_err_t esp_media_config_loader(const char *config_string)
                 esp_pipeline_update_entry_entity(pipeline, pad);
             }
         }
-        esp_media_add_pipeline(media, pipeline);
         initial_pad = pipeline->entry_pad;
+    }
+    if (root) {
+        cJSON_Delete(root);
+        root = NULL;
     }
     err_ret = ESP_OK;
 
+    return err_ret;
 exit:
     if (root) {
         cJSON_Delete(root);
     }
 
-    if (media) {
-        esp_list_t *list = media->pipeline;
-        while (list) {
-            esp_list_t *temp = list->next;
-            esp_pipeline_delete(list->payload);
-            list = temp;
-        }
-    }
+    esp_media_cleanup(media);
+
     return err_ret;
 }
 
@@ -285,36 +281,13 @@ static esp_err_t __esp_insert_remote_pad(esp_pad_t *pad, esp_pad_t *remote_pad)
         pad->remote_pads = list;
     } else {
         while (remote_list->next) {
+            remote_list = remote_list->next;
         }
         remote_list->next = list;
         list->pre = remote_list;
         list->next = NULL;
     }
     pad->remote_pads_num++;
-
-    return ESP_OK;
-}
-
-static esp_err_t __esp_remove_remote_pad(esp_pad_t *pad, esp_pad_t *remote_pad)
-{
-    if (!pad) {
-        return ESP_FAIL;
-    }
-
-    esp_list_t *list =  pad->remote_pads;
-    while (list) {
-        if (list->payload == remote_pad) {
-            if (list->pre) {
-                list->pre->next = list->next;
-                list->next->pre = list->pre;
-            } else {
-                pad->remote_pads = list->next;
-                list->next->pre = NULL;
-            }
-            free(list);
-            pad->remote_pads_num--;
-        }
-    }
 
     return ESP_OK;
 }
@@ -381,11 +354,11 @@ esp_err_t esp_pads_link(esp_pad_t *source, esp_pad_t *sink)
 
     if (!sink_remote) {
         if (__esp_insert_remote_pad(sink, source) != ESP_OK) {
-            __esp_remove_remote_pad(source, sink);
+            esp_pads_unlink(source, sink);
             return ESP_FAIL;
         }
     }
-    entities_iterate_walk_custom(sink, esp_pads_bind_pipeline_iterate, esp_pad_get_pipeline(source));
+    esp_pipeline_entities_iterate_walk_custom(sink, esp_pads_bind_pipeline_iterate, NULL, esp_pad_get_pipeline(source));
     source_entity->is_user_node = false;
     sink_entity->is_initial_node = false;
     return ESP_OK;
@@ -456,12 +429,15 @@ esp_err_t esp_pads_unlink(esp_pad_t *source, esp_pad_t *sink)
             if (list->next) {
                 list->next->pre = list->pre;
             }
+            free(list);
+            break;
         }
+        list = list->next;
     }
 
     list = sink->remote_pads;
     while (list) {
-        if (list->payload == sink) {
+        if (list->payload == source) {
             if (list->pre) {
                 list->pre->next = list->next;
             } else {
@@ -471,7 +447,10 @@ esp_err_t esp_pads_unlink(esp_pad_t *source, esp_pad_t *sink)
             if (list->next) {
                 list->next->pre = list->pre;
             }
+            free(list);
+            break;
         }
+        list = list->next;
     }
 
     if (!source->remote_pads) {
@@ -547,31 +526,42 @@ esp_pipeline_t *esp_pad_get_pipeline(esp_pad_t *pad)
 
 esp_err_t esp_pad_delete(esp_pad_t *pad)
 {
-    esp_list_t *remote_pads_list = pad->remote_pads;
-    if (pad) {
-        while (remote_pads_list) {
-            esp_list_t *next_list = remote_pads_list->next;
-            free(remote_pads_list);
-            remote_pads_list = next_list;
-        }
-        free(pad);
+    if (!pad) {
+        return ESP_ERR_INVALID_ARG;
     }
+
+    esp_list_t *remote_pads_list = pad->remote_pads;
+    while (remote_pads_list) {
+        esp_list_t *next_list = remote_pads_list->next;
+        free(remote_pads_list);
+        remote_pads_list = next_list;
+    }
+    pad->remote_pads = NULL;
+    free(pad);
+
     return ESP_OK;
 }
 
 esp_err_t esp_pad_purge(esp_pad_t *pad)
 {
     if (!pad) {
-        return ESP_FAIL;
+        return ESP_ERR_INVALID_ARG;
     }
 
     esp_list_t *remote_pads_list = pad->remote_pads;
     while (remote_pads_list) {
-        esp_pads_unlink(pad, remote_pads_list->payload);
+        esp_list_t *curr_list = remote_pads_list;
         remote_pads_list = remote_pads_list->next;
+        esp_pads_unlink(pad, curr_list->payload);
+
+    }
+    pad->remote_pads = NULL;
+    if (pad->bridge_pad) {
+        pad->bridge_pad->bridge_pad = NULL;
     }
 
     esp_pad_delete(pad);
+
     return ESP_OK;
 }
 
@@ -582,8 +572,7 @@ esp_err_t esp_pads_list_delete(esp_list_t *list)
     }
 
     while (list) {
-        esp_pad_t *pad = list->payload;
-        esp_pad_purge(pad);
+        esp_pad_purge(list->payload);
         esp_list_t *pre_list = list;
         list = list->next;
         free(pre_list);
@@ -643,7 +632,7 @@ esp_err_t esp_entity_delete(esp_entity_t *entity)
     return ESP_OK;
 }
 
-esp_err_t esp_entity_regist_ops(esp_entity_t *entity, esp_entity_ops_t *ops)
+esp_err_t esp_entity_register_ops(esp_entity_t *entity, esp_entity_ops_t *ops)
 {
     entity->ops = ops;
     return ESP_OK;
@@ -751,32 +740,38 @@ static esp_err_t entities_walk(esp_pad_t *pad, esp_media_event_cmd_t cmd, struct
     return ESP_OK;
 }
 
-static esp_err_t pads_iterate_walk_custom(esp_pad_t *pad, entities_iterate_walk_cb_t cb, void *param)
+static esp_err_t pads_iterate_walk_custom(esp_pad_t *pad, entities_iterate_walk_cb_t cb, entities_iterate_walk_cb_t completed_cb, void *param)
 {
     esp_list_t *list = pad->remote_pads;
+
     while (list) {
         esp_pad_t *remote_pad = list->payload;
-        entities_iterate_walk_custom(remote_pad, cb, param);
-        list = list->next;
+        esp_list_t *next_list = list->next;
+        esp_pipeline_entities_iterate_walk_custom(remote_pad, cb, completed_cb, param);
+        list = next_list;
     }
 
     return ESP_OK;
 }
 
-static esp_err_t entities_iterate_walk_custom(esp_pad_t *pad, entities_iterate_walk_cb_t cb, void *param)
+static esp_err_t esp_pipeline_entities_iterate_walk_custom(esp_pad_t *pad, entities_iterate_walk_cb_t cb, entities_iterate_walk_cb_t completed_cb, void *param)
 {
-    if (!pad || !param) {
+    if (!pad) {
         return ESP_FAIL;
     }
 
     if (pad->type == ESP_PAD_TYPE_SOURCE) {
-        pads_iterate_walk_custom(pad, cb, param);
+        pads_iterate_walk_custom(pad, cb, completed_cb, param);
         return ESP_OK;
     }
 
-    cb(pad, param);
-
-    pads_iterate_walk_custom(pad->bridge_pad, cb, param);
+    if (cb) {
+        cb(pad, param);
+    }
+    pads_iterate_walk_custom(pad->bridge_pad, cb, completed_cb, param);
+    if (completed_cb) {
+        completed_cb(pad, param);
+    }
 
     return ESP_OK;
 }
@@ -832,7 +827,7 @@ esp_err_t esp_pipeline_update_entry_entity(esp_pipeline_t *pipeline, esp_pad_t *
         return ESP_FAIL;
     }
 
-    entities_iterate_walk_custom(pad, esp_pads_bind_pipeline_iterate, pipeline);
+    esp_pipeline_entities_iterate_walk_custom(pad, esp_pads_bind_pipeline_iterate, NULL, pipeline);
 
     pipeline->entry_pad = pad;
 
@@ -853,9 +848,6 @@ esp_err_t esp_pipeline_delete(esp_pipeline_t *pipeline)
     if (!pipeline) {
         return ESP_FAIL;
     }
-#ifdef CONFIG_ESP_VIDEO_MEDIA_TODO
-    // Todo: AEG-1080 cleanup entity
-#endif
 
     esp_media_remove_pipeline(pipeline->media, pipeline);
     if (pipeline->vb) {
@@ -866,7 +858,55 @@ esp_err_t esp_pipeline_delete(esp_pipeline_t *pipeline)
     return ESP_OK;
 }
 
-struct esp_video_buffer_element *esp_video_buffer_alloc_from_pipeline(esp_pipeline_t *pipeline)
+static esp_err_t esp_pipeline_entities_cleanup(esp_pad_t *pad, void *param)
+{
+    esp_entity_t *entity = esp_pad_get_entity(pad);
+    esp_list_t *pads_list = entity->source_pads;
+    bool need_pop = true;
+
+    while (pads_list) {
+        esp_pad_t *temp_pad = pads_list->payload;
+        if (temp_pad->pipeline && (temp_pad->pipeline != pad->pipeline)) {
+            need_pop = false;
+            break;
+        }
+        pads_list = pads_list->next;
+    }
+
+    if (need_pop) {
+        pads_list = entity->sink_pads;
+        while (pads_list) {
+            esp_pad_t *temp_pad = pads_list->payload;
+            if (temp_pad->pipeline && (temp_pad->pipeline != pad->pipeline)) {
+                need_pop = false;
+                break;
+            }
+            pads_list = pads_list->next;
+        }
+    }
+    if (need_pop) {
+        esp_entity_delete(pad->entity);
+    }
+
+    return ESP_OK;
+}
+
+esp_err_t esp_pipeline_cleanup(esp_pipeline_t *pipeline)
+{
+    if (!pipeline) {
+        return ESP_FAIL;
+    }
+    esp_media_remove_pipeline(pipeline->media, pipeline);
+    esp_pipeline_entities_iterate_walk_custom(pipeline->entry_pad, NULL, esp_pipeline_entities_cleanup, NULL);
+    if (pipeline->vb) {
+        esp_video_buffer_destroy(pipeline->vb);
+    }
+    free(pipeline);
+
+    return ESP_OK;
+}
+
+struct esp_video_buffer_element *esp_pipeline_alloc_video_buffer(esp_pipeline_t *pipeline)
 {
     if (!pipeline) {
         return NULL;
@@ -896,6 +936,23 @@ esp_err_t IRAM_ATTR esp_media_event_post(esp_media_event_t *event, TickType_t ti
     return ESP_OK;
 }
 
+esp_err_t esp_media_cleanup(esp_media_t *media)
+{
+    if (!media) {
+        return ESP_FAIL;
+    }
+
+    esp_list_t *list = media->pipeline;
+    while (list) {
+        esp_list_t *temp = list->next;
+        esp_pipeline_cleanup(list->payload);
+        list = temp;
+    }
+    free(media);
+
+    return ESP_OK;
+}
+
 esp_media_t *esp_media_create(void)
 {
     esp_media_t *media = (esp_media_t *)malloc(sizeof(esp_media_t));
@@ -903,15 +960,6 @@ esp_media_t *esp_media_create(void)
         return NULL;
     }
     memset(media, 0x0, sizeof(esp_media_t));
-
-    if (media_queue) {
-        vQueueDelete(media_queue);
-    }
-    media_queue = xQueueCreate(CONFIG_MEDIA_EVENT_NUM, sizeof(esp_media_event_t));
-    if (!media_queue) {
-        free (media);
-        return NULL;
-    }
 
     return media;
 }
@@ -945,7 +993,7 @@ esp_err_t esp_media_add_pipeline(esp_media_t *media, esp_pipeline_t *new_pipelin
             list->pre = new_list;
             new_list->next = list;
         }
-        media->pipeline = list;
+        media->pipeline = new_list;
 
         new_pipeline->media = media;
     }
@@ -953,7 +1001,7 @@ esp_err_t esp_media_add_pipeline(esp_media_t *media, esp_pipeline_t *new_pipelin
     return ESP_OK;
 }
 
-static esp_err_t esp_media_remove_pipeline(esp_media_t *media, esp_pipeline_t *pipeline)
+esp_err_t esp_media_remove_pipeline(esp_media_t *media, esp_pipeline_t *pipeline)
 {
     if (!media || !pipeline) {
         return ESP_FAIL;
@@ -1033,8 +1081,16 @@ static void media_task(void *param)
 }
 
 
-esp_err_t media_start(void)
+esp_err_t esp_media_start(void)
 {
+    if (media_queue) {
+        vQueueDelete(media_queue);
+    }
+    media_queue = xQueueCreate(CONFIG_MEDIA_EVENT_NUM, sizeof(esp_media_event_t));
+    if (!media_queue) {
+        return ESP_FAIL;
+    }
+
 #ifdef CONFIG_ESP_VIDEO_MEDIA_EMBED_FILE_NAME
     esp_media_config_loader(media_config);
 #endif

@@ -213,7 +213,7 @@ esp_err_t esp_camera_init(const esp_camera_config_t *config)
     }
 
 #ifdef CONFIG_ESP_VIDEO_MEDIA_CONTROLLER
-    if (media_start() != ESP_OK) {
+    if (esp_media_start() != ESP_OK) {
         ESP_LOGE(TAG, "Start media fail");
         return ESP_FAIL;
     }
