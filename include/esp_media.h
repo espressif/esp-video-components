@@ -8,6 +8,10 @@
 
 #include "esp_video_buffer.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 typedef enum {
     ESP_PAD_TYPE_SOURCE,
     ESP_PAD_TYPE_SINK
@@ -37,7 +41,6 @@ typedef esp_err_t (*esp_entity_event_cb_t)(struct esp_pad *pad, esp_media_event_
 
 typedef struct esp_entity_ops {
     esp_entity_event_cb_t event_cb;
-    // void (*ioctl)(cmd, param);
 } esp_entity_ops_t;
 
 typedef union {
@@ -47,38 +50,15 @@ typedef union {
 typedef struct esp_media_event {
     esp_pad_t *pad;
     esp_media_event_cmd_t cmd;
-    // esp_pipeline_t* pipeline;
     void *param;
 } esp_media_event_t;
 
 /**
- * @brief Create a entity.
- *
- * @param source_num the number of source pads in entity
- * @param sink_num the number of sink pads in entity
- * @param device the video device pointer
- *
- * @return
- *      - Entity object pointer if successful
- *      - NULL if failed
- */
-esp_entity_t *esp_entity_create(int source_num, int sink_num, struct esp_video *device);
-
-/**
- * @brief Delete a entity.
- *
- * @param entity the entity to be deleted
- *
- * @return
- *      - ESP_OK if successful
- *      - Others if failed
- */
-esp_err_t esp_entity_delete(esp_entity_t *entity);
-/**
- * @brief link the source pad and sink pad in different entiries
+ * @brief link the source pad and sink pad between the two entities
  *
  * @param source the source pad
  * @param sink the sink pad
+ * @note  this will trigger the pipeline of the pad changes: The latter pad follows the former one.
  *
  * @return
  *      - ESP_OK if successful
@@ -87,7 +67,19 @@ esp_err_t esp_entity_delete(esp_entity_t *entity);
 esp_err_t esp_pads_link(esp_pad_t *source, esp_pad_t *sink);
 
 /**
- * @brief link the source pad and sink pad in different entiries by the indexes.
+ * @brief unlink the source pad and sink pad between the two entities
+ *
+ * @param source the source pad
+ * @param sink the sink pad
+ *
+ * @return
+ *      - ESP_OK if successful
+ *      - others if failed
+ */
+esp_err_t esp_pads_unlink(esp_pad_t *source, esp_pad_t *sink);
+
+/**
+ * @brief link the source pad and sink pad between the two entities by the indexes.
  *
  * @param src_entity the entity of source pad
  * @param src_pad_index the index of source pads
@@ -101,7 +93,7 @@ esp_err_t esp_pads_link(esp_pad_t *source, esp_pad_t *sink);
 esp_err_t esp_pads_link_by_index(esp_entity_t *src_entity, int src_pad_index, esp_entity_t *sink_entity, int sink_pad_index);
 
 /**
- * @brief get entity by pad.
+ * @brief get the entity by the pad.
  *
  * @param pad the pad of the entity
  *
@@ -112,7 +104,7 @@ esp_err_t esp_pads_link_by_index(esp_entity_t *src_entity, int src_pad_index, es
 esp_entity_t *esp_pad_get_entity(esp_pad_t *pad);
 
 /**
- * @brief get bridge pad by pad.
+ * @brief get the pad's bridge pad.
  *
  * @param pad the pad object pointer
  *
@@ -123,7 +115,44 @@ esp_entity_t *esp_pad_get_entity(esp_pad_t *pad);
 esp_pad_t *esp_pad_get_bridge_pad(esp_pad_t *pad);
 
 /**
- * @brief get pad by index.
+ * @brief get the pipeline which the pad is in
+ *
+ * @param pad the pad which to be found
+ *
+ * @return
+ *      - Pipeline object pointer if successful
+ *      - NULL if failed
+ */
+esp_pipeline_t *esp_pad_get_pipeline(esp_pad_t *pad);
+
+/**
+ * @brief Create an entity.
+ *
+ * @param source_num the number of source pads in entity
+ * @param sink_num the number of sink pads in entity
+ * @param device the video device pointer
+ * @note  one pad only can belong to one pipeline, if you want to create one entity belong to multiple pipelines,
+ *        please create multiple pads, and make sure one pad only in one pipeline
+ *
+ * @return
+ *      - Entity object pointer if successful
+ *      - NULL if failed
+ */
+esp_entity_t *esp_entity_create(int source_num, int sink_num, struct esp_video *device);
+
+/**
+ * @brief Delete an entity. This API will also delete the pads of the entity
+ *
+ * @param entity the entity to be deleted
+ *
+ * @return
+ *      - ESP_OK if successful
+ *      - Others if failed
+ */
+esp_err_t esp_entity_delete(esp_entity_t *entity);
+
+/**
+ * @brief get the pad of the entity by the index.
  *
  * @param entity which entity we want to find in
  * @param type the type of the pad
@@ -136,10 +165,13 @@ esp_pad_t *esp_pad_get_bridge_pad(esp_pad_t *pad);
 esp_pad_t *esp_entity_get_pad_by_index(esp_entity_t *entity, esp_pad_type_t type, int index);
 
 /**
- * @brief link the source pad and sink pad in different entiries
+ * @brief bridge the source and sink pad in one entity
  *
  * @param source the source pad
  * @param sink the sink pad
+ * @note one source pad only can bridge one sink, and vice versa.
+ *       If the source or sink pad had bridged the other pad, it will firstly disconnect the old one,
+ *       and then bridge the new one.
  *
  * @return
  *      - ESP_OK if successful
@@ -148,21 +180,10 @@ esp_pad_t *esp_entity_get_pad_by_index(esp_entity_t *entity, esp_pad_type_t type
 esp_err_t esp_entity_pad_bridge(esp_pad_t *source, esp_pad_t *sink);
 
 /**
- * @brief get pipeline form pad
- *
- * @param pad the pad which to be found
- *
- * @return
- *      - Pipeline object pointer if successful
- *      - NULL if failed
- */
-esp_pipeline_t *esp_pad_get_pipeline(esp_pad_t *pad);
-
-/**
  * @brief Create a pipeline.
  *
- * @param vb_num the number of video buffer
- * @param timeout the size of video buffer
+ * @param vb_num the number of the video buffers
+ * @param vb_size the size of a video buffer
  *
  * @return
  *      - Pipeline object pointer if successful
@@ -171,40 +192,19 @@ esp_pipeline_t *esp_pad_get_pipeline(esp_pad_t *pad);
 esp_pipeline_t *esp_pipeline_create(int vb_num, int vb_size);
 
 /**
- * @brief Add a pipeline into media.
+ * @brief register APIs for an entity.
  *
- * @param media the number of video buffer
- * @param new_pipeline pipeline which will be added into media
- *
- * @return
- *      - ESP_OK if successful
- *      - others if failed
- */
-esp_err_t esp_media_add_pipeline(esp_media_t *media, esp_pipeline_t *new_pipeline);
-
-/**
- * @brief Create a media.
- *
- * @return
- *      - Media object pointer if successful
- *      - NULL if failed
- */
-esp_media_t *esp_media_create(void);
-
-/**
- * @brief regist APIs for an entity.
- *
- * @param entity the entity which need be registed APIs
+ * @param entity the entity which need be registered APIs
  * @param ops an APIs set
  *
  * @return
  *      - Media object pointer if successful
  *      - NULL if failed
  */
-esp_err_t esp_entity_regist_ops(esp_entity_t *entity, esp_entity_ops_t *ops);
+esp_err_t esp_entity_register_ops(esp_entity_t *entity, esp_entity_ops_t *ops);
 
 /**
- * @brief Check the entity if it is a end node, that is the user node.
+ * @brief Check the entity whether it is an end node, which means if it is an user node.
  *
  * @param entity the entity to check
  *
@@ -239,7 +239,7 @@ struct esp_video *esp_entity_get_device(esp_entity_t *entity);
 esp_err_t esp_pipeline_update_entry_entity(esp_pipeline_t *pipeline, esp_pad_t *pad);
 
 /**
- * @brief get the entry pad of pipeline.
+ * @brief get the entry pad of the pipeline.
  *
  * @param pipeline which pipeline to get entry pad
  *
@@ -250,7 +250,19 @@ esp_err_t esp_pipeline_update_entry_entity(esp_pipeline_t *pipeline, esp_pad_t *
 esp_pad_t *esp_pipeline_get_entry_entity(esp_pipeline_t *pipeline);
 
 /**
- * @brief alloc a buffer from a pipeline.
+ * @brief Create a video buffer for the pipeline
+ *
+ * @param pipeline Create the video buffer for this pipeline
+ * @param count  the count of video buffer
+ *
+ * @return
+ *      - ESP_OK if successful
+ *      - Others if failed
+ */
+esp_err_t esp_pipeline_create_video_buffer(esp_pipeline_t *pipeline, int count);
+
+/**
+ * @brief alloc a video buffer element from the video buffer pool of a pipeline.
  *
  * @param pipeline which pipeline we want to alloc video buffer from
  *
@@ -258,10 +270,10 @@ esp_pad_t *esp_pipeline_get_entry_entity(esp_pipeline_t *pipeline);
  *      - Video buffer object pointer if successful
  *      - NULL if failed
  */
-struct esp_video_buffer_element *esp_video_buffer_alloc_from_pipeline(esp_pipeline_t *pipeline);
+struct esp_video_buffer_element *esp_pipeline_alloc_video_buffer(esp_pipeline_t *pipeline);
 
 /**
- * @brief Get the video buffer of the pipeline.
+ * @brief Get the video buffer pool of a pipeline.
  *
  * @param pipeline the pipeline which we want to get video buffer from
  *
@@ -272,7 +284,7 @@ struct esp_video_buffer_element *esp_video_buffer_alloc_from_pipeline(esp_pipeli
 struct esp_video_buffer *esp_pipeline_get_video_buffer(esp_pipeline_t *pipeline);
 
 /**
- * @brief Get the pad of the entity in this pipeline.
+ * @brief Get the pad of the entity in a pipeline.
  *
  * @param pipeline the pipeline which the pad is located in
  * @param entity the entity which the pad is located in
@@ -284,7 +296,8 @@ struct esp_video_buffer *esp_pipeline_get_video_buffer(esp_pipeline_t *pipeline)
 esp_pad_t *esp_pipeline_get_pad_by_entity(esp_pipeline_t *pipeline, esp_entity_t *entity);
 
 /**
- * @brief Remove and delete the pipeline.
+ * @brief Remove the pipeline from it's media and delete it.
+ *        This will free video buffer of the pipeline
  *
  * @param pipeline pipeline to be deleted
  *
@@ -293,6 +306,62 @@ esp_pad_t *esp_pipeline_get_pad_by_entity(esp_pipeline_t *pipeline, esp_entity_t
  *      - Others if failed
  */
 esp_err_t esp_pipeline_delete(esp_pipeline_t *pipeline);
+
+/**
+ * @brief Remove the pipeline from it's media and delete it.
+ *        This will free video buffer of the pipeline and delete the entities which are only belonged to this pipeline
+ *
+ * @param pipeline pipeline to be cleaned up
+ *
+ * @return
+ *      - ESP_OK if successful
+ *      - Others if failed
+ */
+esp_err_t esp_pipeline_cleanup(esp_pipeline_t *pipeline);
+
+/**
+ * @brief Add a pipeline into the media.
+ *
+ * @param media the media which add pipeline into
+ * @param new_pipeline the pipeline to be added
+ *
+ * @return
+ *      - ESP_OK if successful
+ *      - others if failed
+ */
+esp_err_t esp_media_add_pipeline(esp_media_t *media, esp_pipeline_t *new_pipeline);
+
+/**
+ * @brief Remove a pipeline from the media.
+ *
+ * @param media the media which remove pipeline from
+ * @param new_pipeline the pipeline to be removed
+ * @note  this app only remove pipeline from the media, it will not free the pipeline,
+ *        if you want to free the pipeline, please call esp_pipeline_cleanup after this api
+ *
+ * @return
+ *      - ESP_OK if successful
+ *      - others if failed
+ */
+esp_err_t esp_media_remove_pipeline(esp_media_t *media, esp_pipeline_t *pipeline);
+
+/**
+ * @brief Create a media.
+ *
+ * @return
+ *      - Media object pointer if successful
+ *      - NULL if failed
+ */
+esp_media_t *esp_media_create(void);
+
+/**
+ * @brief Cleapup media, this will clean up the pipelines, entities, pads in this media.
+ *
+ * @return
+ *      - ESP_OK if successful
+ *      - others if failed
+ */
+esp_err_t esp_media_cleanup(esp_media_t *media);
 
 /**
  * @brief Post an event to media.
@@ -313,4 +382,8 @@ esp_err_t esp_media_event_post(esp_media_event_t *event, TickType_t timeout);
  *      - ESP_OK if successful
  *      - others if failed
  */
-esp_err_t media_start(void);
+esp_err_t esp_media_start(void);
+
+#ifdef __cplusplus
+}
+#endif
