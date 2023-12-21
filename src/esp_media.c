@@ -790,7 +790,6 @@ esp_pipeline_t *esp_pipeline_create(int vb_num, int vb_size)
     }
     memset(pipeline, 0x0, sizeof(esp_pipeline_t));
 
-    // pipeline->vb = esp_video_buffer_create(vb_num, vb_size);
     pipeline->vb_num = vb_num;
     pipeline->vb_size = vb_size;
 
@@ -1048,8 +1047,9 @@ esp_err_t esp_pipeline_create_video_buffer(esp_pipeline_t *pipeline, int count)
 #else
     pipeline->vb_size = 1843200 + 16;
 #endif
+    int alignment = 4;
 #endif
-    pipeline->vb = esp_video_buffer_create(pipeline->vb_num,  pipeline->vb_size);
+    pipeline->vb = esp_video_buffer_create(pipeline->vb_num,  pipeline->vb_size, alignment);
     return ESP_OK;
 }
 
@@ -1060,12 +1060,6 @@ static void media_task(void *param)
         if (xQueueReceive(media_queue, (void * )&event, (TickType_t)portMAX_DELAY)) {
             switch (event.cmd) {
             case ESP_MEIDA_EVENT_CMD_START: {
-                // get max buffer size
-                // esp_pad_t *pad = event.pad;
-                // esp_pipeline_t* pipeline = esp_pad_get_pipeline(pad);
-                // if (!pipeline && (esp_pipeline_get_entry_entity(pipeline) == pad)) {
-                //     pipeline->vb = esp_video_buffer_create(pipeline->vb_num,  pipeline->vb_size);
-                // }
             }
             break;
             case ESP_MEIDA_EVENT_CMD_DATA_RECV:

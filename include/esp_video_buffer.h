@@ -42,12 +42,13 @@ struct esp_video_buffer;
  * @brief Video buffer element object.
  */
 struct esp_video_buffer_element {
-    esp_video_buffer_node_t node;                   /*!< List node */
-    struct esp_video_buffer *video_buffer;          /*!< Source buffer object */
-    uint32_t index;                                 /*!< List node index */
-    uint32_t valid_size;                            /*!< Valid data size */
+    esp_video_buffer_node_t node;                     /*!< List node */
+    struct esp_video_buffer *video_buffer;            /*!< Source buffer object */
+    uint32_t index;                                   /*!< List node index */
+    uint32_t valid_size;                              /*!< Valid data size */
     uint32_t valid_offset;                            /*!< Valid data offset */
-    uint8_t buffer[0];                              /*!< Buffer space to fill data */
+    uint32_t reserved;                                /*!< reserved to align 8 bytes: AEG-1117 */
+    uint8_t buffer[0];                                /*!< Buffer space to fill data */
 };
 
 /**
@@ -56,11 +57,11 @@ struct esp_video_buffer_element {
 struct esp_video_buffer {
     esp_video_buffer_list_t free_list;              /*!< Free buffer elements list  */
     portMUX_TYPE lock;                              /*!< Buffer lock */
-
     uint32_t element_count;                         /*!< Element count */
     uint32_t element_size;                          /*!< Element buffer size without other member */
+    uint32_t align_size;                            /*!< buffer alignment size */
 
-    struct esp_video_buffer_element element[0];     /*!< Element buffer */
+    struct esp_video_buffer_element *element;       /*!< Element buffer */
 };
 
 /**
@@ -68,12 +69,13 @@ struct esp_video_buffer {
  *
  * @param count Buffer element count
  * @param size  Buffer element size
+ * @param align_size Buffer aligned size, unit: byte, normally 4 bytes * n aligned
  *
  * @return
  *      - Video buffer object pointer on success
  *      - NULL if failed
  */
-struct esp_video_buffer *esp_video_buffer_create(uint32_t count, uint32_t size);
+struct esp_video_buffer *esp_video_buffer_create(uint32_t count, uint32_t size, uint32_t align_size);
 
 /**
  * @brief Clone a new video buffer

@@ -44,12 +44,11 @@ typedef enum {
 
 typedef struct {
     camera_fb_t fb;        // for application
-    uint32_t dma_buf_addr; // dam addr for fb->buf
-    size_t fb_offset;      // for dma align
-} mipi_csi_dam_frames_t;
+    uint32_t dma_buf_addr; // dma addr for fb->buf
+} mipi_csi_dma_frames_t;
 
 typedef struct esp_mipi_csi_obj {
-    mipi_csi_dam_frames_t frames;
+    mipi_csi_dma_frames_t frames;
     uint8_t dma_channel_num;
     intr_handle_t dma_intr_handle;
     mipi_csi_driv_config_t *driver_config;
@@ -84,13 +83,6 @@ static inline void esp_mipi_csi_disable_gdma(esp_mipi_csi_obj_t *csi_cam_obj)
     axi_dma_ll_channel_disable(csi_cam_obj->dma_channel_num);
 }
 
-static inline uint8_t esp_mipi_csi_get_dma_align(void)
-{
-    // Transfer width. 0x2: transfer width is 32bits, 0x03: trans width is 64bits
-    // return (GDMA.ch[cam->dma_channel_num].ctl0.src_tr_width == 0x03 ? 8: 4);
-    return (CONFIG_CSI_TR_WIDTH == 64 ? 8 : 4);
-}
-
 static uint32_t dma_access_addr_map(uint32_t addr)
 {
     uint32_t map_addr = addr;
@@ -108,20 +100,12 @@ static uint32_t dma_access_addr_map(uint32_t addr)
 static inline bool esp_mipi_csi_get_next_free_framebuf(esp_mipi_csi_obj_t *csi_cam_obj)
 {
     if (csi_cam_obj->ops.alloc_buffer) {
-        // Todo, DMA align offset too large
         csi_cam_obj->frames.fb.buf = csi_cam_obj->ops.alloc_buffer(csi_cam_obj->driver_config->fb_size);
         if (csi_cam_obj->frames.fb.buf) {
-            uint8_t dma_align = esp_mipi_csi_get_dma_align();
-            if ((uint32_t)csi_cam_obj->frames.fb.buf % dma_align) {
-                csi_cam_obj->frames.fb_offset = dma_align - ((uint32_t)csi_cam_obj->frames.fb.buf % dma_align);
-            } else {
-                csi_cam_obj->frames.fb_offset = 0;
-            }
             csi_cam_obj->frames.fb.len = csi_cam_obj->driver_config->fb_size;
             Cache_WriteBack_Addr(CACHE_MAP_L1_DCACHE | CACHE_MAP_L2_CACHE,
-                                 (uint32_t)csi_cam_obj->frames.fb.buf + csi_cam_obj->frames.fb_offset, csi_cam_obj->driver_config->fb_size);
-            csi_cam_obj->frames.dma_buf_addr = dma_access_addr_map((uint32_t)csi_cam_obj->frames.fb.buf + csi_cam_obj->frames.fb_offset);// get dma addr;
-            // esp_rom_printf("%s %d line 0x%x\r\n", __func__, __LINE__, csi_cam_obj->frames.dma_buf_addr);
+                                 (uint32_t)csi_cam_obj->frames.fb.buf, csi_cam_obj->driver_config->fb_size);
+            csi_cam_obj->frames.dma_buf_addr = dma_access_addr_map((uint32_t)csi_cam_obj->frames.fb.buf);
             return true;
         } else {
             esp_rom_printf("%s: Alloc fb buffer failed\r\n", MIPI_CSI_TAG);
@@ -282,17 +266,6 @@ static esp_err_t esp_mipi_csi_set_config(mipi_csi_interface_t interface, mipi_cs
         return ESP_ERR_INVALID_ARG;
     }
 
-    // Todo, remove this when ESP32-P4 System clk be ready
-    // SYS_CLKRST.csi_ctrl.csi_clk_div_num = (480000000 / 240000000) - 1;
-    // SYS_CLKRST.csi_ctrl.csi_apb_clk_en = 1;
-    // SYS_CLKRST.csi_ctrl.csi_clk_en = 1;
-    // SYS_CLKRST.csi_ctrl.csi_clk_sync_en = 1;
-    // SYS_CLKRST.csi_ctrl.csi_clk_force_sync_en = 1;
-    // SYS_CLKRST.csi_ctrl.csi_rstn = 0;
-    // SYS_CLKRST.csi_ctrl.csi_rstn = 1;
-    // SYS_CLKRST.csi_ctrl.csi_brg_rstn = 0;
-    // SYS_CLKRST.csi_ctrl.csi_brg_rstn = 1;
-
     hal.bridge_dev = MIPI_CSI_BRIDGE_LL_GET_HW(0);
     hal.host_dev = MIPI_CSI_HOST_LL_GET_HW(0);
     hal.frame_height = config->frame_height;
@@ -335,11 +308,11 @@ static void IRAM_ATTR esp_mipi_csi_grab_mode_gdma_isr(void *arg)
 #if DEBUG_FB_SEQ
         driv_obj_ptr->frames.fb.frame_trans_cnt++;
 #endif
-        Cache_Invalidate_Addr(CACHE_MAP_L1_DCACHE | CACHE_MAP_L2_CACHE, (uint32_t)frame_buffer_event->buf + driv_obj_ptr->frames.fb_offset, driv_obj_ptr->driver_config->fb_size);
+        Cache_Invalidate_Addr(CACHE_MAP_L1_DCACHE | CACHE_MAP_L2_CACHE, (uint32_t)frame_buffer_event->buf, driv_obj_ptr->driver_config->fb_size);
         if (driv_obj_ptr->ops.recved_data
-                && (driv_obj_ptr->ops.recved_data(frame_buffer_event->buf, driv_obj_ptr->frames.fb_offset, driv_obj_ptr->driver_config->fb_size) != ESP_OK)) {
+                && (driv_obj_ptr->ops.recved_data(frame_buffer_event->buf, 0, driv_obj_ptr->driver_config->fb_size) != ESP_OK)) {
             Cache_WriteBack_Addr(CACHE_MAP_L1_DCACHE | CACHE_MAP_L2_CACHE,
-                                 (uint32_t)driv_obj_ptr->frames.fb.buf + driv_obj_ptr->frames.fb_offset, driv_obj_ptr->driver_config->fb_size);
+                                 (uint32_t)driv_obj_ptr->frames.fb.buf, driv_obj_ptr->driver_config->fb_size);
             esp_mipi_csi_enable_gdma_with_addr(driv_obj_ptr, driv_obj_ptr->frames.dma_buf_addr);
         } else {
             if (!esp_mipi_csi_start_framebuf_filled(driv_obj_ptr)) {
@@ -362,7 +335,6 @@ esp_err_t esp_mipi_csi_driver_install(mipi_csi_interface_t interface, mipi_csi_p
         return ESP_ERR_INVALID_STATE;
     }
 
-    // printf("MIPI_CSI_DMA_TRANS_SAR=0x%p\r\n", MIPI_CSI_DMA_TRANS_SAR);
     esp_mipi_csi_obj_t *csi_obj_p = (esp_mipi_csi_obj_t *)calloc(sizeof(esp_mipi_csi_obj_t), 1);
     if (csi_obj_p == NULL) {
         return ESP_ERR_NO_MEM;

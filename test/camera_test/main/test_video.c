@@ -197,7 +197,7 @@ static void test_linux_posix_with_v4l2_operation_task(void *p)
         // memset(video_buffer_ptr[buf.index], 0, buf.bytesused);
         printf("buf.bytesused=%"PRIu32", %"PRIu32"\r\n", buf.bytesused, buf.m.offset);
         printf("data:");
-        for (uint32_t loop = buf.m.offset; loop < buf.m.offset + 16; loop++) {
+        for (uint32_t loop = 0; loop < 16; loop++) {
             printf("%02x ", video_buffer_ptr[buf.index][loop]);
         }
         printf("\r\n");
