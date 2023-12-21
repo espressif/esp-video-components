@@ -9,7 +9,7 @@ menuconfig CAMERA_OV2640
         default y
         depends on CAMERA_OV2640
         help
-            When enabled, you don't need to call ov5640_detect manaually, OV2640 will be automatically detected
+            When enabled, you don't need to call ov2640_dvp_detect manaually, OV2640 will be automatically detected
             when esp_camera_init is called.
 
     menu "Interface"
@@ -20,3 +20,12 @@ menuconfig CAMERA_OV2640
             help
                 If enabled, the OV2640 will be connected to the DVP interface.
     endmenu
+
+    config CAMERA_OV2640_MAX_SUPPORT
+        int "Support for a maximum number of connected OV2640"
+        depends on CAMERA_OV2640
+        default 1
+        range 1 2 if IDF_TARGET_ESP32P4
+        range 1 1 if !IDF_TARGET_ESP32P4
+        help
+            Set the number of connected OV2640.
