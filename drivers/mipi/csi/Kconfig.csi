@@ -1,6 +1,17 @@
 menu "MIPI-CSI configuration"
     depends on IDF_TARGET_ESP32P4
 
+    choice CSI_TR_WIDTH
+        bool "CSI DMA transfer width"
+        default CSI_TR_WIDTH_64BIT
+
+        config CSI_TR_WIDTH_64BIT
+            bool "64bits"
+
+        config CSI_TR_WIDTH_32BIT
+            bool "32bits"
+    endchoice
+
     menu "MIPI D-PHY Config"
         config MIPI_CSI_LINESYNC_SUPPORT
         bool "Line Sync Enabled"

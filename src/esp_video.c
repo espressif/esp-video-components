@@ -687,7 +687,11 @@ esp_err_t esp_video_setup_buffer(struct esp_video *video, uint32_t count)
     video->buffer = esp_pipeline_get_video_buffer(pipeline);
     ESP_VIDEO_LOGI("%s buffer created %p", video->dev_name, video);
 #else
-    video->buffer = esp_video_buffer_create(video->buffer_count, video->buffer_size);
+#ifdef CONFIG_ESP_VIDEO_MEDIA_TODO
+    // Todo: AEG-1075
+    int alignment = 4;
+#endif
+    video->buffer = esp_video_buffer_create(video->buffer_count, video->buffer_size, alignment);
 #endif
     if (!video->buffer) {
         vSemaphoreDelete(video->done_sem);

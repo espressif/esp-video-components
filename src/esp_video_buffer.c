@@ -16,14 +16,12 @@
 #endif
 
 #ifdef CONFIG_SPIRAM
-#define ALLOC_RAM_ATTR                      MALLOC_CAP_SPIRAM
+#define ALLOC_RAM_ATTR                      MALLOC_CAP_DMA
 #else
 #define ALLOC_RAM_ATTR                      MALLOC_CAP_8BIT
 #endif
 
-#define __ESP_VIDEO_BUFFER_ALIGN(s, a)      (((s) + ((a) - 1)) & (~((a) - 1)))
-#define ESP_VIDEO_BUFFER_ALIGN_SIZE         8
-#define ESP_VIDEO_BUFFER_ALIGN(s)           __ESP_VIDEO_BUFFER_ALIGN(s, ESP_VIDEO_BUFFER_ALIGN_SIZE)
+#define ESP_VIDEO_BUFFER_ALIGN(s, a)      (((s) + ((a) - 1)) & (~((a) - 1)))
 
 struct esp_video_buffer *g_video_buffer;
 static const char *TAG = "esp_video_buffer";
@@ -33,36 +31,45 @@ static const char *TAG = "esp_video_buffer";
  *
  * @param count Buffer element count
  * @param size  Buffer element size
+ * @param align_size Buffer aligned size, unit: byte, normally 4 bytes * n aligned
  *
  * @return
  *      - Video buffer object pointer on success
  *      - NULL if failed
  */
-struct esp_video_buffer *esp_video_buffer_create(uint32_t count, uint32_t size)
+struct esp_video_buffer *esp_video_buffer_create(uint32_t count, uint32_t size, uint32_t align_size)
 {
-    uint32_t mem_size;
     uint32_t element_size;
     struct esp_video_buffer *buffer;
+    uint32_t aligned = 0;
 
-    size  = ESP_VIDEO_BUFFER_ALIGN(size);
+    // AEG-1117 struct esp_video_buffer_element is 8 bytes aligned now
+#define VIDEO_BUFFER_ELEMENT_ALIGN_SIZE         8
+    assert(align_size <= VIDEO_BUFFER_ELEMENT_ALIGN_SIZE);
+    assert((align_size == 1) || (VIDEO_BUFFER_ELEMENT_ALIGN_SIZE % align_size == 0));
+    aligned = VIDEO_BUFFER_ELEMENT_ALIGN_SIZE;
+    element_size = ESP_VIDEO_BUFFER_ALIGN(sizeof(struct esp_video_buffer_element), aligned) + ESP_VIDEO_BUFFER_ALIGN(size, aligned);
 
-    element_size = size + sizeof(struct esp_video_buffer_element);
-    mem_size = sizeof(struct esp_video_buffer) + element_size * count;
-
-    buffer = heap_caps_malloc(mem_size, ALLOC_RAM_ATTR);
+    buffer = heap_caps_malloc(sizeof(struct esp_video_buffer), ALLOC_RAM_ATTR);
     if (!buffer) {
         ESP_VIDEO_LOGE("Failed to malloc for video buffer");
         return NULL;
     }
 
+    buffer->element = heap_caps_aligned_alloc(aligned, element_size * count, ALLOC_RAM_ATTR);
+    if (!buffer->element) {
+        ESP_VIDEO_LOGE("Failed to malloc for video buffer element");
+        heap_caps_free(buffer);
+        return NULL;
+    }
     portMUX_INITIALIZE(&buffer->lock);
     SLIST_INIT(&buffer->free_list);
     buffer->element_count = count;
     buffer->element_size = size;
+    buffer->align_size = align_size;
     for (int i = 0; i < count; i++) {
-        struct esp_video_buffer_element *element =
-            (struct esp_video_buffer_element *)((char *)buffer->element + element_size * i);
-
+        struct esp_video_buffer_element *element = (struct esp_video_buffer_element *)((uint8_t *)buffer->element + element_size * i);
+        assert(((uint32_t)element->buffer % align_size) == 0);
         element->index = i;
         SLIST_INSERT_HEAD(&buffer->free_list, element, node);
     }
@@ -81,10 +88,11 @@ struct esp_video_buffer *esp_video_buffer_create(uint32_t count, uint32_t size)
  */
 struct esp_video_buffer *esp_video_buffer_clone(const struct esp_video_buffer *buffer)
 {
-    uint32_t count = buffer->element_count;
-    uint32_t size = buffer->element_size;
+    if (!buffer) {
+        return NULL;
+    }
 
-    return esp_video_buffer_create(count, size);
+    return esp_video_buffer_create(buffer->element_count, buffer->element_size, buffer->align_size);
 }
 
 /**
@@ -165,10 +173,9 @@ esp_err_t esp_video_buffer_destroy(struct esp_video_buffer *buffer)
     uint32_t n;
 
     n = esp_video_buffer_get_element_num(buffer);
-    if (n != buffer->element_count) {
-        return ESP_ERR_INVALID_STATE;
-    }
+    assert (n == buffer->element_count);
 
+    heap_caps_free(buffer->element);
     heap_caps_free(buffer);
 
     return ESP_OK;
