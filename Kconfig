@@ -1,6 +1,7 @@
 menu "Espressif Video Configuration"
 
     rsource "boards/Kconfig.boards"
+    rsource "drivers/interfaces/Kconfig.interfaces"
 
     choice ESP_VIDEO_API_SELECTION
         prompt "Video API Selection"
@@ -65,8 +66,6 @@ menu "Espressif Video Configuration"
             Select this option, espressif video core functions will check
             input parameters.
 
-    rsource "drivers/sim/Kconfig.sim"
     rsource "drivers/isp/Kconfig.isp"
     rsource "drivers/sccb/Kconfig.sccb"
-    rsource "drivers/mipi/csi/Kconfig.csi"
 endmenu
