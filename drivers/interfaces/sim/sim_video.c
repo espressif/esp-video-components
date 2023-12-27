@@ -91,7 +91,9 @@ static esp_err_t sim_video_set_format(struct esp_video *video, const struct esp_
         return ret;
     }
 
-    video->buffer_size = SIM_CAMERA_BUFFER_SIZE;
+    video->buf_info.size = SIM_CAMERA_BUFFER_SIZE;
+    video->buf_info.align_size = 1;
+    video->buf_info.caps = MALLOC_CAP_8BIT;
 
     return ESP_OK;
 }

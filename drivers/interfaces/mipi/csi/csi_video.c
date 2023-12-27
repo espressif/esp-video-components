@@ -244,15 +244,14 @@ static esp_err_t sim_camera_stop_capture(struct esp_video *video)
 
 static esp_err_t sim_camera_set_format(struct esp_video *video, const struct esp_video_format *format)
 {
+    esp_err_t ret;
     struct sim_camera *camera = (struct sim_camera *)video->priv;
 
     camera->fps = (int)format->fps;
 
-    /* Update buffer to be real frame size of MIPI-CSI */
+    ret = esp_mipi_csi_get_fb_info(csi_test_handle, &video->buffer_size, &video->buffer_align_size, &video->buffer_caps);
 
-    video->buffer_size = SIM_CAMERA_BUFFER_SIZE;
-
-    return ESP_OK;
+    return ret;
 }
 
 static esp_err_t sim_camera_capability(struct esp_video *video, struct esp_video_capability *capability)
