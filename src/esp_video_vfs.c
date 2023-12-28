@@ -18,7 +18,7 @@
 #include "esp_vfs_dev.h"
 #include "esp_video_vfs.h"
 #include "esp_video_log.h"
-#ifndef CONFIG_SIMULATED_INTF
+#ifdef CONFIG_MIPI_CSI_ENABLE
 #include "mipi_csi.h"
 #endif
 
@@ -32,7 +32,7 @@ static const int s_control_id_map_table[][2] = {
     { V4L2_CID_FLASH_LED_MODE, CAM_SENSOR_FLASH_LED }
 };
 
-#ifndef CONFIG_SIMULATED_INTF
+#ifdef CONFIG_MIPI_CSI_ENABLE
 esp_mipi_csi_handle_t csi_test_handle;
 #endif
 
@@ -307,7 +307,7 @@ static int esp_video_vfs_ioctl_qbuf(struct esp_video *video, struct v4l2_buffer 
 
     esp_video_free_buffer_index(video, vbuf->index);
 
-#ifndef CONFIG_SIMULATED_INTF
+#ifdef CONFIG_MIPI_CSI_ENABLE
     esp_mipi_csi_new_buffer_available(csi_test_handle);
 #endif
     return 0;

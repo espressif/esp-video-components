@@ -1,4 +1,5 @@
 menu "Camera Interfaces Configuration"
+    rsource "dvp/Kconfig.dvp"
     rsource "mipi/csi/Kconfig.csi"
     rsource "sim/Kconfig.sim"
 endmenu
