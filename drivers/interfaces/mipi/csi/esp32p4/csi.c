@@ -22,6 +22,8 @@
 #include "esp_color_formats.h"
 
 #define MIPI_CSI_CLK_GROUP_DEFAULT (0)
+#include "soc/soc.h"
+#include "soc/hp_sys_clkrst_struct.h"
 
 #define MIPI_CSI_HANDLE_NULL_ERROR_STR               "cam handle can't be NULL"
 #define MIPI_CSI_NULL_POINTER_CHECK(tag, p)          ESP_RETURN_ON_FALSE((p), ESP_ERR_INVALID_ARG, tag, "input parameter '"#p"' is NULL")
@@ -33,8 +35,6 @@ extern uint32_t MIPI_CSI_MEM;
 #define DW_GDMA_BUFFER_MASTER   (1)
 #define CONFIG_CSI_TR_WIDTH     (64)
 
-#define AXI_DMA_CH_ENA_S        (0)
-#define AXI_DMA_CH_ENA_WE_S     (8)
 #define TEST_AXIDMA_CH  0
 
 typedef enum {
@@ -86,18 +86,9 @@ static inline void esp_mipi_csi_disable_gdma(esp_mipi_csi_obj_t *csi_cam_obj)
     axi_dma_ll_channel_disable(csi_cam_obj->dma_channel_num);
 }
 
-static uint32_t dma_access_addr_map(uint32_t addr)
+static inline uint32_t dma_access_addr_map(uint32_t addr)
 {
-    uint32_t map_addr = addr;
-
-    if (addr >= 0x30100000 && addr <= 0x30103FFF) {
-    } else if (addr == 0 || addr & 0x80000000) {
-
-    } else {
-        map_addr += 0x40000000;
-    }
-
-    return map_addr;
+    return addr;
 }
 
 static inline bool esp_mipi_csi_get_next_free_framebuf(esp_mipi_csi_obj_t *csi_cam_obj)
@@ -157,7 +148,7 @@ static mipi_csi_driv_config_t *mipi_csi_new_driver_cfg(mipi_csi_port_config_t *c
     }
 
     cfg->fb_size = fb_size_in_bits >> 3;
-    // ESP_LOGD(MIPI_CSI_TAG, "FB Size=%u", cfg->fb_size);
+    ESP_LOGD(MIPI_CSI_TAG, "FB Size=%"PRIu32"", cfg->fb_size);
     return cfg;
 }
 
@@ -175,15 +166,24 @@ static int esp_mipi_csi_gdma_config(esp_mipi_csi_obj_t *driv_obj)
     // Block transfer size
     uint32_t csi_block_ts;
 
+    // Todo, remove this when ESP32-P4 System clk be ready
+    HP_SYS_CLKRST.soc_clk_ctrl1.reg_gdma_sys_clk_en = 0x0;
+    HP_SYS_CLKRST.soc_clk_ctrl1.reg_gdma_sys_clk_en = 0x1;
+    HP_SYS_CLKRST.hp_rst_en0.reg_rst_en_gdma = 1;
+    HP_SYS_CLKRST.hp_rst_en0.reg_rst_en_gdma = 0;
+
     // To do, find a free channle to use. if not, just return err.
     driv_obj->dma_channel_num = TEST_AXIDMA_CH;
 
     // if ISP used, this should be ISP output bits_per_pixel. otherwise this should be sensor output bits_per_pixel
-    csi_block_ts = driv_obj->driver_config->width * driv_obj->driver_config->height * driv_obj->driver_config->out_type_bits_per_pixel / CONFIG_CSI_TR_WIDTH;
-    // ESP_LOGD(MIPI_CSI_TAG, "DMA Ch=%u, csi block trans size=%u", driv_obj->dma_channel_num, csi_block_ts);
+    if (driv_obj->driver_config->cam_isp_en) {
+        csi_block_ts = driv_obj->driver_config->width * driv_obj->driver_config->height * driv_obj->driver_config->out_type_bits_per_pixel / CONFIG_CSI_TR_WIDTH;
+    } else {
+        csi_block_ts = driv_obj->driver_config->width * driv_obj->driver_config->height * driv_obj->driver_config->in_type_bits_per_pixel / CONFIG_CSI_TR_WIDTH;
+    }
+    ESP_LOGD(MIPI_CSI_TAG, "csi block trans size=%"PRIu32"", csi_block_ts);
 
     // Enable GDMA(global control)
-
     DW_GDMA.cfg0.val = 0x0;
     DW_GDMA.cfg0.int_en = 0x1;
     DW_GDMA.cfg0.dmac_en = 0x1;
@@ -194,7 +194,7 @@ static int esp_mipi_csi_gdma_config(esp_mipi_csi_obj_t *driv_obj)
     // INTSIGNAL_ENABLEREG
     DW_GDMA.ch[driv_obj->dma_channel_num].int_sig_ena0.val = 0x0;
     // INTSTATUS_ENABLEREG, enable trans done interrupt
-    DW_GDMA.ch[driv_obj->dma_channel_num].int_st0.dma_tfr_done_intstat = 0x1;
+    DW_GDMA.ch[driv_obj->dma_channel_num].int_st_ena0.enable_dma_tfr_done_intstat = 0x1;
     // enable trans done single
     DW_GDMA.ch[driv_obj->dma_channel_num].int_sig_ena0.enable_dma_tfr_done_intsignal = 0x1;
 
@@ -254,10 +254,9 @@ static int esp_mipi_csi_gdma_config(esp_mipi_csi_obj_t *driv_obj)
     DW_GDMA.ch[driv_obj->dma_channel_num].ctl1.awlen = 16;
     DW_GDMA.ch[driv_obj->dma_channel_num].ctl1.awlen_en = 1;
 
-    // vTaskDelay((2/portTICK_PERIOD_MS)?(2/portTICK_PERIOD_MS):1);
     vTaskDelay(2 / portTICK_PERIOD_MS);
-
-    ESP_LOGI(MIPI_CSI_TAG, "GDMA init done");
+    ESP_LOGD(MIPI_CSI_TAG, "csi block=%"PRIu32", TR_W=%d.\n", csi_block_ts, CONFIG_CSI_TR_WIDTH);
+    ESP_LOGI(MIPI_CSI_TAG, "DW GDMA init done");
     return 0;
 }
 
@@ -314,6 +313,7 @@ static esp_err_t mipi_csi_set_mipi_config(mipi_csi_interface_t interface, const 
     mipi_config.frame_height = config->frame_height;
     mipi_config.in_bits_per_pixel = pixformat_info_map[config->in_type].bits_per_pixel;
     mipi_config.out_bits_per_pixel = pixformat_info_map[config->out_type].bits_per_pixel;
+    ESP_LOGD(MIPI_CSI_TAG, "in_bits_per_pixel=%"PRIu32", out_bits_per_pixel=%"PRIu32"", mipi_config.in_bits_per_pixel, mipi_config.out_bits_per_pixel);
 
     return esp_mipi_csi_set_config(MIPI_CSI_PORT_NUM_DEFAULT, &mipi_config);
 };
@@ -357,6 +357,9 @@ esp_err_t esp_mipi_csi_driver_install(mipi_csi_interface_t interface, mipi_csi_p
     if ((interface > MIPI_CSI_PORT_MAX)) {
         return ESP_ERR_INVALID_STATE;
     }
+
+    ESP_LOGD(MIPI_CSI_TAG, "clk=%d, w=%"PRIu32", h=%"PRIu32"", config->mipi_clk_freq_hz, config->frame_width, config->frame_height);
+    ESP_LOGD(MIPI_CSI_TAG, "in=%"PRIx16", out=%"PRIx16"",  config->in_type, config->out_type);
 
     esp_mipi_csi_obj_t *csi_obj_p = (esp_mipi_csi_obj_t *)calloc(sizeof(esp_mipi_csi_obj_t), 1);
     if (csi_obj_p == NULL) {
