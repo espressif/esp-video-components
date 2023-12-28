@@ -1,10 +1,8 @@
 /*
- * SPDX-FileCopyrightText: 2023 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2023-2024 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Apache-2.0
  */
-
-// The HAL layer for MIPI-CSI
 
 #pragma once
 
@@ -17,14 +15,18 @@ extern "C" {
 #define MIPI_CSI_HAL_LAYER_VERSION        0x1
 
 /**
- * @brief Context of the HAL
+ * @brief MIPI CSI HAL driver context
  */
 typedef struct {
     csi_host_dev_t *host_dev;
     csi_brg_dev_t *bridge_dev;
     uint32_t version;
+} mipi_csi_hal_context_t;
 
-    /**< these need to be configured by `mipi_csi_hal_config_t` via driver layer*/
+/**
+ * @brief MIPI CSI HAL driver configuration
+ */
+typedef struct {
     uint8_t lanes_num;
     uint32_t frame_width;
     uint32_t frame_height;
@@ -33,25 +35,17 @@ typedef struct {
     uint32_t out_bits_per_pixel;
     size_t vc_channel_num;
     uint32_t dma_req_interval;
-} mipi_csi_hal_context_t;
+} mipi_csi_hal_config_t;
 
 /**
- * @brief  Init the MIPI-CSI Host-Controller and D-PHY.
+ * @brief MIPI CSI HAL layer initialization
  *
- * @param  hal Context of the HAL layer
+ * @note Caller should malloc the memory for the hal context
  *
- * @return None
+ * @param hal Pointer to the HAL driver context
+ * @param config Pointer to the HAL driver configuration
  */
-void mipi_csi_hal_host_phy_initialization(mipi_csi_hal_context_t *hal);
-
-/**
- * @brief  Init the MIPI-CSI Bridge.
- *
- * @param  hal Context of the HAL layer
- *
- * @return None
- */
-void mipi_csi_hal_bridge_initialization(mipi_csi_hal_context_t *hal);
+void mipi_csi_hal_init(mipi_csi_hal_context_t *hal, const mipi_csi_hal_config_t *config);
 
 #ifdef __cplusplus
 }

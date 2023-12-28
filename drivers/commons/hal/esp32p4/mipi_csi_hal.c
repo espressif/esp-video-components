@@ -1,34 +1,34 @@
 /*
- * SPDX-FileCopyrightText: 2023 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2023-2024 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Apache-2.0
  */
 
 #include "hal/mipi_csi_hal.h"
-#include "esp_rom_sys.h"
 #include "hal/log.h"
 
-static const char TAG[] = "MIPI_CSI_HAL";
+#define MIPI_CSI_CLK_GROUP_DEFAULT (0)
 
-void mipi_csi_hal_host_phy_initialization(mipi_csi_hal_context_t *hal)
+static const char TAG[] = "mipi_csi_hal";
+
+static void mipi_csi_hal_host_phy_init(mipi_csi_hal_context_t *hal, const mipi_csi_hal_config_t *config)
 {
-    // int csi_lane_rate = hal->idi_clk_freq * hal->in_bits_per_pixel / hal->lanes_num;
-    int csi_lane_rate = hal->mipi_clk;
-    ESP_LOGD(TAG, "lane rate in host_phy=%d", csi_lane_rate);
+    int csi_lane_rate = config->mipi_clk;
+
     // Clear PHY from reset.
-    mipi_csi_ll_clear_phy_from_reset(hal->host_dev);
+    mipi_csi_phy_ll_clear_from_reset(hal->host_dev);
 
     esp_rom_delay_us(1000);
 
     // Release D-PHY test codes from reset.
-    mipi_csi_ll_update_phy_test_ctrl1(hal->host_dev, 0, 0);   // phy_testen  = 0; phy_testdin = 8'd0;
-    mipi_csi_ll_update_phy_test_ctrl0(hal->host_dev, 0, 1);   // phy_testclk = 0; phy_testclr = 1;
+    mipi_csi_phy_ll_update_test_ctrl1(hal->host_dev, 0, 0);   // phy_testen  = 0; phy_testdin = 8'd0;
+    mipi_csi_phy_ll_update_test_ctrl0(hal->host_dev, 0, 1);   // phy_testclk = 0; phy_testclr = 1;
     // Release phy_testclr.
-    mipi_csi_ll_update_phy_test_ctrl0(hal->host_dev, 0, 0);   // phy_testclk = 0; phy_testclr = 0;
+    mipi_csi_phy_ll_update_test_ctrl0(hal->host_dev, 0, 0);   // phy_testclk = 0; phy_testclr = 0;
 
     // Config the D-PHY frequency range.
     uint8_t hs_freq = 0x1A;
-    struct {
+    const struct {
         uint32_t freq;     // upper margin of frequency range
         uint8_t hs_freq;   // hsfreqrange
         uint8_t vco_range; // vcorange
@@ -87,47 +87,47 @@ void mipi_csi_hal_host_phy_initialization(mipi_csi_hal_context_t *hal)
     }
 
     // Configure D-PHY frequency range (Max is 1.5GHz).
-    mipi_csi_ll_dphy_write_control(hal->host_dev, 0x44, hs_freq << 1);
-    ESP_LOGD(TAG, "CSI-DPHY lane_rate: %d Hz, hs_freq: 0x%x", csi_lane_rate, hs_freq);
-
-    mipi_csi_ll_shutdown_input(hal->host_dev, 0);
-    mipi_csi_ll_phy_reset_output(hal->host_dev, 0);
-    mipi_csi_ll_host_reset_output(hal->host_dev, 0);
+    mipi_csi_phy_ll_write_control(hal->host_dev, 0x44, hs_freq << 1);
+    HAL_LOGD(TAG, "CSI-DPHY lane_rate: %d Hz, hs_freq: 0x%x, lane_num: 0x%x", csi_lane_rate, hs_freq, config->lanes_num);
+    mipi_csi_phy_ll_enable_shutdown_input(hal->host_dev, 0);
+    mipi_csi_phy_ll_enable_reset_output(hal->host_dev, 0);
+    mipi_csi_host_ll_enable_reset_output(hal->host_dev, 0);
 
     // Configure the host controller.
     // Configure the number of active lanes.
-    mipi_csi_ll_set_active_lanes_num(hal->host_dev, hal->lanes_num);
+    mipi_csi_host_ll_set_active_lanes_num(hal->host_dev, config->lanes_num);
 
     // Configure VCX.
-    mipi_csi_ll_set_vc_channel_extension(hal->host_dev, 0x0);
+    mipi_csi_host_ll_enable_vc_channel_extension(hal->host_dev, 0x0);
 
     // Set Scrambler.
-    mipi_csi_ll_set_scrambling(hal->host_dev, 0x0);
-
-    ESP_LOGI(TAG, "Host Controller & PHY initialization done.");
-    return;
+    mipi_csi_host_ll_enable_scrambling(hal->host_dev, 0x0);
 }
 
-void mipi_csi_hal_bridge_initialization(mipi_csi_hal_context_t *hal)
+static void mipi_csi_hal_brg_init(mipi_csi_hal_context_t *hal, const mipi_csi_hal_config_t *config)
 {
     // Set Frame size.
-    mipi_csi_ll_bridge_set_frame_size(hal->bridge_dev, hal->frame_width, hal->frame_height);
+    mipi_csi_brg_ll_set_frame_size(hal->bridge_dev, config->frame_width, config->frame_height);
 
-    mipi_csi_ll_bridge_set_flow_ctl_buf_afull_thrd(hal->bridge_dev, 960);
+    mipi_csi_brg_ll_set_flow_ctl_buf_afull_thrd(hal->bridge_dev, 960);
 
-    mipi_csi_ll_bridge_set_req_dma_burst_len(hal->bridge_dev, 256);
+    mipi_csi_brg_ll_set_req_dma_burst_len(hal->bridge_dev, 256);
 
-    ESP_LOGD(TAG, "has_hsync_e: 0x%x", MIPI_CSI_BRIDGE.frame_cfg.has_hsync_e);
+    HAL_LOGD(TAG, "has_hsync_e: 0x%x", MIPI_CSI_BRIDGE.frame_cfg.has_hsync_e);
 
-    ESP_LOGD(TAG, "csi data_type_min: 0x%x, data_type_max: 0x%x, dma_req_interval: %d", MIPI_CSI_BRIDGE.data_type_cfg.data_type_min, MIPI_CSI_BRIDGE.data_type_cfg.data_type_max, MIPI_CSI_BRIDGE.dma_req_interval.dma_req_interval);
+    HAL_LOGD(TAG, "csi data_type_min: 0x%x, data_type_max: 0x%x, dma_req_interval: %d", MIPI_CSI_BRIDGE.data_type_cfg.data_type_min, MIPI_CSI_BRIDGE.data_type_cfg.data_type_max, MIPI_CSI_BRIDGE.dma_req_interval.dma_req_interval);
 
-    mipi_csi_ll_bridge_set_data_type_min(hal->bridge_dev, 0x12);
+    mipi_csi_brg_ll_set_data_type_min(hal->bridge_dev, 0x12);
 
-    mipi_csi_ll_bridge_set_yuv_endine_mode(hal->bridge_dev, 0x0);
+    mipi_csi_brg_ll_set_byte_endian(hal->bridge_dev, 0x0);
+    mipi_csi_brg_ll_set_bit_endian(hal->bridge_dev, 0x0);
 
     // Enable CSI Bridge.
-    mipi_csi_ll_bridge_enable(hal->bridge_dev, true);
+    mipi_csi_brg_ll_enable(hal->bridge_dev, true);
+}
 
-    HAL_LOGI(TAG, "MIPI CSI Bridge init done.");
-    return;
+void mipi_csi_hal_init(mipi_csi_hal_context_t *hal, const mipi_csi_hal_config_t *config)
+{
+    mipi_csi_hal_host_phy_init(hal, config);
+    mipi_csi_hal_brg_init(hal, config);
 }
