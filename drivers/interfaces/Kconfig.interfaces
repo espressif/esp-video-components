@@ -1,0 +1,4 @@
+menu "Camera Interfaces Configuration"
+    rsource "mipi/csi/Kconfig.csi"
+    rsource "sim/Kconfig.sim"
+endmenu

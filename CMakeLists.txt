@@ -8,15 +8,14 @@ if(CONFIG_ESP_VIDEO_MEDIA_CONTROLLER)
     list(APPEND srcs "src/esp_media.c")
 endif()
 
-set(include_dirs "include" "include/drivers")
+set(include_dirs "include")
 set(priv_include_dirs "private_include")
 set(priv_requires "esp_timer" "vfs" "driver" "json")
 set(requires "")
 
-include(${COMPONENT_DIR}/drivers/isp/sources.cmake)
-include(${COMPONENT_DIR}/drivers/mipi/csi/sources.cmake)
+include(${COMPONENT_DIR}/drivers/commons/sources.cmake)
+include(${COMPONENT_DIR}/drivers/interfaces/sources.cmake)
 include(${COMPONENT_DIR}/drivers/sccb/sources.cmake)
-include(${COMPONENT_DIR}/drivers/sim/sources.cmake)
 
 if (NOT "${CONFIG_ESP_VIDEO_MEDIA_EMBED_FILE}" STREQUAL "")
     set(embed_files "${CONFIG_ESP_VIDEO_MEDIA_EMBED_FILE}")
