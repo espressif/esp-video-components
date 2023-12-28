@@ -8,16 +8,16 @@
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>
 #include "driver/gpio.h"
-#include "sc2336_settings.h"
-#include "sccb.h"
 #include "esp_log.h"
 
-static const char *TAG = "sc2336";
+#include "esp_camera.h"
+#include "sccb.h"
+#include "sc2336_settings.h"
 
 #define SC2336_IO_MUX_LOCK
 #define SC2336_IO_MUX_UNLOCK
 #define CAMERA_ENABLE_OUT_CLOCK(pin,clk)
-#define CAMERA_DISABLE_OUT_CLOCK()
+#define CAMERA_DISABLE_OUT_CLOCK(pin)
 
 #define SC2336_SCCB_ADDR   0x30
 #define SC2336_PID         0xcb3a
@@ -28,9 +28,304 @@ static const char *TAG = "sc2336";
 #define delay_ms(ms)  vTaskDelay((ms > portTICK_PERIOD_MS ? ms/ portTICK_PERIOD_MS : 1))
 #define SC2336_SUPPORT_NUM CONFIG_CAMERA_SC2336_MAX_SUPPORT
 
+static const char *TAG = "sc2336";
 static esp_camera_device_t *s_sc2336[SC2336_SUPPORT_NUM];
-
 static uint8_t s_sc2336_index;
+
+enum {
+    SC2336_RAW_FORMAT_INDEX0,
+    SC2336_RAW_FORMAT_INDEX1,
+    SC2336_RAW_FORMAT_INDEX2,
+    SC2336_RAW_FORMAT_INDEX3,
+    SC2336_RAW_FORMAT_INDEX4,
+    SC2336_RAW_FORMAT_INDEX5,
+    SC2336_RAW_FORMAT_INDEX6,
+    SC2336_RAW_FORMAT_INDEX7,
+    SC2336_RAW_FORMAT_INDEX8,
+};
+
+static const sensor_isp_info_t sc2336_isp_info[] = {
+    {
+        .isp_v1_info = {
+            .version = SENSOR_ISP_INFO_VERSION_DEFAULT,
+            .pclk = 81000000,
+            .vts = 1500,
+            .hts = 1800,
+        }
+    },
+    {
+        .isp_v1_info = {
+            .version = SENSOR_ISP_INFO_VERSION_DEFAULT,
+            .pclk = 81000000,
+            .vts = 1800,
+            .hts = 900,
+        },
+    },
+    {
+        .isp_v1_info = {
+            .version = SENSOR_ISP_INFO_VERSION_DEFAULT,
+            .pclk = 81000000,
+            .vts = 1800,
+            .hts = 750,
+        },
+    },
+    {
+        .isp_v1_info = {
+            .version = SENSOR_ISP_INFO_VERSION_DEFAULT,
+            .pclk = 81000000,
+            .vts = 1125,
+            .hts = 1200,
+        },
+    },
+    {
+        .isp_v1_info = {
+            .version = SENSOR_ISP_INFO_VERSION_DEFAULT,
+            .pclk = 66000000,
+            .vts = 2250,
+            .hts = 1200,
+        },
+    },
+    {
+        .isp_v1_info = {
+            .version = SENSOR_ISP_INFO_VERSION_DEFAULT,
+            .pclk = 66000000,
+            .vts = 2250,
+            .hts = 1200,
+        },
+    },
+    {
+        .isp_v1_info = {
+            .version = SENSOR_ISP_INFO_VERSION_DEFAULT,
+            .pclk = 49500000,
+            .vts = 2200,
+            .hts = 750,
+        }
+    },
+    {
+        .isp_v1_info = {
+            .version = SENSOR_ISP_INFO_VERSION_DEFAULT,
+            .pclk = 67200000,
+            .vts = 1000,
+            .hts = 2240,
+        }
+    },
+    {
+        .isp_v1_info = {
+            .version = SENSOR_ISP_INFO_VERSION_DEFAULT,
+            .pclk = 42000000,
+            .vts = 525,
+            .hts = 1600,
+        }
+    },
+};
+
+static const sensor_format_t sc2336_format_info[] = {
+    {
+        //cleaned_0x2e_SC2336_MIPI_24Minput_2lane_405Mbps_10bit_1280x720_30fps
+        .index = SC2336_RAW_FORMAT_INDEX0,
+        .name = "MIPI_24Minput_2lane_RAW10_1280x720_30fps",
+        .format = CAM_SENSOR_PIXFORMAT_RAW10,
+        .port = MIPI_CSI_OUTPUT_LANE2,
+        .bayer_type = CAM_SENSOR_BAYER_GBRG,
+        .hdr_mode = CAM_SENSOR_HDR_LINEAR,
+        .xclk = 24000000,
+        .start_pos_x = 4,
+        .start_pos_y = 4,
+        .width = 1280,
+        .height = 720,
+        .regs = init_reglist_MIPI_2lane_720p_30fps,
+        .regs_size = ARRAY_SIZE(init_reglist_MIPI_2lane_720p_30fps),
+        .bpp = 10,
+        .fps = 30,
+        .isp_info = &sc2336_isp_info[SC2336_RAW_FORMAT_INDEX0],
+        .mipi_info = {
+            .mipi_clk = 405000000,
+        },
+        .reserved = NULL,
+    },
+    {
+        // cleaned_0x2f_SC2336_MIPI_24Minput_2lane_405Mbps_10bit_1280x720_50fps
+        .index = SC2336_RAW_FORMAT_INDEX1,
+        .name = "MIPI_24Minput_2lane_RAW10_1280x720_50fps",
+        .format = CAM_SENSOR_PIXFORMAT_RAW10,
+        .port = MIPI_CSI_OUTPUT_LANE2,
+        .bayer_type = CAM_SENSOR_BAYER_GBRG,
+        .hdr_mode = CAM_SENSOR_HDR_LINEAR,
+        .xclk = 24000000,
+        .start_pos_x = 4,
+        .start_pos_y = 4,
+        .width = 1280,
+        .height = 720,
+        .regs = init_reglist_MIPI_2lane_720p_50fps,
+        .regs_size = ARRAY_SIZE(init_reglist_MIPI_2lane_720p_50fps),
+        .bpp = 10,
+        .fps = 50,
+        .isp_info = &sc2336_isp_info[SC2336_RAW_FORMAT_INDEX1],
+        .mipi_info = {
+            .mipi_clk = 405000000,
+        },
+        .reserved = NULL,
+    },
+    {
+        // cleaned_0x2f_SC2336_MIPI_24Minput_2lane_405Mbps_10bit_1280x720_60fps
+        .index = SC2336_RAW_FORMAT_INDEX2,
+        .name = "MIPI_24Minput_2lane_RAW10_1280x720_60fps",
+        .format = CAM_SENSOR_PIXFORMAT_RAW10,
+        .port = MIPI_CSI_OUTPUT_LANE2,
+        .bayer_type = CAM_SENSOR_BAYER_GBRG,
+        .hdr_mode = CAM_SENSOR_HDR_LINEAR,
+        .xclk = 24000000,
+        .start_pos_x = 4,
+        .start_pos_y = 4,
+        .width = 1280,
+        .height = 720,
+        .regs = init_reglist_MIPI_2lane_720p_60fps,
+        .regs_size = ARRAY_SIZE(init_reglist_MIPI_2lane_720p_60fps),
+        .bpp = 10,
+        .fps = 60,
+        .isp_info = &sc2336_isp_info[SC2336_RAW_FORMAT_INDEX2],
+        .mipi_info = {
+            .mipi_clk = 405000000,
+        },
+        .reserved = NULL,
+    },
+    {
+        // cleaned_0x29_SC2336_MIPI_24Minput_1lane_660Mbps_10bit_1920x1080_25fps
+        .index = SC2336_RAW_FORMAT_INDEX3,
+        .name = "MIPI_24Minput_1lane_RAW10_1920x1080_25fps",
+        .format = CAM_SENSOR_PIXFORMAT_RAW10,
+        .port = MIPI_CSI_OUTPUT_LANE1,
+        .bayer_type = CAM_SENSOR_BAYER_GBRG,
+        .hdr_mode = CAM_SENSOR_HDR_LINEAR,
+        .xclk = 24000000,
+        .start_pos_x = 4,
+        .start_pos_y = 4,
+        .width = 1920,
+        .height = 1080,
+        .regs = init_reglist_MIPI_1lane_1080p_25fps,
+        .regs_size = ARRAY_SIZE(init_reglist_MIPI_1lane_1080p_25fps),
+        .bpp = 10,
+        .fps = 25,
+        .isp_info = &sc2336_isp_info[SC2336_RAW_FORMAT_INDEX3],
+        .mipi_info = {
+            .mipi_clk = 660000000,
+        },
+        .reserved = NULL,
+    },
+    {
+        // cleaned_0x28_SC2336_MIPI_24Minput_2lane_330Mbps_10bit_1920x1080_25fps
+        .index = SC2336_RAW_FORMAT_INDEX4,
+        .name = "MIPI_24Minput_2lane_RAW10_1920x1080_25fps",
+        .format = CAM_SENSOR_PIXFORMAT_RAW10,
+        .port = MIPI_CSI_OUTPUT_LANE2,
+        .bayer_type = CAM_SENSOR_BAYER_GBRG,
+        .hdr_mode = CAM_SENSOR_HDR_LINEAR,
+        .xclk = 24000000,
+        .start_pos_x = 4,
+        .start_pos_y = 4,
+        .width = 1920,
+        .height = 1080,
+        .regs = init_reglist_MIPI_2lane_1080p_25fps,
+        .regs_size = ARRAY_SIZE(init_reglist_MIPI_2lane_1080p_25fps),
+        .bpp = 10,
+        .fps = 25,
+        .isp_info = &sc2336_isp_info[SC2336_RAW_FORMAT_INDEX4],
+        .mipi_info = {
+            .mipi_clk = 330000000,
+        },
+        .reserved = NULL,
+    },
+    {
+        // cleaned_0x28_SC2336_MIPI_24Minput_2lane_330Mbps_10bit_1920x1080_25fps
+        .index = SC2336_RAW_FORMAT_INDEX5,
+        .name = "MIPI_24Minput_2lane_RAW10_1920x1080_25fps",
+        .format = CAM_SENSOR_PIXFORMAT_RAW10,
+        .port = MIPI_CSI_OUTPUT_LANE2,
+        .bayer_type = CAM_SENSOR_BAYER_GBRG,
+        .hdr_mode = CAM_SENSOR_HDR_LINEAR,
+        .xclk = 24000000,
+        .start_pos_x = 4,
+        .start_pos_y = 4,
+        .width = 1920,
+        .height = 1080,
+        .regs = init_reglist_MIPI_2lane_1080p_25fps,
+        .regs_size = ARRAY_SIZE(init_reglist_MIPI_2lane_1080p_25fps),
+        .bpp = 10,
+        .fps = 25,
+        .isp_info = &sc2336_isp_info[SC2336_RAW_FORMAT_INDEX5],
+        .mipi_info = {
+            .mipi_clk = 330000000,
+        },
+        .reserved = NULL,
+    },
+    {
+        // cleaned_0xa7_SC2336_MIPI_24Minput_2lane_336Mbps_10bit_800x800_30fps
+        .index = SC2336_RAW_FORMAT_INDEX6,
+        .name = "MIPI_24Minput_2lane_RAW10_800*800_30fps",
+        .format = CAM_SENSOR_PIXFORMAT_RAW10,
+        .port = MIPI_CSI_OUTPUT_LANE2,
+        .bayer_type = CAM_SENSOR_BAYER_GBRG,
+        .hdr_mode = CAM_SENSOR_HDR_LINEAR,
+        .xclk = 24000000,
+        .start_pos_x = 4,
+        .start_pos_y = 4,
+        .width = 800,
+        .height = 800,
+        .regs = init_reglist_MIPI_2lane_10bit_800x800_30fps,
+        .regs_size = ARRAY_SIZE(init_reglist_MIPI_2lane_10bit_800x800_30fps),
+        .bpp = 10,
+        .fps = 30,
+        .isp_info = &sc2336_isp_info[SC2336_RAW_FORMAT_INDEX6],
+        .mipi_info = {
+            .mipi_clk = 336000000,
+        },
+        .reserved = NULL,
+    },
+    {
+        // cleaned_0x28_SC2336_MIPI_24Minput_2lane_330Mbps_10bit_1920x1080_25fps
+        .index = SC2336_RAW_FORMAT_INDEX7,
+        .name = "MIPI_24Minput_lane2_RAW10_640*480_50fps",
+        .format = CAM_SENSOR_PIXFORMAT_RAW10,
+        .port = MIPI_CSI_OUTPUT_LANE2,
+        .bayer_type = CAM_SENSOR_BAYER_GBRG,
+        .hdr_mode = CAM_SENSOR_HDR_LINEAR,
+        .xclk = 24000000,
+        .start_pos_x = 4,
+        .start_pos_y = 4,
+        .width = 640,
+        .height = 480,
+        .regs = init_reglist_MIPI_2lane_10bit_640x480_50fps,
+        .regs_size = ARRAY_SIZE(init_reglist_MIPI_2lane_10bit_640x480_50fps),
+        .bpp = 10,
+        .fps = 50,
+        .isp_info = &sc2336_isp_info[SC2336_RAW_FORMAT_INDEX7],
+        .mipi_info = {
+            .mipi_clk = 210000000,
+        },
+        .reserved = NULL,
+    },
+    {
+        // cleaned_0x28_SC2336_MIPI_24Minput_2lane_330Mbps_10bit_1920x1080_25fps
+        .index = SC2336_RAW_FORMAT_INDEX8,
+        .name = "DVP_24Minput_RAW10_1280*720_30fps",
+        .format = CAM_SENSOR_PIXFORMAT_RAW10,
+        .port = DVP_OUTPUT_8BITS,
+        .bayer_type = CAM_SENSOR_BAYER_GBRG,
+        .hdr_mode = CAM_SENSOR_HDR_LINEAR,
+        .xclk = 24000000,
+        .start_pos_x = 4,
+        .start_pos_y = 4,
+        .width = 1280,
+        .height = 720,
+        .regs = init_reglist_DVP_720p_30fps,
+        .regs_size = ARRAY_SIZE(init_reglist_DVP_720p_30fps),
+        .bpp = 10,
+        .fps = 30,
+        .isp_info = &sc2336_isp_info[SC2336_RAW_FORMAT_INDEX6],
+        .mipi_info = {0},
+        .reserved = NULL,
+    },
+};
 
 static int sc2336_read(uint8_t sccb_port, uint16_t reg, uint8_t *read_buf)
 {
@@ -80,15 +375,20 @@ static int sc2336_set_reg_bits(uint8_t sccb_port, uint16_t reg, uint8_t offset, 
     return ret;
 }
 
-static int sc2336_set_pattern(esp_camera_device_t *dev, int enable)
+static int sc2336_set_test_pattern(esp_camera_device_t *dev, int enable)
 {
-    int ret = 0;
-    if (enable) {
-        ret = sc2336_set_reg_bits(dev->sccb_port, 0x4501, 3, 1, 0x01);
-    } else {
-        ret = sc2336_set_reg_bits(dev->sccb_port, 0x4501, 3, 1, 0x00);
+    return sc2336_set_reg_bits(dev->sccb_port, 0x4501, 3, 1, enable ? 0x01 : 0x00);
+}
+
+static int sc2336_hw_reset(esp_camera_device_t *dev)
+{
+    if (dev->reset_pin >= 0) {
+        gpio_set_level(dev->reset_pin, 0);
+        delay_ms(10);
+        gpio_set_level(dev->reset_pin, 1);
+        delay_ms(10);
     }
-    return ret;
+    return 0;
 }
 
 static int sc2336_soft_reset(esp_camera_device_t *dev)
@@ -115,12 +415,9 @@ static int sc2336_get_sensor_id(esp_camera_device_t *dev, sensor_id_t *id)
 static int sc2336_set_stream(esp_camera_device_t *dev, int enable)
 {
     int ret = -1;
-    if (enable) {
-        ret = sc2336_write(dev->sccb_port, SC2336_REG_SLEEP_MODE, 0x01);
-    } else {
-        ret = sc2336_write(dev->sccb_port, SC2336_REG_SLEEP_MODE, 0x00);
-    }
-    // sc2336_set_pattern(dev, 1);
+    ret = sc2336_write(dev->sccb_port, SC2336_REG_SLEEP_MODE, enable ? 0x01 : 0x00);
+
+    // sc2336_set_test_pattern(dev, 1);
     dev->stream_status = enable;
     ESP_LOGD(TAG, "Stream=%d", enable);
     return ret;
@@ -129,11 +426,7 @@ static int sc2336_set_stream(esp_camera_device_t *dev, int enable)
 static int sc2336_set_mirror(esp_camera_device_t *dev, int enable)
 {
     int ret = -1;
-    if (enable) {
-        ret = sc2336_set_reg_bits(dev->sccb_port, 0x3221, 1, 2, 0x03);
-    } else {
-        ret = sc2336_set_reg_bits(dev->sccb_port, 0x3221, 1, 2, 0x00);
-    }
+    ret = sc2336_set_reg_bits(dev->sccb_port, 0x3221, 1, 2,  enable ? 0x03 : 0x00);
 
     return ret;
 }
@@ -141,11 +434,7 @@ static int sc2336_set_mirror(esp_camera_device_t *dev, int enable)
 static int sc2336_set_vflip(esp_camera_device_t *dev, int enable)
 {
     int ret = -1;
-    if (enable) {
-        ret = sc2336_set_reg_bits(dev->sccb_port, 0x3221, 5, 2, 0x03);
-    } else {
-        ret = sc2336_set_reg_bits(dev->sccb_port, 0x3221, 5, 2, 0x00);
-    }
+    ret = sc2336_set_reg_bits(dev->sccb_port, 0x3221, 5, 2, enable ? 0x03 : 0x00);
 
     return ret;
 }
@@ -205,7 +494,7 @@ static int sc2336_set_format(esp_camera_device_t *dev, const sensor_format_t *fo
     ret = sc2336_write_array(dev->sccb_port, (reginfo_t *)format->regs);
 
     if (ret < 0) {
-        ESP_CAM_SENSOR_LOGE("Set format regs fail");
+        ESP_LOGE(TAG, "Set format regs fail");
         return ESP_CAM_SENSOR_FAILED_TO_S_FORMAT;
     }
 
@@ -235,7 +524,7 @@ static int sc2336_priv_ioctl(esp_camera_device_t *dev, unsigned int cmd, void *a
     if (cmd & (_IOC_WRITE << _IOC_DIRSHIFT)) {
         switch (cmd) {
         case CAM_SENSOR_IOC_HW_RESET:
-            ret = 0;
+            ret = sc2336_hw_reset(dev);
             break;
         case CAM_SENSOR_IOC_SW_RESET:
             ret = sc2336_soft_reset(dev);
@@ -248,7 +537,7 @@ static int sc2336_priv_ioctl(esp_camera_device_t *dev, unsigned int cmd, void *a
             ret = sc2336_set_stream(dev, *(int *)arg);
             break;
         case CAM_SENSOR_IOC_S_TEST_PATTERN:
-            ret = sc2336_set_pattern(dev, *(int *)arg);
+            ret = sc2336_set_test_pattern(dev, *(int *)arg);
             break;
         }
     } else {
@@ -307,6 +596,31 @@ static int sc2336_power_on(esp_camera_device_t *dev)
     return ret;
 }
 
+static int sc2336_power_off(esp_camera_device_t *dev)
+{
+    int ret = 0;
+
+    if (dev->xclk_pin >= 0) {
+        CAMERA_DISABLE_OUT_CLOCK(dev->xclk_pin);
+    }
+
+    if (dev->pwdn_pin >= 0) {
+        gpio_set_level(dev->pwdn_pin, 0);
+        delay_ms(10);
+        gpio_set_level(dev->pwdn_pin, 1);
+        delay_ms(10);
+    }
+
+    if (dev->reset_pin >= 0) {
+        gpio_set_level(dev->reset_pin, 1);
+        delay_ms(10);
+        gpio_set_level(dev->reset_pin, 0);
+        delay_ms(10);
+    }
+
+    return ret;
+}
+
 static esp_camera_ops_t sc2336_ops = {
     .query_para_desc = sc2336_query_para_desc,
     .get_para_value = sc2336_get_para_value,
@@ -351,7 +665,7 @@ esp_camera_device_t *sc2336_csi_detect(esp_camera_driver_config_t *config)
         goto err_free_handler;
     }
 
-    if (sc2336_get_sensor_id(dev, &dev->id) != -1) {
+    if (sc2336_get_sensor_id(dev, &dev->id) == -1) {
         ESP_LOGE(TAG, "Camera get sensor ID failed");
         goto err_free_handler;
     } else if (dev->id.PID != SC2336_PID) {
@@ -365,6 +679,7 @@ esp_camera_device_t *sc2336_csi_detect(esp_camera_driver_config_t *config)
     return dev;
 
 err_free_handler:
+    sc2336_power_off(dev);
     free(dev);
 
     return NULL;
