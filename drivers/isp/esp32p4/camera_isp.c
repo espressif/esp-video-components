@@ -13,7 +13,7 @@
 #include "soc/isp_struct.h"
 #include "esp_log.h"
 
-/* ISP OUTPUT mode: 0: RAW8 1: YUV422 2: RGB888 3: YUV420 4: RGB565, see ISP.cntl.out_type*/
+/* ISP OUTPUT mode: 0: RAW8 1: YUV422 2: RGB888 3: YUV420 4: RGB565, see ISP.cntl.out_type */
 #define MIPI_ISP_OUTPUT_RAW8_MODE (0)
 #define MIPI_ISP_OUTPUT_YUV422_MODE (1)
 #define MIPI_ISP_OUTPUT_RGB888_MODE (2)
@@ -78,10 +78,15 @@ int isp_init(uint32_t frame_width, uint32_t frame_height, pixformat_t in_type, p
 {
     int isp_out_format = get_isp_output_type(out_type);
     int isp_in_format = get_isp_input_type(in_type);
-    HP_SYS_CLKRST.peri_clk_ctrl26.reg_isp_clk_div_num = (480000000 / 240000000) - 1;
-    HP_SYS_CLKRST.peri_clk_ctrl25.reg_isp_clk_en = 1;
-    HP_SYS_CLKRST.hp_rst_en0.reg_rst_en_isp = 1;
-    HP_SYS_CLKRST.hp_rst_en0.reg_rst_en_isp = 0;
+
+    HP_SYS_CLKRST.peri_clk_ctrl26.reg_isp_clk_div_num = (240000000 / 80000000) - 1;
+    HP_SYS_CLKRST.peri_clk_ctrl25.reg_isp_clk_src_sel = 0x01;
+
+    HP_SYS_CLKRST.peri_clk_ctrl25.reg_isp_clk_en = 0x0;
+    HP_SYS_CLKRST.peri_clk_ctrl25.reg_isp_clk_en = 0x1;
+
+    HP_SYS_CLKRST.hp_rst_en0.reg_rst_en_isp = 0x1;
+    HP_SYS_CLKRST.hp_rst_en0.reg_rst_en_isp = 0x0;
 
     ISP.cntl.val = 0;
     ISP.cntl.ccm_en = 1;
@@ -99,7 +104,6 @@ int isp_init(uint32_t frame_width, uint32_t frame_height, pixformat_t in_type, p
     ISP.yuv_format.yuv_range = 0;
     ISP.cntl.rgb2yuv_en = 1;
     ISP.cntl.yuv2rgb_en = pixformat_info_map[out_type].color_encoding == color_encoding_RGB ? 1 : 0;
-    // ISP.cntl.yuv2rgb_en = 1;
     ISP.cntl.color_en = 1;
     ISP.cntl.blc_en = 1;
     ISP.cntl.bf_en = 1;
@@ -113,6 +117,11 @@ int isp_init(uint32_t frame_width, uint32_t frame_height, pixformat_t in_type, p
     ISP.int_ena.val = 0;
     ISP.int_clr.val = ~0;
 
+    /*Note: Before isp_en, need to write 1 to reg_gamma_update first,
+    and then wait for the register hardware to be set to 0 for the update to complete.*/
+    ISP.gamma_ctrl.gamma_update = 1;
+    while (ISP.gamma_ctrl.gamma_update);
+
     if ((isp_in_format != -1) && isp_enable) {
         ISP.frame_cfg.hadr_num = frame_width - 1;
         ISP.frame_cfg.vadr_num = frame_height - 1;
@@ -123,6 +132,6 @@ int isp_init(uint32_t frame_width, uint32_t frame_height, pixformat_t in_type, p
         ISP.cntl.isp_en = 0;
     }
 
-    ESP_LOGI(TAG, "h_num=%u, v_num=%u, ISP_cntl.en: %u", ISP.frame_cfg.hadr_num, ISP.frame_cfg.vadr_num, ISP.cntl.isp_en);
+    ESP_LOGD(TAG, "h_num=%u, v_num=%u, ISP_cntl.en: %u", ISP.frame_cfg.hadr_num, ISP.frame_cfg.vadr_num, ISP.cntl.isp_en);
     return 0;
 }
