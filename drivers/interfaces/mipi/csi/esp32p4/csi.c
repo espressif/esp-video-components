@@ -474,3 +474,11 @@ esp_err_t esp_mipi_csi_new_buffer_available(esp_mipi_csi_handle_t handle)
 
     return ESP_OK;
 }
+
+uint32_t esp_mipi_csi_get_fb_size(esp_mipi_csi_handle_t handle)
+{
+    MIPI_CSI_NULL_POINTER_CHECK(MIPI_CSI_TAG, handle);
+    esp_mipi_csi_obj_t *csi_cam_obj = (esp_mipi_csi_obj_t *)handle;
+
+    return csi_cam_obj->driver_config->fb_size;
+}
