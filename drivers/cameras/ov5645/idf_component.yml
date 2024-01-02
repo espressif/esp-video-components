@@ -1,0 +1,10 @@
+version: "0.0.1"
+description: esp-video compatible camera driver for OV5645
+targets:
+  - esp32p4
+url: https://github.com/espressif/esp-video/tree/master/drivers/cameras/ov5645
+repository: https://github.com/espressif/esp-video.git
+issues: https://github.com/espressif/esp-video/issues
+dependencies:
+  idf: ">=4.4"
+  cmake_utilities: "0.*"
