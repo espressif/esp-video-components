@@ -1,11 +1,13 @@
-if(CONFIG_SOC_LCDCAM_SUPPORTED)
+if(CONFIG_DVP_ENABLE)
     list(APPEND srcs "drivers/commons/hal/${IDF_TARGET}/cam_hal.c")
 endif()
 
-# TODO: Modify to CONFIG_SOC_CSI_SUPPORTED
-if(CONFIG_IDF_TARGET_ESP32P4)
+if(CONFIG_MIPI_CSI_ENABLE)
     list(APPEND srcs "drivers/commons/hal/${IDF_TARGET}/mipi_csi_hal.c")
 endif()
 
-list(APPEND include_dirs "drivers/commons/hal/${IDF_TARGET}/include"
-                         "drivers/commons/hal/include")
+list(APPEND include_dirs "drivers/commons/hal/include")
+
+if(EXISTS "${COMPONENT_DIR}/drivers/commons/hal/${IDF_TARGET}/include")
+    list(APPEND include_dirs "drivers/commons/hal/${IDF_TARGET}/include")
+endif()

@@ -1,0 +1,43 @@
+menu "DVP"
+    depends on IDF_TARGET_ESP32
+
+    config DVP_ENABLE
+        bool "Enable DVP Driver and Video Device"
+        default y
+        help
+            Select this option, enable DVP driver and video device.
+
+    choice DVP_DATA_BUS_WIDTH
+        bool "DVP Data Bus Width"
+        default DVP_DATA_BUS_WIDTH_8BITS
+        depends on DVP_ENABLE
+
+        config DVP_DATA_BUS_WIDTH_8BITS
+            bool "8 Bits"
+        config DVP_DATA_BUS_WIDTH_16BITS
+            bool "16 Bits"
+    endchoice
+
+    config DVP_ENABLE_OUTPUT_CLOCK
+        bool "Enable DVP Output Clock"
+        default n
+        depends on DVP_ENABLE && IDF_TARGET_ESP32S3
+        help
+            Select this option, enable DVP output clock for camera sensor. 
+
+    config DVP_ENABLE_H_SYNC
+        bool "Enable DVP H-SYNC"
+        default n
+        depends on DVP_ENABLE && IDF_TARGET_ESP32S3
+        help
+            Select this option, enable DVP H-SYNC signal. 
+
+    config DVP_TASK_STACK_SIZE
+        int "DVP Task Stack Size"
+        default 3072
+        depends on DVP_ENABLE
+        help
+            DVP task stack size, if receive callback function need cost much
+            stack size, please increase this value.
+
+endmenu
