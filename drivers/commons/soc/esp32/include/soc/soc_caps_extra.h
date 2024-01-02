@@ -8,8 +8,7 @@
 
 #include "soc/soc_caps.h"
 
-#define SOC_CAM_SUPPORTED  1
-
-#define SOC_CAM_PERIPH_NUM 2
-
-#define SOC_CAM_DATA_WIDTH 16
+/*-------------------------- CAM CAPS ----------------------------------------*/
+#define SOC_CAM_SUPPORTED       (1)
+#define SOC_CAM_PERIPH_NUM      (2)
+#define SOC_CAM_DATA_WIDTH      (16)
