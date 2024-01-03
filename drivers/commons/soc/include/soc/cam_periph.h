@@ -6,10 +6,8 @@
 
 #pragma once
 
-#include "sdkconfig.h"
-#include "soc/soc_caps.h"
-#include "soc/periph_defs.h"
 #include "soc/soc_caps_extra.h"
+#include "soc/periph_defs.h"
 
 #ifdef __cplusplus
 extern "C" {

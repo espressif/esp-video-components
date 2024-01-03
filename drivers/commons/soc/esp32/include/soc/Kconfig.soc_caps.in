@@ -1,0 +1,11 @@
+config SOC_CAM_SUPPORTED
+    bool
+    default y
+
+config SOC_CAM_PERIPH_NUM
+    int
+    default 2
+
+config SOC_CAM_DATA_WIDTH
+    int
+    default 16

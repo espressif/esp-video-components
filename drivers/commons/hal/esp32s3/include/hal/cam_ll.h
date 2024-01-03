@@ -56,47 +56,15 @@ static inline void cam_ll_reset_register(int group_id)
 #define cam_ll_reset_register(...) (void)__DECLARE_RCC_RC_ATOMIC_ENV; cam_ll_reset_register(__VA_ARGS__)
 
 /**
- * @brief Enable stop signal for CAM peripheral
+ * @brief Enable clock gating
  *
  * @param dev CAM register base address
- * @param en True to stop when GDMA Rx FIFO is full, False to not stop
+ * @param en True to enable, False to disable
  */
-static inline void cam_ll_enable_stop_signal(lcd_cam_dev_t *dev, bool en)
+static inline void cam_ll_enable_clock(lcd_cam_dev_t *dev, bool en)
 {
-    dev->cam_ctrl.cam_stop_en = en;
-}
-
-/**
- * @brief Set vsync filter threshold value
- *
- * @param dev CAM register base address
- * @param value Filter threshold value for CAM_VSYNC_SIGNAL, range [0, 7]
- */
-static inline void cam_ll_set_vsync_filter_thres(lcd_cam_dev_t *dev, uint32_t value)
-{
-    dev->cam_ctrl.cam_vsync_filter_thres = value;
-}
-
-/**
- * @brief Enable to generate LCD_CAM_CAM_HS_INT
- *
- * @param dev CAM register base address
- * @param en True to enable to generate LCD_CAM_CAM_HS_INT, False to disable
- */
-static inline void cam_ll_enable_line_int(lcd_cam_dev_t *dev, bool en)
-{
-    dev->cam_ctrl.cam_line_int_en = en;
-}
-
-/**
- * @brief Enable CAM_VSYNC to generate in_suc_eof
- *
- * @param dev CAM register base address
- * @param en True to enable CAM_VSYNC to generate in_suc_eof, False to use LCD_CAM_CAM_REC_DATA_BYTELEN to control in_suc_eof
- */
-static inline void cam_ll_enable_vsync_generate_eof(lcd_cam_dev_t *dev, bool en)
-{
-    dev->cam_ctrl.cam_vs_eof_en = en;
+    (void)dev;
+    (void)en;
 }
 
 /**
@@ -145,6 +113,50 @@ static inline void cam_ll_set_group_clock_coeff(lcd_cam_dev_t *dev, int div_num,
     HAL_FORCE_MODIFY_U32_REG_FIELD(dev->cam_ctrl, cam_clkm_div_num, div_num);
     dev->cam_ctrl.cam_clkm_div_a = div_a;
     dev->cam_ctrl.cam_clkm_div_b = div_b;
+}
+
+/**
+ * @brief Enable stop signal for CAM peripheral
+ *
+ * @param dev CAM register base address
+ * @param en True to stop when GDMA Rx FIFO is full, False to not stop
+ */
+static inline void cam_ll_enable_stop_signal(lcd_cam_dev_t *dev, bool en)
+{
+    dev->cam_ctrl.cam_stop_en = en;
+}
+
+/**
+ * @brief Set vsync filter threshold value
+ *
+ * @param dev CAM register base address
+ * @param value Filter threshold value for CAM_VSYNC_SIGNAL, range [0, 7]
+ */
+static inline void cam_ll_set_vsync_filter_thres(lcd_cam_dev_t *dev, uint32_t value)
+{
+    dev->cam_ctrl.cam_vsync_filter_thres = value;
+}
+
+/**
+ * @brief Enable to generate LCD_CAM_CAM_HS_INT
+ *
+ * @param dev CAM register base address
+ * @param en True to enable to generate LCD_CAM_CAM_HS_INT, False to disable
+ */
+static inline void cam_ll_enable_line_int(lcd_cam_dev_t *dev, bool en)
+{
+    dev->cam_ctrl.cam_line_int_en = en;
+}
+
+/**
+ * @brief Enable CAM_VSYNC to generate in_suc_eof
+ *
+ * @param dev CAM register base address
+ * @param en True to enable CAM_VSYNC to generate in_suc_eof, False to use LCD_CAM_CAM_REC_DATA_BYTELEN to control in_suc_eof
+ */
+static inline void cam_ll_enable_vsync_generate_eof(lcd_cam_dev_t *dev, bool en)
+{
+    dev->cam_ctrl.cam_vs_eof_en = en;
 }
 
 /**
