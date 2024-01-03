@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2023 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2023-2024 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -12,6 +12,7 @@
 #include "esp_intr_alloc.h"
 #include "esp_log.h"
 #include "esp_check.h"
+#include "esp_private/periph_ctrl.h"
 #include "rom/cache.h"
 #include "soc/dw_gdma_struct.h"
 #include "soc/interrupt_core0_reg.h"
@@ -19,6 +20,8 @@
 #include "hal/mipi_csi_hal.h"
 #include "mipi_csi.h"
 #include "esp_color_formats.h"
+
+#define MIPI_CSI_CLK_GROUP_DEFAULT (0)
 
 #define MIPI_CSI_HANDLE_NULL_ERROR_STR               "cam handle can't be NULL"
 #define MIPI_CSI_NULL_POINTER_CHECK(tag, p)          ESP_RETURN_ON_FALSE((p), ESP_ERR_INVALID_ARG, tag, "input parameter '"#p"' is NULL")
@@ -262,21 +265,41 @@ static esp_err_t esp_mipi_csi_set_config(mipi_csi_interface_t interface, mipi_cs
 {
     esp_err_t ret = ESP_OK;
     mipi_csi_hal_context_t hal;
+    mipi_csi_hal_config_t hal_config;
+
     if (interface > MIPI_CSI_PORT_MAX || config == NULL) {
         return ESP_ERR_INVALID_ARG;
     }
 
     hal.bridge_dev = MIPI_CSI_BRIDGE_LL_GET_HW(0);
     hal.host_dev = MIPI_CSI_HOST_LL_GET_HW(0);
-    hal.frame_height = config->frame_height;
-    hal.frame_width = config->frame_width;
-    hal.mipi_clk = config->mipi_clk;
-    hal.in_bits_per_pixel = config->in_bits_per_pixel;
-    hal.lanes_num = config->lane_num;
+    hal_config.frame_height = config->frame_height;
+    hal_config.frame_width = config->frame_width;
+    hal_config.mipi_clk = config->mipi_clk;
+    hal_config.in_bits_per_pixel = config->in_bits_per_pixel;
+    hal_config.lanes_num = config->lane_num;
     hal.version = MIPI_CSI_HAL_LAYER_VERSION;
 
-    mipi_csi_hal_host_phy_initialization(&hal);
-    mipi_csi_hal_bridge_initialization(&hal);
+    PERIPH_RCC_ATOMIC() {
+        mipi_csi_ll_set_phy_clock_source(MIPI_CSI_CLK_GROUP_DEFAULT, 1);
+        // reset cfg clk
+        mipi_csi_ll_enable_phy_config_clock(MIPI_CSI_CLK_GROUP_DEFAULT, 0);
+        mipi_csi_ll_enable_phy_config_clock(MIPI_CSI_CLK_GROUP_DEFAULT, 1);
+        // reset host clk en
+        mipi_csi_ll_enable_host_bus_clock(MIPI_CSI_CLK_GROUP_DEFAULT, 0);
+        mipi_csi_ll_enable_host_bus_clock(MIPI_CSI_CLK_GROUP_DEFAULT, 1);
+
+        mipi_csi_ll_reset_host_clock(MIPI_CSI_CLK_GROUP_DEFAULT);
+
+        // reset bridge clk en
+        mipi_csi_ll_enable_brg_bus_clock(MIPI_CSI_CLK_GROUP_DEFAULT, 0);
+        mipi_csi_ll_enable_brg_bus_clock(MIPI_CSI_CLK_GROUP_DEFAULT, 1);
+
+        mipi_csi_ll_reset_brg_clock(MIPI_CSI_CLK_GROUP_DEFAULT);
+    }
+
+    mipi_csi_hal_init(&hal, &hal_config);
+
     return ret;
 }
 

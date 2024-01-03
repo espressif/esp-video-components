@@ -1,150 +1,131 @@
 /*
- * SPDX-FileCopyrightText: 2023 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2023-2024 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Apache-2.0
  */
 
-// The LL layer for MIPI-CSI register operations
-
 #pragma once
 
 #include <stdbool.h>
-#include <stdlib.h>
-#include "esp_attr.h"
+#include <stdint.h>
+#include "soc/hp_sys_clkrst_struct.h"
 #include "hal/misc.h"
-#include "hal/assert.h"
-#include "soc/mipi_csi_bridge_struct.h"
-#include "soc/mipi_csi_host_struct.h"
+#include "hal/mipi_csi_host_ll.h"
+#include "hal/mipi_csi_brg_ll.h"
+#include "hal/mipi_csi_phy_ll.h"
+#include "hal/mipi_csi_types.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-extern csi_host_dev_t MIPI_CSI_HOST;
-extern csi_brg_dev_t MIPI_CSI_BRIDGE;
-// CSI Bridge
-#define MIPI_CSI_BRIDGE_LL_GET_HW(num) (((num) == 0) ? (&MIPI_CSI_BRIDGE) : NULL)
-
-// CSI Host = Host_Controler + D-PHY
-#define MIPI_CSI_HOST_LL_GET_HW(num)   (((num) == 0) ? (&MIPI_CSI_HOST) : NULL)
-
-/* --------------------------------------------------------
- * @brief  : Write register "CSI2_HOST_PHY_TEST_CTRL0".
- * @params : <phy_testclk>
- *           <phy_testclr>
- * @ret    : void
- **/
-static inline void mipi_csi_ll_update_phy_test_ctrl0(csi_host_dev_t *dev, uint32_t phy_testclk, uint32_t phy_testclr)
+/**
+ * @brief Set the clock source for the MIPI CSI D-PHY
+ *
+ * @param group_id Group ID
+ * @param source Clock source
+ */
+static inline void mipi_csi_ll_set_phy_clock_source(int group_id, mipi_csi_phy_clock_source_t source)
 {
-    dev->phy_test_ctrl0.val = (0x00000000 | ((phy_testclk << 1) & 0x00000002) | ((phy_testclr << 0) & 0x00000001));
-    // MIPI_CSI_HOST.phy_test_ctrl0.val = (0x00000000 | ((phy_testclk << 1) & 0x00000002) | ((phy_testclr << 0) & 0x00000001));
+    (void)group_id;
+    switch (source) {
+    case MIPI_CSI_PHY_CLK_SRC_PLL_F20M:
+        HP_SYS_CLKRST.peri_clk_ctrl03.reg_mipi_csi_dphy_clk_src_sel = 0;
+        break;
+    case MIPI_CSI_PHY_CLK_SRC_RC_FAST:
+        HP_SYS_CLKRST.peri_clk_ctrl03.reg_mipi_csi_dphy_clk_src_sel = 1;
+        break;
+    case MIPI_CSI_PHY_CLK_SRC_PLL_F25M:
+        HP_SYS_CLKRST.peri_clk_ctrl03.reg_mipi_csi_dphy_clk_src_sel = 2;
+        break;
+    default:
+        abort();
+    }
 }
 
-/* --------------------------------------------------------
- * @brief  : Write register "CSI2_HOST_PHY_TEST_CTRL1".
- * @params : <phy_testen>
- *           <phy_testdin>
- * @ret    : void
- **/
-static inline void mipi_csi_ll_update_phy_test_ctrl1(csi_host_dev_t *dev, uint32_t phy_testen, uint32_t phy_testdin)
+/// use a macro to wrap the function, force the caller to use it in a critical section
+/// the critical section needs to declare the __DECLARE_RCC_ATOMIC_ENV variable in advance
+#define mipi_csi_ll_set_phy_clock_source(...) (void)__DECLARE_RCC_ATOMIC_ENV; mipi_csi_ll_set_phy_clock_source(__VA_ARGS__)
+
+/**
+ * @brief Enable MIPI CSI PHY configuration clock
+ *
+ * @param group_id Group ID
+ * @param en true to enable, false to disable
+ */
+static inline void mipi_csi_ll_enable_phy_config_clock(int group_id, bool en)
 {
-    dev->phy_test_ctrl1.val = (0x00000000 | ((phy_testen << 16) & 0x00010000) | ((phy_testdin << 0) & 0x000000ff));
-    // MIPI_CSI_HOST.phy_test_ctrl1.val = (0x00000000 | ((phy_testen << 16) & 0x00010000) | ((phy_testdin << 0) & 0x000000ff));
+    (void)group_id;
+    HP_SYS_CLKRST.peri_clk_ctrl03.reg_mipi_csi_dphy_cfg_clk_en = en;
 }
 
-static inline void mipi_csi_ll_dphy_write_control(csi_host_dev_t *dev, uint32_t testcode, uint32_t testwrite)
+/// use a macro to wrap the function, force the caller to use it in a critical section
+/// the critical section needs to declare the __DECLARE_RCC_ATOMIC_ENV variable in advance
+#define mipi_csi_ll_enable_phy_config_clock(...) (void)__DECLARE_RCC_ATOMIC_ENV; mipi_csi_ll_enable_phy_config_clock(__VA_ARGS__)
+
+/**
+ * @brief Enable the bus clock for MIPI CSI host
+ *
+ * @param group_id Group ID
+ * @param en true to enable, false to disable
+ */
+static inline void mipi_csi_ll_enable_host_bus_clock(int group_id, bool en)
 {
-    dev->phy_test_ctrl1.val = 0x00010000 | testcode;
-    dev->phy_test_ctrl0.val = 0x00000002;
-    dev->phy_test_ctrl0.val = 0x00000000;
-    dev->phy_test_ctrl1.val = 0x00000000 | testwrite;
-    dev->phy_test_ctrl0.val = 0x00000002;
-    dev->phy_test_ctrl0.val = 0x00000000;
+    (void)group_id;
+    HP_SYS_CLKRST.soc_clk_ctrl1.reg_csi_host_sys_clk_en = en;
 }
 
-static inline void mipi_csi_ll_clear_phy_from_reset(csi_host_dev_t *dev)
+/// use a macro to wrap the function, force the caller to use it in a critical section
+/// the critical section needs to declare the __DECLARE_RCC_ATOMIC_ENV variable in advance
+#define mipi_csi_ll_enable_host_bus_clock(...) (void)__DECLARE_RCC_ATOMIC_ENV; mipi_csi_ll_enable_host_bus_clock(__VA_ARGS__)
+
+/**
+ * @brief Reset the MIPI CSI host CLK
+ *
+ * @param group_id Group ID
+ */
+static inline void mipi_csi_ll_reset_host_clock(int group_id)
 {
-    dev->phy_shutdownz.phy_shutdownz = 0; // shutdown input, active low
-    dev->dphy_rstz.dphy_rstz = 0; // phy reset output, active low
-    dev->csi2_resetn.csi2_resetn = 0; // host reset output, active low
+    (void)group_id;
+    HP_SYS_CLKRST.hp_rst_en0.reg_rst_en_csi_host = 1;
+    HP_SYS_CLKRST.hp_rst_en0.reg_rst_en_csi_host = 0;
 }
 
-static inline void mipi_csi_ll_shutdown_input(csi_host_dev_t *dev, bool shutdown_en)
+/// use a macro to wrap the function, force the caller to use it in a critical section
+/// the critical section needs to declare the __DECLARE_RCC_ATOMIC_ENV variable in advance
+#define mipi_csi_ll_reset_host_clock(...) (void)__DECLARE_RCC_ATOMIC_ENV; mipi_csi_ll_reset_host_clock(__VA_ARGS__)
+
+/**
+ * @brief Enable the bus clock for MIPI CSI bridge
+ *
+ * @param group_id Group ID
+ * @param en true to enable, false to disable
+ */
+static inline void mipi_csi_ll_enable_brg_bus_clock(int group_id, bool en)
 {
-    dev->phy_shutdownz.phy_shutdownz = !shutdown_en; // shutdown input, active low
+    (void)group_id;
+    HP_SYS_CLKRST.soc_clk_ctrl1.reg_csi_brg_sys_clk_en = en;
 }
 
-static inline void mipi_csi_ll_phy_reset_output(csi_host_dev_t *dev, bool reset_en)
+/// use a macro to wrap the function, force the caller to use it in a critical section
+/// the critical section needs to declare the __DECLARE_RCC_ATOMIC_ENV variable in advance
+#define mipi_csi_ll_enable_brg_bus_clock(...) (void)__DECLARE_RCC_ATOMIC_ENV; mipi_csi_ll_enable_brg_bus_clock(__VA_ARGS__)
+
+/**
+ * @brief Reset the MIPI CSI bridge CLK
+ *
+ * @param group_id Group ID
+ */
+static inline void mipi_csi_ll_reset_brg_clock(int group_id)
 {
-    dev->dphy_rstz.dphy_rstz = !reset_en; // phy reset output, active low
+    (void)group_id;
+    HP_SYS_CLKRST.hp_rst_en0.reg_rst_en_csi_brg = 1;
+    HP_SYS_CLKRST.hp_rst_en0.reg_rst_en_csi_brg = 0;
 }
 
-static inline void mipi_csi_ll_host_reset_output(csi_host_dev_t *dev, bool reset_en)
-{
-    dev->csi2_resetn.csi2_resetn = !reset_en; // host reset output, active low
-}
-
-static inline void mipi_csi_ll_set_active_lanes_num(csi_host_dev_t *dev, int lanes_num)
-{
-    dev->n_lanes.val = lanes_num - 1;
-}
-
-static inline void mipi_csi_ll_set_vc_channel_extension(csi_host_dev_t *dev, bool en)
-{
-    dev->vc_extension.val = !en; // 0 is enable
-}
-
-// enable data de-scrambling on the controller side
-static inline void mipi_csi_ll_set_scrambling(csi_host_dev_t *dev, bool en)
-{
-    dev->scrambling.val = en; // 0 is enable
-}
-
-static inline void mipi_csi_ll_bridge_set_frame_size(csi_brg_dev_t *dev, size_t frame_width, size_t frame_height)
-{
-    dev->frame_cfg.hadr_num = frame_width;
-    dev->frame_cfg.vadr_num = frame_height;
-}
-
-static inline void mipi_csi_ll_bridge_set_flow_ctl_buf_afull_thrd(csi_brg_dev_t *dev, size_t afull_thrd)
-{
-    dev->buf_flow_ctl.csi_buf_afull_thrd = afull_thrd;
-}
-
-static inline void mipi_csi_ll_bridge_set_req_dma_burst_len(csi_brg_dev_t *dev, size_t len)
-{
-    dev->dma_req_cfg.dma_burst_len = len;
-}
-
-static inline void mipi_csi_ll_bridge_set_has_hsync(csi_brg_dev_t *dev, bool en)
-{
-    dev->frame_cfg.has_hsync_e = en;
-}
-
-static inline void mipi_csi_ll_bridge_set_data_type_min(csi_brg_dev_t *dev, uint16_t type_min)
-{
-    dev->data_type_cfg.data_type_min = type_min;
-}
-
-static inline void mipi_csi_ll_bridge_set_data_type_max(csi_brg_dev_t *dev, uint16_t type_max)
-{
-    dev->data_type_cfg.data_type_max = type_max;
-}
-
-static inline void mipi_csi_ll_bridge_set_dma_req_interval(csi_brg_dev_t *dev, uint16_t interval)
-{
-    dev->dma_req_interval.dma_req_interval = interval;
-}
-
-static inline void mipi_csi_ll_bridge_set_yuv_endine_mode(csi_brg_dev_t *dev, uint32_t mode)
-{
-    dev->endian_mode.val = mode;
-}
-
-static inline void mipi_csi_ll_bridge_enable(csi_brg_dev_t *dev, bool en)
-{
-    dev->csi_en.val = en;
-}
+/// use a macro to wrap the function, force the caller to use it in a critical section
+/// the critical section needs to declare the __DECLARE_RCC_ATOMIC_ENV variable in advance
+#define mipi_csi_ll_reset_brg_clock(...) (void)__DECLARE_RCC_ATOMIC_ENV; mipi_csi_ll_reset_brg_clock(__VA_ARGS__)
 
 #ifdef __cplusplus
 }
