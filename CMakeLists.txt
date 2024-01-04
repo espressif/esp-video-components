@@ -18,6 +18,7 @@ include(${COMPONENT_DIR}/drivers/interfaces/sources.cmake)
 include(${COMPONENT_DIR}/drivers/sccb/sources.cmake)
 include(${COMPONENT_DIR}/drivers/xclk/sources.cmake)
 include(${COMPONENT_DIR}/utils/sources.cmake)
+include(${COMPONENT_DIR}/drivers/isp/sources.cmake)
 
 if (NOT "${CONFIG_ESP_VIDEO_MEDIA_EMBED_FILE}" STREQUAL "")
     set(embed_files "${CONFIG_ESP_VIDEO_MEDIA_EMBED_FILE}")
