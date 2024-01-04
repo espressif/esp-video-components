@@ -161,6 +161,18 @@ esp_err_t esp_mipi_csi_new_buffer_available(esp_mipi_csi_handle_t handle);
  */
 esp_err_t esp_mipi_csi_ops_regist(esp_mipi_csi_handle_t handle, esp_mipi_csi_ops_t *ops);
 
+/**
+ * @brief Get mipi csi output framebuffer size
+ * @param handle mipi csi controller handle.
+ *
+ * @note  Call this function after esp_mipi_csi_driver_install()
+ *
+ * @return
+ *     - 0 if parameter error
+ *     - Others Current framebuffer size
+ */
+uint32_t esp_mipi_csi_get_fb_size(esp_mipi_csi_handle_t handle);
+
 #ifdef __cplusplus
 }
 #endif

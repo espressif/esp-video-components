@@ -19,7 +19,7 @@ include(${COMPONENT_DIR}/drivers/sccb/sources.cmake)
 
 if (NOT "${CONFIG_ESP_VIDEO_MEDIA_EMBED_FILE}" STREQUAL "")
     set(embed_files "${CONFIG_ESP_VIDEO_MEDIA_EMBED_FILE}")
-    cmake_path(GET embed_files FILENAME embed_file_c_name)
+    get_filename_component(embed_file_c_name ${embed_files} NAME)
     string(REPLACE "." "_" embed_file_c_name "${embed_file_c_name}")
 endif()
 
