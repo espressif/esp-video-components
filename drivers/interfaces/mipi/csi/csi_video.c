@@ -248,6 +248,10 @@ static esp_err_t sim_camera_set_format(struct esp_video *video, const struct esp
 
     camera->fps = (int)format->fps;
 
+    /* Update buffer to be real frame size of MIPI-CSI */
+
+    video->buffer_size = SIM_CAMERA_BUFFER_SIZE;
+
     return ESP_OK;
 }
 
@@ -300,8 +304,7 @@ esp_err_t sim_initialize_camera(void)
         camera = heap_caps_malloc(sizeof(struct sim_camera), MALLOC_CAP_8BIT | MALLOC_CAP_INTERNAL);
         assert(camera);
 
-        video = esp_video_create(name, &s_sim_camera_ops, camera,
-                                 SIM_CAMERA_BUFFER_COUNT, SIM_CAMERA_BUFFER_SIZE);
+        video = esp_video_create(name, NULL, &s_sim_camera_ops, camera);
         assert(video);
         free(name);
     }

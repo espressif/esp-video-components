@@ -15,11 +15,7 @@
 #define portMUX_INITIALIZE(mux)             spinlock_initialize(mux)
 #endif
 
-#ifdef CONFIG_SPIRAM
-#define ALLOC_RAM_ATTR                      MALLOC_CAP_DMA
-#else
 #define ALLOC_RAM_ATTR                      MALLOC_CAP_8BIT
-#endif
 
 #define ESP_VIDEO_BUFFER_ALIGN(s, a)      (((s) + ((a) - 1)) & (~((a) - 1)))
 

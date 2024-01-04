@@ -91,6 +91,8 @@ static esp_err_t sim_video_set_format(struct esp_video *video, const struct esp_
         return ret;
     }
 
+    video->buffer_size = SIM_CAMERA_BUFFER_SIZE;
+
     return ESP_OK;
 }
 
@@ -139,8 +141,7 @@ esp_err_t sim_create_camera_video_device(esp_camera_device_t *cam_dev)
         return ESP_ERR_INVALID_ARG;
     }
 
-    video = esp_video_create(name, cam_dev, &s_sim_video_ops, SIM_CAMERA_BUFFER_COUNT,
-                             SIM_CAMERA_BUFFER_SIZE, NULL);
+    video = esp_video_create(name, cam_dev, &s_sim_video_ops, NULL);
     if (!video) {
         return ESP_FAIL;
     }

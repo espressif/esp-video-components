@@ -49,8 +49,6 @@ struct esp_video *esp_video_device_get_object(const char *name)
  * @param name         video device name
  * @param cam_dev      camera devcie
  * @param ops          video operations
- * @param buffer_count video buffer count for lowlevel driver
- * @param buffer_size  video buffer size for lowlevel driver
  * @param priv         video private data
  *
  * @return
@@ -58,8 +56,7 @@ struct esp_video *esp_video_device_get_object(const char *name)
  *      - NULL if failed
  */
 struct esp_video *esp_video_create(const char *name, esp_camera_device_t *cam_dev,
-                                   const struct esp_video_ops *ops, uint32_t buffer_count,
-                                   uint32_t buffer_size,  void *priv)
+                                   const struct esp_video_ops *ops, void *priv)
 {
     esp_err_t ret;
     bool found = false;
@@ -68,8 +65,13 @@ struct esp_video *esp_video_create(const char *name, esp_camera_device_t *cam_de
     int id = -1;
 
 #ifdef CONFIG_ESP_VIDEO_CHECK_PARAMETERS
-    if (!name || !ops || !buffer_count || !buffer_size) {
+    if (!name || !ops) {
         ESP_VIDEO_LOGE("Input arguments are invalid");
+        return NULL;
+    }
+
+    if (!ops->set_format) {
+        ESP_VIDEO_LOGE("Video Operation set_format is needed");
         return NULL;
     }
 
@@ -114,9 +116,6 @@ struct esp_video *esp_video_create(const char *name, esp_camera_device_t *cam_de
         ESP_VIDEO_LOGE("Failed to malloc for video");
         goto errout_video_exits;
     }
-
-    video->min_buffer_count = buffer_count;
-    video->min_buffer_size  = buffer_size;
 
     portMUX_INITIALIZE(&video->lock);
     SLIST_INIT(&video->done_list);
@@ -257,10 +256,10 @@ struct esp_video *esp_video_open(const char *name)
             ESP_VIDEO_LOGE("video->ops->init=%x", ret);
             return NULL;
         } else {
-            // memset(&video->format, 0, sizeof(struct esp_video_format));
-            video->buffer_size  = video->min_buffer_size;
-            video->buffer_count = video->min_buffer_count;
-            // video->buffer       = NULL;
+            memset(&video->format, 0, sizeof(struct esp_video_format));
+            video->buffer_size  = 0;
+            video->buffer_count = 0;
+            video->buffer       = NULL;
         }
     } else {
         ESP_VIDEO_LOGI("video->ops->init=NULL");
@@ -371,7 +370,7 @@ esp_err_t esp_video_start_capture(struct esp_video *video)
     if (video->ops->start_capture) {
         ret = video->ops->start_capture(video);
         if (ret != ESP_OK) {
-            ESP_VIDEO_LOGE("ideo->ops->start_capture=%x", ret);
+            ESP_VIDEO_LOGE("video->ops->start_capture=%x", ret);
             return ret;
         }
     } else {
@@ -609,16 +608,12 @@ esp_err_t esp_video_set_format(struct esp_video *video, const struct esp_video_f
     }
 #endif
 
-    if (video->ops->set_format) {
-        ret = video->ops->set_format(video, format);
-        if (ret != ESP_OK) {
-            ESP_VIDEO_LOGE("video->ops->set_format=%x", ret);
-            return ret;
-        } else {
-            memcpy(&video->format, format, sizeof(struct esp_video_format));
-        }
+    ret = video->ops->set_format(video, format);
+    if (ret != ESP_OK) {
+        ESP_VIDEO_LOGE("video->ops->set_format=%x", ret);
+        return ret;
     } else {
-        ESP_VIDEO_LOGI("video->ops->set_format=NULL");
+        memcpy(&video->format, format, sizeof(struct esp_video_format));
     }
 
     return ESP_OK;
@@ -653,12 +648,9 @@ esp_err_t esp_video_setup_buffer(struct esp_video *video, uint32_t count)
         ESP_VIDEO_LOGE("Not find video=%p", video);
         return ESP_ERR_INVALID_ARG;
     }
-
-    if (count < video->min_buffer_count) {
-        ESP_VIDEO_LOGE("count=%d < %d", (int)count, (int)video->min_buffer_count);
-        return ESP_ERR_INVALID_ARG;
-    }
 #endif
+
+    /* buffer_size is configured when setting format */
 
     video->buffer_count = count;
 
@@ -845,6 +837,7 @@ uint8_t *IRAM_ATTR esp_video_alloc_buffer(struct esp_video *video)
  *
  * @return None
  */
+
 void *IRAM_ATTR esp_video_recvdone_buffer(struct esp_video *video, uint8_t *buffer, uint32_t size, uint32_t offset)
 {
     struct esp_video_buffer_element *element =
@@ -896,6 +889,10 @@ void esp_video_free_buffer(struct esp_video *video, uint8_t *buffer)
         container_of(buffer, struct esp_video_buffer_element, buffer);
 
     esp_video_buffer_free(video->buffer, element);
+
+    if (video->ops->notify) {
+        video->ops->notify(video, ESP_VIDEO_BUFFER_VALID, buffer);
+    }
 }
 
 /**
@@ -911,6 +908,10 @@ void esp_video_free_buffer_index(struct esp_video *video, uint32_t index)
     struct esp_video_buffer_element *element = esp_video_buffer_get_element_by_index(video->buffer, index);
 
     esp_video_buffer_free(video->buffer, element);
+
+    if (video->ops->notify) {
+        video->ops->notify(video, ESP_VIDEO_BUFFER_VALID, element->buffer);
+    }
 }
 
 /**

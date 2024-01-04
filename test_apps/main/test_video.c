@@ -12,6 +12,9 @@
 #include <sys/mman.h>
 
 #include "esp_heap_caps.h"
+#ifdef CONFIG_HEAP_TRACING
+#include "esp_heap_trace.h"
+#endif
 
 #include "memory_checks.h"
 #include "unity_test_utils_memory.h"
@@ -22,6 +25,8 @@
 
 #define TEST_MEMORY_LEAK_THRESHOLD (-100)
 
+void setUp(void);
+
 #ifdef CONFIG_SIMULATED_INTF
 #define VIDEO_COUNT             2
 #define VIDEO_DEVICE_NAME       CONFIG_CAMERA_SIM_NAME
@@ -30,9 +35,17 @@
 #define VIDEO_BUFFER_DATA       sim_picture_jpeg
 #define VIDEO_DESC_BUFFER_SIZE  128
 #define VIDEO_LINUX_CAPS        (V4L2_CAP_VIDEO_CAPTURE | V4L2_CAP_STREAMING | V4L2_CAP_READWRITE)
+#define VIDEO_CAM_WIDTH         200
+#define VIDEO_CAM_HEIGHT        200
+#define VIDEO_CAM_FORMAT        V4L2_PIX_FMT_JPEG
+#define VIDEO_CAM_PIXEL_SIZE    1
 
 #define TASK_STACK_SIZE         8192
 #define TASK_PRIORITY           2
+
+#ifdef CONFIG_HEAP_TRACING
+#define HEAP_RES_NUM            8
+#endif
 
 static bool s_inited;
 static SemaphoreHandle_t s_done_sem[VIDEO_COUNT];
@@ -68,8 +81,7 @@ static void init(void)
             TEST_ASSERT_NOT_NULL(s_done_sem[i]);
         }
 
-        unity_utils_record_free_mem();
-        test_utils_record_free_mem();
+        setUp();
         s_inited = true;
     }
 }
@@ -92,15 +104,21 @@ static void test_video_basic_operation_task(void *p)
 
     TEST_ESP_OK(esp_video_get_description(video, buffer, VIDEO_DESC_BUFFER_SIZE));
 
-    /* Setup by given parameters */
-
-    TEST_ESP_OK(esp_video_setup_buffer(video, VIDEO_BUFFER_NUM));
+    /* Set format before setting up buffer */
 
     fmt.fps = 20;
+    fmt.width = VIDEO_CAM_WIDTH;
+    fmt.height = VIDEO_CAM_HEIGHT;
+    fmt.pixel_format = V4L2_PIX_FMT_JPEG;
+    fmt.pixel_bytes = VIDEO_CAM_PIXEL_SIZE;
     TEST_ESP_OK(esp_video_set_format(video, &fmt));
     memset(&fmt, 0, sizeof(fmt));
     TEST_ESP_OK(esp_video_get_format(video, &fmt));
     TEST_ASSERT_EQUAL_INT(20, fmt.fps);
+
+    /* Setup by given parameters */
+
+    TEST_ESP_OK(esp_video_setup_buffer(video, VIDEO_BUFFER_NUM));
 
     /* Test receiving picture from video device in default FPS(20)  */
 
@@ -172,6 +190,7 @@ static void test_linux_posix_with_v4l2_operation_task(void *p)
     struct v4l2_requestbuffers req;
     struct v4l2_capability cap;
     struct v4l2_streamparm param;
+    struct v4l2_format format;
     uint8_t *video_buffer_ptr[VIDEO_BUFFER_NUM];
 
     printf("task=%s starts\n", pcTaskGetName(NULL));
@@ -193,6 +212,15 @@ static void test_linux_posix_with_v4l2_operation_task(void *p)
     TEST_ASSERT_EQUAL_UINT32(VIDEO_LINUX_CAPS, cap.capabilities);
     TEST_ASSERT_EQUAL_STRING(name, cap.driver);
     free(name);
+
+    /* Set format before setting up buffer */
+
+    format.type = type;
+    format.fmt.pix.width = VIDEO_CAM_WIDTH;
+    format.fmt.pix.height = VIDEO_CAM_HEIGHT;
+    format.fmt.pix.pixelformat = VIDEO_CAM_FORMAT;
+    ret = ioctl(fd, VIDIOC_S_FMT, &format);
+    TEST_ESP_OK(ret);
 
     memset(&req, 0, sizeof(req));
     req.count  = VIDEO_BUFFER_NUM;
@@ -280,6 +308,13 @@ TEST_CASE("video basic operation", "[video]")
 
     init();
 
+#ifdef CONFIG_HEAP_TRACING
+    heap_trace_record_t recs[HEAP_RES_NUM];
+
+    heap_trace_init_standalone(recs, HEAP_RES_NUM);
+    heap_trace_start(HEAP_TRACE_LEAKS);
+#endif
+
     for (int i = 0; i < VIDEO_COUNT; i++) {
         ret = asprintf(&name, "%s%d", VIDEO_DEVICE_NAME, i);
         TEST_ASSERT_GREATER_THAN(0, ret);
@@ -302,6 +337,11 @@ TEST_CASE("video basic operation", "[video]")
         ret = xSemaphoreTake(s_done_sem[i], portMAX_DELAY);
         TEST_ASSERT_EQUAL_INT(pdPASS, ret);
     }
+
+#ifdef CONFIG_HEAP_TRACING
+    heap_trace_dump();
+    heap_trace_stop();
+#endif
 }
 
 TEST_CASE("Linux POSIX with V4L2 operation", "[video]")
@@ -313,6 +353,13 @@ TEST_CASE("Linux POSIX with V4L2 operation", "[video]")
     /* Initialize esp-video system */
 
     init();
+
+#ifdef CONFIG_HEAP_TRACING
+    heap_trace_record_t recs[HEAP_RES_NUM];
+
+    heap_trace_init_standalone(recs, HEAP_RES_NUM);
+    heap_trace_start(HEAP_TRACE_LEAKS);
+#endif
 
     for (int i = 0; i < VIDEO_COUNT; i++) {
         ret = asprintf(&name, "test_l4v2_video%d", i);
@@ -333,6 +380,11 @@ TEST_CASE("Linux POSIX with V4L2 operation", "[video]")
         ret = xSemaphoreTake(s_done_sem[i], portMAX_DELAY);
         TEST_ASSERT_EQUAL_INT(pdPASS, ret);
     }
+
+#ifdef CONFIG_HEAP_TRACING
+    heap_trace_dump();
+    heap_trace_stop();
+#endif
 }
 
 TEST_CASE("V4L2 external controller class set/get", "[video]")
@@ -353,6 +405,13 @@ TEST_CASE("V4L2 external controller class set/get", "[video]")
     /* Initialize esp-video system */
 
     init();
+
+#ifdef CONFIG_HEAP_TRACING
+    heap_trace_record_t recs[HEAP_RES_NUM];
+
+    heap_trace_init_standalone(recs, HEAP_RES_NUM);
+    heap_trace_start(HEAP_TRACE_LEAKS);
+#endif
 
     fd = open("/dev/video0", O_RDONLY);
     TEST_ASSERT_GREATER_OR_EQUAL(0, fd);
@@ -440,6 +499,11 @@ TEST_CASE("V4L2 external controller class set/get", "[video]")
 
     ret = close(fd);
     TEST_ESP_OK(ret);
+
+#ifdef CONFIG_HEAP_TRACING
+    heap_trace_dump();
+    heap_trace_stop();
+#endif
 }
 
 #endif /* CONFIG_SIMULATED_INTF */
@@ -462,6 +526,12 @@ void setUp(void)
 
 void tearDown(void)
 {
+    /* some FreeRTOS stuff is cleaned up by idle task */
+    vTaskDelay(5);
+
+    /* clean up some of the newlib's lazy allocations */
+    esp_reent_cleanup();
+
     size_t after_free_8bit = heap_caps_get_free_size(MALLOC_CAP_8BIT);
     size_t after_free_32bit = heap_caps_get_free_size(MALLOC_CAP_32BIT);
     check_leak(before_free_8bit, after_free_8bit, "8BIT");
