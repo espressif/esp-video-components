@@ -32,6 +32,7 @@
   - "include/**/*"
   - "private_include/**/*"
   - "src/**/*"
+  - "test_apps/**/*"
 
 # src related folders, in the alphabetic order
 .patterns-test: &patterns-test
@@ -102,6 +103,17 @@
       changes: *patterns-srcs
     - <<: *if-dev-push
       changes: *patterns-test
+
+.rules:build:test_apps:
+  rules:
+    - <<: *if-protected
+    - <<: *if-label-build
+    - <<: *if-label-target_test
+    - <<: *if-trigger-job
+    - <<: *if-dev-push
+      changes: *patterns-build_system
+    - <<: *if-dev-push
+      changes: *patterns-srcs
 
 # For others
 .rules:build:docs:

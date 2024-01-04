@@ -43,17 +43,6 @@
 # example build jobs
 #
 
-build_examples_defaults:
-  extends:
-    - .build_examples_template
-    - .rules:build:examples
-  parallel:
-    matrix:
-      - IMAGE: espressif/idf:latest
-  variables:
-    EXAMPLE_TARGET: esp32p4
-    EXAMPLE_DIR: examples
-
 build_examples:
   extends:
     - .build_examples_template
@@ -70,7 +59,7 @@ build_examples:
 # components build jobs
 #
 
-build_test_apps:
+build_test:
   extends:
     - .build_examples_template
     - .rules:build:test
@@ -80,3 +69,28 @@ build_test_apps:
   variables:
     EXAMPLE_TARGET: esp32p4
     EXAMPLE_DIR: test
+
+build_test_apps_esp32s3:
+  extends:
+    - .build_examples_template
+    - .rules:build:test_apps
+  parallel:
+    matrix:
+      - IMAGE: espressif/idf:release-v5.0
+      - IMAGE: espressif/idf:release-v5.1
+      - IMAGE: espressif/idf:release-v5.2
+      - IMAGE: espressif/idf:latest
+  variables:
+    EXAMPLE_TARGET: esp32s3
+    EXAMPLE_DIR: test_apps
+
+build_test_apps_esp32p4:
+  extends:
+    - .build_examples_template
+    - .rules:build:test_apps
+  parallel:
+    matrix:
+      - IMAGE: espressif/idf:latest
+  variables:
+    EXAMPLE_TARGET: esp32p4
+    EXAMPLE_DIR: test_apps
