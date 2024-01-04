@@ -1,0 +1,9 @@
+menu "Utils Configuration"
+
+    config ESP_VIDEO_SW_CODEC
+        bool "Enable Software Codec"
+        default y
+        help
+            Select this option, enable software codec such as JPEG, BMP and YUV.
+
+endmenu

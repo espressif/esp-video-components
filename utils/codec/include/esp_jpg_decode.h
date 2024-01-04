@@ -24,6 +24,18 @@ extern "C" {
 #include "esp_err.h"
 
 typedef enum {
+    PIXFORMAT_RGB565,    // 2BPP/RGB565
+    PIXFORMAT_YUV422,    // 2BPP/YUV422
+    PIXFORMAT_YUV420,    // 1.5BPP/YUV420
+    PIXFORMAT_GRAYSCALE, // 1BPP/GRAYSCALE
+    PIXFORMAT_JPEG,      // JPEG/COMPRESSED
+    PIXFORMAT_RGB888,    // 3BPP/RGB888
+    PIXFORMAT_RAW,       // RAW
+    PIXFORMAT_RGB444,    // 3BP2P/RGB444
+    PIXFORMAT_RGB555,    // 3BP2P/RGB555
+} pixformat_t;
+
+typedef enum {
     JPG_SCALE_NONE,
     JPG_SCALE_2X,
     JPG_SCALE_4X,

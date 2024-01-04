@@ -43,18 +43,6 @@ typedef size_t (* jpg_out_cb)(void *arg, size_t index, const void *data, size_t 
 bool fmt2jpg_cb(uint8_t *src, size_t src_len, uint16_t width, uint16_t height, pixformat_t format, uint8_t quality, jpg_out_cb cb, void *arg);
 
 /**
- * @brief Convert camera frame buffer to JPEG
- *
- * @param fb        Source camera frame buffer
- * @param quality   JPEG quality of the resulting image
- * @param cp        Callback to be called to write the bytes of the output JPEG
- * @param arg       Pointer to be passed to the callback
- *
- * @return true on success
- */
-bool frame2jpg_cb(camera_fb_t * fb, uint8_t quality, jpg_out_cb cb, void * arg);
-
-/**
  * @brief Convert image buffer to JPEG buffer
  *
  * @param src       Source buffer in RGB565, RGB888, YUYV or GRAYSCALE format
@@ -72,18 +60,6 @@ bool frame2jpg_cb(camera_fb_t * fb, uint8_t quality, jpg_out_cb cb, void * arg);
 bool fmt2jpg(uint8_t *src, size_t src_len, uint16_t width, uint16_t height, pixformat_t format, uint8_t quality, uint8_t **out, size_t *out_len);
 
 /**
- * @brief Convert camera frame buffer to JPEG buffer
- *
- * @param fb        Source camera frame buffer
- * @param quality   JPEG quality of the resulting image
- * @param out       Pointer to be populated with the address of the resulting buffer
- * @param out_len   Pointer to be populated with the length of the output buffer
- *
- * @return true on success
- */
-bool frame2jpg(camera_fb_t * fb, uint8_t quality, uint8_t ** out, size_t * out_len);
-
-/**
  * @brief Convert image buffer to BMP buffer
  *
  * @param src       Source buffer in JPEG, RGB565, RGB888, YUYV or GRAYSCALE format
@@ -97,17 +73,6 @@ bool frame2jpg(camera_fb_t * fb, uint8_t quality, uint8_t ** out, size_t * out_l
  * @return true on success
  */
 bool fmt2bmp(uint8_t *src, size_t src_len, uint16_t width, uint16_t height, pixformat_t format, uint8_t **out, size_t *out_len);
-
-/**
- * @brief Convert camera frame buffer to BMP buffer
- *
- * @param fb        Source camera frame buffer
- * @param out       Pointer to be populated with the address of the resulting buffer
- * @param out_len   Pointer to be populated with the length of the output buffer
- *
- * @return true on success
- */
-bool frame2bmp(camera_fb_t * fb, uint8_t ** out, size_t * out_len);
 
 /**
  * @brief Convert image buffer to RGB888 buffer (used for face detection)
