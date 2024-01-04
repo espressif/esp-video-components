@@ -24,7 +24,7 @@ extern "C" {
 #include "esp_camera.h"
 #include "esp_jpg_decode.h"
 
-typedef size_t (* jpg_out_cb)(void * arg, size_t index, const void* data, size_t len);
+typedef size_t (* jpg_out_cb)(void *arg, size_t index, const void *data, size_t len);
 
 /**
  * @brief Convert image buffer to JPEG
@@ -40,7 +40,7 @@ typedef size_t (* jpg_out_cb)(void * arg, size_t index, const void* data, size_t
  *
  * @return true on success
  */
-bool fmt2jpg_cb(uint8_t *src, size_t src_len, uint16_t width, uint16_t height, pixformat_t format, uint8_t quality, jpg_out_cb cb, void * arg);
+bool fmt2jpg_cb(uint8_t *src, size_t src_len, uint16_t width, uint16_t height, pixformat_t format, uint8_t quality, jpg_out_cb cb, void *arg);
 
 /**
  * @brief Convert camera frame buffer to JPEG
@@ -69,7 +69,7 @@ bool frame2jpg_cb(camera_fb_t * fb, uint8_t quality, jpg_out_cb cb, void * arg);
  *
  * @return true on success
  */
-bool fmt2jpg(uint8_t *src, size_t src_len, uint16_t width, uint16_t height, pixformat_t format, uint8_t quality, uint8_t ** out, size_t * out_len);
+bool fmt2jpg(uint8_t *src, size_t src_len, uint16_t width, uint16_t height, pixformat_t format, uint8_t quality, uint8_t **out, size_t *out_len);
 
 /**
  * @brief Convert camera frame buffer to JPEG buffer
@@ -96,7 +96,7 @@ bool frame2jpg(camera_fb_t * fb, uint8_t quality, uint8_t ** out, size_t * out_l
  *
  * @return true on success
  */
-bool fmt2bmp(uint8_t *src, size_t src_len, uint16_t width, uint16_t height, pixformat_t format, uint8_t ** out, size_t * out_len);
+bool fmt2bmp(uint8_t *src, size_t src_len, uint16_t width, uint16_t height, pixformat_t format, uint8_t **out, size_t *out_len);
 
 /**
  * @brief Convert camera frame buffer to BMP buffer
@@ -119,9 +119,9 @@ bool frame2bmp(camera_fb_t * fb, uint8_t ** out, size_t * out_len);
  *
  * @return true on success
  */
-bool fmt2rgb888(const uint8_t *src_buf, size_t src_len, pixformat_t format, uint8_t * rgb_buf);
+bool fmt2rgb888(const uint8_t *src_buf, size_t src_len, pixformat_t format, uint8_t *rgb_buf);
 
-bool jpg2rgb565(const uint8_t *src, size_t src_len, uint8_t * out, jpg_scale_t scale);
+bool jpg2rgb565(const uint8_t *src, size_t src_len, uint8_t *out, jpg_scale_t scale);
 
 #ifdef __cplusplus
 }

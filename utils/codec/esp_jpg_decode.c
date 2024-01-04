@@ -35,19 +35,19 @@
 #define TAG ""
 #else
 #include "esp_log.h"
-static const char* TAG = "esp_jpg_decode";
+static const char *TAG = "esp_jpg_decode";
 #endif
 
 typedef struct {
-        jpg_scale_t scale;
-        jpg_reader_cb reader;
-        jpg_writer_cb writer;
-        void * arg;
-        size_t len;
-        size_t index;
+    jpg_scale_t scale;
+    jpg_reader_cb reader;
+    jpg_writer_cb writer;
+    void *arg;
+    size_t len;
+    size_t index;
 } esp_jpg_decoder_t;
 
-static const char * jd_errors[] = {
+static const char *jd_errors[] = {
     "Succeeded",
     "Interrupted by output function",
     "Device error or wrong termination of input stream",
@@ -67,7 +67,7 @@ static unsigned int _jpg_write(JDEC *decoder, void *bitmap, JRECT *rect)
     uint16_t h = rect->bottom + 1 - y;
     uint8_t *data = (uint8_t *)bitmap;
 
-    esp_jpg_decoder_t * jpeg = (esp_jpg_decoder_t *)decoder->device;
+    esp_jpg_decoder_t *jpeg = (esp_jpg_decoder_t *)decoder->device;
 
     if (jpeg->writer) {
         return jpeg->writer(jpeg->arg, x, y, w, h, data);
@@ -77,7 +77,7 @@ static unsigned int _jpg_write(JDEC *decoder, void *bitmap, JRECT *rect)
 
 static unsigned int _jpg_read(JDEC *decoder, uint8_t *buf, unsigned int len)
 {
-    esp_jpg_decoder_t * jpeg = (esp_jpg_decoder_t *)decoder->device;
+    esp_jpg_decoder_t *jpeg = (esp_jpg_decoder_t *)decoder->device;
     if (jpeg->len && len > (jpeg->len - jpeg->index)) {
         len = jpeg->len - jpeg->index;
     }
@@ -91,7 +91,7 @@ static unsigned int _jpg_read(JDEC *decoder, uint8_t *buf, unsigned int len)
     return len;
 }
 
-esp_err_t esp_jpg_decode(size_t len, jpg_scale_t scale, jpg_reader_cb reader, jpg_writer_cb writer, void * arg)
+esp_err_t esp_jpg_decode(size_t len, jpg_scale_t scale, jpg_reader_cb reader, jpg_writer_cb writer, void *arg)
 {
     static uint8_t work[3100];
     JDEC decoder;
@@ -105,7 +105,7 @@ esp_err_t esp_jpg_decode(size_t len, jpg_scale_t scale, jpg_reader_cb reader, jp
     jpeg.index = 0;
 
     JRESULT jres = jd_prepare(&decoder, _jpg_read, work, 3100, &jpeg);
-    if(jres != JDR_OK){
+    if (jres != JDR_OK) {
         ESP_LOGE(TAG, "JPG Header Parse Failed! %s", jd_errors[jres]);
         return ESP_FAIL;
     }

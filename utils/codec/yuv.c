@@ -15,11 +15,11 @@
 #include "esp_attr.h"
 
 typedef struct {
-        int16_t vY;
-        int16_t vVr;
-        int16_t vVg;
-        int16_t vUg;
-        int16_t vUb;
+    int16_t vY;
+    int16_t vVr;
+    int16_t vVg;
+    int16_t vUg;
+    int16_t vUb;
 } yuv_table_row;
 
 static const yuv_table_row yuv_table[256] = {
