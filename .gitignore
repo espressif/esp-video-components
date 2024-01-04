@@ -33,6 +33,10 @@ test/**/build/
 test/**/build_esp*_*/
 test/**/sdkconfig
 test/**/sdkconfig.old
+test_apps/**/build/
+test_apps/**/build_esp*_*/
+test_apps/**/sdkconfig
+test_apps/**/sdkconfig.old
 
 # Doc build artifacts
 docs/_build/
