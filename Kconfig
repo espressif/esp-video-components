@@ -69,4 +69,5 @@ menu "Espressif Video Configuration"
 
     rsource "drivers/isp/Kconfig.isp"
     rsource "drivers/sccb/Kconfig.sccb"
+    rsource "utils/Kconfig.utils"
 endmenu

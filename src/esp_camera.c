@@ -5,10 +5,20 @@
  */
 
 #include <inttypes.h>
+#include "hal/gpio_ll.h"
+#include "driver/gpio.h"
 #include "esp_err.h"
 #include "esp_log.h"
 
 #include "esp_camera.h"
+
+#include "sccb.h"
+#include "xclk.h"
+
+#ifdef CONFIG_DVP_ENABLE
+#include "dvp_video.h"
+#endif
+
 #ifdef CONFIG_SIMULATED_INTF
 #include "sim_video.h"
 #endif
@@ -17,7 +27,40 @@
 #include "esp_media.h"
 #endif
 
+#define CONFIG_GPIO(pin)                                    \
+{                                                           \
+    PIN_FUNC_SELECT(GPIO_PIN_MUX_REG[pin], PIN_FUNC_GPIO);  \
+    ret = gpio_set_direction(pin, GPIO_MODE_INPUT);         \
+    if (ret != ESP_OK) {                                    \
+        return ret;                                         \
+    }                                                       \
+    ret = gpio_set_pull_mode(pin, GPIO_FLOATING);           \
+    if (ret != ESP_OK) {                                    \
+        return ret;                                         \
+    }                                                       \
+}
+
 static const char *TAG = "esp_camera";
+
+#ifdef CONFIG_DVP_ENABLE
+static esp_err_t dvp_gpio_reset(const esp_camera_dvp_config_t *dvp)
+{
+    esp_err_t ret;
+    const dvp_pin_config_t *pin = &dvp->dvp_pin_cfg;
+
+    CONFIG_GPIO(pin->pclk_pin);
+    CONFIG_GPIO(pin->vsync_pin);
+    for (int i = 0; i < DVP_INTF_DATA_PIN_NUM; i++) {
+        CONFIG_GPIO(pin->data_pin[i]);
+    }
+#if CONFIG_DVP_SUPPORT_H_SYNC
+    CONFIG_GPIO(pin->hsync_pin);
+#endif
+    CONFIG_GPIO(pin->href_pin);
+
+    return ESP_OK;
+}
+#endif
 
 esp_err_t esp_camera_query_para_desc(esp_camera_device_t *dev, struct v4l2_query_ext_ctrl *qctrl)
 {
@@ -139,28 +182,41 @@ esp_err_t esp_camera_init(const esp_camera_config_t *config)
 
     esp_camera_detect_fn_t *p;
 
-    if (config == NULL || config->sccb_num > 2 || config->dvp_num > 2) {
+    if (config == NULL || config->sccb_num > 2
+#ifdef CONFIG_DVP_ENABLE
+            || config->dvp_num > 2
+#endif
+       ) {
         ESP_LOGW(TAG, "Please validate camera config");
         return ESP_ERR_INVALID_ARG;
     }
 
     for (size_t i = 0; i < config->sccb_num; i++) {
         if (config->sccb[i].sda_pin != -1 && config->sccb[i].scl_pin != -1) {
-            ESP_LOGI(TAG, "Initializing SCCB[%d]", i);
+            esp_err_t ret;
 
+            ESP_LOGD(TAG, "Initializing SCCB[%d]", i);
+
+            ret = sccb_i2c_init(config->sccb[i].port, config->sccb[i].sda_pin, config->sccb[i].scl_pin, config->sccb[i].freq);
+            if (ret != ESP_OK) {
+                ESP_LOGE(TAG, "failed to initialize I2C port %d", config->sccb[i].port);
+                return ret;
+            }
             // ToDo: initialize the sccb driver, if freq == 0, using the default freq of 100000
         }
     }
 
     for (p = &__esp_camera_detect_fn_array_start; p < &__esp_camera_detect_fn_array_end; ++p) {
-        if (p->intf == CAMERA_INTF_CSI &&  config->sccb_num != 0 && config->csi != NULL) {
+#ifdef CONFIG_MIPI_CSI_ENABLE
+        if (p->intf == CAMERA_INTF_CSI && config->csi != NULL) {
             esp_camera_driver_config_t cfg = {
-                .sccb_port = config->sccb[config->csi->sccb_config_index].port,
-                .xclk_pin = config->csi->xclk_pin,
-                .reset_pin = config->csi->reset_pin,
-                .pwdn_pin = config->csi->pwdn_pin,
+                .sccb_port = config->sccb[config->csi->ctrl_cfg.sccb_config_index].port,
+                .xclk_pin = config->csi->ctrl_cfg.xclk_pin,
+                .reset_pin = config->csi->ctrl_cfg.reset_pin,
+                .pwdn_pin = config->csi->ctrl_cfg.pwdn_pin,
             };
-            esp_camera_device_t *cam_dev = (*(p->fn))(&cfg);
+
+            esp_camera_device_t *cam_dev = (*(p->fn))((void *)&cfg);
 
             // ToDo: initialize the csi driver and video layer
 
@@ -168,34 +224,60 @@ esp_err_t esp_camera_init(const esp_camera_config_t *config)
             if (cam_dev) {
             }
         }
+#endif
 
+#ifdef CONFIG_DVP_ENABLE
         if (p->intf == CAMERA_INTF_DVP &&  config->sccb_num != 0 && config->dvp_num > 0 && config->dvp != NULL) {
             for (size_t i = 0; i < config->dvp_num; i++) {
+                esp_err_t ret;
+                esp_camera_device_t *cam_dev;
                 esp_camera_driver_config_t cfg = {
-                    .sccb_port = config->sccb[config->dvp->sccb_config_index].port,
-                    .xclk_pin = config->dvp[i].xclk_pin,
-                    .reset_pin = config->dvp[i].reset_pin,
-                    .pwdn_pin = config->dvp[i].pwdn_pin,
+                    .sccb_port = config->sccb[config->csi->ctrl_cfg.sccb_config_index].port,
+                    .xclk_pin = config->dvp->ctrl_cfg.xclk_pin,
+                    .reset_pin = config->dvp->ctrl_cfg.reset_pin,
+                    .pwdn_pin = config->dvp->ctrl_cfg.pwdn_pin,
                 };
-                esp_camera_device_t *cam_dev = (*(p->fn))(&cfg);
 
-                // ToDo: initialize the dvp driver and video layer
+                ret = dvp_gpio_reset(&config->dvp[i]);
+                if (!ret != ESP_OK) {
+                    ESP_LOGE(TAG, "failed to reset GPIO of DVP index %d", i);
+                    return ret;
+                }
 
-                // Avoid compiling warning
+#ifndef CONFIG_DVP_ENABLE_OUTPUT_CLOCK
+                if (config->dvp[i].ctrl_cfg.xclk_pin >= 0) {
+                    const esp_camera_ctrl_config_t *ctrl_cfg = &config->dvp[i].ctrl_cfg;
+
+                    ret = xclk_enable_out_clock(ctrl_cfg->xclk_timer, ctrl_cfg->xclk_timer_channel,
+                                                ctrl_cfg->xclk_freq_hz, ctrl_cfg->xclk_pin);
+                    if (ret != ESP_OK) {
+                        ESP_LOGE(TAG, "failed to initialize XCLK of DVP index %d", i);
+                        return ret;
+                    }
+                }
+#endif
+
+                cam_dev = (*(p->fn))((void *)&cfg);
                 if (cam_dev) {
+                    ret = dvp_create_camera_video_device(cam_dev, i, &config->dvp[i].dvp_pin_cfg);
+                    if (ret != ESP_OK) {
+                        ESP_LOGE(TAG, "failed to create DVP video device");
+                        return ret;
+                    }
+                } else {
+                    ESP_LOGE(TAG, "failed to detect DVP camera %d", i);
+                    return ESP_FAIL;
                 }
             }
         }
+#endif
 
-#ifdef CONFIG_CAMERA_SIM
+#ifdef CONFIG_SIMULATED_INTF
         esp_err_t ret;
 
         if (p->intf == CAMERA_INTF_SIM && config->sim_num && config->sim != NULL) {
             for (size_t i = 0; i < config->sim_num; i++) {
-                esp_camera_sim_config_t cfg = {
-                    .id = config->sim[i].id
-                };
-                esp_camera_device_t *cam_dev = (*(p->fn))(&cfg);
+                esp_camera_device_t *cam_dev = (*(p->fn))((void *)&config->sim[i]);
 
                 if (cam_dev) {
                     ret = sim_create_camera_video_device(cam_dev);

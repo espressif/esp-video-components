@@ -15,6 +15,10 @@
 #include "linux/ioctl.h"
 #include "linux/v4l2-controls.h"
 #include "linux/videodev2.h"
+#ifdef CONFIG_DVP_ENABLE
+#include "dvp.h"
+#endif
+#include "xclk.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -311,7 +315,7 @@ typedef struct {
     sensor_id_t id;                                                                             // Sensor ID.
     uint8_t stream_status;
     // struct mutex lock;                                                                       // io mutex lock
-    esp_camera_ops_t *ops;
+    const esp_camera_ops_t *ops;
     void *priv;
 } esp_camera_device_t;
 
@@ -405,27 +409,36 @@ typedef struct {
 
 typedef struct {
     uint8_t sccb_port;                  /*!< Specify I2C/I3C port used for SCCB */
-    int8_t  xclk_pin;
     int8_t  reset_pin;
     int8_t  pwdn_pin;
+
+    int8_t  xclk_pin;
     int32_t xclk_freq_hz;
+    ledc_timer_t xclk_timer;
+    ledc_channel_t xclk_timer_channel;
 } esp_camera_driver_config_t;
 
 typedef struct {
     uint8_t sccb_config_index;          /*!< Specify the index number of esp_camera_sccb_config_t */
-    int8_t  xclk_pin;
     int8_t  reset_pin;
     int8_t  pwdn_pin;
+
+    int8_t  xclk_pin;
     int32_t xclk_freq_hz;
-} esp_camera_csi_config_t;
+    ledc_timer_t xclk_timer;
+    ledc_channel_t xclk_timer_channel;
+} esp_camera_ctrl_config_t;
 
 typedef struct {
-    uint8_t sccb_config_index;          /*!< Specify the index number of esp_camera_sccb_config_t */
-    int8_t  xclk_pin;
-    int8_t  reset_pin;
-    int8_t  pwdn_pin;
-    int32_t xclk_freq_hz;
+    esp_camera_ctrl_config_t ctrl_cfg;
+} esp_camera_csi_config_t;
+
+#ifdef CONFIG_DVP_ENABLE
+typedef struct {
+    esp_camera_ctrl_config_t ctrl_cfg;
+    dvp_pin_config_t dvp_pin_cfg;
 } esp_camera_dvp_config_t;
+#endif
 
 typedef struct {
     int id;
@@ -443,8 +456,10 @@ typedef struct {
     uint8_t sccb_num;               /*!< Specify the numbers of SCCB used by cameras, if there are two same type cameras connected, it should be 2, otherwise, set it to 1. */
     const esp_camera_sccb_config_t *sccb;
     const esp_camera_csi_config_t *csi;
+#ifdef CONFIG_DVP_ENABLE
     uint8_t dvp_num;                /*!< Specify the numbers of dvp cameras */
     const esp_camera_dvp_config_t *dvp;
+#endif
     uint8_t sim_num;                /*!< Specify the numbers of simulated cameras */
     const esp_camera_sim_config_t *sim;
 } esp_camera_config_t;

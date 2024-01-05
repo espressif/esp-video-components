@@ -40,4 +40,13 @@ menu "DVP"
             DVP task stack size, if receive callback function need cost much
             stack size, please increase this value.
 
+    config DVP_MAX_RX_BUF_SIZE
+        int "DVP Maximum Receive Buffer Size"
+        default 32768
+        range 8192 32768
+        help
+            Maximum buffer size of DMA, larger values may fail to allocate due to
+            insufficient contiguous memory blocks, and too smaller value may cause
+            DMA interrupt triggering be too frequently.
+
 endmenu

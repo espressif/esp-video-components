@@ -40,23 +40,23 @@
 static const char *TAG = "dvp";
 
 /**
- * @brief Get and clear DMA receive data size
+ * @brief Calculate DMA buffer half size
  *
- * @param dvp DVP object data pointer
+ * @param buffer_size Raw DMA buffer size
+ * @param align_size  DMA buffer align size
+ * @param frame_size  Frame buffer maximum size
  *
- * @return DMA receive data size
+ * @return Actual DMA buffer half size.
  */
-static size_t get_and_clear_dma_recv_size(dvp_device_handle_t dvp)
+static uint32_t dvp_get_dma_buffer_hsize(uint32_t buffer_size, uint32_t align_size, uint32_t frame_size)
 {
-    size_t size = 0;
-    lldesc_t *lldesc = DVP_CUR_LLDESC(dvp);
+    uint32_t hsize = (buffer_size / DVP_DMA_DIV + align_size - 1) & (~(align_size - 1));
 
-    for (int i = 0; i < dvp->lldesc_hcnt; i++) {
-        size += lldesc[i].length;
-        lldesc[i].length = 0;
+    while ((frame_size % hsize) != 0) {
+        hsize -= align_size;
     }
 
-    return size;
+    return hsize;
 }
 
 /**
@@ -190,7 +190,9 @@ static void dvp_task(void *p)
         }
         case DVP_EVENT_DATA_RECVED: {
             if (dvp->state == DVP_DEV_RXING) {
-                size_t data_size = get_and_clear_dma_recv_size(dvp);
+                /* DVP triggers this event only when completing receiving half size of DMA buffer */
+
+                size_t data_size = dvp->hsize;
                 size_t frame_size = data_size / dvp->item_size;
                 dvp_frame_t *frame = dvp->cur_frame;
 
@@ -202,6 +204,8 @@ static void dvp_task(void *p)
                     cam_hal_memcpy(&dvp->hal, FRAME_CUR_BUF(frame), DVP_CUR_BUF(dvp), data_size);
                     frame->size += frame_size;
                     dvp->lldesc_index = (dvp->lldesc_index + 1) % DVP_DMA_DIV;
+                } else if ((frame->size + frame_size) == frame->length) {
+                    /* Skip this event and let next "DVP_EVENT_VSYNC_END" event process this */
                 } else {
                     /* Call receive function with overflow error code */
 
@@ -232,11 +236,11 @@ static void dvp_task(void *p)
 
                 dvp->cur_frame = NULL;
 
-                /* Calculate received data size and check if frame left space is enough */
+                /* Get rest received data size and check if frame left space is enough */
 
-                data_size = get_and_clear_dma_recv_size(dvp);
+                data_size = dvp->hsize;
                 frame_size = data_size / dvp->item_size;
-                if ((frame->size + frame_size) < frame->length) {
+                if ((frame->size + frame_size) <= frame->length) {
                     /* Decode received data and update receive state data */
 
                     cam_hal_memcpy(&dvp->hal, FRAME_CUR_BUF(frame), DVP_CUR_BUF(dvp), data_size);
@@ -249,7 +253,7 @@ static void dvp_task(void *p)
                     ret = dvp->rx_cb(DVP_RX_OVERFLOW, frame->buffer, frame->size, dvp->priv);
                 }
 
-                if (ret == DVP_RXCB_DONE) {
+                if (ret == DVP_RX_CB_DONE) {
                     /* Insert frame to list, and the frame can be used again */
 
 
@@ -269,7 +273,6 @@ static void dvp_task(void *p)
                     dvp->state = DVP_DEV_WAIT;
                 }
             }
-
             break;
         }
         default:
@@ -294,13 +297,12 @@ esp_err_t dvp_device_create(dvp_device_handle_t *handle, const dvp_device_interf
 {
     esp_err_t ret;
     dvp_device_t *dvp;
-    size_t n;
     const cam_signal_conn_t *signal_conn;
     gpio_config_t io_conf = {0};
     const dvp_pin_config_t *pin;
 
-    if (!config || !config->size || !config->buffer_align_size ||
-            !config->rx_cb || !handle || config->port > DVP_PORT_MAX) {
+    if (!config || !config->buffer_max_size || !config->rx_cb ||
+            !handle || config->port > DVP_PORT_MAX) {
         return ESP_ERR_INVALID_ARG;
     }
 
@@ -383,47 +385,18 @@ esp_err_t dvp_device_create(dvp_device_handle_t *handle, const dvp_device_interf
         goto errout_create_queue;
     }
 
-    /**
-     * Calculate actually receive frame size, when DVP hardware has received half size of data,
-     * DVP DMA triggers interrupt to send event "DVP_EVENT_DATA_RECVED" to DVP task, and DVP task
-     * need copy half size of data from DMA receive buffer to user buffer which is added by
-     * API "dvp_device_add_buffer".
-     */
-
-    dvp->item_size = cam_hal_get_sample_data_size(&dvp->hal);
-    n = dvp->item_size * config->width;
-    dvp->hsize = (config->size / DVP_DMA_DIV / n * n + config->buffer_align_size - 1) & (~(config->buffer_align_size - 1));
-    dvp->size = dvp->hsize * DVP_DMA_DIV;
-
-    dvp->buffer = heap_caps_aligned_alloc(config->buffer_align_size, dvp->size, MALLOC_CAP_DMA);
-    if (!dvp->buffer) {
-        ret = ESP_ERR_NO_MEM;
-        goto errout_alloc_buffer;
-    }
-
-    dvp->lldesc_hcnt = (dvp->hsize + LLDESC_MAX_NUM_PER_DESC - 1) / LLDESC_MAX_NUM_PER_DESC;
-    dvp->lldesc_cnt = dvp->lldesc_hcnt * DVP_DMA_DIV;
-    dvp->lldesc = heap_caps_malloc(dvp->lldesc_cnt * sizeof(lldesc_t), MALLOC_CAP_DMA);
-    if (!dvp->lldesc) {
-        ret = ESP_ERR_NO_MEM;
-        goto errout_malloc_dma_desc;
-    } else {
-        lldesc_setup_link(dvp->lldesc, dvp->buffer, dvp->hsize, true);
-        lldesc_setup_link(&dvp->lldesc[dvp->lldesc_hcnt], &dvp->buffer[dvp->hsize], dvp->hsize, true);
-        dvp->lldesc[dvp->lldesc_hcnt - 1].qe.stqe_next = &dvp->lldesc[dvp->lldesc_hcnt];
-        dvp->lldesc[dvp->lldesc_cnt - 1].qe.stqe_next = dvp->lldesc;
-    }
-
     dvp->mutex = xSemaphoreCreateMutex();
     if (!dvp->mutex) {
         ret = ESP_ERR_NO_MEM;
         goto errout_create_mutex;
     }
 
-    dvp->state = DVP_DEV_IDLE;
+    dvp->item_size = cam_hal_get_sample_data_size(&dvp->hal);
+    dvp->buffer_max_size = config->buffer_max_size;
     dvp->rx_cb = config->rx_cb;
     dvp->free_buf_cb = config->free_buf_cb;
     dvp->priv = config->priv;
+    dvp->state = DVP_DEV_IDLE;
 
     ret = xTaskCreate(dvp_task, "dvp_task", DVP_TASK_STACK_SIZE, dvp, configMAX_PRIORITIES - 1, &dvp->task_handle);
     if (ret != pdPASS) {
@@ -438,10 +411,6 @@ esp_err_t dvp_device_create(dvp_device_handle_t *handle, const dvp_device_interf
 errout_create_task:
     vSemaphoreDelete(dvp->mutex);
 errout_create_mutex:
-    heap_caps_free(dvp->lldesc);
-errout_malloc_dma_desc:
-    heap_caps_free(dvp->buffer);
-errout_alloc_buffer:
     vQueueDelete(dvp->event_queue);
 errout_create_queue:
     esp_intr_free(dvp->intr_handle);
@@ -511,8 +480,12 @@ esp_err_t dvp_device_destroy(dvp_device_handle_t handle)
     /* Step 7: Free memory resocurce */
 
     vSemaphoreDelete(handle->mutex);
-    heap_caps_free(handle->lldesc);
-    heap_caps_free(handle->buffer);
+    if (handle->lldesc) {
+        heap_caps_free(handle->lldesc);
+    }
+    if (handle->buffer) {
+        heap_caps_free(handle->buffer);
+    }
     vQueueDelete(handle->event_queue);
     heap_caps_free(handle);
 
@@ -537,10 +510,12 @@ esp_err_t dvp_device_start(dvp_device_handle_t handle)
         return ESP_FAIL;
     }
 
-    if (handle->state == DVP_DEV_IDLE) {
-        ret = dvp_start_receive(handle);
-        if (ret == ESP_OK) {
-            handle->state = DVP_DEV_WAIT;
+    if (handle->buffer && handle->lldesc) {
+        if (handle->state == DVP_DEV_IDLE) {
+            ret = dvp_start_receive(handle);
+            if (ret == ESP_OK) {
+                handle->state = DVP_DEV_WAIT;
+            }
         }
     }
 
@@ -621,6 +596,117 @@ esp_err_t dvp_device_add_buffer(dvp_device_handle_t handle, uint8_t *buffer, siz
     }
 
     xSemaphoreGive(handle->mutex);
+
+    return ESP_OK;
+}
+
+/**
+ * @brief Setup DMA receive buffer by given parameters.
+ *
+ * @param handle     DVP device handle
+ * @param frame_size Frame size
+ *
+ * @return
+ *      - ESP_OK on success
+ *      - Others if failed
+ */
+esp_err_t dvp_setup_dma_receive_buffer(dvp_device_handle_t handle, uint32_t frame_size)
+{
+    esp_err_t ret;
+    uint32_t buffer_align_size;
+    dvp_device_t *dvp = handle;
+
+    if (!handle || !frame_size) {
+        return ESP_ERR_INVALID_ARG;
+    }
+
+    ret = xSemaphoreTake(dvp->mutex, portMAX_DELAY);
+    if (ret != pdTRUE) {
+        return ESP_FAIL;
+    }
+
+    if (dvp->frame_size == frame_size) {
+        xSemaphoreGive(dvp->mutex);
+        return ESP_OK;
+    }
+
+    /* Clear DMA buffer and configuration */
+
+    if (dvp->buffer) {
+        heap_caps_free(dvp->buffer);
+        dvp->buffer = NULL;
+    }
+
+    if (dvp->lldesc) {
+        heap_caps_free(dvp->lldesc);
+        dvp->lldesc = NULL;
+    }
+
+    dvp->frame_size = 0;
+
+    /**
+     * Calculate actually receive frame size, when DVP hardware has received half size of data,
+     * DVP DMA triggers interrupt to send event "DVP_EVENT_DATA_RECVED" to DVP task, and DVP task
+     * need copy half size of data from DMA receive buffer to user buffer which is added by
+     * API "dvp_device_add_buffer".
+     */
+
+    buffer_align_size = cam_hal_dma_align_size(&dvp->hal);
+    dvp->hsize = dvp_get_dma_buffer_hsize(dvp->buffer_max_size, buffer_align_size, frame_size);
+    dvp->size = dvp->hsize * DVP_DMA_DIV;
+
+    dvp->buffer = heap_caps_aligned_alloc(buffer_align_size, dvp->size, MALLOC_CAP_DMA);
+    if (!dvp->buffer) {
+        goto errout_malloc_buffer;
+    }
+
+    dvp->lldesc_hcnt = (dvp->hsize + LLDESC_MAX_NUM_PER_DESC - 1) / LLDESC_MAX_NUM_PER_DESC;
+    dvp->lldesc_cnt = dvp->lldesc_hcnt * DVP_DMA_DIV;
+    dvp->lldesc = heap_caps_malloc(dvp->lldesc_cnt * sizeof(lldesc_t), MALLOC_CAP_DMA);
+    if (!dvp->lldesc) {
+        goto errout_malloc_lldesc;
+    } else {
+        lldesc_setup_link(dvp->lldesc, dvp->buffer, dvp->hsize, true);
+        lldesc_setup_link(&dvp->lldesc[dvp->lldesc_hcnt], &dvp->buffer[dvp->hsize], dvp->hsize, true);
+        dvp->lldesc[dvp->lldesc_hcnt - 1].qe.stqe_next = &dvp->lldesc[dvp->lldesc_hcnt];
+        dvp->lldesc[dvp->lldesc_cnt - 1].qe.stqe_next = dvp->lldesc;
+    }
+
+    dvp->frame_size = frame_size;
+
+    xSemaphoreGive(dvp->mutex);
+
+    return ESP_OK;
+
+errout_malloc_lldesc:
+    heap_caps_free(dvp->buffer);
+    dvp->buffer = NULL;
+errout_malloc_buffer:
+    xSemaphoreGive(dvp->mutex);
+    return ESP_ERR_NO_MEM;
+}
+
+/**
+ * @brief Get DVP frame buffer information.
+ *
+ * @param handle            DVP device handle
+ * @param buffer_size       Frame buffer size pointer
+ * @param buffer_align_size Frame buffer address align size pointer
+ * @param buffer_caps       Frame buffer capbility pointer
+ *
+ * @return
+ *      - ESP_OK on success
+ *      - Others if failed
+ */
+esp_err_t dvp_get_frame_buffer_info(dvp_device_handle_t handle, uint32_t *buffer_size, uint32_t *buffer_align_size, uint32_t *buffer_caps)
+{
+    if (!handle || !buffer_size || !buffer_align_size || !buffer_caps) {
+        return ESP_ERR_INVALID_ARG;
+    }
+
+    *buffer_size = handle->frame_size;
+    *buffer_align_size = 1;
+    *buffer_caps = MALLOC_CAP_8BIT;
 
     return ESP_OK;
 }

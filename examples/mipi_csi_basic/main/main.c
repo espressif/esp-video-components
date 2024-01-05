@@ -34,11 +34,13 @@ static const esp_camera_sccb_config_t sccb_config[CONFIG_ESP_VIDEO_CAMERA_SCCB_N
 #if CONFIG_ESP_VIDEO_CAMERA_INTF_CSI_NUM > 0
 static const esp_camera_csi_config_t csi_config[CONFIG_ESP_VIDEO_CAMERA_INTF_CSI_NUM] = {
     {
-        .sccb_config_index = CONFIG_ESP_VIDEO_CAMERA_CSI0_SCCB_INDEX,
-        .xclk_pin          = CONFIG_ESP_VIDEO_CAMERA_CSI0_XCLK_PIN,
-        .reset_pin         = CONFIG_ESP_VIDEO_CAMERA_CSI0_RESET_PIN,
-        .pwdn_pin          = CONFIG_ESP_VIDEO_CAMERA_CSI0_PWDN_PIN,
-        .xclk_freq_hz      = CONFIG_ESP_VIDEO_CAMERA_CSI0_XCLK_FREQ,
+        .ctrl_cfg = {
+            .sccb_config_index = CONFIG_ESP_VIDEO_CAMERA_CSI0_SCCB_INDEX,
+            .xclk_pin          = CONFIG_ESP_VIDEO_CAMERA_CSI0_XCLK_PIN,
+            .reset_pin         = CONFIG_ESP_VIDEO_CAMERA_CSI0_RESET_PIN,
+            .pwdn_pin          = CONFIG_ESP_VIDEO_CAMERA_CSI0_PWDN_PIN,
+            .xclk_freq_hz      = CONFIG_ESP_VIDEO_CAMERA_CSI0_XCLK_FREQ,
+        }
     },
 };
 #endif
@@ -46,19 +48,23 @@ static const esp_camera_csi_config_t csi_config[CONFIG_ESP_VIDEO_CAMERA_INTF_CSI
 #if CONFIG_ESP_VIDEO_CAMERA_INTF_DVP_NUM > 0
 static const esp_camera_dvp_config_t dvp_config[CONFIG_ESP_VIDEO_CAMERA_INTF_DVP_NUM] = {
     {
-        .sccb_config_index = CONFIG_ESP_VIDEO_CAMERA_DVP0_SCCB_INDEX,
-        .xclk_pin          = CONFIG_ESP_VIDEO_CAMERA_DVP0_XCLK_PIN,
-        .reset_pin         = CONFIG_ESP_VIDEO_CAMERA_DVP0_RESET_PIN,
-        .pwdn_pin          = CONFIG_ESP_VIDEO_CAMERA_DVP0_PWDN_PIN,
-        .xclk_freq_hz      = CONFIG_ESP_VIDEO_CAMERA_DVP0_XCLK_FREQ,
+        .ctrl_cfg = {
+            .sccb_config_index = CONFIG_ESP_VIDEO_CAMERA_DVP0_SCCB_INDEX,
+            .xclk_pin          = CONFIG_ESP_VIDEO_CAMERA_DVP0_XCLK_PIN,
+            .reset_pin         = CONFIG_ESP_VIDEO_CAMERA_DVP0_RESET_PIN,
+            .pwdn_pin          = CONFIG_ESP_VIDEO_CAMERA_DVP0_PWDN_PIN,
+            .xclk_freq_hz      = CONFIG_ESP_VIDEO_CAMERA_DVP0_XCLK_FREQ,
+        }
     },
 #if CONFIG_ESP_VIDEO_CAMERA_INTF_DVP_NUM > 1
     {
-        .sccb_config_index = CONFIG_ESP_VIDEO_CAMERA_DVP1_SCCB_INDEX,
-        .xclk_pin          = CONFIG_ESP_VIDEO_CAMERA_DVP1_XCLK_PIN,
-        .reset_pin         = CONFIG_ESP_VIDEO_CAMERA_DVP1_RESET_PIN,
-        .pwdn_pin          = CONFIG_ESP_VIDEO_CAMERA_DVP1_PWDN_PIN,
-        .xclk_freq_hz      = CONFIG_ESP_VIDEO_CAMERA_DVP1_XCLK_FREQ,
+        .ctrl_cfg = {
+            .sccb_config_index = CONFIG_ESP_VIDEO_CAMERA_DVP1_SCCB_INDEX,
+            .xclk_pin          = CONFIG_ESP_VIDEO_CAMERA_DVP1_XCLK_PIN,
+            .reset_pin         = CONFIG_ESP_VIDEO_CAMERA_DVP1_RESET_PIN,
+            .pwdn_pin          = CONFIG_ESP_VIDEO_CAMERA_DVP1_PWDN_PIN,
+            .xclk_freq_hz      = CONFIG_ESP_VIDEO_CAMERA_DVP1_XCLK_FREQ,
+        }
     },
 #endif
 };
@@ -70,8 +76,8 @@ static const esp_camera_config_t cam_config = {
 #if CONFIG_ESP_VIDEO_CAMERA_INTF_CSI_NUM > 0
     .csi      = csi_config,
 #endif
-    .dvp_num  = CONFIG_ESP_VIDEO_CAMERA_INTF_DVP_NUM,
 #if CONFIG_ESP_VIDEO_CAMERA_INTF_DVP_NUM > 0
+    .dvp_num  = CONFIG_ESP_VIDEO_CAMERA_INTF_DVP_NUM,
     .dvp      = dvp_config,
 #endif
 };
