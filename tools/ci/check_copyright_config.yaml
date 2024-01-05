@@ -43,3 +43,4 @@ ignore:  # You can also select ignoring files here
  include:
    - 'include/linux/**/*'
    - 'include/soc/**/*'
+   - 'utils/codec/**/*'
