@@ -1,6 +1,7 @@
 stages:
   - pre_check
   - build
+  - target_test
 
 variables:
 # System environment
@@ -53,3 +54,4 @@ include:
   - '.gitlab/ci/static-code-analysis.yml'
   - '.gitlab/ci/pre_check.yml'
   - '.gitlab/ci/build.yml'
+  - '.gitlab/ci/target_test.yml'
