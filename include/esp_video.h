@@ -23,6 +23,10 @@
 extern "C" {
 #endif
 
+enum esp_video_event {
+    ESP_VIDEO_BUFFER_VALID = 0,
+};
+
 /**
  * @brief Video capability object.
  */
@@ -49,6 +53,7 @@ struct esp_video_format {
     uint32_t width;
     uint32_t height;
     uint32_t pixel_format;
+    uint32_t pixel_bytes;
     uint32_t fps;
 };
 
@@ -86,9 +91,13 @@ struct esp_video_ops {
 
     esp_err_t (*description)(struct esp_video *video, char *buffer, uint32_t size);
 
-    /*!< Set video format configuration */
+    /*!< Set video format configuration, and device driver must update buffer_size in this API */
 
     esp_err_t (*set_format)(struct esp_video *video, const struct esp_video_format *format);
+
+    /*!< Notify driver event triggers */
+
+    void (*notify)(struct esp_video *video, enum esp_video_event event, void *arg);
 };
 
 /**
@@ -101,8 +110,6 @@ struct esp_video {
     const struct esp_video_ops *ops;        /*!< Video operations */
     char *dev_name;                         /*!< Video devic name */
     void *priv;                             /*!< Video device private data */
-    uint32_t min_buffer_count;              /*!< Video device configured minium buffer count */
-    uint32_t min_buffer_size;               /*!< Video device configured minium buffer size */
 
     struct esp_video_format format;         /*!< Current video format */
     uint32_t buffer_count;                  /*!< User configured buffer count */
@@ -127,8 +134,6 @@ struct esp_video {
  * @param name         video device name
  * @param cam_dev      camera devcie
  * @param ops          video operations
- * @param buffer_count video buffer count for lowlevel driver
- * @param buffer_size  video buffer size for lowlevel driver
  * @param priv         video private data
  *
  * @return
@@ -136,8 +141,7 @@ struct esp_video {
  *      - NULL if failed
  */
 struct esp_video *esp_video_create(const char *name, esp_camera_device_t *cam_dev,
-                                   const struct esp_video_ops *ops, uint32_t buffer_count,
-                                   uint32_t buffer_size,  void *priv);
+                                   const struct esp_video_ops *ops, void *priv);
 
 /**
  * @brief Destroy video object.

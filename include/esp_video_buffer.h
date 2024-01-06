@@ -18,6 +18,9 @@
 extern "C" {
 #endif
 
+// AEG-1117 struct esp_video_buffer_element is 8 bytes aligned now
+#define VIDEO_BUFFER_ELEMENT_ALIGN_SIZE         8
+
 #ifndef container_of
 #define container_of(ptr, type, member) \
   ((type *)((uintptr_t)(ptr) - offsetof(type, member)))
@@ -222,7 +225,8 @@ static inline uint32_t esp_video_buffer_element_get_index(struct esp_video_buffe
  */
 static inline struct esp_video_buffer_element *esp_video_buffer_get_element_by_index(struct esp_video_buffer *buffer, uint32_t index)
 {
-    uint32_t element_size = buffer->element_size + sizeof(struct esp_video_buffer_element);
+    uint32_t align = VIDEO_BUFFER_ELEMENT_ALIGN_SIZE - 1;
+    uint32_t element_size = (buffer->element_size + sizeof(struct esp_video_buffer_element) + align) & (~align);
     struct esp_video_buffer_element *element;
 
     element = (struct esp_video_buffer_element *)((char *)buffer->element + element_size * index);

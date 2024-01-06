@@ -32,6 +32,11 @@ static const int s_control_id_map_table[][2] = {
     { V4L2_CID_FLASH_LED_MODE, CAM_SENSOR_FLASH_LED }
 };
 
+static const int s_pixel_size_map_table[][2] = {
+    { V4L2_PIX_FMT_RGB565, 2 },
+    { V4L2_PIX_FMT_JPEG, 1 }
+};
+
 #ifdef CONFIG_MIPI_CSI_ENABLE
 esp_mipi_csi_handle_t csi_test_handle;
 #endif
@@ -86,6 +91,16 @@ static int esp_err_to_libc_errno(esp_err_t err)
     return libc_errno;
 }
 
+static uint32_t get_pixel_size_by_format(uint32_t format)
+{
+    for (int i = 0; i < ARRAY_SIZE(s_pixel_size_map_table); i++) {
+        if (s_pixel_size_map_table[i][0] == format) {
+            return s_pixel_size_map_table[i][1];
+        }
+    }
+
+    return 0;
+}
 
 static esp_err_t v4l2_ext_control_id_map(uint32_t *id)
 {
@@ -114,6 +129,11 @@ static int esp_video_vfs_ioctl_g_fmt(struct esp_video *video, struct v4l2_format
     esp_err_t ret;
     struct esp_video_format format;
 
+    if (fmt->type != V4L2_BUF_TYPE_VIDEO_CAPTURE) {
+        errno = EINVAL;
+        return -1;
+    }
+
     ret = esp_video_get_format(video, &format);
     if (ret != ESP_OK) {
         errno = EIO;
@@ -133,7 +153,17 @@ static int esp_video_vfs_ioctl_s_fmt(struct esp_video *video, struct v4l2_format
     esp_err_t ret;
     struct esp_video_format format;
 
+    if (fmt->type != V4L2_BUF_TYPE_VIDEO_CAPTURE) {
+        errno = EINVAL;
+        return -1;
+    }
+
     memset(&format, 0, sizeof(struct esp_video_format));
+    format.pixel_bytes = get_pixel_size_by_format(fmt->fmt.pix.pixelformat);
+    if (!format.pixel_bytes) {
+        errno = EINVAL;
+        return -1;
+    }
     format.width        = fmt->fmt.pix.width;
     format.height       = fmt->fmt.pix.height;
     format.pixel_format = fmt->fmt.pix.pixelformat;

@@ -23,7 +23,7 @@ menu "Espressif Video Configuration"
 
     config ESP_VIDEO_MEDIA_CONTROLLER
         bool "Media controller enable"
-        default y
+        default n
     
     config ESP_VIDEO_MEDIA_EMBED_FILE
         string "Configuration file for media pileline"
