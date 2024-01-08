@@ -1049,7 +1049,13 @@ esp_err_t esp_pipeline_create_video_buffer(esp_pipeline_t *pipeline, int count)
 #endif
     int alignment = 4;
 #endif
-    pipeline->vb = esp_video_buffer_create(pipeline->vb_num,  pipeline->vb_size, alignment);
+    struct esp_video_buffer_info info = {
+        .count = pipeline->vb_num,
+        .size = pipeline->vb_size,
+        .align_size = alignment,
+        .caps = 0
+    };
+    pipeline->vb = esp_video_buffer_create(&info);
     return ESP_OK;
 }
 

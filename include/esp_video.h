@@ -91,7 +91,7 @@ struct esp_video_ops {
 
     esp_err_t (*description)(struct esp_video *video, char *buffer, uint32_t size);
 
-    /*!< Set video format configuration, and device driver must update buffer_size in this API */
+    /*!< Set video format configuration, and device driver must update buffer_size & buffer_align_size & buffer_caps in this API */
 
     esp_err_t (*set_format)(struct esp_video *video, const struct esp_video_format *format);
 
@@ -112,8 +112,7 @@ struct esp_video {
     void *priv;                             /*!< Video device private data */
 
     struct esp_video_format format;         /*!< Current video format */
-    uint32_t buffer_count;                  /*!< User configured buffer count */
-    uint32_t buffer_size;                   /*!< User configured buffer size */
+    struct esp_video_buffer_info buf_info;  /*!< Buffer information */
 
     esp_camera_device_t *cam_dev;           /*!< Camera device object */
 
@@ -283,6 +282,18 @@ esp_err_t esp_video_get_buffer_count(struct esp_video *video, uint32_t *count);
  *      - Others if failed
  */
 esp_err_t esp_video_get_buffer_length(struct esp_video *video, uint32_t index, uint32_t *length);
+
+/**
+ * @brief Get video buffer count.
+ *
+ * @param video Video object
+ * @param attr  Buffer attribution pointer
+ *
+ * @return
+ *      - ESP_OK on success
+ *      - Others if failed
+ */
+esp_err_t esp_video_get_buffer_info(struct esp_video *video, struct esp_video_buffer_info *info);
 
 /**
  * @brief Get video buffer offset.

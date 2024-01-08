@@ -475,10 +475,18 @@ esp_err_t esp_mipi_csi_new_buffer_available(esp_mipi_csi_handle_t handle)
     return ESP_OK;
 }
 
-uint32_t esp_mipi_csi_get_fb_size(esp_mipi_csi_handle_t handle)
+esp_err_t esp_mipi_csi_get_fb_info(esp_mipi_csi_handle_t handle, uint32_t *fb_size, uint32_t *fb_align_size, uint32_t *fb_caps)
 {
     MIPI_CSI_NULL_POINTER_CHECK(MIPI_CSI_TAG, handle);
     esp_mipi_csi_obj_t *csi_cam_obj = (esp_mipi_csi_obj_t *)handle;
 
-    return csi_cam_obj->driver_config->fb_size;
+    /**
+     * Todo: AEG-1058
+     */
+
+    *fb_size = csi_cam_obj->driver_config->fb_size;
+    *fb_align_size = 64;
+    *fb_caps = MALLOC_CAP_DMA;
+
+    return ESP_OK;
 }

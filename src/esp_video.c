@@ -257,9 +257,8 @@ struct esp_video *esp_video_open(const char *name)
             return NULL;
         } else {
             memset(&video->format, 0, sizeof(struct esp_video_format));
-            video->buffer_size  = 0;
-            video->buffer_count = 0;
-            video->buffer       = NULL;
+            memset(&video->buf_info, 0, sizeof(struct esp_video_buffer_info));
+            video->buffer = NULL;
         }
     } else {
         ESP_VIDEO_LOGI("video->ops->init=NULL");
@@ -631,6 +630,8 @@ esp_err_t esp_video_set_format(struct esp_video *video, const struct esp_video_f
  */
 esp_err_t esp_video_setup_buffer(struct esp_video *video, uint32_t count)
 {
+    struct esp_video_buffer_info *info;
+
 #ifdef CONFIG_ESP_VIDEO_CHECK_PARAMETERS
     bool found = false;
     struct esp_video *it;
@@ -652,7 +653,14 @@ esp_err_t esp_video_setup_buffer(struct esp_video *video, uint32_t count)
 
     /* buffer_size is configured when setting format */
 
-    video->buffer_count = count;
+    info = &video->buf_info;
+    if (!info->size || !info->align_size || !info->caps) {
+        ESP_VIDEO_LOGE("Failed to check buffer information: size=%" PRIu32 " align=%" PRIu32 " cap=%" PRIx32,
+                       info->size, info->align_size, info->caps);
+        return ESP_ERR_INVALID_STATE;
+    }
+
+    info->count = count;
 
     if (video->done_sem) {
         vSemaphoreDelete(video->done_sem);
@@ -663,7 +671,7 @@ esp_err_t esp_video_setup_buffer(struct esp_video *video, uint32_t count)
         esp_video_buffer_destroy(video->buffer);
     }
 
-    video->done_sem = xSemaphoreCreateCounting(video->buffer_count, 0);
+    video->done_sem = xSemaphoreCreateCounting(info->count, 0);
     if (!video->done_sem) {
         ESP_VIDEO_LOGE("Failed to create done_sem for video");
         return ESP_ERR_NO_MEM;
@@ -673,7 +681,7 @@ esp_err_t esp_video_setup_buffer(struct esp_video *video, uint32_t count)
     esp_pipeline_t *pipeline = esp_pad_get_pipeline(esp_entity_get_pad_by_index(video->entity, ESP_PAD_TYPE_SINK, 0));
 
     if (!esp_pipeline_get_video_buffer(pipeline)) {
-        esp_pipeline_create_video_buffer(pipeline, video->buffer_count);
+        esp_pipeline_create_video_buffer(pipeline, info->count);
     }
 
     video->buffer = esp_pipeline_get_video_buffer(pipeline);
@@ -681,9 +689,8 @@ esp_err_t esp_video_setup_buffer(struct esp_video *video, uint32_t count)
 #else
 #ifdef CONFIG_ESP_VIDEO_MEDIA_TODO
     // Todo: AEG-1075
-    int alignment = 4;
 #endif
-    video->buffer = esp_video_buffer_create(video->buffer_count, video->buffer_size, alignment);
+    video->buffer = esp_video_buffer_create(info);
 #endif
     if (!video->buffer) {
         vSemaphoreDelete(video->done_sem);
@@ -726,7 +733,7 @@ esp_err_t esp_video_get_buffer_count(struct esp_video *video, uint32_t *count)
     }
 #endif
 
-    *count = video->buffer_count;
+    *count = video->buf_info.count;
 
     return ESP_OK;
 }
@@ -763,7 +770,46 @@ esp_err_t esp_video_get_buffer_length(struct esp_video *video, uint32_t index, u
     }
 #endif
 
-    *length = video->buffer_size;
+    *length = video->buf_info.size;
+
+    return ESP_OK;
+}
+
+/**
+ * @brief Get video buffer count.
+ *
+ * @param video Video object
+ * @param attr  Buffer Information pointer
+ *
+ * @return
+ *      - ESP_OK on success
+ *      - Others if failed
+ */
+esp_err_t esp_video_get_buffer_info(struct esp_video *video, struct esp_video_buffer_info *info)
+{
+#ifdef CONFIG_ESP_VIDEO_CHECK_PARAMETERS
+    bool found = false;
+    struct esp_video *it;
+
+    _lock_acquire(&s_video_lock);
+    SLIST_FOREACH(it, &s_video_list, node) {
+        if (it == video) {
+            found = true;
+            break;
+        }
+    }
+    _lock_release(&s_video_lock);
+
+    if (!found) {
+        ESP_VIDEO_LOGE("Not find video=%p", video);
+        return ESP_ERR_INVALID_ARG;
+    }
+#endif
+
+    info->count = video->buf_info.count;
+    info->size  = video->buf_info.size;
+    info->align_size = video->buf_info.align_size;
+    info->caps = video->buf_info.caps;
 
     return ESP_OK;
 }

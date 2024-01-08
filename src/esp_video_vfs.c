@@ -289,7 +289,7 @@ static int esp_video_vfs_ioctl_mmap(struct esp_video *video, struct esp_video_io
 {
     uint8_t *buffer;
 
-    if (ioctl_mmap->length > video->buffer_size) {
+    if (ioctl_mmap->length > video->buf_info.size) {
         errno = EINVAL;
         return -1;
     }

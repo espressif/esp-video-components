@@ -42,6 +42,16 @@ typedef SLIST_HEAD(esp_video_buffer_list, esp_video_buffer_element) esp_video_bu
 struct esp_video_buffer;
 
 /**
+ * @brief Video buffer information object.
+ */
+struct esp_video_buffer_info {
+    uint32_t count;                                   /*!< Buffer count */
+    uint32_t size;                                    /*!< Buffer maximum size */
+    uint32_t align_size;                              /*!< Buffer align size in byte */
+    uint32_t caps;                                    /*!< Buffer capability: refer to esp_heap_caps.h MALLOC_CAP_XXX */
+};
+
+/**
  * @brief Video buffer element object.
  */
 struct esp_video_buffer_element {
@@ -60,25 +70,20 @@ struct esp_video_buffer_element {
 struct esp_video_buffer {
     esp_video_buffer_list_t free_list;              /*!< Free buffer elements list  */
     portMUX_TYPE lock;                              /*!< Buffer lock */
-    uint32_t element_count;                         /*!< Element count */
-    uint32_t element_size;                          /*!< Element buffer size without other member */
-    uint32_t align_size;                            /*!< buffer alignment size */
-
+    struct esp_video_buffer_info info;              /*!< Buffer information */
     struct esp_video_buffer_element *element;       /*!< Element buffer */
 };
 
 /**
  * @brief Create video buffer object.
  *
- * @param count Buffer element count
- * @param size  Buffer element size
- * @param align_size Buffer aligned size, unit: byte, normally 4 bytes * n aligned
+ * @param info Buffer information pointer.
  *
  * @return
  *      - Video buffer object pointer on success
  *      - NULL if failed
  */
-struct esp_video_buffer *esp_video_buffer_create(uint32_t count, uint32_t size, uint32_t align_size);
+struct esp_video_buffer *esp_video_buffer_create(const struct esp_video_buffer_info *info);
 
 /**
  * @brief Clone a new video buffer
@@ -163,7 +168,7 @@ struct esp_video_buffer_element *esp_video_buffer_element_clone(const struct esp
  */
 static inline uint32_t esp_video_buffer_element_get_buffer_size(struct esp_video_buffer_element *element)
 {
-    return element->video_buffer->element_size;
+    return element->video_buffer->info.size;
 }
 
 /**
@@ -226,7 +231,7 @@ static inline uint32_t esp_video_buffer_element_get_index(struct esp_video_buffe
 static inline struct esp_video_buffer_element *esp_video_buffer_get_element_by_index(struct esp_video_buffer *buffer, uint32_t index)
 {
     uint32_t align = VIDEO_BUFFER_ELEMENT_ALIGN_SIZE - 1;
-    uint32_t element_size = (buffer->element_size + sizeof(struct esp_video_buffer_element) + align) & (~align);
+    uint32_t element_size = (buffer->info.size + sizeof(struct esp_video_buffer_element) + align) & (~align);
     struct esp_video_buffer_element *element;
 
     element = (struct esp_video_buffer_element *)((char *)buffer->element + element_size * index);
