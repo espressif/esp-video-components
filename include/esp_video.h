@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2023 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2023-2024 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -176,6 +176,19 @@ struct esp_video *esp_video_open(const char *name);
 esp_err_t esp_video_close(struct esp_video *video);
 
 /**
+ * @brief video device ioctl
+ *
+ * @param video video object
+ * @param cmd ioctl cmd which is defined in include/linux/videodev2.h
+ * @param args the args list of the ioctl cmd
+ *
+ * @return
+ *      - ESP_OK on success
+ *      - Others if failed
+ */
+esp_err_t esp_video_ioctl(struct esp_video *video, int cmd, va_list args);
+
+/**
  * @brief Start capturing video data stream.
  *
  * @param video Video object
@@ -284,10 +297,10 @@ esp_err_t esp_video_get_buffer_count(struct esp_video *video, uint32_t *count);
 esp_err_t esp_video_get_buffer_length(struct esp_video *video, uint32_t index, uint32_t *length);
 
 /**
- * @brief Get video buffer count.
+ * @brief Get video buffer attribute information.
  *
  * @param video Video object
- * @param attr  Buffer attribution pointer
+ * @param attr  info  The struct pointer to store buffer attribute information
  *
  * @return
  *      - ESP_OK on success
@@ -300,7 +313,7 @@ esp_err_t esp_video_get_buffer_info(struct esp_video *video, struct esp_video_bu
  *
  * @param video Video object
  * @param index Video buffer index
- * @param count Buffer length pointer
+ * @param count Buffer offset pointer
  *
  * @return
  *      - ESP_OK on success
@@ -375,6 +388,13 @@ uint32_t esp_video_get_buffer_index(struct esp_video *video, uint8_t *buffer);
 
 uint8_t *esp_video_get_buffer_by_offset(struct esp_video *video, uint32_t offset);
 
+/**
+ * @brief Get video object by name
+ *
+ * @param name The video object name
+ *
+ * @return Video object pointer if found by name
+ */
 struct esp_video *esp_video_device_get_object(const char *name);
 
 #ifdef __cplusplus

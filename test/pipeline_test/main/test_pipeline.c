@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2023 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2023-2024 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -151,9 +151,9 @@ void app_main(void)
     esp_pads_link_by_index(entity2, 2, entity3, 2);
 
     esp_media_t *media = esp_media_create();
-    pipeline1 = esp_pipeline_create(5, 10);
-    pipeline2 = esp_pipeline_create(5, 10);
-    pipeline3 = esp_pipeline_create(5, 10);
+    pipeline1 = esp_pipeline_create();
+    pipeline2 = esp_pipeline_create();
+    pipeline3 = esp_pipeline_create();
     esp_pipeline_update_entry_entity(pipeline1, esp_entity_get_pad_by_index(entity1, ESP_PAD_TYPE_SINK, 0));
     esp_pipeline_update_entry_entity(pipeline2, esp_entity_get_pad_by_index(entity1, ESP_PAD_TYPE_SINK, 1));
     esp_pipeline_update_entry_entity(pipeline3, esp_entity_get_pad_by_index(entity1, ESP_PAD_TYPE_SINK, 2));

@@ -11,7 +11,6 @@
 
 #include "esp_video.h"
 #include "mipi_csi.h"
-#include "camera_isp.h"
 
 struct csi_video {
     esp_mipi_csi_handle_t handle;

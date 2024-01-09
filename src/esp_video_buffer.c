@@ -17,7 +17,6 @@
 
 #define ESP_VIDEO_BUFFER_ALIGN(s, a)      (((s) + ((a) - 1)) & (~((a) - 1)))
 
-struct esp_video_buffer *g_video_buffer;
 static const char *TAG = "esp_video_buffer";
 
 /**

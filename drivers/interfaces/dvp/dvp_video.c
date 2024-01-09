@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2023 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2023-2024 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -32,7 +32,11 @@ static dvp_rx_cb_ret_t dvp_rx_cb(dvp_rx_ret_t rx_ret, uint8_t *buffer, size_t si
         return DVP_RX_CB_DONE;
     }
 
+#ifdef CONFIG_ESP_VIDEO_MEDIA_CONTROLLER
+    esp_video_media_recvdone_buffer(video, buffer, size, 0);
+#else
     esp_video_recvdone_buffer(video, buffer, size, 0);
+#endif
 
     return DVP_RX_CB_CACHED;
 }
