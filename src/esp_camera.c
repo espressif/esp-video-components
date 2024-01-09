@@ -232,14 +232,14 @@ esp_err_t esp_camera_init(const esp_camera_config_t *config)
                 esp_err_t ret;
                 esp_camera_device_t *cam_dev;
                 esp_camera_driver_config_t cfg = {
-                    .sccb_port = config->sccb[config->csi->ctrl_cfg.sccb_config_index].port,
+                    .sccb_port = config->sccb[config->dvp->ctrl_cfg.sccb_config_index].port,
                     .xclk_pin = config->dvp->ctrl_cfg.xclk_pin,
                     .reset_pin = config->dvp->ctrl_cfg.reset_pin,
                     .pwdn_pin = config->dvp->ctrl_cfg.pwdn_pin,
                 };
 
                 ret = dvp_gpio_reset(&config->dvp[i]);
-                if (!ret != ESP_OK) {
+                if (ret != ESP_OK) {
                     ESP_LOGE(TAG, "failed to reset GPIO of DVP index %d", i);
                     return ret;
                 }
