@@ -4,6 +4,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+#include "soc/i2s_periph.h"
+#include "soc/gpio_sig_map.h"
 #include "soc/cam_periph.h"
 
 const cam_signal_conn_t cam_periph_signals[SOC_CAM_PERIPH_NUM] = {

@@ -108,6 +108,15 @@ uint32_t cam_hal_get_int_status(cam_hal_context_t *hal);
  */
 void cam_hal_clear_int_status(cam_hal_context_t *hal, uint32_t status);
 
+/**
+ * @brief Get DMA buffer align size
+ *
+ * @param hal CAM object data pointer
+ *
+ * @return DMA buffer align size
+ */
+uint32_t cam_hal_dma_align_size(cam_hal_context_t *hal);
+
 #ifdef __cplusplus
 }
 #endif

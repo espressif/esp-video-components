@@ -1,5 +1,5 @@
 if(CONFIG_DVP_ENABLE)
-    list(APPEND srcs "drivers/interfaces/dvp/dvp.c")
+    list(APPEND srcs "drivers/interfaces/dvp/dvp.c" "drivers/interfaces/dvp/dvp_video.c")
     if(EXISTS "${COMPONENT_DIR}/drivers/interfaces/dvp/${IDF_TARGET}/dvp.c")
         list(APPEND srcs "drivers/interfaces/dvp/${IDF_TARGET}/dvp.c")
     endif()

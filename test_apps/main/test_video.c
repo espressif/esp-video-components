@@ -69,7 +69,6 @@ static void init(void)
         };
         esp_camera_config_t config = {
             .sccb_num = 0,
-            .dvp_num  = 0,
             .sim_num  = VIDEO_COUNT,
             .sim      = sim_camera_config
         };

@@ -250,3 +250,15 @@ void IRAM_ATTR cam_hal_clear_int_status(cam_hal_context_t *hal, uint32_t status)
 {
     i2s_ll_clear_intr_status(hal->hw, status);
 }
+
+/**
+ * @brief Get DMA buffer align size
+ *
+ * @param hal CAM object data pointer
+ *
+ * @return DMA buffer align size
+ */
+uint32_t cam_hal_dma_align_size(cam_hal_context_t *hal)
+{
+    return 4;
+}

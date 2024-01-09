@@ -38,7 +38,7 @@ typedef enum dvp_int_event_type {
  * @brief DVP receive callback function return code
  */
 typedef enum dvp_rx_cb_ret {
-    DVP_RXCB_DONE = 0,                          /*!< Return this code if user's callback function finishes processing
+    DVP_RX_CB_DONE = 0,                         /*!< Return this code if user's callback function finishes processing
                                                      data in buffer, this means the buffer can be used by DVP driver again,
                                                      so DVP driver will insert it into receive buffer queue. */
 
@@ -142,15 +142,11 @@ typedef struct dvp_device_interface_config {
 
     dvp_pin_config_t pin;                       /*!< DVP Pin configuration */
 
+    size_t buffer_max_size;                     /*!< DVP cache buffer maximum size */
+
     dvp_rx_cb_t rx_cb;                          /*!< DVP receive frame done callback function */
     dvp_free_buf_cb_t free_buf_cb;              /*!< DVP free buffer callback function */
     void *priv;                                 /*!< DVP callback function private data */
-
-    size_t size;                                /*!< DVP cache buffer size */
-    uint8_t buffer_align_size;                  /*!< DVP cache buffer align size */
-
-    uint16_t width;                             /*!< Camera picture width */
-    uint16_t height;                            /*!< Camera picture height */
 } dvp_device_interface_config_t;
 
 /**
@@ -190,6 +186,9 @@ typedef struct dvp_device {
     size_t lldesc_cnt;                          /*!< DVP cache buffer DMA description count */
     size_t lldesc_hcnt;                         /*!< DVP cache buffer DMA description half count */
     size_t lldesc_index;                        /*!< DVP cache buffer DMA description index */
+    size_t buffer_max_size;                     /*!< DVP cache buffer maximum size */
+
+    size_t frame_size;                          /*!< DVP output frame size */
 
     dvp_rx_cb_t rx_cb;                          /*!< DVP receive frame done callback function */
     dvp_free_buf_cb_t free_buf_cb;              /*!< DVP free buffer callback function */
@@ -260,6 +259,32 @@ esp_err_t dvp_device_stop(dvp_device_handle_t handle);
  *      - Others if failed
  */
 esp_err_t dvp_device_add_buffer(dvp_device_handle_t handle, uint8_t *buffer, size_t size);
+
+/**
+ * @brief Setup DMA receive buffer by given parameters.
+ *
+ * @param handle     DVP device handle
+ * @param frame_size Frame size
+ *
+ * @return
+ *      - ESP_OK on success
+ *      - Others if failed
+ */
+esp_err_t dvp_setup_dma_receive_buffer(dvp_device_handle_t handle, uint32_t frame_size);
+
+/**
+ * @brief Setup DMA receive buffer by given parameters.
+ *
+ * @param handle            DVP device handle
+ * @param buffer_size       Frame buffer size pointer
+ * @param buffer_align_size Frame buffer address align size pointer
+ * @param buffer_caps       Frame buffer capbility pointer
+ *
+ * @return
+ *      - ESP_OK on success
+ *      - Others if failed
+ */
+esp_err_t dvp_get_frame_buffer_info(dvp_device_handle_t handle, uint32_t *buffer_size, uint32_t *buffer_align_size, uint32_t *buffer_caps);
 
 #ifdef __cplusplus
 }

@@ -1,4 +1,4 @@
-if(CONFIG_SOC_LCDCAM_SUPPORTED)
+if(CONFIG_DVP_ENABLE)
     list(APPEND srcs "drivers/commons/soc/${IDF_TARGET}/cam_periph.c")
 endif()
 

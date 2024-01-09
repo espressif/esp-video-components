@@ -6,8 +6,8 @@
 
 #pragma once
 
-#include "soc/soc_caps_extra.h"
 #include "soc/periph_defs.h"
+#include "soc/soc_caps_extra.h"
 
 #ifdef __cplusplus
 extern "C" {

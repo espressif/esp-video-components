@@ -10,12 +10,14 @@ endif()
 
 set(include_dirs "include")
 set(priv_include_dirs "private_include")
-set(priv_requires "esp_timer" "vfs" "driver" "json")
-set(requires "")
+set(priv_requires "esp_timer" "vfs" "json")
+set(requires "driver")
 
 include(${COMPONENT_DIR}/drivers/commons/sources.cmake)
 include(${COMPONENT_DIR}/drivers/interfaces/sources.cmake)
 include(${COMPONENT_DIR}/drivers/sccb/sources.cmake)
+include(${COMPONENT_DIR}/drivers/xclk/sources.cmake)
+include(${COMPONENT_DIR}/utils/sources.cmake)
 
 if (NOT "${CONFIG_ESP_VIDEO_MEDIA_EMBED_FILE}" STREQUAL "")
     set(embed_files "${CONFIG_ESP_VIDEO_MEDIA_EMBED_FILE}")
