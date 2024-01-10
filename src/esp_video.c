@@ -886,8 +886,7 @@ uint8_t *IRAM_ATTR esp_video_alloc_buffer(struct esp_video *video)
 
 void *IRAM_ATTR esp_video_recvdone_buffer(struct esp_video *video, uint8_t *buffer, uint32_t size, uint32_t offset)
 {
-    struct esp_video_buffer_element *element =
-        container_of(buffer, struct esp_video_buffer_element, buffer);
+    struct esp_video_buffer_element *element = esp_video_buffer_get_element_by_buffer(video->buffer, buffer);
 
     bool user_node = true;
     void *ret_ptr = NULL;
@@ -931,8 +930,7 @@ void *IRAM_ATTR esp_video_recvdone_buffer(struct esp_video *video, uint8_t *buff
  */
 void esp_video_free_buffer(struct esp_video *video, uint8_t *buffer)
 {
-    struct esp_video_buffer_element *element =
-        container_of(buffer, struct esp_video_buffer_element, buffer);
+    struct esp_video_buffer_element *element = esp_video_buffer_get_element_by_buffer(video->buffer, buffer);
 
     esp_video_buffer_free(video->buffer, element);
 
@@ -1002,12 +1000,19 @@ uint8_t *esp_video_recv_buffer(struct esp_video *video, uint32_t *recv_size, uin
  */
 uint32_t esp_video_get_buffer_index(struct esp_video *video, uint8_t *buffer)
 {
-    struct esp_video_buffer_element *element =
-        container_of(buffer, struct esp_video_buffer_element, buffer);
+    struct esp_video_buffer_element *element = esp_video_buffer_get_element_by_buffer(video->buffer, buffer);
 
     return esp_video_buffer_element_get_index(element);
 }
 
+/**
+ * @brief Get video buffer data index
+ *
+ * @param video Video object
+ * @param buffer Video data buffer
+ *
+ * @return Video buffer data index
+ */
 uint8_t *esp_video_get_buffer_by_offset(struct esp_video *video, uint32_t offset)
 {
     struct esp_video_buffer_element *element = esp_video_buffer_get_element_by_offset(video->buffer, offset);
