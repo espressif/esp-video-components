@@ -359,7 +359,7 @@ typedef struct _esp_camera_ops {
 #else
 #define PRINT_CAM_SENSOR_FORMAT_INFO(p_format)  \
     do { \
-        printf("format[%d]: name=%s\n  {w=%u, h=%u, regs=%p, fps=%d, mipi_clk=%u}\n", \
+        printf("format[%d]: name=%s\n  {w=%u, h=%u, regs=%p, fps=%d, mipi_clk=%" PRIu32 "}\n", \
         ((sensor_format_t*)p_format)->index,\
         ((sensor_format_t*)p_format)->name,\
         ((sensor_format_t*)p_format)->width,\
