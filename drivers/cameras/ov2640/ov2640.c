@@ -329,7 +329,7 @@ static int ov2640_set_stream(esp_camera_device_t *dev, int enable)
     if (dev->pwdn_pin >= 0) {
         ret = gpio_set_level(dev->pwdn_pin, enable ? 0 : 1);
     } else {
-        ret = ov2640_write_reg(dev->sccb_port, BANK_SENSOR, COM2, enable ? 0xe2 : 0x02);
+        ret = ov2640_write_reg(dev->sccb_port, BANK_SENSOR, COM2, enable ? 0x02 : 0xe2);
         delay_ms(1000);
     }
 
