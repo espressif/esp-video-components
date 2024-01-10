@@ -1,0 +1,1 @@
+idf_component_register(SRCS "http_web_camera_main.c")

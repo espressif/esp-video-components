@@ -17,6 +17,8 @@
 #ifdef CONFIG_IDF_TARGET_ESP32
 typedef i2s_dev_t cam_dev_t;
 #define CAM_RX_INT_MASK I2S_LL_RX_EVENT_MASK
+#else
+typedef void *cam_dev_t;
 #endif
 
 #ifdef __cplusplus

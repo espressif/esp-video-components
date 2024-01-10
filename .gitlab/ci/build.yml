@@ -43,7 +43,7 @@
 # example build jobs
 #
 
-build_examples:
+build_examples_esp32p4:
   extends:
     - .build_examples_template
     - .rules:build:examples
@@ -53,7 +53,19 @@ build_examples:
   variables:
     EXAMPLE_CONFIG: "sdkconfig.ci.esp32p4.*="
     EXAMPLE_TARGET: esp32p4
-    EXAMPLE_DIR: examples
+    EXAMPLE_DIR: examples/mipi_csi_basic
+
+build_examples_esp32:
+  extends:
+    - .build_examples_template
+    - .rules:build:examples
+  parallel:
+    matrix:
+      - IMAGE: espressif/idf:latest
+  variables:
+    EXAMPLE_CONFIG: "sdkconfig.ci.esp32.*="
+    EXAMPLE_TARGET: esp32
+    EXAMPLE_DIR: examples/http_web_camera
 
 #
 # components build jobs

@@ -67,7 +67,7 @@ struct esp_video;
  */
 struct esp_video_ops {
 
-    /*!< Initializa video hardware and allocate software resource */
+    /*!< Initializa video hardware and allocate software resource, and must set buffer information and video format */
 
     esp_err_t (*init)(struct esp_video *video);
 
@@ -91,7 +91,7 @@ struct esp_video_ops {
 
     esp_err_t (*description)(struct esp_video *video, char *buffer, uint32_t size);
 
-    /*!< Set video format configuration, and device driver must update buffer_size & buffer_align_size & buffer_caps in this API */
+    /*!< Set video format configuration */
 
     esp_err_t (*set_format)(struct esp_video *video, const struct esp_video_format *format);
 

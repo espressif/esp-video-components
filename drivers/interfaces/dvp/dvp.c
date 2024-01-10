@@ -301,7 +301,7 @@ esp_err_t dvp_device_create(dvp_device_handle_t *handle, const dvp_device_interf
     gpio_config_t io_conf = {0};
     const dvp_pin_config_t *pin;
 
-    if (!config || !config->buffer_max_size || !config->rx_cb ||
+    if (!config || !config->dma_buffer_max_size || !config->rx_cb ||
             !handle || config->port > DVP_PORT_MAX) {
         return ESP_ERR_INVALID_ARG;
     }
@@ -392,7 +392,7 @@ esp_err_t dvp_device_create(dvp_device_handle_t *handle, const dvp_device_interf
     }
 
     dvp->item_size = cam_hal_get_sample_data_size(&dvp->hal);
-    dvp->buffer_max_size = config->buffer_max_size;
+    dvp->dma_buffer_max_size = config->dma_buffer_max_size;
     dvp->rx_cb = config->rx_cb;
     dvp->free_buf_cb = config->free_buf_cb;
     dvp->priv = config->priv;
@@ -652,7 +652,7 @@ esp_err_t dvp_setup_dma_receive_buffer(dvp_device_handle_t handle, uint32_t fram
      */
 
     buffer_align_size = cam_hal_dma_align_size(&dvp->hal);
-    dvp->hsize = dvp_get_dma_buffer_hsize(dvp->buffer_max_size, buffer_align_size, frame_size);
+    dvp->hsize = dvp_get_dma_buffer_hsize(dvp->dma_buffer_max_size, buffer_align_size, frame_size);
     dvp->size = dvp->hsize * DVP_DMA_DIV;
 
     dvp->buffer = heap_caps_aligned_alloc(buffer_align_size, dvp->size, MALLOC_CAP_DMA);

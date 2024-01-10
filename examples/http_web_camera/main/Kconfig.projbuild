@@ -1,0 +1,47 @@
+menu "HTTP Web Camera Configuration"
+
+    config HTTP_WEB_CAM_COUNT
+        int "Web Camera Count"
+        default 1
+        range 1 4
+        help
+            The count of web camera, the example will try to start
+            cameras "/dev/videoX"(X=0, 1, ..., count-1)  in sequence
+            until fail to open the target device.
+
+    config HTTP_WEB_CAM_FRAME_BUFFER_COUNT
+        int "Web Camera Frame Buffer Count"
+        default 2
+        help
+            Web camera frame buffer count, too large value may cause
+            memory allocation fails.
+
+    config HTTP_WEB_CAM_ENABLE_MIPI_CSI
+        bool "Enable MIPI-CSI Camera"
+        default y
+        depends on MIPI_CSI_ENABLE
+        help
+            Select this option, MIPI-CSI interface camera is enabled.
+
+    config HTTP_WEB_CAM_ENABLE_DVP
+        bool "Enable DVP Camera"
+        default y
+        depends on DVP_ENABLE
+        help
+            Select this option, DVP interface camera is enabled.
+
+    config HTTP_WEB_CAM_ENABLE_SIM
+        bool "Enable Sim Camera"
+        default y
+        depends on CAMERA_SIM
+        help
+            Select this option, simulation camera is enabled.
+    
+    config HTTP_WEB_CAM_SIM_COUNT
+        int "Sim Camera Count"
+        default 1
+        range 1 2
+        depends on HTTP_WEB_CAM_ENABLE_SIM
+        help
+            Initialized simulation camera count, camera ID are 0 and 1.
+endmenu

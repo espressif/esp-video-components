@@ -175,6 +175,27 @@ const char *esp_camera_get_name(esp_camera_device_t *dev)
     return dev->name;
 }
 
+#if CONFIG_MIPI_CSI_ENABLE || CONFIG_DVP_ENABLE
+static esp_err_t esp_camera_init_format(esp_camera_device_t *dev)
+{
+    esp_err_t ret;
+    sensor_format_array_info_t format_arry = {0};
+
+    ret = esp_camera_query_format(dev, &format_arry);
+    if (ret != ESP_OK) {
+        return ret;
+    }
+
+    if (format_arry.count < 1) {
+        return ESP_ERR_INVALID_ARG;
+    }
+
+    ret = esp_camera_set_format(dev, &format_arry.format_array[0]);
+
+    return ret;
+}
+#endif
+
 esp_err_t esp_camera_init(const esp_camera_config_t *config)
 {
     extern esp_camera_detect_fn_t __esp_camera_detect_fn_array_start;
@@ -209,6 +230,7 @@ esp_err_t esp_camera_init(const esp_camera_config_t *config)
     for (p = &__esp_camera_detect_fn_array_start; p < &__esp_camera_detect_fn_array_end; ++p) {
 #ifdef CONFIG_MIPI_CSI_ENABLE
         if (p->intf == CAMERA_INTF_CSI && config->csi != NULL) {
+            esp_err_t ret;
             esp_camera_driver_config_t cfg = {
                 .sccb_port = config->sccb[config->csi->ctrl_cfg.sccb_config_index].port,
                 .xclk_pin = config->csi->ctrl_cfg.xclk_pin,
@@ -222,6 +244,11 @@ esp_err_t esp_camera_init(const esp_camera_config_t *config)
 
             // Avoid compiling warning
             if (cam_dev) {
+                ret = esp_camera_init_format(cam_dev);
+                if (ret != ESP_OK) {
+                    ESP_LOGE(TAG, "failed to initialize sensor format");
+                    return ret;
+                }
             }
         }
 #endif
@@ -259,6 +286,12 @@ esp_err_t esp_camera_init(const esp_camera_config_t *config)
 
                 cam_dev = (*(p->fn))((void *)&cfg);
                 if (cam_dev) {
+                    ret = esp_camera_init_format(cam_dev);
+                    if (ret != ESP_OK) {
+                        ESP_LOGE(TAG, "failed to initialize sensor format");
+                        return ret;
+                    }
+
                     ret = dvp_create_camera_video_device(cam_dev, i, &config->dvp[i].dvp_pin_cfg);
                     if (ret != ESP_OK) {
                         ESP_LOGE(TAG, "failed to create DVP video device");
