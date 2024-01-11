@@ -15,8 +15,6 @@
 #define portMUX_INITIALIZE(mux)             spinlock_initialize(mux)
 #endif
 
-#define ALLOC_RAM_ATTR                      MALLOC_CAP_8BIT
-
 #define ESP_VIDEO_BUFFER_ALIGN(s, a)      (((s) + ((a) - 1)) & (~((a) - 1)))
 
 struct esp_video_buffer *g_video_buffer;
@@ -33,43 +31,49 @@ static const char *TAG = "esp_video_buffer";
  */
 struct esp_video_buffer *esp_video_buffer_create(const struct esp_video_buffer_info *info)
 {
-    uint32_t element_size;
+    uint32_t size;
     struct esp_video_buffer *buffer;
-    uint32_t aligned = 0;
 
-    // AEG-1117 struct esp_video_buffer_element is 8 bytes aligned now
-#define VIDEO_BUFFER_ELEMENT_ALIGN_SIZE         8
-    assert(info->align_size <= VIDEO_BUFFER_ELEMENT_ALIGN_SIZE);
-    assert((info->align_size == 1) || (VIDEO_BUFFER_ELEMENT_ALIGN_SIZE % info->align_size == 0));
-    aligned = VIDEO_BUFFER_ELEMENT_ALIGN_SIZE;
-    element_size = ESP_VIDEO_BUFFER_ALIGN(sizeof(struct esp_video_buffer_element), aligned) + ESP_VIDEO_BUFFER_ALIGN(info->size, aligned);
-
-    buffer = heap_caps_malloc(sizeof(struct esp_video_buffer), ALLOC_RAM_ATTR);
+    size = sizeof(struct esp_video_buffer) + sizeof(struct esp_video_buffer_element) * info->count;
+    buffer = heap_caps_calloc(1, size, info->caps);
     if (!buffer) {
         ESP_VIDEO_LOGE("Failed to malloc for video buffer");
         return NULL;
     }
 
-    buffer->element = heap_caps_aligned_alloc(aligned, element_size * info->count, ALLOC_RAM_ATTR);
-    if (!buffer->element) {
-        ESP_VIDEO_LOGE("Failed to malloc for video buffer element");
-        heap_caps_free(buffer);
-        return NULL;
-    }
-    portMUX_INITIALIZE(&buffer->lock);
     SLIST_INIT(&buffer->free_list);
+    for (int i = 0; i < info->count; i++) {
+        struct esp_video_buffer_element *element = &buffer->element[i];
+
+        element->buffer = heap_caps_aligned_alloc(info->align_size, info->size, info->caps);
+        if (element->buffer) {
+            element->index = i;
+            element->video_buffer = buffer;
+            SLIST_INSERT_HEAD(&buffer->free_list, element, node);
+        } else {
+            goto errout_alloc_buffer;
+        }
+    }
+
+    portMUX_INITIALIZE(&buffer->lock);
     buffer->info.count = info->count;
     buffer->info.size = info->size;
     buffer->info.align_size = info->align_size;
     buffer->info.caps = info->caps;
-    for (int i = 0; i < info->count; i++) {
-        struct esp_video_buffer_element *element = (struct esp_video_buffer_element *)((uint8_t *)buffer->element + element_size * i);
-        assert(((uint32_t)element->buffer % info->align_size) == 0);
-        element->index = i;
-        SLIST_INSERT_HEAD(&buffer->free_list, element, node);
-    }
 
     return buffer;
+
+errout_alloc_buffer:
+    for (int i = 0; i < info->count; i++) {
+        struct esp_video_buffer_element *element = &buffer->element[i];
+
+        if (element->buffer) {
+            heap_caps_free(element->buffer);
+        }
+    }
+
+    heap_caps_free(buffer);
+    return NULL;
 }
 
 /**
@@ -111,7 +115,7 @@ struct esp_video_buffer_element *IRAM_ATTR esp_video_buffer_alloc(struct esp_vid
     portEXIT_CRITICAL_SAFE(&buffer->lock);
 
     if (element) {
-        element->video_buffer = buffer;
+        element->valid_offset = 0;
         element->valid_size = 0;
     }
 
@@ -170,7 +174,9 @@ esp_err_t esp_video_buffer_destroy(struct esp_video_buffer *buffer)
     n = esp_video_buffer_get_element_num(buffer);
     assert (n == buffer->info.count);
 
-    heap_caps_free(buffer->element);
+    for (int i = 0; i < buffer->info.count; i++) {
+        heap_caps_free(buffer->element[i].buffer);
+    }
     heap_caps_free(buffer);
 
     return ESP_OK;
@@ -196,4 +202,25 @@ struct esp_video_buffer_element *esp_video_buffer_element_clone(const struct esp
     memcpy(new_element->buffer, element->buffer, element->valid_size);
 
     return new_element;
+}
+
+/**
+ * @brief Get element object pointer by buffer
+ *
+ * @param buffer Video buffer object
+ * @param ptr    Element buffer pointer
+ *
+ * @return
+ *      - Element object pointer on success
+ *      - NULL if failed
+ */
+struct esp_video_buffer_element *IRAM_ATTR esp_video_buffer_get_element_by_buffer(struct esp_video_buffer *buffer, uint8_t *ptr)
+{
+    for (int i = 0; i < buffer->info.count; i++) {
+        if (buffer->element[i].buffer == ptr) {
+            return &buffer->element[i];
+        }
+    }
+
+    return NULL;
 }

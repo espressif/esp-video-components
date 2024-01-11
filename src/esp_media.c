@@ -31,6 +31,11 @@ extern const char media_config[] asm(EMBED_FILE_NAME_START);
 
 #define PAD_MAX_NUM                               10
 
+#ifndef container_of
+#define container_of(ptr, type, member) \
+  ((type *)((uintptr_t)(ptr) - offsetof(type, member)))
+#endif
+
 typedef struct esp_list {
     struct esp_list *pre;
     struct esp_list *next;

@@ -21,11 +21,6 @@ extern "C" {
 // AEG-1117 struct esp_video_buffer_element is 8 bytes aligned now
 #define VIDEO_BUFFER_ELEMENT_ALIGN_SIZE         8
 
-#ifndef container_of
-#define container_of(ptr, type, member) \
-  ((type *)((uintptr_t)(ptr) - offsetof(type, member)))
-#endif
-
 struct esp_video_buffer_element;
 
 /**
@@ -60,8 +55,7 @@ struct esp_video_buffer_element {
     uint32_t index;                                   /*!< List node index */
     uint32_t valid_size;                              /*!< Valid data size */
     uint32_t valid_offset;                            /*!< Valid data offset */
-    uint32_t reserved;                                /*!< reserved to align 8 bytes: AEG-1117 */
-    uint8_t buffer[0];                                /*!< Buffer space to fill data */
+    uint8_t *buffer;                                  /*!< Buffer space to fill data */
 };
 
 /**
@@ -71,7 +65,7 @@ struct esp_video_buffer {
     esp_video_buffer_list_t free_list;              /*!< Free buffer elements list  */
     portMUX_TYPE lock;                              /*!< Buffer lock */
     struct esp_video_buffer_info info;              /*!< Buffer information */
-    struct esp_video_buffer_element *element;       /*!< Element buffer */
+    struct esp_video_buffer_element element[0];     /*!< Element buffer */
 };
 
 /**
@@ -106,6 +100,27 @@ struct esp_video_buffer *esp_video_buffer_clone(const struct esp_video_buffer *b
  *      - Others if failed
  */
 esp_err_t esp_video_buffer_destroy(struct esp_video_buffer *buffer);
+
+/**
+ * @brief Clone a new video buffer
+ *
+ * @param element Video buffer element object
+ *
+ * @return None
+ */
+struct esp_video_buffer_element *esp_video_buffer_element_clone(const struct esp_video_buffer_element *element);
+
+/**
+ * @brief Get element object pointer by buffer
+ *
+ * @param buffer Video buffer object
+ * @param ptr    Element buffer pointer
+ *
+ * @return
+ *      - Element object pointer on success
+ *      - NULL if failed
+ */
+struct esp_video_buffer_element *esp_video_buffer_get_element_by_buffer(struct esp_video_buffer *buffer, uint8_t *ptr);
 
 /**
  * @brief Allocate one buffer element, remove it from free list.
@@ -148,16 +163,6 @@ static inline void esp_video_buffer_element_free(struct esp_video_buffer_element
 {
     esp_video_buffer_free(element->video_buffer, element);
 }
-
-/**
- * @brief Clone a new video buffer
- *
- * @param element Video buffer element object
- *
- * @return None
- */
-struct esp_video_buffer_element *esp_video_buffer_element_clone(const struct esp_video_buffer_element *element);
-
 
 /**
  * @brief Get one element buffer total size
@@ -230,17 +235,11 @@ static inline uint32_t esp_video_buffer_element_get_index(struct esp_video_buffe
  */
 static inline struct esp_video_buffer_element *esp_video_buffer_get_element_by_index(struct esp_video_buffer *buffer, uint32_t index)
 {
-    uint32_t align = VIDEO_BUFFER_ELEMENT_ALIGN_SIZE - 1;
-    uint32_t element_size = (buffer->info.size + sizeof(struct esp_video_buffer_element) + align) & (~align);
-    struct esp_video_buffer_element *element;
-
-    element = (struct esp_video_buffer_element *)((char *)buffer->element + element_size * index);
-
-    return element;
+    return &buffer->element[index];
 }
 
 /**
- * @brief Get element offset
+ * @brief Get element offset(index)
  *
  * @param buffer Video buffer object
  * @param element Video buffer element object
@@ -249,12 +248,20 @@ static inline struct esp_video_buffer_element *esp_video_buffer_get_element_by_i
  */
 static inline uint32_t esp_video_buffer_get_element_offset(struct esp_video_buffer *buffer, struct esp_video_buffer_element *element)
 {
-    return (uint32_t)(((uintptr_t)element) - ((uintptr_t)buffer->element));
+    return element->index;
 }
 
+/**
+ * @brief Get element by offset(index)
+ *
+ * @param buffer Video buffer object
+ * @param offset Element offset(index)
+ *
+ * @return Element object pointer
+ */
 static inline struct esp_video_buffer_element *esp_video_buffer_get_element_by_offset(struct esp_video_buffer *buffer, uint32_t offset)
 {
-    return (struct esp_video_buffer_element *)(((uintptr_t)buffer->element) + offset);
+    return &buffer->element[offset];
 }
 
 #ifdef __cplusplus
