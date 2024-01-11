@@ -32,8 +32,8 @@ typedef struct {
     mipi_csi_lane_num_t lane_num;       /*!< Lane num, 1~(LANE_NUM_MAX - 1)*/
     int mipi_clk_freq_hz;               /*!< Frequency of MIPI CLK, in Hz. CSI-Host <-> ISP <-> CSI-Bridge*/
     // mipi_csi_pin_config;             /*!< For P4, the pin is fixed*/
-    pixformat_t in_type;                /*!< Format of esp32 received data from the sensor, mainly for sensor config */
-    pixformat_t out_type;               /*!< Format of esp32 bridge output data, ISP module can convert input format to this format */
+    pixformat_t in_format;                /*!< Format of esp32 received data from the sensor, mainly for sensor config */
+    pixformat_t out_format;               /*!< Format of esp32 bridge output data, ISP module can convert input format to this format */
     bool isp_enable;
 } mipi_csi_port_config_t;
 

@@ -53,7 +53,7 @@ build_examples_esp32p4:
   variables:
     EXAMPLE_CONFIG: "sdkconfig.ci.esp32p4.*="
     EXAMPLE_TARGET: esp32p4
-    EXAMPLE_DIR: examples/mipi_csi_basic
+    EXAMPLE_DIR: examples/video_basic
 
 build_examples_esp32:
   extends:

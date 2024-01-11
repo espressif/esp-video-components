@@ -44,12 +44,12 @@ menu "SCCB"
 
         config ESP_VIDEO_CAMERA_SCCB0_I2C_I3C_SCL_PIN
             int "I2C/I3C SCL pin"
-            default 5
+            default 23
             range -1 33
 
         config ESP_VIDEO_CAMERA_SCCB0_I2C_I3C_SDA_PIN
             int "I2C/I3C SDA pin"
-            default 4
+            default 22
             range -1 33
 
         config ESP_VIDEO_CAMERA_SCCB0_I2C_I3C_FREQ

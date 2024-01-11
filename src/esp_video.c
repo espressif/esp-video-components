@@ -12,6 +12,7 @@
 #include "esp_video_log.h"
 #include "esp_video_bsp.h"
 #include "esp_video_vfs.h"
+#include "esp_color_formats.h"
 
 #include "freertos/portmacro.h"
 
@@ -1038,22 +1039,6 @@ static const int s_control_id_map_table[][2] = {
     { V4L2_CID_FLASH_LED_MODE, CAM_SENSOR_FLASH_LED }
 };
 
-static const int s_pixel_size_map_table[][2] = {
-    { V4L2_PIX_FMT_RGB565, 2 },
-    { V4L2_PIX_FMT_JPEG, 1 }
-};
-
-static uint32_t get_pixel_size_by_format(uint32_t format)
-{
-    for (int i = 0; i < ARRAY_SIZE(s_pixel_size_map_table); i++) {
-        if (s_pixel_size_map_table[i][0] == format) {
-            return s_pixel_size_map_table[i][1];
-        }
-    }
-
-    return 0;
-}
-
 static esp_err_t v4l2_ext_control_id_map(uint32_t *id)
 {
     for (int i = 0; i < ARRAY_SIZE(s_control_id_map_table); i++) {
@@ -1108,8 +1093,8 @@ static esp_err_t esp_video_ioctl_s_fmt(struct esp_video *video, struct v4l2_form
     }
 
     memset(&format, 0, sizeof(struct esp_video_format));
-    format.pixel_bytes = get_pixel_size_by_format(fmt->fmt.pix.pixelformat);
-    if (!format.pixel_bytes) {
+    format.bpp = esp_video_get_bpp_by_format(fmt->fmt.pix.pixelformat);
+    if (!format.bpp) {
         return ESP_ERR_INVALID_ARG;
     }
     format.width        = fmt->fmt.pix.width;

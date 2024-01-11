@@ -66,9 +66,9 @@ static esp_err_t dvp_video_init(struct esp_video *video)
     format->width = sensor_format.width;
     format->height = sensor_format.height;
     format->pixel_format = sensor_format.format;
-    format->pixel_bytes = sensor_format.bpp / 8;
+    format->bpp = sensor_format.bpp;
 
-    frame_size = format->width * format->height * format->pixel_bytes;
+    frame_size = format->width * format->height * format->bpp / 8;
 
     ESP_LOGI(TAG, "DVP %s frame size=%" PRIu32, video->dev_name, frame_size);
 

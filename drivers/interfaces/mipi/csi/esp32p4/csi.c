@@ -94,7 +94,7 @@ static inline uint32_t dma_access_addr_map(uint32_t addr)
 static inline bool esp_mipi_csi_get_next_free_framebuf(esp_mipi_csi_obj_t *csi_cam_obj)
 {
     if (csi_cam_obj->ops.alloc_buffer) {
-        csi_cam_obj->frames.fb.buf = csi_cam_obj->ops.alloc_buffer(csi_cam_obj->driver_config->fb_size);
+        csi_cam_obj->frames.fb.buf = csi_cam_obj->ops.alloc_buffer(csi_cam_obj->driver_config->fb_size, csi_cam_obj->ops.priv);
         if (csi_cam_obj->frames.fb.buf) {
             csi_cam_obj->frames.fb.len = csi_cam_obj->driver_config->fb_size;
             Cache_WriteBack_Addr(CACHE_MAP_L1_DCACHE | CACHE_MAP_L2_CACHE,
@@ -124,7 +124,7 @@ static bool IRAM_ATTR esp_mipi_csi_start_framebuf_filled(esp_mipi_csi_obj_t *csi
 
 static mipi_csi_driv_config_t *mipi_csi_new_driver_cfg(mipi_csi_port_config_t *config)
 {
-    mipi_csi_driv_config_t *cfg = (mipi_csi_driv_config_t *)calloc(sizeof(mipi_csi_driv_config_t), 1);
+    mipi_csi_driv_config_t *cfg = (mipi_csi_driv_config_t *)calloc(1, sizeof(mipi_csi_driv_config_t));
     if (cfg == NULL) {
         return cfg;
     }
@@ -132,15 +132,14 @@ static mipi_csi_driv_config_t *mipi_csi_new_driver_cfg(mipi_csi_port_config_t *c
     cfg->height = config->frame_height;
     cfg->width = config->frame_width;
 
-    cfg->in_type = config->in_type;
-    cfg->out_type = config->out_type;
-    cfg->in_type_bits_per_pixel = pixformat_info_map[config->in_type].bits_per_pixel;
-
-    cfg->out_type_bits_per_pixel = pixformat_info_map[config->out_type].bits_per_pixel;
+    cfg->in_format = config->in_format;
+    cfg->out_format = config->out_format;
+    cfg->in_bpp = esp_video_get_bpp_by_format(config->in_format);
+    cfg->out_bpp = esp_video_get_bpp_by_format(config->out_format);
     cfg->cam_isp_en = config->isp_enable;
 
     // Note: Width * Height * BitsPerPixel must be divisible by 8
-    size_t fb_size_in_bits = cfg->width * cfg->height * cfg->out_type_bits_per_pixel;
+    size_t fb_size_in_bits = cfg->width * cfg->height * cfg->out_bpp;
     if (fb_size_in_bits % 8) {
         ESP_LOGD(MIPI_CSI_TAG, "framesize not 8bit aligned");
         free(cfg);
@@ -177,9 +176,9 @@ static int esp_mipi_csi_gdma_config(esp_mipi_csi_obj_t *driv_obj)
 
     // if ISP used, this should be ISP output bits_per_pixel. otherwise this should be sensor output bits_per_pixel
     if (driv_obj->driver_config->cam_isp_en) {
-        csi_block_ts = driv_obj->driver_config->width * driv_obj->driver_config->height * driv_obj->driver_config->out_type_bits_per_pixel / CONFIG_CSI_TR_WIDTH;
+        csi_block_ts = driv_obj->driver_config->width * driv_obj->driver_config->height * driv_obj->driver_config->out_bpp / CONFIG_CSI_TR_WIDTH;
     } else {
-        csi_block_ts = driv_obj->driver_config->width * driv_obj->driver_config->height * driv_obj->driver_config->in_type_bits_per_pixel / CONFIG_CSI_TR_WIDTH;
+        csi_block_ts = driv_obj->driver_config->width * driv_obj->driver_config->height * driv_obj->driver_config->in_bpp / CONFIG_CSI_TR_WIDTH;
     }
     ESP_LOGD(MIPI_CSI_TAG, "csi block trans size=%"PRIu32"", csi_block_ts);
 
@@ -275,12 +274,12 @@ static esp_err_t esp_mipi_csi_set_config(mipi_csi_interface_t interface, mipi_cs
     hal_config.frame_height = config->frame_height;
     hal_config.frame_width = config->frame_width;
     hal_config.mipi_clk = config->mipi_clk;
-    hal_config.in_bits_per_pixel = config->in_bits_per_pixel;
+    hal_config.in_bpp = config->in_bpp;
     hal_config.lanes_num = config->lane_num;
     hal.version = MIPI_CSI_HAL_LAYER_VERSION;
 
     PERIPH_RCC_ATOMIC() {
-        mipi_csi_ll_set_phy_clock_source(MIPI_CSI_CLK_GROUP_DEFAULT, 1);
+        mipi_csi_ll_set_phy_clock_source(MIPI_CSI_CLK_GROUP_DEFAULT, MIPI_CSI_PHY_CLK_SRC_RC_FAST);
         // reset cfg clk
         mipi_csi_ll_enable_phy_config_clock(MIPI_CSI_CLK_GROUP_DEFAULT, 0);
         mipi_csi_ll_enable_phy_config_clock(MIPI_CSI_CLK_GROUP_DEFAULT, 1);
@@ -311,9 +310,9 @@ static esp_err_t mipi_csi_set_mipi_config(mipi_csi_interface_t interface, const 
     mipi_config.mipi_clk = config->mipi_clk_freq_hz;
     mipi_config.frame_width = config->frame_width;
     mipi_config.frame_height = config->frame_height;
-    mipi_config.in_bits_per_pixel = pixformat_info_map[config->in_type].bits_per_pixel;
-    mipi_config.out_bits_per_pixel = pixformat_info_map[config->out_type].bits_per_pixel;
-    ESP_LOGD(MIPI_CSI_TAG, "in_bits_per_pixel=%"PRIu32", out_bits_per_pixel=%"PRIu32"", mipi_config.in_bits_per_pixel, mipi_config.out_bits_per_pixel);
+    mipi_config.in_bpp = esp_video_get_bpp_by_format(config->in_format);
+    mipi_config.out_bpp = esp_video_get_bpp_by_format(config->out_format);
+    ESP_LOGD(MIPI_CSI_TAG, "in_bpp=%"PRIu32", out_bpp=%"PRIu32"", mipi_config.in_bpp, mipi_config.out_bpp);
 
     return esp_mipi_csi_set_config(MIPI_CSI_PORT_NUM_DEFAULT, &mipi_config);
 };
@@ -333,7 +332,7 @@ static void IRAM_ATTR esp_mipi_csi_grab_mode_gdma_isr(void *arg)
 #endif
         Cache_Invalidate_Addr(CACHE_MAP_L1_DCACHE | CACHE_MAP_L2_CACHE, (uint32_t)frame_buffer_event->buf, driv_obj_ptr->driver_config->fb_size);
         if (driv_obj_ptr->ops.recved_data
-                && (driv_obj_ptr->ops.recved_data(frame_buffer_event->buf, 0, driv_obj_ptr->driver_config->fb_size) != ESP_OK)) {
+                && (driv_obj_ptr->ops.recved_data(frame_buffer_event->buf, 0, driv_obj_ptr->driver_config->fb_size, driv_obj_ptr->ops.priv) != ESP_OK)) {
             Cache_WriteBack_Addr(CACHE_MAP_L1_DCACHE | CACHE_MAP_L2_CACHE,
                                  (uint32_t)driv_obj_ptr->frames.fb.buf, driv_obj_ptr->driver_config->fb_size);
             esp_mipi_csi_enable_gdma_with_addr(driv_obj_ptr, driv_obj_ptr->frames.dma_buf_addr);
@@ -359,7 +358,7 @@ esp_err_t esp_mipi_csi_driver_install(mipi_csi_interface_t interface, mipi_csi_p
     }
 
     ESP_LOGD(MIPI_CSI_TAG, "clk=%d, w=%"PRIu32", h=%"PRIu32"", config->mipi_clk_freq_hz, config->frame_width, config->frame_height);
-    ESP_LOGD(MIPI_CSI_TAG, "in=%"PRIx16", out=%"PRIx16"",  config->in_type, config->out_type);
+    ESP_LOGD(MIPI_CSI_TAG, "in=%"PRIx32", out=%"PRIx32"",  config->in_format, config->out_format);
 
     esp_mipi_csi_obj_t *csi_obj_p = (esp_mipi_csi_obj_t *)calloc(sizeof(esp_mipi_csi_obj_t), 1);
     if (csi_obj_p == NULL) {
@@ -398,9 +397,11 @@ esp_err_t esp_mipi_csi_ops_regist(esp_mipi_csi_handle_t handle, esp_mipi_csi_ops
     esp_mipi_csi_obj_t *csi_cam_obj = (esp_mipi_csi_obj_t *)handle;
     if (csi_cam_obj) {
         if (ops) {
+            csi_cam_obj->ops.priv = ops->priv;
             csi_cam_obj->ops.alloc_buffer = ops->alloc_buffer;
             csi_cam_obj->ops.recved_data = ops->recved_data;
         } else {
+            csi_cam_obj->ops.priv = NULL;
             csi_cam_obj->ops.alloc_buffer = NULL;
             csi_cam_obj->ops.recved_data = NULL;
         }
@@ -486,7 +487,7 @@ esp_err_t esp_mipi_csi_get_fb_info(esp_mipi_csi_handle_t handle, uint32_t *fb_si
 
     *fb_size = csi_cam_obj->driver_config->fb_size;
     *fb_align_size = 64;
-    *fb_caps = MALLOC_CAP_DMA;
+    *fb_caps = MALLOC_CAP_SPIRAM;
 
     return ESP_OK;
 }
