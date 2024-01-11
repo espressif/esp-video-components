@@ -1,0 +1,11 @@
+dependencies:
+  idf: ">=4.4"
+  ov2640:
+    version: "~0.0.1"
+    override_path: "../../../drivers/cameras/ov2640"
+  sim:
+    version: "~0.0.1"
+    override_path: "../../../drivers/cameras/sim"
+  esp-video:
+    version: "~0.0.1"
+    override_path: "../../../"

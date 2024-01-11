@@ -15,9 +15,7 @@
 #include "linux/ioctl.h"
 #include "linux/v4l2-controls.h"
 #include "linux/videodev2.h"
-#ifdef CONFIG_DVP_ENABLE
 #include "dvp.h"
-#endif
 #include "xclk.h"
 
 #ifdef __cplusplus
@@ -189,22 +187,20 @@ typedef enum {
 /**
  * @brief Enumerated list of sensor output pixel data formats
  */
-typedef enum {
-    CAM_SENSOR_PIXFORMAT_RGB565,    // 2BPP/RGB565, 1Bytes Per Pixel
-    CAM_SENSOR_PIXFORMAT_YUV422,    // 2BPP/YUV422
-    CAM_SENSOR_PIXFORMAT_YUV420,    // 1.5BPP/YUV420
-    CAM_SENSOR_PIXFORMAT_GRAYSCALE, // 1BPP/GRAYSCALE
-    CAM_SENSOR_PIXFORMAT_JPEG,      // JPEG/COMPRESSED
-    CAM_SENSOR_PIXFORMAT_RGB888,    // 3BPP/RGB888
-    CAM_SENSOR_PIXFORMAT_RAW8,      // 1BPP/RAW8
-    CAM_SENSOR_PIXFORMAT_RAW10,     // 5BP4P/RAW8
-    CAM_SENSOR_PIXFORMAT_RAW12,     // 3BP2P/RAW8
-    CAM_SENSOR_PIXFORMAT_RGB444,    // 3BP2P/RGB444
-    CAM_SENSOR_PIXFORMAT_RGB555,    // 3BP2P/RGB555
-    CAM_SENSOR_PIXFORMAT_BGR565,    // 2BPP/RGB565
-    CAM_SENSOR_PIXFORMAT_BGR888,    // 3BPP/RGB888
-    CAM_SENSOR_PIXFORMAT_INVALID,
-} sensor_pixformat_t;
+
+#define CAM_SENSOR_PIXFORMAT_RGB565     V4L2_PIX_FMT_RGB565
+#define CAM_SENSOR_PIXFORMAT_YUV422     V4L2_PIX_FMT_YUV422P
+#define CAM_SENSOR_PIXFORMAT_YUV420     V4L2_PIX_FMT_YUV420
+#define CAM_SENSOR_PIXFORMAT_RGB888     V4L2_PIX_FMT_RGB24
+#define CAM_SENSOR_PIXFORMAT_RGB444     V4L2_PIX_FMT_RGB444
+#define CAM_SENSOR_PIXFORMAT_RGB555     V4L2_PIX_FMT_RGB555
+//#define CAM_SENSOR_PIXFORMAT_BGR565
+#define CAM_SENSOR_PIXFORMAT_BGR888     V4L2_PIX_FMT_BGR24
+#define CAM_SENSOR_PIXFORMAT_RAW8       V4L2_PIX_FMT_SBGGR8
+#define CAM_SENSOR_PIXFORMAT_RAW10      V4L2_PIX_FMT_SBGGR10
+#define CAM_SENSOR_PIXFORMAT_RAW12      V4L2_PIX_FMT_SBGGR12
+#define CAM_SENSOR_PIXFORMAT_GRAYSCALE  V4L2_PIX_FMT_GREY
+#define CAM_SENSOR_PIXFORMAT_JPEG       V4L2_PIX_FMT_JPEG
 
 /**
  * @brief Enumerated list of camera sensor parameter IDs, Mainly for 3A.
@@ -265,7 +261,7 @@ typedef union _sensor_isp_info {
 typedef struct _sensor_format_struct {
     int index;
     const char *name;
-    sensor_pixformat_t format;
+    uint32_t format;
     sensor_port_t port;
     sensor_bayer_pattern_t bayer_type;
     uint32_t hdr_mode;
@@ -433,12 +429,10 @@ typedef struct {
     esp_camera_ctrl_config_t ctrl_cfg;
 } esp_camera_csi_config_t;
 
-#ifdef CONFIG_DVP_ENABLE
 typedef struct {
     esp_camera_ctrl_config_t ctrl_cfg;
     dvp_pin_config_t dvp_pin_cfg;
 } esp_camera_dvp_config_t;
-#endif
 
 typedef struct {
     int id;
@@ -456,10 +450,8 @@ typedef struct {
     uint8_t sccb_num;               /*!< Specify the numbers of SCCB used by cameras, if there are two same type cameras connected, it should be 2, otherwise, set it to 1. */
     const esp_camera_sccb_config_t *sccb;
     const esp_camera_csi_config_t *csi;
-#ifdef CONFIG_DVP_ENABLE
     uint8_t dvp_num;                /*!< Specify the numbers of dvp cameras */
     const esp_camera_dvp_config_t *dvp;
-#endif
     uint8_t sim_num;                /*!< Specify the numbers of simulated cameras */
     const esp_camera_sim_config_t *sim;
 } esp_camera_config_t;

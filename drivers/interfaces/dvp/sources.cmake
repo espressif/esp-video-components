@@ -3,6 +3,7 @@ if(CONFIG_DVP_ENABLE)
     if(EXISTS "${COMPONENT_DIR}/drivers/interfaces/dvp/${IDF_TARGET}/dvp.c")
         list(APPEND srcs "drivers/interfaces/dvp/${IDF_TARGET}/dvp.c")
     endif()
-
-    list(APPEND include_dirs "drivers/interfaces/dvp/include")
 endif()
+
+# Althougth CONFIG_DVP_ENABLE is not select, dvp.h also can be included
+list(APPEND include_dirs "drivers/interfaces/dvp/include")

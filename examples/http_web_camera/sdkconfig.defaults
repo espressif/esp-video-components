@@ -1,0 +1,5 @@
+# This file was generated using idf.py save-defconfig. It can be edited manually.
+# Espressif IoT Development Framework (ESP-IDF)  Project Minimal Configuration
+#
+CONFIG_SPIRAM=y
+CONFIG_ESP_MAIN_TASK_STACK_SIZE=5120

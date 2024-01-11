@@ -251,13 +251,13 @@ struct esp_video *esp_video_open(const char *name)
     }
 
     if (video->ops->init) {
+        /* video device operation "init" sets buffer information and video format */
+
         ret = video->ops->init(video);
         if (ret != ESP_OK) {
             ESP_VIDEO_LOGE("video->ops->init=%x", ret);
             return NULL;
         } else {
-            memset(&video->format, 0, sizeof(struct esp_video_format));
-            memset(&video->buf_info, 0, sizeof(struct esp_video_buffer_info));
             video->buffer = NULL;
         }
     } else {

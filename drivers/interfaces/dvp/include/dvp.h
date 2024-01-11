@@ -23,6 +23,8 @@ extern "C" {
 #define DVP_INTF_DATA_PIN_NUM    8
 #elif CONFIG_DVP_DATA_BUS_WIDTH_16BITS
 #define DVP_INTF_DATA_PIN_NUM    16
+#else
+#define DVP_INTF_DATA_PIN_NUM    16
 #endif
 
 /**
@@ -142,7 +144,7 @@ typedef struct dvp_device_interface_config {
 
     dvp_pin_config_t pin;                       /*!< DVP Pin configuration */
 
-    size_t buffer_max_size;                     /*!< DVP cache buffer maximum size */
+    size_t dma_buffer_max_size;                 /*!< DVP DMA buffer maximum size */
 
     dvp_rx_cb_t rx_cb;                          /*!< DVP receive frame done callback function */
     dvp_free_buf_cb_t free_buf_cb;              /*!< DVP free buffer callback function */
@@ -186,7 +188,8 @@ typedef struct dvp_device {
     size_t lldesc_cnt;                          /*!< DVP cache buffer DMA description count */
     size_t lldesc_hcnt;                         /*!< DVP cache buffer DMA description half count */
     size_t lldesc_index;                        /*!< DVP cache buffer DMA description index */
-    size_t buffer_max_size;                     /*!< DVP cache buffer maximum size */
+
+    size_t dma_buffer_max_size;                 /*!< DVP DMA buffer maximum size */
 
     size_t frame_size;                          /*!< DVP output frame size */
 

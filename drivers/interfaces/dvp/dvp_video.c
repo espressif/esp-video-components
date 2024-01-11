@@ -12,7 +12,7 @@
 #include "esp_video_log.h"
 #include "dvp.h"
 
-#define DVP_BUFFER_SIZE             CONFIG_DVP_MAX_RX_BUF_SIZE
+#define DVP_DMA_BUFFER_SIZE         CONFIG_DVP_DMA_BUFFER_MAX_SIZE
 
 struct dvp_video {
     dvp_device_handle_t handle;
@@ -46,7 +46,36 @@ static void dvp_free_buf_cb(uint8_t *buffer, void *priv)
 
 static esp_err_t dvp_video_init(struct esp_video *video)
 {
-    return ESP_OK;
+    esp_err_t ret;
+    uint32_t frame_size;
+    sensor_format_t sensor_format;
+    struct esp_video_buffer_info *info = &video->buf_info;
+    struct esp_video_format *format = &video->format;
+    struct dvp_video *dvp_video = (struct dvp_video *)video->priv;
+
+    ret = esp_camera_get_format(video->cam_dev, &sensor_format);
+    if (ret != ESP_OK) {
+        return ret;
+    }
+
+    format->fps = sensor_format.fps;
+    format->width = sensor_format.width;
+    format->height = sensor_format.height;
+    format->pixel_format = sensor_format.format;
+    format->pixel_bytes = sensor_format.bpp / 8;
+
+    frame_size = format->width * format->height * format->pixel_bytes;
+
+    ESP_LOGI(TAG, "DVP %s frame size=%" PRIu32, video->dev_name, frame_size);
+
+    ret = dvp_setup_dma_receive_buffer(dvp_video->handle, frame_size);
+    if (ret != ESP_OK) {
+        return ret;
+    }
+
+    ret = dvp_get_frame_buffer_info(dvp_video->handle, &info->size, &info->align_size, &info->caps);
+
+    return ret;
 }
 
 static esp_err_t dvp_video_deinit(struct esp_video *video)
@@ -62,14 +91,17 @@ static esp_err_t dvp_video_start_capture(struct esp_video *video)
     struct esp_video_buffer_info *info = &video->buf_info;
     struct dvp_video *dvp_video = (struct dvp_video *)video->priv;
 
-    buffer = esp_video_alloc_buffer(video);
-    if (!buffer) {
-        return ESP_ERR_NOT_FOUND;
-    }
+    for (int i = 0; i < info->count; i++) {
+        buffer = esp_video_alloc_buffer(video);
+        if (!buffer) {
+            return ESP_ERR_NOT_FOUND;
+        }
 
-    ret = dvp_device_add_buffer(dvp_video->handle, buffer, info->size);
-    if (ret != ESP_OK) {
-        return ret;
+        ret = dvp_device_add_buffer(dvp_video->handle, buffer, info->size);
+        if (ret != ESP_OK) {
+            esp_video_free_buffer(video, buffer);
+            return ret;
+        }
     }
 
     ret = esp_camera_ioctl(video->cam_dev, CAM_SENSOR_IOC_S_STREAM, &flags);
@@ -106,21 +138,9 @@ static esp_err_t dvp_video_stop_capture(struct esp_video *video)
 
 static esp_err_t dvp_video_set_format(struct esp_video *video, const struct esp_video_format *format)
 {
-    esp_err_t ret;
-    struct esp_video_buffer_info *info = &video->buf_info;
-    struct dvp_video *dvp_video = (struct dvp_video *)video->priv;
-    uint32_t frame_size = format->width * format->height * format->pixel_bytes;
-
     /**
      * Todo: AEG-1220
      */
-
-    ret = dvp_setup_dma_receive_buffer(dvp_video->handle, frame_size);
-    if (ret != ESP_OK) {
-        return ret;
-    }
-
-    ret = dvp_get_frame_buffer_info(dvp_video->handle, &info->size, &info->align_size, &info->caps);
 
     return ESP_OK;
 }
@@ -219,7 +239,7 @@ esp_err_t dvp_create_camera_video_device(esp_camera_device_t *cam_dev, uint8_t p
     dvp_cfg.rx_cb = dvp_rx_cb;
     dvp_cfg.priv = video;
     dvp_cfg.free_buf_cb = dvp_free_buf_cb;
-    dvp_cfg.buffer_max_size = DVP_BUFFER_SIZE;
+    dvp_cfg.dma_buffer_max_size = DVP_DMA_BUFFER_SIZE;
     memcpy(&dvp_cfg.pin, pin, sizeof(dvp_pin_config_t));
     ret = dvp_device_create(&dvp_video->handle, &dvp_cfg);
     if (ret != ESP_OK) {
