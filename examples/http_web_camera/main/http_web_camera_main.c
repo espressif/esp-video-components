@@ -19,7 +19,9 @@
 #include "esp_http_server.h"
 #include "protocol_examples_common.h"
 #include "esp_video.h"
+#ifdef CONFIG_ESP_VIDEO_SW_CODEC
 #include "img_converters.h"
+#endif
 
 #define PART_BOUNDARY           "123456789000000000000987654321"
 
@@ -27,7 +29,7 @@ typedef struct web_cam {
     int fd;
     uint32_t width;
     uint32_t height;
-    uint32_t format;
+    uint32_t pixel_format;
     uint8_t *buffer[CONFIG_HTTP_WEB_CAM_FRAME_BUFFER_COUNT];
 } web_cam_t;
 
@@ -193,11 +195,28 @@ static esp_err_t stream_handler(httpd_req_t *req)
 
         res = httpd_resp_send_chunk(req, STREAM_BOUNDARY, strlen(STREAM_BOUNDARY));
         if (res == ESP_OK) {
+            bool tx_valid;
             uint8_t *jpeg_ptr;
             size_t jpeg_size;
 
-            if (fmt2jpg(wc->buffer[buf.index], buf.bytesused, wc->width,
-                        wc->height, PIXFORMAT_RGB565, 12, &jpeg_ptr, &jpeg_size)) {
+            if (wc->pixel_format == V4L2_PIX_FMT_JPEG) {
+                jpeg_ptr = wc->buffer[buf.index];
+                jpeg_size = buf.bytesused;
+                tx_valid = true;
+            }
+#ifdef CONFIG_ESP_VIDEO_SW_CODEC
+            else if (wc->pixel_format == V4L2_PIX_FMT_RGB565) {
+                tx_valid = fmt2jpg(wc->buffer[buf.index], buf.bytesused, wc->width,
+                                   wc->height, PIXFORMAT_RGB565, 12, &jpeg_ptr, &jpeg_size);
+            }
+#endif
+            else {
+                jpeg_ptr = NULL;
+                jpeg_size = 0;
+                tx_valid = false;
+            }
+
+            if (tx_valid) {
                 int hlen;
                 char part_buf[128];
 
@@ -209,7 +228,9 @@ static esp_err_t stream_handler(httpd_req_t *req)
                         size = (int)jpeg_size;
                     }
                 }
+            }
 
+            if (jpeg_ptr != wc->buffer[buf.index]) {
                 free(jpeg_ptr);
             }
         }
@@ -267,7 +288,14 @@ static esp_err_t camera_open(int port, web_cam_t **o_wc)
 
     wc->width = format.fmt.pix.width;
     wc->height = format.fmt.pix.height;
-    wc->format = format.fmt.pix.pixelformat;
+    wc->pixel_format = format.fmt.pix.pixelformat;
+#ifndef CONFIG_ESP_VIDEO_SW_CODEC
+    if (wc->pixel_format != V4L2_PIX_FMT_JPEG) {
+        ESP_LOGE(TAG, "detect camera sensor output frame format is not JPEG, please select option ESP_VIDEO_SW_CODEC enable software JPEG codec");
+        ret = ESP_FAIL;
+        goto errout_get_fmt;
+    }
+#endif
 
     memset(&req, 0, sizeof(req));
     req.count  = ARRAY_SIZE(wc->buffer);

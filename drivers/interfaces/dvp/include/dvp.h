@@ -31,9 +31,8 @@ extern "C" {
  * @brief DVP event type
  */
 typedef enum dvp_int_event_type {
-    DVP_EVENT_VSYNC_START = 0,                  /*!< DVP has received V-Sync start signal, and DVP will start receiving data */
+    DVP_EVENT_VSYNC_END = 0,                    /*!< DVP has received V-Sync end signal, and DVP has received one complete frame */
     DVP_EVENT_DATA_RECVED = 1,                  /*!< DVP has received a block of data, but not completed one frame */
-    DVP_EVENT_VSYNC_END   = 2,                  /*!< DVP has received V-Sync end signal, and DVP has receive one full frame */
 } dvp_int_event_type_t;
 
 /**
@@ -55,6 +54,7 @@ typedef enum dvp_rx_cb_ret {
 typedef enum dvp_rx_ret {
     DVP_RX_SUCCESS  = 0,                        /*!< Successfully to receive one completed frame */
     DVP_RX_OVERFLOW = 1,                        /*!< Error triggers, received data length is larger than given buffer length */
+    DVP_RX_DATALOST = 2,                        /*!< Error triggers, failed to receive one completed frame, some data is lost */
 } dvp_rx_ret_t;
 
 /**
@@ -189,6 +189,7 @@ typedef struct dvp_device {
     size_t lldesc_hcnt;                         /*!< DVP cache buffer DMA description half count */
     size_t lldesc_index;                        /*!< DVP cache buffer DMA description index */
 
+    bool jpeg;                                  /*!< DVP receive frame data format is jpeg */
     size_t dma_buffer_max_size;                 /*!< DVP DMA buffer maximum size */
 
     size_t frame_size;                          /*!< DVP output frame size */
@@ -268,12 +269,13 @@ esp_err_t dvp_device_add_buffer(dvp_device_handle_t handle, uint8_t *buffer, siz
  *
  * @param handle     DVP device handle
  * @param frame_size Frame size
+ * @param jpeg       Frame data format is JPEG
  *
  * @return
  *      - ESP_OK on success
  *      - Others if failed
  */
-esp_err_t dvp_setup_dma_receive_buffer(dvp_device_handle_t handle, uint32_t frame_size);
+esp_err_t dvp_setup_dma_receive_buffer(dvp_device_handle_t handle, uint32_t frame_size, bool jpeg);
 
 /**
  * @brief Setup DMA receive buffer by given parameters.

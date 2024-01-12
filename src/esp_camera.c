@@ -180,7 +180,7 @@ const char *esp_camera_get_name(esp_camera_device_t *dev)
 }
 
 #if CONFIG_MIPI_CSI_ENABLE || CONFIG_DVP_ENABLE
-static esp_err_t esp_camera_init_format(esp_camera_device_t *dev)
+static esp_err_t esp_camera_init_format(esp_camera_device_t *dev, int index)
 {
     esp_err_t ret;
     sensor_format_array_info_t format_arry = {0};
@@ -190,11 +190,13 @@ static esp_err_t esp_camera_init_format(esp_camera_device_t *dev)
         return ret;
     }
 
-    if (format_arry.count < 1) {
+    if (index >= format_arry.count) {
         return ESP_ERR_INVALID_ARG;
     }
 
-    ret = esp_camera_set_format(dev, &format_arry.format_array[0]);
+    ESP_LOGI(TAG, "Format description: %s", format_arry.format_array[index].name);
+
+    ret = esp_camera_set_format(dev, &format_arry.format_array[index]);
 
     return ret;
 }
@@ -248,7 +250,7 @@ esp_err_t esp_camera_init(const esp_camera_config_t *config)
 
             // Avoid compiling warning
             if (cam_dev) {
-                ret = esp_camera_init_format(cam_dev);
+                ret = esp_camera_init_format(cam_dev, 0);
                 if (ret != ESP_OK) {
                     ESP_LOGE(TAG, "failed to initialize sensor format");
                     return ret;
@@ -299,7 +301,7 @@ esp_err_t esp_camera_init(const esp_camera_config_t *config)
 
                 cam_dev = (*(p->fn))((void *)&cfg);
                 if (cam_dev) {
-                    ret = esp_camera_init_format(cam_dev);
+                    ret = esp_camera_init_format(cam_dev, 0);
                     if (ret != ESP_OK) {
                         ESP_LOGE(TAG, "failed to initialize sensor format");
                         return ret;
