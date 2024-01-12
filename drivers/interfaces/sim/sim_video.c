@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2023 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2023-2024 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -30,7 +30,12 @@ static void IRAM_ATTR sim_video_rxcb(void *arg, const uint8_t *buffer, size_t n)
     }
 
     memcpy(video_buffer, buffer, n);
+
+#ifdef CONFIG_ESP_VIDEO_MEDIA_CONTROLLER
+    esp_video_media_recvdone_buffer(video, video_buffer, n, 0);
+#else
     esp_video_recvdone_buffer(video, video_buffer, n, 0);
+#endif
 }
 
 static esp_err_t sim_video_init(struct esp_video *video)

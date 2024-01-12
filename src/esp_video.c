@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2023 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2023-2024 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -33,6 +33,7 @@ struct esp_video *esp_video_device_get_object(const char *name)
 
     _lock_acquire(&s_video_lock);
     SLIST_FOREACH(video, &s_video_list, node) {
+        ESP_VIDEO_LOGI("dev_name=%s", video->dev_name);
         if (!strcmp(video->dev_name, name)) {
             _lock_release(&s_video_lock);
             return video;
@@ -58,7 +59,6 @@ struct esp_video *esp_video_device_get_object(const char *name)
 struct esp_video *esp_video_create(const char *name, esp_camera_device_t *cam_dev,
                                    const struct esp_video_ops *ops, void *priv)
 {
-    esp_err_t ret;
     bool found = false;
     struct esp_video *video;
     uint32_t size;
@@ -127,10 +127,10 @@ struct esp_video *esp_video_create(const char *name, esp_camera_device_t *cam_de
     video->cam_dev  = cam_dev;
     SLIST_INSERT_HEAD(&s_video_list, video, node);
 
-#ifdef CONFIG_ESP_VIDEO_API_LINUX
+#if defined(CONFIG_ESP_VIDEO_API_LINUX) && !defined(CONFIG_ESP_VIDEO_MEDIA_CONTROLLER)
     char vfs_name[8];
 
-    ret = snprintf(vfs_name, sizeof(vfs_name), "video%d", id);
+    esp_err_t ret = snprintf(vfs_name, sizeof(vfs_name), "video%d", id);
     if (ret <= 0) {
         ESP_VIDEO_LOGE("Failed to register video VFS dev");
         goto errout_register_vfs;
@@ -145,12 +145,12 @@ struct esp_video *esp_video_create(const char *name, esp_camera_device_t *cam_de
 
     _lock_release(&s_video_lock);
     return video;
-
-#ifdef CONFIG_ESP_VIDEO_API_LINUX
+#if defined(CONFIG_ESP_VIDEO_API_LINUX) && !defined(CONFIG_ESP_VIDEO_MEDIA_CONTROLLER)
 errout_register_vfs:
     SLIST_REMOVE(&s_video_list, video, esp_video, node);
     heap_caps_free(video);
 #endif
+
 errout_video_exits:
     _lock_release(&s_video_lock);
     return NULL;
@@ -313,15 +313,19 @@ esp_err_t esp_video_close(struct esp_video *video)
                 vSemaphoreDelete(video->done_sem);
                 video->done_sem = NULL;
             }
-#ifndef CONFIG_ESP_VIDEO_MEDIA_CONTROLLER
+
             if (video->buffer) {
                 SLIST_INIT(&video->done_list);
+#ifndef CONFIG_ESP_VIDEO_MEDIA_CONTROLLER
                 esp_video_buffer_destroy(video->buffer);
                 video->buffer = NULL;
-            }
 #else
-            video->buffer = NULL;
+                if (esp_video_device_is_user_node(video)) {
+                    esp_pipeline_destory_video_buffer(esp_pad_get_pipeline(video->priv));
+                    video->buffer = NULL;
+                }
 #endif
+            }
         }
     } else {
         ESP_VIDEO_LOGI("video->ops->deinit=NULL");
@@ -652,7 +656,6 @@ esp_err_t esp_video_setup_buffer(struct esp_video *video, uint32_t count)
 #endif
 
     /* buffer_size is configured when setting format */
-
     info = &video->buf_info;
     if (!info->size || !info->align_size || !info->caps) {
         ESP_VIDEO_LOGE("Failed to check buffer information: size=%" PRIu32 " align=%" PRIu32 " cap=%" PRIx32,
@@ -668,7 +671,15 @@ esp_err_t esp_video_setup_buffer(struct esp_video *video, uint32_t count)
 
     if (video->buffer) {
         SLIST_INIT(&video->done_list);
+#ifndef CONFIG_ESP_VIDEO_MEDIA_CONTROLLER
         esp_video_buffer_destroy(video->buffer);
+        video->buffer = NULL;
+#else
+        if (esp_video_device_is_user_node(video)) {
+            esp_pipeline_destory_video_buffer(esp_pad_get_pipeline(video->priv));
+            video->buffer = NULL;
+        }
+#endif
     }
 
     video->done_sem = xSemaphoreCreateCounting(info->count, 0);
@@ -678,18 +689,15 @@ esp_err_t esp_video_setup_buffer(struct esp_video *video, uint32_t count)
     }
 
 #ifdef CONFIG_ESP_VIDEO_MEDIA_CONTROLLER
-    esp_pipeline_t *pipeline = esp_pad_get_pipeline(esp_entity_get_pad_by_index(video->entity, ESP_PAD_TYPE_SINK, 0));
-
-    if (!esp_pipeline_get_video_buffer(pipeline)) {
-        esp_pipeline_create_video_buffer(pipeline, info->count);
+    esp_pipeline_t *pipeline = NULL;
+    if (esp_video_device_is_user_node(video)) {
+        pipeline = esp_pad_get_pipeline(video->priv);
+        esp_pipeline_create_video_buffer(pipeline);
+        video->buffer = esp_pipeline_get_video_buffer(pipeline);
     }
 
-    video->buffer = esp_pipeline_get_video_buffer(pipeline);
-    ESP_VIDEO_LOGI("%s buffer created %p", video->dev_name, video);
+    ESP_VIDEO_LOGI("%s buffer created %p", video->dev_name, video->buffer);
 #else
-#ifdef CONFIG_ESP_VIDEO_MEDIA_TODO
-    // Todo: AEG-1075
-#endif
     video->buffer = esp_video_buffer_create(info);
 #endif
     if (!video->buffer) {
@@ -900,7 +908,9 @@ void *IRAM_ATTR esp_video_recvdone_buffer(struct esp_video *video, uint8_t *buff
     element->valid_offset = offset;
     esp_video_buffer_element_set_valid_size(element, size);
 #ifdef CONFIG_ESP_VIDEO_MEDIA_CONTROLLER
-    user_node = esp_entity_is_user_node(video->entity);
+    if (!esp_video_device_is_user_node(video)) {
+        user_node = false;
+    }
 #endif
     if (user_node) {
         portENTER_CRITICAL_SAFE(&video->lock);
@@ -1018,4 +1028,441 @@ uint8_t *esp_video_get_buffer_by_offset(struct esp_video *video, uint32_t offset
     struct esp_video_buffer_element *element = esp_video_buffer_get_element_by_offset(video->buffer, offset);
 
     return esp_video_buffer_element_get_buffer(element);
+}
+
+/**
+ * Todo: AEG-1094
+ */
+static const int s_control_id_map_table[][2] = {
+    { V4L2_CID_3A_LOCK, CAM_SENSOR_3A_LOCK },
+    { V4L2_CID_FLASH_LED_MODE, CAM_SENSOR_FLASH_LED }
+};
+
+static const int s_pixel_size_map_table[][2] = {
+    { V4L2_PIX_FMT_RGB565, 2 },
+    { V4L2_PIX_FMT_JPEG, 1 }
+};
+
+static uint32_t get_pixel_size_by_format(uint32_t format)
+{
+    for (int i = 0; i < ARRAY_SIZE(s_pixel_size_map_table); i++) {
+        if (s_pixel_size_map_table[i][0] == format) {
+            return s_pixel_size_map_table[i][1];
+        }
+    }
+
+    return 0;
+}
+
+static esp_err_t v4l2_ext_control_id_map(uint32_t *id)
+{
+    for (int i = 0; i < ARRAY_SIZE(s_control_id_map_table); i++) {
+        if (s_control_id_map_table[i][0] == *id) {
+            *id = s_control_id_map_table[i][1];
+            return ESP_OK;
+        }
+    }
+
+    return ESP_ERR_NOT_FOUND;
+}
+
+static esp_err_t esp_video_ioctl_querycap(struct esp_video *video, struct v4l2_capability *cap)
+{
+    memset(cap, 0, sizeof(struct v4l2_capability));
+
+    strlcpy((char *)cap->driver, video->dev_name, sizeof(cap->driver));
+    cap->capabilities = V4L2_CAP_VIDEO_CAPTURE | V4L2_CAP_STREAMING | V4L2_CAP_READWRITE;
+    // ToDo:
+
+    return ESP_OK;
+}
+
+static esp_err_t esp_video_ioctl_g_fmt(struct esp_video *video, struct v4l2_format *fmt)
+{
+    esp_err_t ret;
+    struct esp_video_format format;
+
+    if (fmt->type != V4L2_BUF_TYPE_VIDEO_CAPTURE) {
+        return ESP_ERR_INVALID_ARG;
+    }
+
+    ret = esp_video_get_format(video, &format);
+    if (ret != ESP_OK) {
+        return ret;
+    }
+
+    memset(&fmt->fmt, 0, sizeof(fmt->fmt));
+    fmt->fmt.pix.width       = format.width;
+    fmt->fmt.pix.height      = format.height;
+    fmt->fmt.pix.pixelformat = format.pixel_format;
+
+    return ret;
+}
+
+static esp_err_t esp_video_ioctl_s_fmt(struct esp_video *video, struct v4l2_format *fmt)
+{
+    esp_err_t ret;
+    struct esp_video_format format;
+    if (fmt->type != V4L2_BUF_TYPE_VIDEO_CAPTURE) {
+        return ESP_ERR_INVALID_ARG;
+    }
+
+    memset(&format, 0, sizeof(struct esp_video_format));
+    format.pixel_bytes = get_pixel_size_by_format(fmt->fmt.pix.pixelformat);
+    if (!format.pixel_bytes) {
+        return ESP_ERR_INVALID_ARG;
+    }
+    format.width        = fmt->fmt.pix.width;
+    format.height       = fmt->fmt.pix.height;
+    format.pixel_format = fmt->fmt.pix.pixelformat;
+    ret = esp_video_set_format(video, &format);
+    if (ret != ESP_OK) {
+        return ret;
+    }
+
+    return ret;
+}
+
+static esp_err_t esp_video_ioctl_try_fmt(struct esp_video *video, struct v4l2_format *fmt)
+{
+    return esp_video_ioctl_s_fmt(video, fmt);
+}
+
+static esp_err_t esp_video_ioctl_streamon(struct esp_video *video, int *arg)
+{
+    esp_err_t ret;
+
+    ret = esp_video_start_capture(video);
+
+    return ret;
+}
+
+static esp_err_t esp_video_ioctl_streamoff(struct esp_video *video, int *arg)
+{
+    esp_err_t ret;
+
+    ret = esp_video_stop_capture(video);
+
+    return ret;
+}
+
+static esp_err_t esp_video_ioctl_reqbufs(struct esp_video *video, struct v4l2_requestbuffers *req_bufs)
+{
+    esp_err_t ret;
+
+    /* Only support memory buffer MMAP mode */
+
+    if (req_bufs->memory != V4L2_MEMORY_MMAP) {
+        return ESP_ERR_INVALID_ARG;
+    }
+
+    /* Only support camera capture */
+
+    if (req_bufs->type != V4L2_BUF_TYPE_VIDEO_CAPTURE) {
+        return ESP_ERR_INVALID_ARG;
+    }
+
+    if (req_bufs->count == 0) {
+        return ESP_ERR_INVALID_ARG;
+    }
+
+    //ToDo:
+
+    ret = esp_video_setup_buffer(video, req_bufs->count);
+
+    return ret;
+}
+
+static esp_err_t esp_video_ioctl_querybuf(struct esp_video *video, struct v4l2_buffer *vbuf)
+{
+    esp_err_t ret;
+    uint32_t count;
+
+    /* Only support memory buffer MMAP mode */
+
+    if (vbuf->memory != V4L2_MEMORY_MMAP) {
+        return ESP_ERR_INVALID_ARG;
+    }
+
+    /* Only support camera capture */
+
+    if (vbuf->type != V4L2_BUF_TYPE_VIDEO_CAPTURE) {
+        return ESP_ERR_INVALID_ARG;
+    }
+
+    ret = esp_video_get_buffer_count(video, &count);
+    if (ret != ESP_OK) {
+        return ret;
+    }
+
+    if (vbuf->index >= count) {
+        return ESP_ERR_INVALID_ARG;
+    }
+
+    ret = esp_video_get_buffer_length(video, vbuf->index, &vbuf->length);
+    if (ret != ESP_OK) {
+        return ret;
+    }
+
+    ret = esp_video_get_buffer_offset(video, vbuf->index, &vbuf->m.offset);
+    if (ret != ESP_OK) {
+        return ret;
+    }
+
+    return ret;
+}
+
+static esp_err_t esp_video_ioctl_mmap(struct esp_video *video, struct esp_video_ioctl_mmap *ioctl_mmap)
+{
+    uint8_t *buffer;
+
+    if (ioctl_mmap->length > video->buf_info.size) {
+        return ESP_ERR_INVALID_ARG;
+    }
+
+    buffer = esp_video_get_buffer_by_offset(video, ioctl_mmap->offset);
+    if (!buffer) {
+        return ESP_ERR_INVALID_ARG;
+    }
+
+    ioctl_mmap->mapped_ptr = buffer;
+
+    return ESP_OK;
+}
+
+static esp_err_t esp_video_ioctl_qbuf(struct esp_video *video, struct v4l2_buffer *vbuf)
+{
+    esp_err_t ret;
+    uint32_t count;
+
+    /* Only support memory buffer MMAP mode */
+
+    if (vbuf->memory != V4L2_MEMORY_MMAP) {
+        return ESP_ERR_INVALID_ARG;
+    }
+
+    /* Only support camera capture */
+
+    if (vbuf->type != V4L2_BUF_TYPE_VIDEO_CAPTURE) {
+        return ESP_ERR_INVALID_ARG;
+    }
+
+    ret = esp_video_get_buffer_count(video, &count);
+    if (ret != ESP_OK) {
+        return ret;
+    }
+
+    if (vbuf->index >= count) {
+        return ESP_ERR_INVALID_ARG;
+    }
+
+    esp_video_free_buffer_index(video, vbuf->index);
+
+    return ESP_OK;
+}
+
+static esp_err_t esp_video_ioctl_dqbuf(struct esp_video *video, struct v4l2_buffer *vbuf)
+{
+    esp_err_t ret;
+    uint32_t count;
+    uint32_t recv_size;
+    uint32_t offset;
+    uint8_t *recv_buf;
+    uint32_t ticks = portMAX_DELAY;
+
+    /* Only support memory buffer MMAP mode */
+
+    if (vbuf->memory != V4L2_MEMORY_MMAP) {
+        return ESP_ERR_INVALID_ARG;
+    }
+
+    /* Only support camera capture */
+
+    if (vbuf->type != V4L2_BUF_TYPE_VIDEO_CAPTURE) {
+        return ESP_ERR_INVALID_ARG;
+    }
+
+    ret = esp_video_get_buffer_count(video, &count);
+    if (ret != ESP_OK) {
+        return ret;
+    }
+
+    if (vbuf->index >= count) {
+        return ESP_ERR_INVALID_ARG;
+    }
+
+    recv_buf = esp_video_recv_buffer(video, &recv_size, &offset, ticks);
+    if (!recv_buf) {
+        return ESP_FAIL;
+    }
+
+    vbuf->index     = esp_video_get_buffer_index(video, recv_buf);
+    vbuf->bytesused = recv_size;
+    vbuf->m.offset = offset;
+
+    return ESP_OK;
+}
+
+static esp_err_t esp_video_ioctl_s_param(struct esp_video *video, struct v4l2_streamparm *param)
+{
+    esp_err_t ret;
+    struct esp_video_format format;
+
+    if (param->parm.capture.timeperframe.numerator != 1) {
+        return ESP_ERR_INVALID_ARG;
+    }
+
+    ret = esp_video_get_format(video, &format);
+    if (ret != ESP_OK) {
+        return ret;
+    }
+
+    format.fps = param->parm.capture.timeperframe.denominator;
+    ret = esp_video_set_format(video, &format);
+    if (ret != ESP_OK) {
+        return ret;
+    }
+
+    return ret;
+}
+
+static esp_err_t esp_video_ioctl_op_ext_ctrls(struct esp_video *video, struct v4l2_ext_controls *controls, bool set)
+{
+    esp_err_t ret = ESP_ERR_INVALID_ARG;
+    esp_camera_device_t *cam_dev = video->cam_dev;
+    //ToDo:
+    for (int i = 0; i < controls->count; i++) {
+        struct v4l2_ext_control *ctrl = &controls->controls[i];
+
+        if (controls->ctrl_class == V4L2_CTRL_CLASS_PRIV) {
+            if (set) {
+                ret = esp_camera_set_para_value(cam_dev, ctrl);
+            } else {
+                ret = esp_camera_get_para_value(cam_dev, ctrl);
+            }
+        } else {
+            uint32_t ctrl_id = ctrl->id;
+            uint32_t new_id = ctrl_id;
+
+            ret = v4l2_ext_control_id_map(&new_id);
+            if (ret != ESP_OK) {
+                break;
+            }
+
+            ctrl->id = new_id;
+            if (set) {
+                ret = esp_camera_set_para_value(cam_dev, ctrl);
+            } else {
+                ret = esp_camera_get_para_value(cam_dev, ctrl);
+            }
+            ctrl->id = ctrl_id;
+
+            if (ret != ESP_OK) {
+                break;
+            }
+        }
+    }
+
+    return ret;
+}
+
+/**
+ * Todo: AEG-1095
+ */
+static esp_err_t esp_video_ioctl_query_ext_ctrls(struct esp_video *video, struct v4l2_query_ext_ctrl *qc)
+{
+    esp_err_t ret;
+    esp_camera_device_t *cam_dev = video->cam_dev;
+    //ToDo:
+    if (V4L2_CTRL_ID2CLASS(qc->id) == V4L2_CTRL_CLASS_PRIV) {
+        ret = esp_camera_query_para_desc(cam_dev, qc);
+    } else {
+        uint32_t qc_id = qc->id;
+        uint32_t new_id = qc_id;
+
+        ret = v4l2_ext_control_id_map(&new_id);
+        if (ret != ESP_OK) {
+            goto exit;
+        }
+
+        qc->id = new_id;
+        ret = esp_camera_query_para_desc(cam_dev, qc);
+        qc->id = qc_id;
+
+        if (ret != ESP_OK) {
+            goto exit;
+        }
+    }
+
+exit:
+
+    return ret;
+}
+
+esp_err_t esp_video_ioctl(struct esp_video *video, int cmd, va_list args)
+{
+    esp_err_t ret = ESP_OK;
+    void *arg_ptr;
+
+    assert(video);
+
+    arg_ptr = va_arg(args, void *);
+    if (!arg_ptr) {
+        return ESP_ERR_INVALID_ARG;
+    }
+
+    switch (cmd) {
+    case VIDIOC_QBUF:
+        ret = esp_video_ioctl_qbuf(video, (struct v4l2_buffer *)arg_ptr);
+        break;
+    case VIDIOC_DQBUF:
+        ret = esp_video_ioctl_dqbuf(video, (struct v4l2_buffer *)arg_ptr);
+        break;
+    case VIDIOC_QUERYCAP:
+        ret = esp_video_ioctl_querycap(video, (struct v4l2_capability *)arg_ptr);
+        break;
+    case VIDIOC_G_FMT:
+        ret = esp_video_ioctl_g_fmt(video, (struct v4l2_format *)arg_ptr);
+        break;
+    case VIDIOC_S_FMT:
+        ret = esp_video_ioctl_s_fmt(video, (struct v4l2_format *)arg_ptr);
+        break;
+    case VIDIOC_TRY_FMT:
+        ret = esp_video_ioctl_try_fmt(video, (struct v4l2_format *)arg_ptr);
+        break;
+    case VIDIOC_STREAMON:
+        ret = esp_video_ioctl_streamon(video, (int *)arg_ptr);
+        break;
+    case VIDIOC_STREAMOFF:
+        ret = esp_video_ioctl_streamoff(video, (int *)arg_ptr);
+        break;
+    case VIDIOC_REQBUFS:
+        ret = esp_video_ioctl_reqbufs(video, (struct v4l2_requestbuffers *)arg_ptr);
+        break;
+    case VIDIOC_QUERYBUF:
+        ret = esp_video_ioctl_querybuf(video, (struct v4l2_buffer *)arg_ptr);
+        break;
+    case VIDIOC_S_PARM:
+        ret = esp_video_ioctl_s_param(video, (struct v4l2_streamparm *)arg_ptr);
+        break;
+    case VIDIOC_MMAP:
+        ret = esp_video_ioctl_mmap(video, (struct esp_video_ioctl_mmap *)arg_ptr);
+        break;
+    case VIDIOC_G_EXT_CTRLS:
+        ret = esp_video_ioctl_op_ext_ctrls(video, (struct v4l2_ext_controls *)arg_ptr, false);
+        break;
+    case VIDIOC_S_EXT_CTRLS:
+        ret = esp_video_ioctl_op_ext_ctrls(video, (struct v4l2_ext_controls *)arg_ptr, true);
+        break;
+    case VIDIOC_QUERY_EXT_CTRL:
+        ret = esp_video_ioctl_query_ext_ctrls(video, (struct v4l2_query_ext_ctrl *)arg_ptr);
+        break;
+    case VIDIOC_ENUM_FMT:
+    case VIDIOC_ENUM_FRAMESIZES:
+    default:
+        ret = ESP_ERR_INVALID_ARG;
+        break;
+    }
+
+    return ret;
 }

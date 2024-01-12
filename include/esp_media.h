@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2023 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2023-2024 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -182,14 +182,11 @@ esp_err_t esp_entity_pad_bridge(esp_pad_t *source, esp_pad_t *sink);
 /**
  * @brief Create a pipeline.
  *
- * @param vb_num the number of the video buffers
- * @param vb_size the size of a video buffer
- *
  * @return
  *      - Pipeline object pointer if successful
  *      - NULL if failed
  */
-esp_pipeline_t *esp_pipeline_create(int vb_num, int vb_size);
+esp_pipeline_t *esp_pipeline_create(void);
 
 /**
  * @brief register APIs for an entity.
@@ -204,15 +201,15 @@ esp_pipeline_t *esp_pipeline_create(int vb_num, int vb_size);
 esp_err_t esp_entity_register_ops(esp_entity_t *entity, esp_entity_ops_t *ops);
 
 /**
- * @brief Check the entity whether it is an end node, which means if it is an user node.
+ * @brief Check the video device whether it is an end node, which means if it is an user node.
  *
- * @param entity the entity to check
+ * @param video the video device
  *
  * @return
  *      - True if the entity is an user node
  *      - False if the entity is not an user node
  */
-bool esp_entity_is_user_node(esp_entity_t *entity);
+bool esp_video_device_is_user_node(struct esp_video *video);
 
 /**
  * @brief Get the video device pointer of the entity.
@@ -253,13 +250,23 @@ esp_pad_t *esp_pipeline_get_entry_entity(esp_pipeline_t *pipeline);
  * @brief Create a video buffer for the pipeline
  *
  * @param pipeline Create the video buffer for this pipeline
- * @param count  the count of video buffer
  *
  * @return
  *      - ESP_OK if successful
  *      - Others if failed
  */
-esp_err_t esp_pipeline_create_video_buffer(esp_pipeline_t *pipeline, int count);
+esp_err_t esp_pipeline_create_video_buffer(esp_pipeline_t *pipeline);
+
+/**
+ * @brief Destory the pipeline video buffer
+ *
+ * @param pipeline the pipeline to be destoryed video buffer
+ *
+ * @return
+ *      - ESP_OK if successful
+ *      - Others if failed
+ */
+esp_err_t esp_pipeline_destory_video_buffer(esp_pipeline_t *pipeline);
 
 /**
  * @brief alloc a video buffer element from the video buffer pool of a pipeline.
@@ -287,13 +294,14 @@ struct esp_video_buffer *esp_pipeline_get_video_buffer(esp_pipeline_t *pipeline)
  * @brief Get the pad of the entity in a pipeline.
  *
  * @param pipeline the pipeline which the pad is located in
- * @param entity the entity which the pad is located in
+ * @param entity   the entity which the pad is located in
+ * @param type     the pad type
  *
  * @return
  *      - the pad pointer if successful
  *      - NULL if failed
  */
-esp_pad_t *esp_pipeline_get_pad_by_entity(esp_pipeline_t *pipeline, esp_entity_t *entity);
+esp_pad_t *esp_pipeline_get_pad_by_entity(esp_pipeline_t *pipeline, esp_entity_t *entity, esp_pad_type_t type);
 
 /**
  * @brief Remove the pipeline from it's media and delete it.
@@ -383,6 +391,30 @@ esp_err_t esp_media_event_post(esp_media_event_t *event, TickType_t timeout);
  *      - others if failed
  */
 esp_err_t esp_media_start(void);
+
+/**
+ * @brief media device ioctl.
+ *
+ * @param video video object
+ * @param cmd ioctl cmd which is defined in include/linux/videodev2.h
+ * @param args the args list of the ioctl cmd
+ *
+ * @return
+ *      - ESP_OK on success
+ *      - Others if failed
+ */
+esp_err_t esp_video_media_ioctl(struct esp_video *video, int cmd, va_list args);
+
+/**
+ * @brief Process a video buffer which receives data done.
+ *
+ * @param video  Video object
+ * @param buffer Video buffer allocated by "esp_video_alloc_buffer"
+ * @param size   Actual received data size
+ *
+ * @return None
+ */
+void esp_video_media_recvdone_buffer(struct esp_video *video, void *buffer, size_t size, uint32_t  offset);
 
 #ifdef __cplusplus
 }

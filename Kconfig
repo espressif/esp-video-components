@@ -29,10 +29,6 @@ menu "Espressif Video Configuration"
         string "Configuration file for media pileline"
         default "configs/default.json"
         depends on ESP_VIDEO_MEDIA_CONTROLLER
-    
-    config ESP_VIDEO_MEDIA_TODO
-        bool "Todo Macro, will be removed in the next MR"
-        default y
 
     menuconfig ESP_VIDEO_LOG
         bool "Enable Video Log"

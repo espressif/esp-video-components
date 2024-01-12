@@ -16,10 +16,4 @@ menu "ISP configuration"
             Select the color filters used on the camera sensor.
             00 : BG/GR    01 : GB/RG   10 : GR/BG  11 : RG/GB.
 
-    config CAM_ISP_GLOABL_ENABLE
-        bool "ISP global enable"
-        default y
-        help
-            It enables ISP module for MIPI&DVP camera sensor.
-
 endmenu
