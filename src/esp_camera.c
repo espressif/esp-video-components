@@ -19,6 +19,10 @@
 #include "dvp_video.h"
 #endif
 
+#ifdef CONFIG_MIPI_CSI_ENABLE
+#include "mipi_csi_video.h"
+#endif
+
 #ifdef CONFIG_SIMULATED_INTF
 #include "sim_video.h"
 #endif
@@ -249,6 +253,15 @@ esp_err_t esp_camera_init(const esp_camera_config_t *config)
                     ESP_LOGE(TAG, "failed to initialize sensor format");
                     return ret;
                 }
+
+                ret = csi_create_camera_video_device(cam_dev);
+                if (ret != ESP_OK) {
+                    ESP_LOGE(TAG, "failed to create MIPI-CSI video device");
+                    return ret;
+                }
+            } else {
+                ESP_LOGE(TAG, "failed to detect MIPI-CSI camera");
+                return ESP_FAIL;
             }
         }
 #endif

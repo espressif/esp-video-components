@@ -50,11 +50,11 @@ struct esp_video_capability {
  * @brief Video format object.
  */
 struct esp_video_format {
-    uint32_t width;
-    uint32_t height;
-    uint32_t pixel_format;
-    uint32_t pixel_bytes;
-    uint32_t fps;
+    uint32_t width;                         /*!< Video frame width */
+    uint32_t height;                        /*!< Video frame height */
+    uint32_t pixel_format;                  /*!< Video frame pixel format */
+    uint8_t bpp;                            /*!< Video frame bytes per pixel */
+    uint32_t fps;                           /*!< Video outputting frames per second */
 };
 
 /**

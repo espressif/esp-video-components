@@ -30,9 +30,9 @@ typedef struct {
     uint8_t lanes_num;
     uint32_t frame_width;
     uint32_t frame_height;
-    uint32_t in_bits_per_pixel;
+    uint32_t in_bpp;
     int mipi_clk;
-    uint32_t out_bits_per_pixel;
+    uint32_t out_bpp;
     size_t vc_channel_num;
     uint32_t dma_req_interval;
 } mipi_csi_hal_config_t;

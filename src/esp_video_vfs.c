@@ -18,15 +18,9 @@
 #include "esp_vfs_dev.h"
 #include "esp_video_vfs.h"
 #include "esp_video_log.h"
-#ifdef CONFIG_MIPI_CSI_ENABLE
-#include "mipi_csi.h"
-#endif
+#include "esp_color_formats.h"
 
 static const char *TAG = "esp_video_vfs";
-
-#ifdef CONFIG_MIPI_CSI_ENABLE
-esp_mipi_csi_handle_t csi_test_handle;
-#endif
 
 static int esp_video_vfs_open(void *ctx, const char *path, int flags, int mode)
 {

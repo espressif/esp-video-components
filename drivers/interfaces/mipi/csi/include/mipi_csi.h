@@ -53,8 +53,8 @@ typedef struct {
     int mipi_clk;                       /*!< Frequency of MIPI CSI data clk, in Hz. CSI-Host <-> ISP <-> CSI-Bridge*/
     size_t frame_width;
     size_t frame_height;
-    uint32_t in_bits_per_pixel;
-    uint32_t out_bits_per_pixel;
+    uint32_t in_bpp;
+    uint32_t out_bpp;
     size_t vc_channel_num;
     uint32_t dma_req_interval;
     void *reserverd;
@@ -69,10 +69,10 @@ typedef struct {
     uint16_t height;                  /*!< Frame height, in bytes */
     uint32_t fb_size;                 /*!< Frame buffer size, in bytes */
 
-    pixformat_t in_type;              /*!< Format of esp32 received data from the sensor */
-    uint32_t in_type_bits_per_pixel;
-    pixformat_t out_type;             /*!< Format of esp32 bridge output data */
-    uint32_t out_type_bits_per_pixel;
+    pixformat_t in_format;            /*!< Format of esp32 received data from the sensor */
+    uint32_t in_bpp;
+    pixformat_t out_format;           /*!< Format of esp32 bridge output data */
+    uint32_t out_bpp;
     bool cam_isp_en;
 } mipi_csi_driv_config_t;
 
@@ -137,8 +137,9 @@ esp_err_t esp_mipi_csi_stop(esp_mipi_csi_handle_t handle);
 
 /*The callback function when allocating buffer and when receiving data.*/
 typedef struct {
-    uint8_t *(*alloc_buffer)(uint32_t len); // Callback function when allocating buffer
-    esp_err_t(*recved_data)(uint8_t *buffer, uint32_t offset, uint32_t len); // The callback function when filling the buffer with image data.
+    uint8_t *(*alloc_buffer)(uint32_t len, void *priv); // Callback function when allocating buffer
+    esp_err_t(*recved_data)(uint8_t *buffer, uint32_t offset, uint32_t len, void *priv); // The callback function when filling the buffer with image data.
+    void *priv;
 } esp_mipi_csi_ops_t;
 
 /**

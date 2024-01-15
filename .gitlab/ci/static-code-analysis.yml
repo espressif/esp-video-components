@@ -15,7 +15,7 @@ clang_tidy_check:
     IDF_TOOLCHAIN: clang
   script:
     - mkdir clang_tidy_reports
-    - idf.py set-target esp32s3 clang-check -C examples/mipi_csi_basic
+    - idf.py set-target esp32s3 clang-check -C examples/video_basic
       --include-paths src
       --include-paths drivers
-    - cp examples/mipi_csi_basic/warnings.txt clang_tidy_reports/
+    - cp examples/video_basic/warnings.txt clang_tidy_reports/

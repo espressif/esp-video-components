@@ -109,7 +109,7 @@ static void test_video_basic_operation_task(void *p)
     fmt.width = VIDEO_CAM_WIDTH;
     fmt.height = VIDEO_CAM_HEIGHT;
     fmt.pixel_format = V4L2_PIX_FMT_JPEG;
-    fmt.pixel_bytes = VIDEO_CAM_PIXEL_SIZE;
+    fmt.bpp = VIDEO_CAM_PIXEL_SIZE * 8;
     TEST_ESP_OK(esp_video_set_format(video, &fmt));
     memset(&fmt, 0, sizeof(fmt));
     TEST_ESP_OK(esp_video_get_format(video, &fmt));

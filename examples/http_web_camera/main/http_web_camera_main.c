@@ -6,9 +6,6 @@
 
 #include <string.h>
 #include <fcntl.h>
-#include <unistd.h>
-#include <sys/types.h>
-#include <sys/stat.h>
 #include <sys/ioctl.h>
 #include <sys/mman.h>
 #include "linux/videodev2.h"
@@ -218,7 +215,7 @@ static esp_err_t stream_handler(httpd_req_t *req)
         }
 
         if (ioctl(wc->fd, VIDIOC_QBUF, &buf) != 0) {
-            ESP_LOGE(TAG, "failed to free camera frame");
+            ESP_LOGE(TAG, "failed to free video frame");
         }
 
         if (res == ESP_OK) {
@@ -257,7 +254,7 @@ static esp_err_t camera_open(int port, web_cam_t **o_wc)
     }
 
     wc->fd = open(name, O_RDONLY);
-    if (!wc->fd) {
+    if (wc->fd < 0) {
         ret = ESP_ERR_NOT_FOUND;
         goto errout_open_dev;
     }
@@ -265,7 +262,7 @@ static esp_err_t camera_open(int port, web_cam_t **o_wc)
     format.type = type;
     if (ioctl(wc->fd, VIDIOC_G_FMT, &format) != 0) {
         ret = ESP_FAIL;
-        goto errout_set_fmt;
+        goto errout_get_fmt;
     }
 
     wc->width = format.fmt.pix.width;
@@ -278,7 +275,7 @@ static esp_err_t camera_open(int port, web_cam_t **o_wc)
     req.memory = V4L2_MEMORY_MMAP;
     if (ioctl(wc->fd, VIDIOC_REQBUFS, &req) != 0) {
         ret = ESP_FAIL;
-        goto errout_set_fmt;
+        goto errout_get_fmt;
     }
 
     for (int i = 0; i < ARRAY_SIZE(wc->buffer); i++) {
@@ -290,14 +287,14 @@ static esp_err_t camera_open(int port, web_cam_t **o_wc)
         buf.index       = i;
         if (ioctl(wc->fd, VIDIOC_QUERYBUF, &buf) != 0) {
             ret = ESP_FAIL;
-            goto errout_set_fmt;
+            goto errout_get_fmt;
         }
 
         wc->buffer[i] = (uint8_t *)mmap(NULL, buf.length, PROT_READ | PROT_WRITE,
                                         MAP_SHARED, wc->fd, buf.m.offset);
         if (!wc->buffer[i]) {
             ret = ESP_FAIL;
-            goto errout_set_fmt;
+            goto errout_get_fmt;
         }
     }
 
@@ -305,7 +302,7 @@ static esp_err_t camera_open(int port, web_cam_t **o_wc)
 
     return ESP_OK;
 
-errout_set_fmt:
+errout_get_fmt:
     close(wc->fd);
 errout_open_dev:
     free(wc);
