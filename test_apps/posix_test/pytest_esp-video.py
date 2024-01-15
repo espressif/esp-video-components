@@ -6,10 +6,10 @@ Steps to run these cases:
 - Build
   - . ${IDF_PATH}/export.sh
   - pip install idf_build_apps==1.1.4
-  - python tools/build_apps.py test_apps -t esp32s3
+  - python tools/build_apps.py test_apps/posix_test -t esp32s3
 - Test
   - pip install -r tools/requirements/requirement.pytest.txt
-  - pytest test_apps --target esp32s3
+  - pytest test_apps/posix_test --target esp32s3
 '''
 
 import pytest

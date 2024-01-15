@@ -37,12 +37,12 @@ variables:
     - pip install -r tools/requirements/requirement.pytest.txt
     - pytest ${TEST_FOLDER} --target ${TEST_TARGET} --env ${TEST_ENV} --junitxml=XUNIT_RESULT.xml
 
-test_apps:
+test_apps_posix_test:
   extends:
     - .pytest_template
     - .rules:build:test_apps
   needs:
-    - job: "build_test_apps_esp32s3"
+    - job: "build_test_apps_posix_test_esp32s3"
       artifacts: true
       optional: true
   retry:

@@ -82,7 +82,7 @@ build_test:
     EXAMPLE_TARGET: esp32p4
     EXAMPLE_DIR: test
 
-build_test_apps_esp32s3:
+build_test_apps_posix_test_esp32s3:
   extends:
     - .build_examples_template
     - .rules:build:test_apps
@@ -94,9 +94,9 @@ build_test_apps_esp32s3:
       - IMAGE: espressif/idf:latest
   variables:
     EXAMPLE_TARGET: esp32s3
-    EXAMPLE_DIR: test_apps
+    EXAMPLE_DIR: test_apps/posix_test
 
-build_test_apps_esp32p4:
+build_test_apps_posix_test_esp32p4:
   extends:
     - .build_examples_template
     - .rules:build:test_apps
@@ -105,4 +105,4 @@ build_test_apps_esp32p4:
       - IMAGE: espressif/idf:latest
   variables:
     EXAMPLE_TARGET: esp32p4
-    EXAMPLE_DIR: test_apps
+    EXAMPLE_DIR: test_apps/posix_test
