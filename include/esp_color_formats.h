@@ -43,7 +43,7 @@ typedef enum color_encoding {
  *
  * @param format Video data format
  *
- * @return Byte per pixel of format
+ * @return bits per pixel of format
  */
 uint8_t esp_video_get_bpp_by_format(uint32_t format);
 
