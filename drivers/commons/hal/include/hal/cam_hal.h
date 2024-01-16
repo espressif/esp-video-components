@@ -10,16 +10,16 @@
 #include "esp_err.h"
 #include "esp_intr_alloc.h"
 #include "rom/lldesc.h"
-#ifdef CONFIG_IDF_TARGET_ESP32
+#if CONFIG_IDF_TARGET_ESP32 || CONFIG_IDF_TARGET_ESP32S2
 #include "hal/i2s_ll.h"
-#elif CONFIG_IDF_TARGET_ESP32S3
+#elif CONFIG_IDF_TARGET_ESP32S3 || CONFIG_IDF_TARGET_ESP32P4
 #include "hal/cam_ll.h"
 #endif
 
-#ifdef CONFIG_IDF_TARGET_ESP32
+#if CONFIG_IDF_TARGET_ESP32 || CONFIG_IDF_TARGET_ESP32S2
 typedef i2s_dev_t cam_dev_t;
 #define CAM_RX_INT_MASK I2S_LL_RX_EVENT_MASK
-#elif CONFIG_IDF_TARGET_ESP32S3
+#elif CONFIG_IDF_TARGET_ESP32S3 || CONFIG_IDF_TARGET_ESP32P4
 typedef lcd_cam_dev_t cam_dev_t;
 #define CAM_RX_INT_MASK BIT(2)
 #else
@@ -30,7 +30,7 @@ typedef void *cam_dev_t;
 extern "C" {
 #endif
 
-#if CONFIG_IDF_TARGET_ESP32S3
+#if CONFIG_IDF_TARGET_ESP32S3 || CONFIG_IDF_TARGET_ESP32P4
 typedef enum {
     YUV422_TO_YUV420 = 1,
     YUV422_TO_RGB565,
@@ -48,7 +48,7 @@ typedef struct cam_conv_config_t {
  */
 typedef struct cam_hal_cfg {
     uint8_t cam_port;                        /*!< CAM port. */
-#if CONFIG_IDF_TARGET_ESP32S3
+#if CONFIG_IDF_TARGET_ESP32S3 || CONFIG_IDF_TARGET_ESP32P4
     uint32_t xclk_freq;                      /*!< CAM output xclk freq. */
     cam_conv_config_t conv_config;                      /*!< CAM output conversion mode. */
 #endif
@@ -148,7 +148,7 @@ void cam_hal_clear_int_status(cam_hal_context_t *hal, uint32_t status);
  */
 uint32_t cam_hal_dma_align_size(cam_hal_context_t *hal);
 
-#if CONFIG_IDF_TARGET_ESP32S3
+#if CONFIG_IDF_TARGET_ESP32S3 || CONFIG_IDF_TARGET_ESP32P4
 /**
  * @brief Configure the CAM module to generate the specified XCLK clock
  *
@@ -171,7 +171,7 @@ int cam_hal_config_xclk(cam_hal_context_t *hal, uint32_t xclk_freq);
  * @return 0 if the configuration was successful, non-zero if not.
  */
 int cam_hal_set_conv_mode(cam_hal_context_t *hal, cam_conv_mode_t mode);
-#endif // CONFIG_IDF_TARGET_ESP32S3
+#endif // CONFIG_IDF_TARGET_ESP32S3 || CONFIG_IDF_TARGET_ESP32P4
 
 #ifdef __cplusplus
 }

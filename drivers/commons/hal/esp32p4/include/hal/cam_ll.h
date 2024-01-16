@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2023 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2023-2024 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -62,14 +62,29 @@ static inline void cam_ll_reset_register(int group_id)
  * @param dev CAM register base address
  * @param en True to enable, False to disable
  */
-static inline void cam_ll_enable_clock(lcd_cam_dev_t *dev, bool en)
+static inline void cam_ll_enable_clk(lcd_cam_dev_t *dev, bool en)
 {
-    HP_SYS_CLKRST.peri_clk_ctrl19.reg_cam_clk_en = en;
+    HP_SYS_CLKRST.peri_clk_ctrl119.reg_cam_clk_en = en;
 }
 
 /// use a macro to wrap the function, force the caller to use it in a critical section
 /// the critical section needs to declare the __DECLARE_RCC_ATOMIC_ENV variable in advance
-#define cam_ll_enable_clock(...) (void)__DECLARE_RCC_ATOMIC_ENV; cam_ll_enable_clock(__VA_ARGS__)
+#define cam_ll_enable_clk(...) (void)__DECLARE_RCC_ATOMIC_ENV; cam_ll_enable_clk(__VA_ARGS__)
+
+/**
+ * @brief Get the clock status for the CAM module
+ *
+ * @return True when enabled, false when disabled
+ */
+static inline bool cam_ll_get_clk_status(int group_id)
+{
+    (void)group_id;
+    return HP_SYS_CLKRST.peri_clk_ctrl119.reg_cam_clk_en;
+}
+
+/// use a macro to wrap the function, force the caller to use it in a critical section
+/// the critical section needs to declare the __DECLARE_RCC_ATOMIC_ENV variable in advance
+#define cam_ll_get_clk_status(...) (void)__DECLARE_RCC_ATOMIC_ENV; cam_ll_get_clk_status(__VA_ARGS__)
 
 /**
  * @brief Select clock source for CAM peripheral
@@ -81,17 +96,17 @@ static inline void cam_ll_select_clk_src(lcd_cam_dev_t *dev, cam_clock_source_t 
 {
     switch (src) {
     case CAM_CLK_SRC_XTAL:
-        HP_SYS_CLKRST.peri_clk_ctrl19.reg_cam_clk_src_sel = 0;
+        HP_SYS_CLKRST.peri_clk_ctrl119.reg_cam_clk_src_sel = 0;
         break;
     case CAM_CLK_SRC_PLL160M:
-        HP_SYS_CLKRST.peri_clk_ctrl19.reg_cam_clk_src_sel = 1;
+        HP_SYS_CLKRST.peri_clk_ctrl119.reg_cam_clk_src_sel = 1;
         break;
     case CAM_CLK_SRC_APLL:
-        HP_SYS_CLKRST.peri_clk_ctrl19.reg_cam_clk_src_sel = 2;
+        HP_SYS_CLKRST.peri_clk_ctrl119.reg_cam_clk_src_sel = 2;
         break;
     default:
         // disable the clock
-        HP_SYS_CLKRST.peri_clk_ctrl19.reg_cam_clk_src_sel = 3;
+        HP_SYS_CLKRST.peri_clk_ctrl119.reg_cam_clk_src_sel = 3;
         break;
     }
 }
@@ -99,6 +114,30 @@ static inline void cam_ll_select_clk_src(lcd_cam_dev_t *dev, cam_clock_source_t 
 /// use a macro to wrap the function, force the caller to use it in a critical section
 /// the critical section needs to declare the __DECLARE_RCC_ATOMIC_ENV variable in advance
 #define cam_ll_select_clk_src(...) (void)__DECLARE_RCC_ATOMIC_ENV; cam_ll_select_clk_src(__VA_ARGS__)
+
+/**
+ * @brief  Get the CAM source clock type
+ *
+ * @param dev CAM register base address
+ * @param src The pointer to accept the CAM source clock type
+ */
+static inline void cam_ll_get_clk_src(lcd_cam_dev_t *dev, cam_clock_source_t *src)
+{
+    switch (HP_SYS_CLKRST.peri_clk_ctrl119.reg_cam_clk_src_sel) {
+    case 0:
+        *src = CAM_CLK_SRC_XTAL;
+        break;
+    case 1:
+        *src = CAM_CLK_SRC_PLL160M;
+        break;
+    case 2:
+        *src = CAM_CLK_SRC_APLL;
+        break;
+    default:
+        HAL_ASSERT(false);
+        break;
+    }
+}
 
 /**
  * @brief Set clock coefficient of CAM peripheral
@@ -117,9 +156,9 @@ static inline void cam_ll_set_group_clock_coeff(lcd_cam_dev_t *dev, int div_num,
     if (div_num >= CAM_LL_CLK_FRAC_DIV_N_MAX) {
         div_num = 0;
     }
-    HAL_FORCE_MODIFY_U32_REG_FIELD(HP_SYS_CLKRST.peri_clk_ctrl110, reg_cam_clk_div_num, div_num);
-    HAL_FORCE_MODIFY_U32_REG_FIELD(HP_SYS_CLKRST.peri_clk_ctrl110, reg_cam_clk_div_denominator, div_a);
-    HAL_FORCE_MODIFY_U32_REG_FIELD(HP_SYS_CLKRST.peri_clk_ctrl110, reg_cam_clk_div_numerator, div_b);
+    HAL_FORCE_MODIFY_U32_REG_FIELD(HP_SYS_CLKRST.peri_clk_ctrl120, reg_cam_clk_div_num, div_num);
+    HAL_FORCE_MODIFY_U32_REG_FIELD(HP_SYS_CLKRST.peri_clk_ctrl120, reg_cam_clk_div_denominator, div_a);
+    HAL_FORCE_MODIFY_U32_REG_FIELD(HP_SYS_CLKRST.peri_clk_ctrl120, reg_cam_clk_div_numerator, div_b);
 }
 
 /// use a macro to wrap the function, force the caller to use it in a critical section
@@ -189,7 +228,7 @@ static inline void cam_ll_enable_8bits_data_invert(lcd_cam_dev_t *dev, bool en)
  */
 static inline void cam_ll_enable_rgb_yuv_convert(lcd_cam_dev_t *dev, bool en)
 {
-    dev->cam_rgb_yuv.cam_conv_bypass = en;
+    dev->cam_rgb_yuv.cam_conv_enable = en;
 }
 
 /**
@@ -353,7 +392,7 @@ static inline void cam_ll_set_rec_data_bytelen(lcd_cam_dev_t *dev, uint32_t leng
  * @brief Set line number to trigger interrupt
  *
  * @param dev CAM register base address
- * @param number line number to trigger interrupt, range [0, 0x3F]
+ * @param number line number to trigger hs interrupt, range [0, 0x3F]
  */
 static inline void cam_ll_set_line_int_num(lcd_cam_dev_t *dev, uint32_t number)
 {
@@ -366,7 +405,7 @@ static inline void cam_ll_set_line_int_num(lcd_cam_dev_t *dev, uint32_t number)
  * @param dev CAM register base address
  * @param en True to invert, False to not invert
  */
-static inline void cam_ll_enable_invert_clk(lcd_cam_dev_t *dev, bool en)
+static inline void cam_ll_enable_invert_pclk(lcd_cam_dev_t *dev, bool en)
 {
     dev->cam_ctrl1.cam_clk_inv = en;
 }
@@ -383,12 +422,12 @@ static inline void cam_ll_enable_vsync_filter(lcd_cam_dev_t *dev, bool en)
 }
 
 /**
- * @brief Set data read stride, i.e., number of bytes the CAM reads from the DMA in each step
+ * @brief Set CAM input data width
  *
  * @param dev CAM register base address
- * @param stride data stride size
+ * @param stride 16: The bit number of input data is 9~16.  8: The bit number of input data is 0~8.
  */
-static inline void cam_ll_set_dma_read_stride(lcd_cam_dev_t *dev, uint32_t stride)
+static inline void cam_ll_set_input_data_width(lcd_cam_dev_t *dev, uint32_t stride)
 {
     switch (stride) {
     case 8:
@@ -440,11 +479,24 @@ static inline void cam_ll_enable_invert_vsync(lcd_cam_dev_t *dev, bool en)
  * @brief Set the mode to control the input control signals
  *
  * @param dev CAM register base address
- * @param mode 1: Input control signals are CAM_DE and CAM_HSYNC; 0: Input control signals are CAM_DE and CAM_VSYNC
+ * @param mode 1: Input control signals are CAM_DE, CAM_HSYNC and CAM_VSYNC;
+ * 0: Input control signals are CAM_DE and CAM_VSYNC. CAM_HSYNC and CAM_DE are all 1 the the same time.
  */
 static inline void cam_ll_set_vh_de_mode(lcd_cam_dev_t *dev, uint32_t mode)
 {
     dev->cam_ctrl1.cam_vh_de_mode_en = mode;
+}
+
+/**
+ * @brief Get the mode of input control signals
+ *
+ * @param dev CAM register base address
+ * @param en The pointer to accept the vh_de mode status. 1: Input control signals are CAM_DE, CAM_HSYNC and CAM_VSYNC;
+ * 0: Input control signals are CAM_DE and CAM_VSYNC. CAM_HSYNC and CAM_DE are all 1 the the same time.
+ */
+static inline void cam_ll_get_vh_de_mode(lcd_cam_dev_t *dev, bool *en)
+{
+    *en = dev->cam_ctrl1.cam_vh_de_mode_en;
 }
 
 /**
@@ -455,7 +507,7 @@ static inline void cam_ll_set_vh_de_mode(lcd_cam_dev_t *dev, uint32_t mode)
  */
 static inline void cam_ll_set_data_wire_width(lcd_cam_dev_t *dev, uint32_t width)
 {
-    // data line width is same as data stride that set in `cam_ll_set_dma_read_stride`
+    // data line width is same as data stride that set in `cam_ll_set_input_data_width`
 }
 
 /**
@@ -466,7 +518,7 @@ static inline void cam_ll_set_data_wire_width(lcd_cam_dev_t *dev, uint32_t width
 __attribute__((always_inline))
 static inline void cam_ll_start(lcd_cam_dev_t *dev)
 {
-    dev->cam_ctrl.cam_update = 1; // update parameters before start transaction
+    dev->cam_ctrl.cam_update_reg = 1; // update parameters before start transaction
     dev->cam_ctrl1.cam_start = 1;
 }
 
@@ -479,17 +531,7 @@ __attribute__((always_inline))
 static inline void cam_ll_stop(lcd_cam_dev_t *dev)
 {
     dev->cam_ctrl1.cam_start = 0;
-    dev->cam_ctrl.cam_update = 1; // self clear
-}
-
-/**
- * @brief Reset CAM TX controller and RGB/YUV converter
- *
- * @param dev CAM register base address
- */
-static inline void cam_ll_reset(lcd_cam_dev_t *dev)
-{
-    dev->cam_ctrl.cam_reset = 1; // self clear
+    dev->cam_ctrl.cam_update_reg = 1; // self clear
 }
 
 /**
@@ -567,9 +609,9 @@ static inline void cam_ll_fifo_reset(lcd_cam_dev_t *dev)
 static inline void cam_ll_enable_interrupt(lcd_cam_dev_t *dev, uint32_t mask, bool en)
 {
     if (en) {
-        dev->lc_dma_int_ena.val |= mask & 0x0c;
+        dev->lc_dma_int_ena.val = dev->lc_dma_int_ena.val | (mask & 0x0c);
     } else {
-        dev->lc_dma_int_ena.val &= ~(mask & 0x0c);
+        dev->lc_dma_int_ena.val = dev->lc_dma_int_ena.val & (~(mask & 0x0c));
     }
 }
 
