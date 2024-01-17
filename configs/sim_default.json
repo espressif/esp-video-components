@@ -2,7 +2,7 @@
   "media": {
     "entities": [
       {
-        "name": "sim_cam0",
+        "name": "SIM0",
         "sink_pads": 3,
         "source_pads": 3,
         "bridges": [
@@ -27,7 +27,7 @@
             "sink_pad": 1
           }
         ],
-        "name": "sim_cam1",
+        "name": "SIM1",
         "sink_pads": 3,
         "source_pads": 2
       }
@@ -40,12 +40,12 @@
             "name": "video0",
             "entities": [
               {
-                "entity": "sim_cam0",
+                "entity": "SIM0",
                 "sink_pad": 0
               },
               {
-                "pre_entity": "sim_cam0",
-                "entity": "sim_cam1",
+                "pre_entity": "SIM0",
+                "entity": "SIM1",
                 "sink_pad": 0
               }
             ]

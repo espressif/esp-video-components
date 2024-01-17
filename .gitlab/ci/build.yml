@@ -133,3 +133,14 @@ build_test_apps_posix_test_esp32p4:
   variables:
     EXAMPLE_TARGET: esp32p4
     EXAMPLE_DIR: test_apps/posix_test
+
+build_test_apps_pipeline_test_config_parse_test_esp32p4:
+  extends:
+    - .build_examples_template
+    - .rules:build:test_apps
+  parallel:
+    matrix:
+      - IMAGE: espressif/idf:latest
+  variables:
+    EXAMPLE_TARGET: esp32p4
+    EXAMPLE_DIR: test_apps/pipeline_test/config_parse_test

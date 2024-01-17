@@ -2,7 +2,7 @@
   "media": {
     "entities": [
       {
-        "name": "SC2336",
+        "name": "DVP",
         "sink_pads": 1,
         "source_pads": 1,
         "bridges": [
@@ -10,9 +10,7 @@
             "source_pad": 0,
             "sink_pad": 0
           }
-        ],
-        "type": "sensor",
-        "interface": 1
+        ]
       }
     ],
     "pipelines": [
@@ -23,7 +21,7 @@
             "name": "video0",
             "entities": [
               {
-                "entity": "SC2336",
+                "entity": "DVP",
                 "sink_pad": 0
               }
             ]

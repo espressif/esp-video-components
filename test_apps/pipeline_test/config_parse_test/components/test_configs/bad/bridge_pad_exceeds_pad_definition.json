@@ -23,8 +23,8 @@
             "sink_pad": 0
           },
           {
-            "source_pad": 1,
-            "sink_pad": 1
+            "source_pad": 3,
+            "sink_pad": 3
           }
         ],
         "name": "SIM1",

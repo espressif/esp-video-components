@@ -31,7 +31,7 @@
         "sink_pads": 3,
         "source_pads": 2
       }
-    ],
+    ]
     "pipelines": [
       {
         "name": "pipeline1",

@@ -17,16 +17,6 @@
         ]
       },
       {
-        "bridges": [
-          {
-            "source_pad": 0,
-            "sink_pad": 0
-          },
-          {
-            "source_pad": 1,
-            "sink_pad": 1
-          }
-        ],
         "name": "SIM1",
         "sink_pads": 3,
         "source_pads": 2

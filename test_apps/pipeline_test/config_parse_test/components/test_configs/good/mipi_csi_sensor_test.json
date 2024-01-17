@@ -1,0 +1,33 @@
+{
+  "media": {
+    "entities": [
+      {
+        "name": "MIPI-CSI",
+        "sink_pads": 1,
+        "source_pads": 1,
+        "bridges": [
+          {
+            "source_pad": 0,
+            "sink_pad": 0
+          }
+        ]
+      }
+    ],
+    "pipelines": [
+      {
+        "name": "pipeline1",
+        "user_node": [
+          {
+            "name": "video0",
+            "entities": [
+              {
+                "entity": "MIPI-CSI",
+                "sink_pad": 0
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

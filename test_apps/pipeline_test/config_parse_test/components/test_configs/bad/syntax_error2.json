@@ -32,7 +32,7 @@
         "source_pads": 2
       }
     ],
-    "pipelines": [
+    "pipelines": {
       {
         "name": "pipeline1",
         "user_node": [
@@ -52,6 +52,6 @@
           }
         ]
       }
-    ]
+    }
   }
 }

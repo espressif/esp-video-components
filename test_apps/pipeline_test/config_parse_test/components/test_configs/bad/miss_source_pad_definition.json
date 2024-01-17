@@ -28,8 +28,7 @@
           }
         ],
         "name": "SIM1",
-        "sink_pads": 3,
-        "source_pads": 2
+        "sink_pads": 3
       }
     ],
     "pipelines": [
