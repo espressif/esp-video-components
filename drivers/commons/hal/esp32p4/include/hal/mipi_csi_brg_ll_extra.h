@@ -6,10 +6,7 @@
 
 #pragma once
 
-#include <stdbool.h>
-#include "hal/misc.h"
-#include "hal/assert.h"
-#include "soc/mipi_csi_bridge_struct.h"
+#include "hal/mipi_csi_brg_ll.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -31,25 +28,6 @@ typedef enum {
     CSI_BRG_DATA_BIT_ENDIAN_LITTLE,
 } csi_brg_data_bit_endian_t;
 
-// Todo extern
-extern csi_brg_dev_t MIPI_CSI_BRIDGE;
-
-// CSI Bridge
-#define MIPI_CSI_BRIDGE_LL_GET_HW(num) (((num) == 0) ? (&MIPI_CSI_BRIDGE) : NULL)
-
-/**
- * @brief Set the width and height of the received frame for the MIPI CSI bridge
- *
- * @param dev Pointer to the CSI bridge controller register base address
- * @param frame_width Active width
- * @param frame_height Active height
- */
-static inline void mipi_csi_brg_ll_set_frame_size(csi_brg_dev_t *dev, size_t frame_width, size_t frame_height)
-{
-    dev->frame_cfg.hadr_num = frame_width;
-    dev->frame_cfg.vadr_num = frame_height;
-}
-
 /**
  * @brief Set the buffer almost full threshold for the MIPI CSI bridge
  *
@@ -59,17 +37,6 @@ static inline void mipi_csi_brg_ll_set_frame_size(csi_brg_dev_t *dev, size_t fra
 static inline void mipi_csi_brg_ll_set_flow_ctl_buf_afull_thrd(csi_brg_dev_t *dev, size_t afull_thrd)
 {
     dev->buf_flow_ctl.csi_buf_afull_thrd = afull_thrd;
-}
-
-/**
- * @brief Set the DMA burst length for the MIPI CSI bridge
- *
- * @param dev Pointer to the CSI bridge controller register base address
- * @param len Number of 64-bit words in one dma burst transfer
- */
-static inline void mipi_csi_brg_ll_set_req_dma_burst_len(csi_brg_dev_t *dev, size_t len)
-{
-    dev->dma_req_cfg.dma_burst_len = len;
 }
 
 /**
@@ -156,17 +123,6 @@ static inline void mipi_csi_brg_ll_set_bit_endian(csi_brg_dev_t *dev, csi_brg_da
     default:
         abort();
     }
-}
-
-/**
- * @brief Enable the CSI bridge
- *
- * @param dev Pointer to the CSI bridge controller register base address
- * @param en True to enable, false to disable
- */
-static inline void mipi_csi_brg_ll_enable(csi_brg_dev_t *dev, bool en)
-{
-    dev->csi_en.val = en;
 }
 
 #ifdef __cplusplus

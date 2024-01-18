@@ -30,24 +30,6 @@ typedef enum {
     CAM_CLK_SRC_DEFAULT = SOC_MOD_CLK_PLL_F160M, /*!< Select PLL_F160M as the default choice */
 } soc_periph_cam_clk_src_t;
 
-#if SOC_MIPI_CSI_SUPPORTED
-/**
- * @brief Array initializer for all supported clock sources of MIPI CSI PHY interface
- */
-#define SOC_MIPI_CSI_PHY_CLKS {SOC_MOD_CLK_RC_FAST, SOC_MOD_CLK_PLL_F25M, SOC_MOD_CLK_PLL_F20M}
-
-/**
- * @brief Type of MIPI CSI PHY clock source
- */
-typedef enum {
-    MIPI_CSI_PHY_CLK_SRC_RC_FAST = SOC_MOD_CLK_RC_FAST,    /*!< Select RC_FAST as MIPI CSI PHY source clock */
-    MIPI_CSI_PHY_CLK_SRC_PLL_F25M = SOC_MOD_CLK_PLL_F25M,  /*!< Select PLL_F25M as MIPI CSI PHY source clock */
-    MIPI_CSI_PHY_CLK_SRC_PLL_F20M = SOC_MOD_CLK_PLL_F20M,  /*!< Select PLL_F20M as MIPI CSI PHY source clock */
-    MIPI_CSI_PHY_CLK_SRC_DEFAULT = SOC_MOD_CLK_PLL_F25M,   /*!< Select PLL_F25M as default clock */
-} soc_periph_mipi_csi_phy_clk_src_t;
-
-#endif
-
 #ifdef __cplusplus
 }
 #endif

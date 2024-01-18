@@ -107,11 +107,12 @@ static void mipi_csi_hal_host_phy_init(mipi_csi_hal_context_t *hal, const mipi_c
 static void mipi_csi_hal_brg_init(mipi_csi_hal_context_t *hal, const mipi_csi_hal_config_t *config)
 {
     // Set Frame size.
-    mipi_csi_brg_ll_set_frame_size(hal->bridge_dev, config->frame_width, config->frame_height);
+    mipi_csi_brg_ll_set_intput_data_h_pixel_num(hal->bridge_dev, config->frame_width);
+    mipi_csi_brg_ll_set_intput_data_v_row_num(hal->bridge_dev, config->frame_height);
 
     mipi_csi_brg_ll_set_flow_ctl_buf_afull_thrd(hal->bridge_dev, 960);
 
-    mipi_csi_brg_ll_set_req_dma_burst_len(hal->bridge_dev, 256);
+    mipi_csi_brg_ll_set_burst_len(hal->bridge_dev, 256);
 
     HAL_LOGD(TAG, "has_hsync_e: 0x%x", MIPI_CSI_BRIDGE.frame_cfg.has_hsync_e);
 

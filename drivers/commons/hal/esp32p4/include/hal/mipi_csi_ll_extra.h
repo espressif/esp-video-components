@@ -6,12 +6,10 @@
 
 #pragma once
 
-#include <stdbool.h>
-#include <stdint.h>
-#include "soc/hp_sys_clkrst_struct.h"
-#include "hal/misc.h"
+#include "hal/mipi_csi_ll.h"
+
+#include "hal/mipi_csi_brg_ll_extra.h"
 #include "hal/mipi_csi_host_ll.h"
-#include "hal/mipi_csi_brg_ll.h"
 #include "hal/mipi_csi_phy_ll.h"
 #include "hal/mipi_csi_types.h"
 

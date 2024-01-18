@@ -6,7 +6,7 @@
 
 #pragma once
 
-#include "hal/mipi_csi_ll.h"
+#include "hal/mipi_csi_ll_extra.h"
 
 #ifdef __cplusplus
 extern "C" {

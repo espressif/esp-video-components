@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: 2022-2023 Espressif Systems (Shanghai) CO LTD
+# SPDX-FileCopyrightText: 2022-2024 Espressif Systems (Shanghai) CO LTD
 #
 # SPDX-License-Identifier: Apache-2.0
 
@@ -18,7 +18,10 @@ from idf_build_apps.constants import SUPPORTED_TARGETS
 
 PROJECT_ROOT = Path(__file__).parent.parent.absolute()
 APPS_BUILD_PER_JOB = 30
-IGNORE_WARNINGS = []
+IGNORE_WARNINGS = [
+    r'warning: \'mpll_freq_set\' defined but not used',
+    r'warning: \'trig_io\' defined but not used',
+]
 
 def _get_idf_version():
     if os.environ.get('IDF_VERSION'):
