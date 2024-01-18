@@ -60,6 +60,30 @@ static uint32_t dvp_get_dma_buffer_hsize(uint32_t buffer_size, uint32_t align_si
 }
 
 /**
+ * @brief Free all DVP frames
+ *
+ * @param dvp DVP object data pointer
+ *
+ * @return None
+ */
+static void dev_free_frame(dvp_device_t *dvp)
+{
+    dvp_frame_t *frame, *node_tmp;
+
+    if (dvp->cur_frame) {
+        dvp->free_buf_cb(dvp->cur_frame->buffer, dvp->priv);
+        heap_caps_free(dvp->cur_frame);
+        dvp->cur_frame = NULL;
+    }
+
+    SLIST_FOREACH_SAFE(frame, &dvp->frame_list, node, node_tmp) {
+        SLIST_REMOVE(&dvp->frame_list, frame, dvp_frame, node);
+        dvp->free_buf_cb(frame->buffer, dvp->priv);
+        heap_caps_free(frame);
+    }
+}
+
+/**
  * @brief Start DVP capturing data from camera
  *
  * @param dvp DVP object data pointer
@@ -462,20 +486,7 @@ esp_err_t dvp_device_destroy(dvp_device_handle_t handle)
 
     /* Step 6: free buffer in frame if needed */
 
-    if (handle->free_buf_cb) {
-        dvp_frame_t *frame;
-
-        if (handle->cur_frame) {
-            handle->free_buf_cb(handle->cur_frame->buffer, handle->priv);
-            heap_caps_free(handle->cur_frame);
-        }
-
-        SLIST_FOREACH(frame, &handle->frame_list, node) {
-            SLIST_REMOVE(&handle->frame_list, frame, dvp_frame, node);
-            handle->free_buf_cb(frame->buffer, handle->priv);
-            heap_caps_free(frame);
-        }
-    }
+    dev_free_frame(handle);
 
     /* Step 7: Free memory resocurce */
 
@@ -543,13 +554,11 @@ esp_err_t dvp_device_stop(dvp_device_handle_t handle)
     }
 
     if (handle->state != DVP_DEV_IDLE) {
-        ret = gpio_intr_disable(handle->vsync_pin);
-        if (ret == ESP_OK) {
-            cam_hal_stop_streaming(&handle->hal);
-            SLIST_INSERT_HEAD(&handle->frame_list, handle->cur_frame, node);
-            handle->state = DVP_DEV_IDLE;
-            handle->cur_frame = NULL;
-        }
+        gpio_intr_disable(handle->vsync_pin);
+        cam_hal_stop_streaming(&handle->hal);
+        dev_free_frame(handle);
+        handle->state = DVP_DEV_IDLE;
+        ret = ESP_OK;
     }
 
     xSemaphoreGive(handle->mutex);

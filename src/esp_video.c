@@ -421,11 +421,23 @@ esp_err_t esp_video_stop_capture(struct esp_video *video)
 #endif
 
     if (video->ops->stop_capture) {
+        struct esp_video_buffer_element *element, *node_tmp;
+
         ret = video->ops->stop_capture(video);
         if (ret != ESP_OK) {
             ESP_VIDEO_LOGE("video->ops->stop_capture=%x", ret);
             return ret;
         }
+
+        /* Free all receive done frames and clear semaphore */
+
+        portENTER_CRITICAL_SAFE(&video->lock);
+        SLIST_FOREACH_SAFE(element, &video->done_list, node, node_tmp) {
+            SLIST_REMOVE(&video->done_list, element, esp_video_buffer_element, node);
+            esp_video_buffer_free(video->buffer, element);
+            xSemaphoreTake(video->done_sem, 0);
+        }
+        portEXIT_CRITICAL_SAFE(&video->lock);
     } else {
         ESP_VIDEO_LOGI("video->ops->stop_capture=NULL");
     }

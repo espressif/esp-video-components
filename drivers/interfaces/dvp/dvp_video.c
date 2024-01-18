@@ -127,12 +127,12 @@ static esp_err_t dvp_video_stop_capture(struct esp_video *video)
     int flags = 0;
     struct dvp_video *dvp_video = (struct dvp_video *)video->priv;
 
-    ret = dvp_device_stop(dvp_video->handle);
+    ret = esp_camera_ioctl(video->cam_dev, CAM_SENSOR_IOC_S_STREAM, &flags);
     if (ret != ESP_OK) {
         return ret;
     }
 
-    ret = esp_camera_ioctl(video->cam_dev, CAM_SENSOR_IOC_S_STREAM, &flags);
+    ret = dvp_device_stop(dvp_video->handle);
     if (ret != ESP_OK) {
         return ret;
     }
