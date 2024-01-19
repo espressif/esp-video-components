@@ -1,0 +1,30 @@
+menuconfig CAMERA_OV5647
+    bool "OV5647"
+    default n
+    help
+        Enabling this option will add the support for OV5647.
+
+    config CAMERA_OV5647_AUTO_DETECT
+        bool "Auto detect OV5647"
+        default y
+        depends on CAMERA_OV5647
+        help
+            When enabled, you don't need to call ov5647_detect manaually, OV5647 will be automatically detected
+            when esp_camera_init is called.
+
+    menu "Interface"
+        depends on CAMERA_OV5647
+        config CAMERA_OV5647_INTERFACE_CSI
+            bool "CSI"
+            default y
+            help
+                If enabled, the OV5647 will be connected to the CSI interface.
+    endmenu
+
+    config CAMERA_OV5647_MAX_SUPPORT
+        int "Support for a maximum number of connected OV5647"
+        depends on CAMERA_OV5647
+        default 1
+        range 1 1 if IDF_TARGET_ESP32P4
+        help
+            Set the number of connected OV5647.
