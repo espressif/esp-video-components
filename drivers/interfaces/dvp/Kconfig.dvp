@@ -48,5 +48,19 @@ menu "DVP"
             DVP DMA buffer maximum size, larger values may fail to allocate due to
             insufficient contiguous memory blocks, and too smaller value may cause
             DMA interrupt triggering be too frequently.
+    
+    choice CAM_DVP_CLK_SRC
+        prompt "LCD_CAM cam clock source"
+        depends on IDF_TARGET_ESP32S3 || IDF_TARGET_ESP32P4
+        default CAM_DVP_CLK_SRC_PLL240M
+        help
+            Choose which clock is used as LCD_CAM cam clock source.
 
+        config CAM_DVP_CLK_SRC_PLL160M
+            bool "PLL_F160M"
+        config CAM_DVP_CLK_SRC_PLL240M
+            bool "PLL_D2_240M"
+        config CAM_DVP_CLK_SRC_XTAL
+            bool "XTAL_CLK"
+    endchoice
 endmenu

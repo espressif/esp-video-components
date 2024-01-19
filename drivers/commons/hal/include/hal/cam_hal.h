@@ -12,11 +12,16 @@
 #include "rom/lldesc.h"
 #ifdef CONFIG_IDF_TARGET_ESP32
 #include "hal/i2s_ll.h"
+#elif CONFIG_IDF_TARGET_ESP32S3
+#include "hal/cam_ll.h"
 #endif
 
 #ifdef CONFIG_IDF_TARGET_ESP32
 typedef i2s_dev_t cam_dev_t;
 #define CAM_RX_INT_MASK I2S_LL_RX_EVENT_MASK
+#elif CONFIG_IDF_TARGET_ESP32S3
+typedef lcd_cam_dev_t cam_dev_t;
+#define CAM_RX_INT_MASK BIT(2)
 #else
 typedef void *cam_dev_t;
 #endif
@@ -24,6 +29,30 @@ typedef void *cam_dev_t;
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+#if CONFIG_IDF_TARGET_ESP32S3
+typedef enum {
+    YUV422_TO_YUV420 = 1,
+    YUV422_TO_RGB565,
+} cam_conv_mode_t;
+
+typedef struct cam_conv_config_t {
+    cam_conv_mode_t mode;
+    cam_color_range_t range;
+    cam_yuv_conv_std_t std;
+} cam_conv_config_t;
+#endif
+
+/**
+ * @brief CAM configuration structure
+ */
+typedef struct cam_hal_cfg {
+    uint8_t cam_port;                        /*!< CAM port. */
+#if CONFIG_IDF_TARGET_ESP32S3
+    uint32_t xclk_freq;                      /*!< CAM output xclk freq. */
+    cam_conv_config_t conv_config;                      /*!< CAM output conversion mode. */
+#endif
+} cam_hal_config_t;
 
 /**
  * @brief CAM hardware interface object data
@@ -118,6 +147,31 @@ void cam_hal_clear_int_status(cam_hal_context_t *hal, uint32_t status);
  * @return DMA buffer align size
  */
 uint32_t cam_hal_dma_align_size(cam_hal_context_t *hal);
+
+#if CONFIG_IDF_TARGET_ESP32S3
+/**
+ * @brief Configure the CAM module to generate the specified XCLK clock
+ *
+ * @param hal    CAM object data pointer
+ * @param xclk_freq   XCLK clock frequency
+ *
+ * @return 0 if the configuration was successful, non-zero if not.
+ */
+int cam_hal_config_xclk(cam_hal_context_t *hal, uint32_t xclk_freq);
+
+/**
+ * @brief Configure the CAM module output conversion function
+ *
+ * @note When working in YUV422 To YUV420 mode, ensure that the sensor outputs data in YUV422 format. The same is true for other modes.
+ * The sensor must output data in a specified format to ensure that the converted data is normal.
+ *
+ * @param hal    CAM object data pointer
+ * @param mode   Conversion mode
+ *
+ * @return 0 if the configuration was successful, non-zero if not.
+ */
+int cam_hal_set_conv_mode(cam_hal_context_t *hal, cam_conv_mode_t mode);
+#endif // CONFIG_IDF_TARGET_ESP32S3
 
 #ifdef __cplusplus
 }

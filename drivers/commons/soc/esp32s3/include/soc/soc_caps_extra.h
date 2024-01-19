@@ -11,3 +11,5 @@
 /*-------------------------- CAM CAPS ----------------------------------------*/
 #define SOC_CAM_SUPPORTED               (1)  /*!< CAM is supported */
 #define SOC_CAM_SUPPORT_RGB_YUV_CONV    (1)  /*!< Support color format conversion between RGB and YUV */
+#define SOC_CAM_PERIPH_NUM              (1)
+#define SOC_CAM_DATA_WIDTH              (16)
