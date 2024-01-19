@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2023 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2023-2024 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -17,8 +17,14 @@
 #include "hal/cam_types.h"
 #include "hal/misc.h"
 
+#include "esp_idf_version.h"
+
 #ifdef __cplusplus
 extern "C" {
+#endif
+
+#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 2, 0)
+#define CAM_LL_USE_DECLARE_RCC_RC_ATOMIC_ENV
 #endif
 
 #define CAM_LL_GET_HW(id) (((id) == 0) ? (&LCD_CAM) : NULL)
@@ -31,7 +37,7 @@ extern "C" {
  *
  * @param set_bit True to set bit, false to clear bit
  */
-static inline void cam_ll_enable_bus_clock(int group_id, bool enable)
+static inline void cam_ll_enable_clk(int group_id, bool enable)
 {
     (void)group_id;
     SYSTEM.perip_clk_en1.lcd_cam_clk_en = enable;
@@ -39,7 +45,26 @@ static inline void cam_ll_enable_bus_clock(int group_id, bool enable)
 
 /// use a macro to wrap the function, force the caller to use it in a critical section
 /// the critical section needs to declare the __DECLARE_RCC_RC_ATOMIC_ENV variable in advance
-#define cam_ll_enable_bus_clock(...) (void)__DECLARE_RCC_RC_ATOMIC_ENV; cam_ll_enable_bus_clock(__VA_ARGS__)
+#ifdef CAM_LL_USE_DECLARE_RCC_RC_ATOMIC_ENV
+#define cam_ll_enable_clk(...) (void)__DECLARE_RCC_RC_ATOMIC_ENV; cam_ll_enable_clk(__VA_ARGS__)
+#endif
+
+/**
+ * @brief Get the bus clock status for the CAM module
+ *
+ * @return True when enabled, false when disabled
+ */
+static inline bool cam_ll_get_clk_status(int group_id)
+{
+    (void)group_id;
+    return SYSTEM.perip_clk_en1.lcd_cam_clk_en;
+}
+
+/// use a macro to wrap the function, force the caller to use it in a critical section
+/// the critical section needs to declare the __DECLARE_RCC_RC_ATOMIC_ENV variable in advance
+#ifdef CAM_LL_USE_DECLARE_RCC_RC_ATOMIC_ENV
+#define cam_ll_get_clk_status(...) (void)__DECLARE_RCC_RC_ATOMIC_ENV; cam_ll_get_clk_status(__VA_ARGS__)
+#endif
 
 /**
  * @brief Reset the CAM module
@@ -53,7 +78,9 @@ static inline void cam_ll_reset_register(int group_id)
 
 /// use a macro to wrap the function, force the caller to use it in a critical section
 /// the critical section needs to declare the __DECLARE_RCC_RC_ATOMIC_ENV variable in advance
+#ifdef CAM_LL_USE_DECLARE_RCC_RC_ATOMIC_ENV
 #define cam_ll_reset_register(...) (void)__DECLARE_RCC_RC_ATOMIC_ENV; cam_ll_reset_register(__VA_ARGS__)
+#endif
 
 /**
  * @brief Enable clock gating
@@ -88,6 +115,29 @@ static inline void cam_ll_select_clk_src(lcd_cam_dev_t *dev, cam_clock_source_t 
     default:
         // disable CAM clock source
         dev->cam_ctrl.cam_clk_sel = 0;
+        break;
+    }
+}
+
+/**
+ * @brief  Get the CAM source clock type
+ *
+ * @param dev CAM register base address
+ * @param src The pointer to accept the CAM source clock type
+ */
+static inline void cam_ll_get_clk_src(lcd_cam_dev_t *dev, cam_clock_source_t *src)
+{
+    switch (dev->cam_ctrl.cam_clk_sel) {
+    case 1:
+        *src = CAM_CLK_SRC_XTAL;
+        break;
+    case 2:
+        *src = CAM_CLK_SRC_PLL240M;
+        break;
+    case 3:
+        *src = CAM_CLK_SRC_PLL160M;
+        break;
+    default:
         HAL_ASSERT(false);
         break;
     }
@@ -342,7 +392,7 @@ static inline void cam_ll_set_rec_data_bytelen(lcd_cam_dev_t *dev, uint32_t leng
  * @brief Set line number to trigger interrupt
  *
  * @param dev CAM register base address
- * @param number line number to trigger interrupt, range [0, 0x3F]
+ * @param number line number to trigger hs interrupt, range [0, 0x3F]
  */
 static inline void cam_ll_set_line_int_num(lcd_cam_dev_t *dev, uint32_t number)
 {
@@ -355,7 +405,7 @@ static inline void cam_ll_set_line_int_num(lcd_cam_dev_t *dev, uint32_t number)
  * @param dev CAM register base address
  * @param en True to invert, False to not invert
  */
-static inline void cam_ll_enable_invert_clk(lcd_cam_dev_t *dev, bool en)
+static inline void cam_ll_enable_invert_pclk(lcd_cam_dev_t *dev, bool en)
 {
     dev->cam_ctrl1.cam_clk_inv = en;
 }
@@ -372,12 +422,12 @@ static inline void cam_ll_enable_vsync_filter(lcd_cam_dev_t *dev, bool en)
 }
 
 /**
- * @brief Set data read stride, i.e., number of bytes the CAM reads from the DMA in each step
+ * @brief Set CAM input data width
  *
  * @param dev CAM register base address
- * @param stride data stride size
+ * @param stride 16: The bit number of input data is 9~16.  8: The bit number of input data is 0~8.
  */
-static inline void cam_ll_set_dma_read_stride(lcd_cam_dev_t *dev, uint32_t stride)
+static inline void cam_ll_set_input_data_width(lcd_cam_dev_t *dev, uint32_t stride)
 {
     switch (stride) {
     case 8:
@@ -429,11 +479,24 @@ static inline void cam_ll_enable_invert_vsync(lcd_cam_dev_t *dev, bool en)
  * @brief Set the mode to control the input control signals
  *
  * @param dev CAM register base address
- * @param mode 1: Input control signals are CAM_DE and CAM_HSYNC; 0: Input control signals are CAM_DE and CAM_VSYNC
+ * @param mode 1: Input control signals are CAM_DE, CAM_HSYNC and CAM_VSYNC;
+ * 0: Input control signals are CAM_DE and CAM_VSYNC. CAM_HSYNC and CAM_DE are all 1 the the same time.
  */
 static inline void cam_ll_set_vh_de_mode(lcd_cam_dev_t *dev, uint32_t mode)
 {
     dev->cam_ctrl1.cam_vh_de_mode_en = mode;
+}
+
+/**
+ * @brief Get the mode of input control signals
+ *
+ * @param dev CAM register base address
+ * @param mode The pointer to accept the vd_de mode status. 1: Input control signals are CAM_DE, CAM_HSYNC and CAM_VSYNC;
+ * 0: Input control signals are CAM_DE and CAM_VSYNC. CAM_HSYNC and CAM_DE are all 1 the the same time.
+ */
+static inline void cam_ll_get_vh_de_mode(lcd_cam_dev_t *dev, uint32_t *mode)
+{
+    *mode = dev->cam_ctrl1.cam_vh_de_mode_en;
 }
 
 /**
@@ -469,16 +532,6 @@ static inline void cam_ll_stop(lcd_cam_dev_t *dev)
 {
     dev->cam_ctrl1.cam_start = 0;
     dev->cam_ctrl.cam_update = 1; // self clear
-}
-
-/**
- * @brief Reset CAM TX controller and RGB/YUV converter
- *
- * @param dev CAM register base address
- */
-static inline void cam_ll_reset(lcd_cam_dev_t *dev)
-{
-    dev->cam_ctrl.cam_reset = 1; // self clear
 }
 
 /**
@@ -556,9 +609,9 @@ static inline void cam_ll_fifo_reset(lcd_cam_dev_t *dev)
 static inline void cam_ll_enable_interrupt(lcd_cam_dev_t *dev, uint32_t mask, bool en)
 {
     if (en) {
-        dev->lc_dma_int_ena.val |= mask & 0x0c;
+        dev->lc_dma_int_ena.val = dev->lc_dma_int_ena.val | (mask & 0x0c);
     } else {
-        dev->lc_dma_int_ena.val &= ~(mask & 0x0c);
+        dev->lc_dma_int_ena.val = dev->lc_dma_int_ena.val & (~(mask & 0x0c));
     }
 }
 
