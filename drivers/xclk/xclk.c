@@ -18,7 +18,7 @@ static const char *TAG = "cam_xclk";
 
 static esp_err_t xclk_timer_conf(int ledc_timer, int xclk_freq_hz)
 {
-    ledc_timer_config_t timer_conf;
+    ledc_timer_config_t timer_conf = {0};
     timer_conf.duty_resolution = LEDC_DUTY_RES_DEFAULT;
     timer_conf.freq_hz = xclk_freq_hz;
     timer_conf.speed_mode = LEDC_LOW_SPEED_MODE;
@@ -42,7 +42,7 @@ esp_err_t xclk_enable_out_clock(ledc_timer_t ledc_timer, ledc_channel_t ledc_cha
         return err;
     }
 
-    ledc_channel_config_t ch_conf;
+    ledc_channel_config_t ch_conf = {0};
     ch_conf.gpio_num = pin_xclk;
     ch_conf.speed_mode = LEDC_LOW_SPEED_MODE;
     ch_conf.channel = ledc_channel;
