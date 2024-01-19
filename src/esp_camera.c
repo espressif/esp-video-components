@@ -31,40 +31,7 @@
 #include "esp_media.h"
 #endif
 
-#define CONFIG_GPIO(pin)                                    \
-{                                                           \
-    PIN_FUNC_SELECT(GPIO_PIN_MUX_REG[pin], PIN_FUNC_GPIO);  \
-    ret = gpio_set_direction(pin, GPIO_MODE_INPUT);         \
-    if (ret != ESP_OK) {                                    \
-        return ret;                                         \
-    }                                                       \
-    ret = gpio_set_pull_mode(pin, GPIO_FLOATING);           \
-    if (ret != ESP_OK) {                                    \
-        return ret;                                         \
-    }                                                       \
-}
-
 static const char *TAG = "esp_camera";
-
-#ifdef CONFIG_DVP_ENABLE
-static esp_err_t dvp_gpio_reset(const esp_camera_dvp_config_t *dvp)
-{
-    esp_err_t ret;
-    const dvp_pin_config_t *pin = &dvp->dvp_pin_cfg;
-
-    CONFIG_GPIO(pin->pclk_pin);
-    CONFIG_GPIO(pin->vsync_pin);
-    for (int i = 0; i < DVP_INTF_DATA_PIN_NUM; i++) {
-        CONFIG_GPIO(pin->data_pin[i]);
-    }
-#if CONFIG_DVP_SUPPORT_H_SYNC
-    CONFIG_GPIO(pin->hsync_pin);
-#endif
-    CONFIG_GPIO(pin->href_pin);
-
-    return ESP_OK;
-}
-#endif
 
 esp_err_t esp_camera_query_para_desc(esp_camera_device_t *dev, struct v4l2_query_ext_ctrl *qctrl)
 {
@@ -275,25 +242,31 @@ esp_err_t esp_camera_init(const esp_camera_config_t *config)
                 esp_camera_device_t *cam_dev;
                 esp_camera_driver_config_t cfg = {
                     .sccb_port = config->sccb[config->dvp->ctrl_cfg.sccb_config_index].port,
-                    .xclk_pin = config->dvp->ctrl_cfg.xclk_pin,
+                    .xclk_pin = config->dvp[i].dvp_pin_cfg.xclk_pin,
                     .reset_pin = config->dvp->ctrl_cfg.reset_pin,
                     .pwdn_pin = config->dvp->ctrl_cfg.pwdn_pin,
                 };
 
-                ret = dvp_gpio_reset(&config->dvp[i]);
+                ret = dvp_device_init_gpio(i, &config->dvp[i].dvp_pin_cfg);
                 if (ret != ESP_OK) {
-                    ESP_LOGE(TAG, "failed to reset GPIO of DVP index %d", i);
+                    ESP_LOGE(TAG, "failed to initialzie GPIO of DVP index %d", i);
                     return ret;
                 }
 
-#ifndef CONFIG_DVP_ENABLE_OUTPUT_CLOCK
-                if (config->dvp[i].ctrl_cfg.xclk_pin >= 0) {
+#ifdef CONFIG_DVP_ENABLE_OUTPUT_CLOCK
+                ret = dvp_device_init_ouput_clock(i, config->dvp[i].ctrl_cfg.xclk_freq_hz);
+                if (ret != ESP_OK) {
+                    ESP_LOGE(TAG, "failed to initliaze LCD_CAM output XCLK of DVP index %d", i);
+                    return ret;
+                }
+#else
+                if (config->dvp[i].dvp_pin_cfg.xclk_pin >= 0) {
                     const esp_camera_ctrl_config_t *ctrl_cfg = &config->dvp[i].ctrl_cfg;
 
                     ret = xclk_enable_out_clock(ctrl_cfg->xclk_timer, ctrl_cfg->xclk_timer_channel,
-                                                ctrl_cfg->xclk_freq_hz, ctrl_cfg->xclk_pin);
+                                                ctrl_cfg->xclk_freq_hz, config->dvp[i].dvp_pin_cfg.xclk_pin);
                     if (ret != ESP_OK) {
-                        ESP_LOGE(TAG, "failed to initialize XCLK of DVP index %d", i);
+                        ESP_LOGE(TAG, "failed to initialize LEDC output XCLK of DVP index %d", i);
                         return ret;
                     }
                 }

@@ -1,5 +1,8 @@
 # This file was generated using idf.py save-defconfig. It can be edited manually.
 # Espressif IoT Development Framework (ESP-IDF)  Project Minimal Configuration
 #
+CONFIG_ESPTOOLPY_FLASHMODE_QIO=y
+CONFIG_ESPTOOLPY_FLASHFREQ_80M=y
 CONFIG_SPIRAM=y
-CONFIG_ESP_MAIN_TASK_STACK_SIZE=5120
+CONFIG_SPIRAM_SPEED_80M=y
+CONFIG_ESP_DEFAULT_CPU_FREQ_MHZ_240=y

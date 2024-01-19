@@ -34,7 +34,7 @@ esp_err_t dvp_dma_init(dvp_dma_t *dvp_dma)
         return ret;
     }
 
-    ESP_GOTO_ON_ERROR(gdma_connect(dvp_dma->gdma_chan, GDMA_MAKE_TRIGGER(GDMA_TRIG_PERIPH_CAM, 0))), err, TAG, "connect failed");
+    ESP_GOTO_ON_ERROR(gdma_connect(dvp_dma->gdma_chan, GDMA_MAKE_TRIGGER(GDMA_TRIG_PERIPH_CAM, 0)), err, TAG, "connect failed");
 
     gdma_strategy_config_t strategy_config = {
         .auto_update_desc = false,

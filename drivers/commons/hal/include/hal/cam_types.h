@@ -6,6 +6,7 @@
 
 #pragma once
 
+#include "sdkconfig.h"
 #include "soc/soc_caps_extra.h"
 #include "soc/clk_tree_defs_extra.h"
 
@@ -13,7 +14,7 @@
 extern "C" {
 #endif
 
-#if SOC_LCDCAM_SUPPORTED
+#if CONFIG_SOC_LCDCAM_SUPPORTED
 /**
  * @brief CAM clock source
  */
@@ -22,7 +23,7 @@ typedef soc_periph_cam_clk_src_t cam_clock_source_t;
 typedef int cam_clock_source_t;
 #endif
 
-#if SOC_LCDCAM_SUPPORTED
+#if CONFIG_SOC_LCDCAM_SUPPORTED
 /**
  * @brief CAM color range
  */

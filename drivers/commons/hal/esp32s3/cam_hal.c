@@ -77,6 +77,23 @@ int cam_hal_config_xclk(cam_hal_context_t *hal, uint32_t xclk_freq)
 }
 
 /**
+ * @brief Configure the CAM port module to generate the specified XCLK clock
+ *
+ * @param port        CAM port
+ * @param xclk_freq   XCLK clock frequency
+ *
+ * @return 0 if the configuration was successful, non-zero if not.
+ */
+int cam_hal_config_port_xclk(int port, uint32_t xclk_freq)
+{
+    cam_hal_context_t hal;
+
+    hal.hw = CAM_LL_GET_HW(0);
+
+    return cam_hal_config_xclk(&hal, xclk_freq);
+}
+
+/**
  * @brief Configure the CAM module output conversion function
  *
  * @note When working in YUV422 To YUV420 mode, ensure that the sensor outputs data in YUV422 format. The same is true for other modes.
@@ -133,7 +150,7 @@ void cam_hal_init(cam_hal_context_t *hal, uint8_t port)
     cam_ll_enable_vsync_generate_eof(hal->hw, 0); // use LCD_CAM_CAM_REC_DATA_BYTELEN to control in_suc_eof
 
     cam_hal_set_line_int_num(hal, 0);
-    cam_hal_set_vsync_filter_num(hal, 4); // Filter by LCD_CAM clock
+    cam_hal_set_vsync_filter_num(hal, 0); // Filter by LCD_CAM clock
 
     cam_ll_enable_invert_pclk(hal->hw, 0);
     cam_ll_set_input_data_width(hal->hw, 8);

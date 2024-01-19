@@ -57,24 +57,51 @@ static const esp_camera_dvp_config_t dvp_config[CONFIG_ESP_VIDEO_CAMERA_INTF_DVP
     {
         .ctrl_cfg = {
             .sccb_config_index = CONFIG_ESP_VIDEO_CAMERA_DVP0_SCCB_INDEX,
-            .xclk_pin          = CONFIG_ESP_VIDEO_CAMERA_DVP0_XCLK_PIN,
             .reset_pin         = CONFIG_ESP_VIDEO_CAMERA_DVP0_RESET_PIN,
             .pwdn_pin          = CONFIG_ESP_VIDEO_CAMERA_DVP0_PWDN_PIN,
             .xclk_freq_hz      = CONFIG_ESP_VIDEO_CAMERA_DVP0_XCLK_FREQ,
+#ifndef CONFIG_DVP_ENABLE_OUTPUT_CLOCK
             .xclk_timer        = LEDC_TIMER_0,
             .xclk_timer_channel = LEDC_CHANNEL_0,
+#endif
+        }
+        ,
+        .dvp_pin_cfg = {
+            .data_pin = {
+                CONFIG_ESP_VIDEO_CAMERA_DVP0_D0_PIN, CONFIG_ESP_VIDEO_CAMERA_DVP0_D1_PIN,
+                CONFIG_ESP_VIDEO_CAMERA_DVP0_D2_PIN, CONFIG_ESP_VIDEO_CAMERA_DVP0_D3_PIN,
+                CONFIG_ESP_VIDEO_CAMERA_DVP0_D4_PIN, CONFIG_ESP_VIDEO_CAMERA_DVP0_D5_PIN,
+                CONFIG_ESP_VIDEO_CAMERA_DVP0_D6_PIN, CONFIG_ESP_VIDEO_CAMERA_DVP0_D7_PIN,
+            },
+            .vsync_pin = CONFIG_ESP_VIDEO_CAMERA_DVP0_VSYNC_PIN,
+            .href_pin = CONFIG_ESP_VIDEO_CAMERA_DVP0_HREF_PIN,
+            .pclk_pin = CONFIG_ESP_VIDEO_CAMERA_DVP0_PCLK_PIN,
+            .xclk_pin = CONFIG_ESP_VIDEO_CAMERA_DVP0_XCLK_PIN,
         }
     },
 #if CONFIG_ESP_VIDEO_CAMERA_INTF_DVP_NUM > 1
     {
         .ctrl_cfg = {
             .sccb_config_index = CONFIG_ESP_VIDEO_CAMERA_DVP1_SCCB_INDEX,
-            .xclk_pin          = CONFIG_ESP_VIDEO_CAMERA_DVP1_XCLK_PIN,
             .reset_pin         = CONFIG_ESP_VIDEO_CAMERA_DVP1_RESET_PIN,
             .pwdn_pin          = CONFIG_ESP_VIDEO_CAMERA_DVP1_PWDN_PIN,
             .xclk_freq_hz      = CONFIG_ESP_VIDEO_CAMERA_DVP1_XCLK_FREQ,
+#ifndef CONFIG_DVP_ENABLE_OUTPUT_CLOCK
             .xclk_timer        = LEDC_TIMER_1,
             .xclk_timer_channel = LEDC_CHANNEL_1,
+#endif
+        },
+        .dvp_pin_cfg = {
+            .data_pin = {
+                CONFIG_ESP_VIDEO_CAMERA_DVP1_D0_PIN, CONFIG_ESP_VIDEO_CAMERA_DVP1_D1_PIN,
+                CONFIG_ESP_VIDEO_CAMERA_DVP1_D2_PIN, CONFIG_ESP_VIDEO_CAMERA_DVP1_D3_PIN,
+                CONFIG_ESP_VIDEO_CAMERA_DVP1_D4_PIN, CONFIG_ESP_VIDEO_CAMERA_DVP1_D5_PIN,
+                CONFIG_ESP_VIDEO_CAMERA_DVP1_D6_PIN, CONFIG_ESP_VIDEO_CAMERA_DVP1_D7_PIN,
+            },
+            .vsync_pin = CONFIG_ESP_VIDEO_CAMERA_DVP1_VSYNC_PIN,
+            .href_pin = CONFIG_ESP_VIDEO_CAMERA_DVP1_HREF_PIN,
+            .pclk_pin = CONFIG_ESP_VIDEO_CAMERA_DVP1_PCLK_PIN,
+            .xclk_pin = CONFIG_ESP_VIDEO_CAMERA_DVP1_XCLK_PIN,
         }
     },
 #endif
