@@ -269,7 +269,7 @@ static esp_err_t esp_mipi_csi_set_config(mipi_csi_interface_t interface, mipi_cs
         return ESP_ERR_INVALID_ARG;
     }
 
-    hal.bridge_dev = MIPI_CSI_BRIDGE_LL_GET_HW(0);
+    hal.bridge_dev = MIPI_CSI_BRG_LL_GET_HW(0);
     hal.host_dev = MIPI_CSI_HOST_LL_GET_HW(0);
     hal_config.frame_height = config->frame_height;
     hal_config.frame_width = config->frame_width;

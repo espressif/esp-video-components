@@ -10,6 +10,17 @@
     V: "0"
     WARNING_STR: ""
 
+.get_quanjiatong: &get_quanjiatong |
+  if [ "${EXAMPLE_TARGET}" = "esp32p4" ]; then
+    source tools/ci/utils.sh
+    add_gitlab_ssh_keys
+    cd $IDF_PATH
+    git remote set-url origin ${GITLAB_SSH_SERVER}/espressif/esp-idf.git
+    git pull origin feat/mipi_quanjiatong_idf_dev
+    git submodule update --init --recursive
+    cd -
+  fi
+
 .build_examples_template: &build_examples_template
   <<: *build_template
   artifacts:
@@ -35,6 +46,7 @@
     # For example, using "sdkconf.etc=default" specifies the default sdkconfig file.
     EXAMPLE_CONFIG: "="
   script:
+    - *get_quanjiatong
     - pip install --upgrade idf-component-manager
     - pip install idf_build_apps==1.1.4
     - python tools/build_apps.py ${EXAMPLE_DIR} --config ${EXAMPLE_CONFIG} -t ${EXAMPLE_TARGET} -vv
