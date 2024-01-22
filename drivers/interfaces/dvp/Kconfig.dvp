@@ -63,4 +63,26 @@ menu "DVP"
         config CAM_DVP_CLK_SRC_XTAL
             bool "XTAL_CLK"
     endchoice
+
+    choice DVP_DMA_PSRAM_ALIGN
+        prompt "DVP DMA alignment for PSRAM"
+        default DVP_DMA_PSRAM_ALIGN_64
+        depends on IDF_TARGET_ESP32S3 || IDF_TARGET_ESP32P4
+        help
+            DMA transfer alignment for memory in PSRAM, in bytes.
+            The driver sets proper burst block size based on the alignment value.
+
+        config DVP_DMA_PSRAM_ALIGN_16
+            bool "16 Bytes"
+        config DVP_DMA_PSRAM_ALIGN_32
+            bool "32 Bytes"
+        config DVP_DMA_PSRAM_ALIGN_64
+            bool "64 Bytes"
+    endchoice
+
+    config DVP_DMA_PSRAM_ALIGN_SIZE
+        int
+        default 16 if DVP_DMA_PSRAM_ALIGN_16
+        default 32 if DVP_DMA_PSRAM_ALIGN_32
+        default 64 if DVP_DMA_PSRAM_ALIGN_64
 endmenu

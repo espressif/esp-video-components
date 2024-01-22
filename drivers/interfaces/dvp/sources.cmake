@@ -3,6 +3,9 @@ if(CONFIG_DVP_ENABLE)
     if(EXISTS "${COMPONENT_DIR}/drivers/interfaces/dvp/${IDF_TARGET}/dvp.c")
         list(APPEND srcs "drivers/interfaces/dvp/${IDF_TARGET}/dvp.c")
     endif()
+    if(CONFIG_SOC_GDMA_SUPPORTED)
+        list(APPEND srcs "drivers/interfaces/dvp/dvp_gdma.c")
+    endif()
 endif()
 
 # Althougth CONFIG_DVP_ENABLE is not select, dvp.h also can be included

@@ -21,6 +21,7 @@ APPS_BUILD_PER_JOB = 30
 IGNORE_WARNINGS = [
     r'warning: \'mpll_freq_set\' defined but not used',
     r'warning: \'trig_io\' defined but not used',
+    r'warning: unused variable \'bus_id\'',
 ]
 
 def _get_idf_version():
