@@ -13,7 +13,7 @@
 extern "C" {
 #endif
 
-#if SOC_CAM_SUPPORTED
+#if SOC_LCDCAM_SUPPORTED
 /**
  * @brief CAM clock source
  */
@@ -22,6 +22,7 @@ typedef soc_periph_cam_clk_src_t cam_clock_source_t;
 typedef int cam_clock_source_t;
 #endif
 
+#if SOC_LCDCAM_SUPPORTED
 /**
  * @brief CAM color range
  */
@@ -46,6 +47,7 @@ typedef enum {
     CAM_YUV_CONV_STD_BT601 = 0, /*!< YUV<->RGB conversion standard: BT.601 */
     CAM_YUV_CONV_STD_BT709, /*!< YUV<->RGB conversion standard: BT.709 */
 } cam_yuv_conv_std_t;
+#endif
 
 #ifdef __cplusplus
 }
