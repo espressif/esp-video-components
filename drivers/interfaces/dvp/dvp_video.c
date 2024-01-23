@@ -30,6 +30,9 @@ static dvp_rx_cb_ret_t dvp_rx_cb(dvp_rx_ret_t rx_ret, uint8_t *buffer, size_t si
     if (rx_ret == DVP_RX_OVERFLOW) {
         ESP_LOGD(TAG, "RX overflow expected<=%" PRIu32 " actual=%" PRIu32, info->size, (uint32_t)size);
         return DVP_RX_CB_DONE;
+    } else if (rx_ret == DVP_RX_DATALOST) {
+        ESP_LOGD(TAG, "RX data partially lost");
+        return DVP_RX_CB_DONE;
     }
 
 #ifdef CONFIG_ESP_VIDEO_MEDIA_CONTROLLER
@@ -72,7 +75,7 @@ static esp_err_t dvp_video_init(struct esp_video *video)
 
     ESP_LOGI(TAG, "DVP %s frame size=%" PRIu32, video->dev_name, frame_size);
 
-    ret = dvp_setup_dma_receive_buffer(dvp_video->handle, frame_size);
+    ret = dvp_setup_dma_receive_buffer(dvp_video->handle, frame_size, format->pixel_format == V4L2_PIX_FMT_JPEG);
     if (ret != ESP_OK) {
         return ret;
     }
