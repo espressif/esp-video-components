@@ -1,5 +1,5 @@
 menu "DVP"
-    depends on IDF_TARGET_ESP32 || IDF_TARGET_ESP32S3
+    depends on IDF_TARGET_ESP32 || IDF_TARGET_ESP32S3 || IDF_TARGET_ESP32P4
 
     config DVP_ENABLE
         bool "Enable DVP Driver and Video Device"
@@ -21,14 +21,14 @@ menu "DVP"
     config DVP_ENABLE_OUTPUT_CLOCK
         bool "Enable DVP Output Clock"
         default y
-        depends on DVP_ENABLE && SOC_LCDCAM_SUPPORTED
+        depends on DVP_ENABLE && (SOC_LCDCAM_SUPPORTED || IDF_TARGET_ESP32P4) # AEG-1300, ESP32-P4 avoids using option SOC_LCDCAM_SUPPORTED now
         help
             Select this option, enable DVP output clock for camera sensor. 
 
     config DVP_ENABLE_H_SYNC
         bool "Enable DVP H-SYNC"
         default n
-        depends on DVP_ENABLE && IDF_TARGET_ESP32S3
+        depends on DVP_ENABLE && (SOC_LCDCAM_SUPPORTED || IDF_TARGET_ESP32P4) # AEG-1300, ESP32-P4 avoids using option SOC_LCDCAM_SUPPORTED now
         help
             Select this option, enable DVP H-SYNC signal. 
 
@@ -52,16 +52,18 @@ menu "DVP"
     choice CAM_DVP_CLK_SRC
         prompt "LCD_CAM cam clock source"
         depends on IDF_TARGET_ESP32S3 || IDF_TARGET_ESP32P4
-        default CAM_DVP_CLK_SRC_PLL240M
+        default CAM_DVP_CLK_SRC_PLL240M if IDF_TARGET_ESP32S3
+        default CAM_DVP_CLK_SRC_PLL160M if IDF_TARGET_ESP32P4
         help
             Choose which clock is used as LCD_CAM cam clock source.
 
+        config CAM_DVP_CLK_SRC_XTAL
+            bool "XTAL_CLK"
         config CAM_DVP_CLK_SRC_PLL160M
             bool "PLL_F160M"
         config CAM_DVP_CLK_SRC_PLL240M
             bool "PLL_D2_240M"
-        config CAM_DVP_CLK_SRC_XTAL
-            bool "XTAL_CLK"
+            depends on IDF_TARGET_ESP32S3
     endchoice
 
     choice DVP_DMA_PSRAM_ALIGN

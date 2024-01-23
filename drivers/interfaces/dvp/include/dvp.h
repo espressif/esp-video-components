@@ -186,10 +186,9 @@ typedef struct dvp_device {
     size_t size;                                /*!< DVP cache buffer size */
     size_t hsize;                               /*!< DVP cache buffer half size */
     size_t item_size;                           /*!< DVP cache receive data item size */
-    lldesc_t *lldesc;                           /*!< DVP cache buffer DMA description */
-    size_t lldesc_cnt;                          /*!< DVP cache buffer DMA description count */
-    size_t lldesc_hcnt;                         /*!< DVP cache buffer DMA description half count */
-    size_t lldesc_index;                        /*!< DVP cache buffer DMA description index */
+    dvp_dma_desc_t *dma_desc;                   /*!< DVP cache buffer DMA description */
+    size_t dma_desc_hcnt;                       /*!< DVP cache buffer DMA description half count */
+    size_t dma_desc_index;                      /*!< DVP cache buffer DMA description index */
 
     bool jpeg;                                  /*!< DVP receive frame data format is jpeg */
     size_t dma_buffer_max_size;                 /*!< DVP DMA buffer maximum size */

@@ -92,14 +92,14 @@ void cam_hal_deinit(cam_hal_context_t *hal)
  * @brief Start CAM to receive frame data, and active driver to send "CAM_EVENT_DATA_RECVED" event
  *
  * @param hal    CAM object data pointer
- * @param lldesc CAM DMA description pointer
+ * @param dma_desc CAM DMA description pointer address
  * @param size   CAM DMA receive size to trigger interrupt
  *
  * @return None
  */
-void cam_hal_start_streaming(cam_hal_context_t *hal, lldesc_t *lldesc, size_t size)
+void cam_hal_start_streaming(cam_hal_context_t *hal, uint32_t dma_desc, size_t size)
 {
-    uint32_t link_addr = ((uint32_t)lldesc) & 0xfffff;
+    uint32_t link_addr = dma_desc & 0xfffff;
 
     i2s_ll_rx_reset(hal->hw);
     i2s_ll_rx_reset_fifo(hal->hw);

@@ -61,7 +61,7 @@ static const esp_camera_dvp_config_t dvp_config[CONFIG_ESP_VIDEO_CAMERA_INTF_DVP
             .pwdn_pin          = CONFIG_ESP_VIDEO_CAMERA_DVP0_PWDN_PIN,
             .xclk_freq_hz      = CONFIG_ESP_VIDEO_CAMERA_DVP0_XCLK_FREQ,
 #ifndef CONFIG_DVP_ENABLE_OUTPUT_CLOCK
-            .xclk_timer        = LEDC_TIMER_0,
+            .xclk_timer        = LEDC_TIMER_1,
             .xclk_timer_channel = LEDC_CHANNEL_0,
 #endif
         }
@@ -87,8 +87,8 @@ static const esp_camera_dvp_config_t dvp_config[CONFIG_ESP_VIDEO_CAMERA_INTF_DVP
             .pwdn_pin          = CONFIG_ESP_VIDEO_CAMERA_DVP1_PWDN_PIN,
             .xclk_freq_hz      = CONFIG_ESP_VIDEO_CAMERA_DVP1_XCLK_FREQ,
 #ifndef CONFIG_DVP_ENABLE_OUTPUT_CLOCK
-            .xclk_timer        = LEDC_TIMER_1,
-            .xclk_timer_channel = LEDC_CHANNEL_1,
+            .xclk_timer        = LEDC_TIMER_2,
+            .xclk_timer_channel = LEDC_CHANNEL_0,
 #endif
         },
         .dvp_pin_cfg = {

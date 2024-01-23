@@ -21,5 +21,6 @@ const cam_signal_conn_t cam_periph_signals[SOC_CAM_PERIPH_NUM] = {
         .vsync_sig = CAM_V_SYNC_PAD_IN_IDX,
         .pclk_sig = CAM_PCLK_PAD_IN_IDX,
         .href_sig = CAM_H_ENABLE_PAD_IN_IDX,
+        .clk_sig = CAM_CLK_PAD_OUT_IDX,
     },
 };

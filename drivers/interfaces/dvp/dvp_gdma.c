@@ -4,6 +4,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+#include "esp_idf_version.h"
 #include "esp_check.h"
 #include "dvp_dma_internal.h"
 
@@ -29,7 +30,17 @@ esp_err_t dvp_dma_init(dvp_dma_t *dvp_dma)
     gdma_channel_alloc_config_t rx_alloc_config = {
         .direction = GDMA_CHANNEL_DIRECTION_RX,
     };
+#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 2, 0)
+#if SOC_GDMA_TRIG_PERIPH_CAM0_BUS == SOC_GDMA_BUS_AHB
+    ret = gdma_new_ahb_channel(&rx_alloc_config, &dvp_dma->gdma_chan);
+#elif SOC_GDMA_TRIG_PERIPH_CAM0_BUS == SOC_GDMA_BUS_AXI
+    ret = gdma_new_axi_channel(&rx_alloc_config, &dvp_dma->gdma_chan);
+#else
+#error "CAM0 bus type is undefined"
+#endif
+#else /* ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 2, 0) */
     ret = gdma_new_channel(&rx_alloc_config, &(dvp_dma->gdma_chan));
+#endif /* ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 2, 0) */
     if (ret != ESP_OK) {
         return ret;
     }
@@ -55,7 +66,7 @@ err:
     return ret;
 }
 
-esp_err_t dvp_dma_start(dvp_dma_t *dvp_dma, dma_descriptor_t *addr)
+esp_err_t dvp_dma_start(dvp_dma_t *dvp_dma, dvp_dma_desc_t *addr)
 {
     return gdma_start(dvp_dma->gdma_chan, (intptr_t)addr);
 }

@@ -9,7 +9,6 @@
 #include <stdio.h>
 #include "esp_err.h"
 #include "esp_intr_alloc.h"
-#include "rom/lldesc.h"
 #if CONFIG_SOC_I2S_SUPPORTS_LCD_CAMERA
 #include "hal/i2s_ll.h"
 #elif CONFIG_SOC_LCDCAM_SUPPORTED
@@ -83,12 +82,12 @@ void cam_hal_deinit(cam_hal_context_t *hal);
  * @brief Start CAM to receive frame data, and active driver to send "CAM_EVENT_DATA_RECVED" event
  *
  * @param hal CAM object data pointer
- * @param lldesc CAM DMA description pointer
+ * @param dma_desc CAM DMA description pointer address
  * @param size   CAM DMA receive size to trigger interrupt
  *
  * @return None
  */
-void cam_hal_start_streaming(cam_hal_context_t *hal, lldesc_t *lldesc, size_t size);
+void cam_hal_start_streaming(cam_hal_context_t *hal, uint32_t dma_desc, size_t size);
 
 /**
  * @brief Disable CAM receiving frame data, and deactive driver sending "CAM_EVENT_DATA_RECVED" event
