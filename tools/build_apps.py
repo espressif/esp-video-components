@@ -22,6 +22,9 @@ IGNORE_WARNINGS = [
     r'warning: \'mpll_freq_set\' defined but not used',
     r'warning: \'trig_io\' defined but not used',
     r'warning: unused variable \'bus_id\'',
+    r'warning: unused variable \'uvc_buffer\'',
+    r'dwc2_esp32.h:88:21: warning: cast from pointer to integer of different size',
+    r'dwc2_esp32.h:94:97: warning: cast to pointer from integer of different size',
 ]
 
 def _get_idf_version():

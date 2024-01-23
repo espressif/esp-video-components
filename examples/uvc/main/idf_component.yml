@@ -1,0 +1,13 @@
+targets:
+  - esp32s2
+  - esp32s3
+  - esp32p4
+dependencies:
+  cmake_utilities: "*"
+  
+  esp-video:
+    version: "~0.0.1"
+    override_path: "../../../"
+  sc2336:
+    version: "~0.0.1"
+    override_path: "../../../drivers/cameras/sc2336"

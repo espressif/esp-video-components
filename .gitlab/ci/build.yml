@@ -16,7 +16,7 @@
     add_gitlab_ssh_keys
     cd $IDF_PATH
     git remote set-url origin ${GITLAB_SSH_SERVER}/espressif/esp-idf.git
-    git pull origin feat/mipi_quanjiatong_idf_dev
+    git pull origin ${IDF_BRANCH}
     git submodule update --init --recursive
     cd -
   fi
@@ -45,6 +45,7 @@
     # By configuring this macro, you can append the compiled configuration file.
     # For example, using "sdkconf.etc=default" specifies the default sdkconfig file.
     EXAMPLE_CONFIG: "="
+    IDF_BRANCH: feat/mipi_quanjiatong_idf_dev
   script:
     - *get_quanjiatong
     - pip install --upgrade idf-component-manager
@@ -78,6 +79,19 @@ build_examples_esp32:
     EXAMPLE_CONFIG: "sdkconfig.ci.esp32.*="
     EXAMPLE_TARGET: esp32
     EXAMPLE_DIR: examples/http_web_camera
+
+build_uvc_esp32p4:
+  extends:
+    - .build_examples_template
+    - .rules:build:examples
+  parallel:
+    matrix:
+      - IMAGE: espressif/idf:latest
+  variables:
+    EXAMPLE_CONFIG: "sdkconfig.defaults"
+    EXAMPLE_TARGET: esp32p4
+    EXAMPLE_DIR: examples/uvc
+    IDF_BRANCH: feat/p4_sample_examples
 
 #
 # components build jobs
