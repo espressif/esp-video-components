@@ -72,6 +72,15 @@ esp_err_t dvp_dma_stop(dvp_dma_t *dvp_dma);
  */
 esp_err_t dvp_dma_reset(dvp_dma_t *dvp_dma);
 
+/**
+ * @brief Get next DMA description address
+ *
+ * @param hal CAM object data pointer
+ *
+ * @return Next DMA description address if success or 0 if failed
+ */
+uint32_t dvp_dma_get_next_dma_desc_addr(dvp_dma_t *dvp_dma);
+
 #ifdef __cplusplus
 }
 #endif
