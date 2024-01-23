@@ -416,15 +416,20 @@ esp_err_t esp_mipi_csi_start(esp_mipi_csi_handle_t handle)
 {
     ESP_RETURN_ON_FALSE(handle, ESP_ERR_INVALID_ARG, MIPI_CSI_TAG, MIPI_CSI_HANDLE_NULL_ERROR_STR);
     esp_mipi_csi_obj_t *csi_cam_obj = (esp_mipi_csi_obj_t *)handle;
-    if (csi_cam_obj->state != MIPI_CSI_STATE_READY && csi_cam_obj->state != MIPI_CSI_STATE_STOP) {
-        ESP_LOGE(MIPI_CSI_TAG, "invalid status");
+
+    if (csi_cam_obj->state == MIPI_CSI_STATE_START) {
+        return ESP_OK;
+    }
+
+    if (csi_cam_obj->state != MIPI_CSI_STATE_READY
+            && csi_cam_obj->state != MIPI_CSI_STATE_STOP
+            && csi_cam_obj->state != MIPI_CSI_STATE_SUSPEND) {
+        ESP_LOGE(MIPI_CSI_TAG, "invalid status %d", csi_cam_obj->state);
         return ESP_ERR_INVALID_STATE;
     }
 
-    if (esp_mipi_csi_start_framebuf_filled(csi_cam_obj) != true) {
-        ESP_LOGE(MIPI_CSI_TAG, "start failed");
-        return ESP_ERR_INVALID_STATE;
-    }
+    // ignore return value, maybe the buffer will be avaliable in the later
+    esp_mipi_csi_start_framebuf_filled(csi_cam_obj);
 
     ESP_LOGD(MIPI_CSI_TAG, "mipi csi transfer start");
     return ESP_OK;
