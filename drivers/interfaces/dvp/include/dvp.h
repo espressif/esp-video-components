@@ -14,6 +14,7 @@
 #include "freertos/task.h"
 #include "freertos/semphr.h"
 #include "hal/cam_hal.h"
+#include "../dvp_dma_internal.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -124,10 +125,7 @@ typedef struct dvp_pin_config {
     uint8_t hsync_pin;                          /*!< DVP H-Sync pin number */
 #endif
 
-#ifdef CONFIG_DVP_ENABLE_OUTPUT_CLOCK
-    uint8_t xclk_pin;                           /*!< DVP Output clock pin number */
-    uint32_t xclk_freq;                         /*!< DVP Output clock value in HZ */
-#endif
+    int8_t xclk_pin;                            /*!< DVP Output clock pin number */
 } dvp_pin_config_t;
 
 /**
@@ -176,9 +174,13 @@ typedef struct dvp_device {
     dvp_frame_t *cur_frame;                     /*!< DVP current buffer pointer */
 
     uint8_t vsync_pin;                          /*!< DVP V-Sync pin number */
-    intr_handle_t intr_handle;                  /*!< DVP DMA receive interrupt handle */
     QueueHandle_t event_queue;                  /*!< DVP event queue */
     TaskHandle_t task_handle;                   /*!< DVP task handle */
+#if CONFIG_SOC_GDMA_SUPPORTED
+    dvp_dma_t dma;                              /*!< DVP DMA handle */
+#else
+    intr_handle_t intr_handle;                  /*!< DVP DMA receive interrupt handle */
+#endif
 
     uint8_t *buffer;                            /*!< DVP cache buffer */
     size_t size;                                /*!< DVP cache buffer size */
@@ -203,6 +205,32 @@ typedef struct dvp_device {
  * @brief Handle for a camera interface device
  */
 typedef dvp_device_t *dvp_device_handle_t;
+
+/**
+ * @brief Initialzie DVP GPIO.
+ *
+ * @param port DVP port
+ * @param pin  DVP pin configuration
+ *
+ * @return
+ *      - ESP_OK on success
+ *      - Others if failed
+ */
+esp_err_t dvp_device_init_gpio(uint8_t port, const dvp_pin_config_t *pin);
+
+/**
+ * @brief If target platform is ESP32-S3 or ESP32-P4, initialize LCD_CAM clock.
+ *
+ * @param port      DVP port
+ * @param xclk_freq DVP output clock frequency in HZ
+ *
+ * @return
+ *      - ESP_OK on success
+ *      - Others if failed
+ */
+#ifdef CONFIG_DVP_ENABLE_OUTPUT_CLOCK
+esp_err_t dvp_device_init_ouput_clock(uint8_t port, uint32_t xclk_freq);
+#endif
 
 /**
  * @brief Create DVP device by given configuration

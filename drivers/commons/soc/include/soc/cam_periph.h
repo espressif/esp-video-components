@@ -6,6 +6,7 @@
 
 #pragma once
 
+#include "sdkconfig.h"
 #include "soc/periph_defs.h"
 #include "soc/soc_caps_extra.h"
 
@@ -21,6 +22,9 @@ typedef struct {
     const int vsync_sig;
     const int pclk_sig;
     const int href_sig;
+#if CONFIG_SOC_LCDCAM_SUPPORTED
+    const int clk_sig;
+#endif
 } cam_signal_conn_t;
 
 extern const cam_signal_conn_t cam_periph_signals[SOC_CAM_PERIPH_NUM];

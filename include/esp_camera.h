@@ -421,8 +421,10 @@ typedef struct {
 
     int8_t  xclk_pin;
     int32_t xclk_freq_hz;
+#ifndef CONFIG_DVP_ENABLE_OUTPUT_CLOCK
     ledc_timer_t xclk_timer;
     ledc_channel_t xclk_timer_channel;
+#endif
 } esp_camera_ctrl_config_t;
 
 typedef struct {

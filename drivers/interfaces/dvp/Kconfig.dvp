@@ -1,5 +1,5 @@
 menu "DVP"
-    depends on IDF_TARGET_ESP32
+    depends on IDF_TARGET_ESP32 || IDF_TARGET_ESP32S3
 
     config DVP_ENABLE
         bool "Enable DVP Driver and Video Device"
@@ -20,8 +20,8 @@ menu "DVP"
 
     config DVP_ENABLE_OUTPUT_CLOCK
         bool "Enable DVP Output Clock"
-        default n
-        depends on DVP_ENABLE && IDF_TARGET_ESP32S3
+        default y
+        depends on DVP_ENABLE && SOC_LCDCAM_SUPPORTED
         help
             Select this option, enable DVP output clock for camera sensor. 
 

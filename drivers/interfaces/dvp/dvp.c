@@ -23,18 +23,14 @@
 #define DVP_CUR_LLDESC(d)                   (&(d)->lldesc[(d)->lldesc_index * (d)->lldesc_hcnt])
 #define FRAME_CUR_BUF(f)                    (&(f)->buffer[(f)->size])
 
-#define CONFIG_GPIO(pin, sig)                               \
+#define DVP_CONFIG_INPUT_PIN(pin, sig)                      \
 {                                                           \
-    PIN_FUNC_SELECT(GPIO_PIN_MUX_REG[pin], PIN_FUNC_GPIO);  \
-    ret = gpio_set_direction(pin, GPIO_MODE_INPUT);         \
+    ret = dvp_config_input_gpio(pin, sig);                  \
     if (ret != ESP_OK) {                                    \
-        goto errout_disable_intr;                           \
+        ESP_LOGE(TAG, "failed to configure pin=%d sig=%d",  \
+                 pin, sig);                                 \
+        return ret;                                         \
     }                                                       \
-    ret = gpio_set_pull_mode(pin, GPIO_FLOATING);           \
-    if (ret != ESP_OK) {                                    \
-        goto errout_disable_intr;                           \
-    }                                                       \
-    esp_rom_gpio_connect_in_signal(pin, sig, false);        \
 }
 
 static const char *TAG = "dvp";
@@ -152,7 +148,60 @@ static size_t get_and_clear_dma_recv_size(dvp_device_handle_t dvp)
 }
 
 /**
- * @brief Start DVP capturing data from camera
+ * @brief Start DVP hardware capturing stream
+ *
+ * @param dvp DVP device handle
+ *
+ * @return
+ *      - ESP_OK on success
+ *      - Others if failed
+ */
+static esp_err_t dvp_start_capturing(dvp_device_t *dvp)
+{
+    esp_err_t ret = ESP_OK;
+
+#if CONFIG_SOC_GDMA_SUPPORTED
+    ret = dvp_dma_reset(&dvp->dma);
+    if (ret != ESP_OK) {
+        ESP_LOGE(TAG, "failed to reset GDMA");
+    }
+
+    ret = dvp_dma_start(&dvp->dma, (dma_descriptor_t *)dvp->lldesc);
+    if (ret != ESP_OK) {
+        ESP_LOGE(TAG, "failed to start GDMA");
+    }
+#endif
+    cam_hal_start_streaming(&dvp->hal, dvp->lldesc, dvp->hsize);
+
+    return ret;
+}
+
+/**
+ * @brief Stop DVP hardware capturing stream
+ *
+ * @param dvp DVP device handle
+ *
+ * @return
+ *      - ESP_OK on success
+ *      - Others if failed
+ */
+static esp_err_t dvp_stop_capturing(dvp_device_t *dvp)
+{
+    esp_err_t ret = ESP_OK;
+
+    cam_hal_stop_streaming(&dvp->hal);
+#if CONFIG_SOC_GDMA_SUPPORTED
+    ret = dvp_dma_stop(&dvp->dma);
+    if (ret != ESP_OK) {
+        ESP_LOGE(TAG, "failed to stop GDMA");
+    }
+#endif
+
+    return ret;
+}
+
+/**
+ * @brief Start DVP receiving V-SYNC signal from camera sensor
  *
  * @param dvp DVP object data pointer
  *
@@ -160,7 +209,7 @@ static size_t get_and_clear_dma_recv_size(dvp_device_handle_t dvp)
  *      - ESP_OK on success
  *      - Others if failed
  */
-static esp_err_t dvp_start_receive(dvp_device_t *dvp)
+static esp_err_t dvp_start_receiving_vsync(dvp_device_t *dvp)
 {
     esp_err_t ret = ESP_ERR_NOT_FOUND;
 
@@ -204,6 +253,31 @@ static IRAM_ATTR void dvp_vsync_isr(void *arg)
     }
 }
 
+#if CONFIG_SOC_GDMA_SUPPORTED
+/**
+ * @brief DVP receive data interrupt callback function
+ *
+ * @param dma_chan   DMA channel handle
+ * @param event_data Event data pointer
+ * @param user_data  This pointer is DVP object data pointer
+ *
+ * @return true if success or false if failed.
+ */
+static IRAM_ATTR bool dvp_receive_isr(gdma_channel_handle_t dma_chan, gdma_event_data_t *event_data, void *user_data)
+{
+    BaseType_t ret;
+    dvp_int_event_t event;
+    dvp_device_t *dvp = (dvp_device_t *)user_data;
+
+    event.type = DVP_EVENT_DATA_RECVED;
+    ret = xQueueSendFromISR(dvp->event_queue, &event, NULL);
+    if (ret != pdPASS) {
+        ESP_EARLY_LOGE(TAG, "failed to send data received event");
+    }
+
+    return ret == pdPASS;
+}
+#else
 /**
  * @brief DVP receive data interrupt callback function
  *
@@ -211,7 +285,7 @@ static IRAM_ATTR void dvp_vsync_isr(void *arg)
  *
  * @return None
  */
-static IRAM_ATTR void dvp_dma_isr(void *arg)
+static IRAM_ATTR void dvp_receive_isr(void *arg)
 {
     BaseType_t ret;
     dvp_int_event_t event;
@@ -235,7 +309,7 @@ static IRAM_ATTR void dvp_dma_isr(void *arg)
         }
     }
 }
-
+#endif
 /**
  * @brief DVP receive signal and data task, this function will call receive callback
  *        function if one complete frame is received or error triggers
@@ -295,7 +369,7 @@ static void dvp_task(void *p)
 
                     /* Stop receiving data and reset DVP state */
 
-                    cam_hal_stop_streaming(&dvp->hal);
+                    dvp_stop_capturing(dvp);
                     dvp->state = DVP_DEV_WAIT;
                 }
             }
@@ -311,7 +385,8 @@ static void dvp_task(void *p)
                 /* Stop DVP receive, and then no event will be sent */
 
                 dvp->state = DVP_DEV_RXED;
-                cam_hal_stop_streaming(&dvp->hal);
+
+                dvp_stop_capturing(dvp);
                 gpio_intr_disable(dvp->vsync_pin);
 
                 /* Mark current frame is NULL, this shows no receive is started */
@@ -372,7 +447,7 @@ static void dvp_task(void *p)
 
                 /* Start DVP receive, this is successful only when there is frame in receive list */
 
-                if (dvp_start_receive(dvp) != ESP_OK) {
+                if (dvp_start_receiving_vsync(dvp) != ESP_OK) {
                     dvp->state = DVP_DEV_BLOCK;
                 } else {
                     dvp->state = DVP_DEV_RXING;
@@ -381,7 +456,7 @@ static void dvp_task(void *p)
 
                     dvp->cur_frame->size = 0;
                     dvp->lldesc_index = 0;
-                    cam_hal_start_streaming(&dvp->hal, dvp->lldesc, dvp->hsize);
+                    dvp_start_capturing(dvp);
                 }
             } else if (dvp->state == DVP_DEV_WAIT) {
                 dvp_frame_t *frame = dvp->cur_frame;
@@ -390,7 +465,7 @@ static void dvp_task(void *p)
 
                 frame->size = 0;
                 dvp->lldesc_index = 0;
-                cam_hal_start_streaming(&dvp->hal, dvp->lldesc, dvp->hsize);
+                dvp_start_capturing(dvp);
             }
             break;
         }
@@ -401,6 +476,122 @@ static void dvp_task(void *p)
         xSemaphoreGive(dvp->mutex);
     }
 }
+
+/**
+ * @brief Initialzie DVP input GPIO pin.
+ *
+ * @param pin    DVP pin number
+ * @param signal DVP pin mapping signal
+ *
+ * @return
+ *      - ESP_OK on success
+ *      - Others if failed
+ */
+static esp_err_t dvp_config_input_gpio(int pin, int signal)
+{
+    esp_err_t ret;
+
+    PIN_FUNC_SELECT(GPIO_PIN_MUX_REG[pin], PIN_FUNC_GPIO);
+    ret = gpio_set_direction(pin, GPIO_MODE_INPUT);
+    if (ret != ESP_OK) {
+        return ret;
+    }
+    ret = gpio_set_pull_mode(pin, GPIO_FLOATING);
+    if (ret != ESP_OK) {
+        return ret;
+    }
+    esp_rom_gpio_connect_in_signal(pin, signal, false);
+
+    return ESP_OK;
+}
+
+/**
+ * @brief Initialzie DVP GPIO.
+ *
+ * @param port DVP port
+ * @param pin  DVP pin configuration
+ *
+ * @return
+ *      - ESP_OK on success
+ *      - Others if failed
+ */
+esp_err_t dvp_device_init_gpio(uint8_t port, const dvp_pin_config_t *pin)
+{
+    esp_err_t ret;
+    gpio_config_t io_conf = {0};
+    const cam_signal_conn_t *signal_conn = &cam_periph_signals[port];
+
+    io_conf.intr_type    = GPIO_INTR_NEGEDGE;
+    io_conf.pin_bit_mask = 1ull << pin->vsync_pin;
+    io_conf.mode         = GPIO_MODE_INPUT;
+    io_conf.pull_up_en   = 1;
+    io_conf.pull_down_en = 0;
+    ret = gpio_config(&io_conf);
+    if (ret != ESP_OK) {
+        return ret;
+    }
+
+    DVP_CONFIG_INPUT_PIN(pin->pclk_pin,  signal_conn->pclk_sig);
+    DVP_CONFIG_INPUT_PIN(pin->vsync_pin, signal_conn->vsync_sig);
+    for (int i = 0; i < DVP_INTF_DATA_PIN_NUM; i++) {
+        DVP_CONFIG_INPUT_PIN(pin->data_pin[i], signal_conn->data_sigs[i]);
+    }
+
+#if CONFIG_SOC_LCDCAM_SUPPORTED
+#if CONFIG_DVP_SUPPORT_H_SYNC
+    DVP_CONFIG_INPUT_PIN(pin->hsync_pin,  signal_conn->hsync_sig);
+#endif
+    DVP_CONFIG_INPUT_PIN(pin->href_pin,  signal_conn->href_sig);
+#else
+
+    /* Fix connecting input 1 (0x38) to HREF signal */
+
+    esp_rom_gpio_connect_in_signal(0x38, signal_conn->href_sig, false);
+    DVP_CONFIG_INPUT_PIN(pin->href_pin,  signal_conn->hsync_sig);
+#endif
+
+#ifdef CONFIG_DVP_ENABLE_OUTPUT_CLOCK
+    io_conf.intr_type    = GPIO_INTR_DISABLE;
+    io_conf.pin_bit_mask = 1ull << pin->xclk_pin;
+    io_conf.mode         = GPIO_MODE_OUTPUT;
+    io_conf.pull_up_en   = 0;
+    io_conf.pull_down_en = 0;
+    ret = gpio_config(&io_conf);
+    if (ret != ESP_OK) {
+        return ret;
+    }
+    esp_rom_gpio_connect_out_signal(pin->xclk_pin, signal_conn->clk_sig, false, false);
+#endif
+
+    return ESP_OK;
+}
+
+/**
+ * @brief If target platform is ESP32-S3 or ESP32-P4, initialize LCD_CAM clock.
+ *
+ * @param port      DVP port
+ * @param xclk_freq DVP output clock frequency in HZ
+ *
+ * @return
+ *      - ESP_OK on success
+ *      - Others if failed
+ */
+#ifdef CONFIG_DVP_ENABLE_OUTPUT_CLOCK
+esp_err_t dvp_device_init_ouput_clock(uint8_t port, uint32_t xclk_freq)
+{
+    esp_err_t ret;
+
+    periph_module_enable(cam_periph_signals[port].module);
+
+    ret = cam_hal_config_port_xclk(port, xclk_freq);
+    if (ret != ESP_OK) {
+        periph_module_disable(cam_periph_signals[port].module);
+        ESP_LOGE(TAG, "failed to config LCD_CAM xclock");
+    }
+
+    return ret;
+}
+#endif
 
 /**
  * @brief Create DVP device by given configuration
@@ -416,9 +607,6 @@ esp_err_t dvp_device_create(dvp_device_handle_t *handle, const dvp_device_interf
 {
     esp_err_t ret;
     dvp_device_t *dvp;
-    const cam_signal_conn_t *signal_conn;
-    gpio_config_t io_conf = {0};
-    const dvp_pin_config_t *pin;
 
     if (!config || !config->dma_buffer_max_size || !config->rx_cb || !config->free_buf_cb ||
             !handle || config->port > DVP_PORT_MAX) {
@@ -431,72 +619,62 @@ esp_err_t dvp_device_create(dvp_device_handle_t *handle, const dvp_device_interf
         goto errout_calloc_dvp;
     }
 
-    pin = &config->pin;
-
     dvp->port = config->port;
-    dvp->vsync_pin = pin->vsync_pin;
-
-    signal_conn = &cam_periph_signals[dvp->port];
-
-    /* Initialize DVP GPIO and its interrupt */
-
-    io_conf.intr_type    = GPIO_INTR_NEGEDGE;
-    io_conf.pin_bit_mask = 1ull << pin->vsync_pin;
-    io_conf.mode         = GPIO_MODE_INPUT;
-    io_conf.pull_up_en   = 1;
-    io_conf.pull_down_en = 0;
-    ret = gpio_config(&io_conf);
-    if (ret != ESP_OK) {
-        goto errout_config_gpio;
-    }
+    dvp->vsync_pin = config->pin.vsync_pin;
 
     /* Ignore result if this calling fails, maybe users call this in previous step */
 
     gpio_install_isr_service(ESP_INTR_FLAG_LOWMED | ESP_INTR_FLAG_IRAM);
 
-    ret = gpio_isr_handler_add(pin->vsync_pin, dvp_vsync_isr, dvp);
+    /* Initialize DVP controller */
+
+#ifndef CONFIG_DVP_ENABLE_OUTPUT_CLOCK
+    periph_module_enable(cam_periph_signals[config->port].module);
+#endif
+
+    cam_hal_init(&dvp->hal, dvp->port);
+
+    /* Initialize DVP V-SYNC interrupt */
+
+    ret = gpio_isr_handler_add(dvp->vsync_pin, dvp_vsync_isr, dvp);
     if (ret != ESP_OK) {
-        goto errout_config_gpio;
+        goto errout_add_gpioisr;
     }
 
-    ret = gpio_intr_disable(pin->vsync_pin);
+    ret = gpio_intr_disable(dvp->vsync_pin);
     if (ret != ESP_OK) {
         goto errout_disable_intr;
     }
 
-    CONFIG_GPIO(pin->pclk_pin,  signal_conn->pclk_sig);
-    CONFIG_GPIO(pin->vsync_pin, signal_conn->vsync_sig);
-    for (int i = 0; i < DVP_INTF_DATA_PIN_NUM; i++) {
-        CONFIG_GPIO(pin->data_pin[i], signal_conn->data_sigs[i]);
+    /* Initialize DVP receive interrupt */
+
+#if CONFIG_SOC_GDMA_SUPPORTED
+    /* GDMA driver has special API to register DMA receive callback function */
+
+    ret = dvp_dma_init(&dvp->dma);
+    if (ret != ESP_OK) {
+        goto errout_disable_intr;
     }
 
-#if CONFIG_IDF_TARGET_ESP32 || CONFIG_IDF_TARGET_ESP32_S3
-    /* Fix connecting input 1 (0x38) to HREF signal */
+    gdma_rx_event_callbacks_t cbs = {
+        .on_recv_eof = dvp_receive_isr
+    };
 
-    esp_rom_gpio_connect_in_signal(0x38, signal_conn->href_sig, false);
-    CONFIG_GPIO(pin->href_pin,  signal_conn->hsync_sig);
+    ret = gdma_register_rx_event_callbacks(dvp->dma.gdma_chan, &cbs, dvp);
+    if (ret != ESP_OK) {
+        dvp_dma_deinit(&dvp->dma);
+        goto errout_disable_intr;
+    }
 #else
-#if CONFIG_DVP_SUPPORT_H_SYNC
-    CONFIG_GPIO(pin->hsync_pin,  signal_conn->hsync_sig);
-#endif
-    CONFIG_GPIO(pin->href_pin,  signal_conn->href_sig);
-#endif
-
-    /* Initialize DVP controller */
-
-    periph_module_enable(signal_conn->module);
-    cam_hal_init(&dvp->hal, dvp->port);
-
-    /* Initialize DVP interrupt */
-
-    ret = esp_intr_alloc(signal_conn->irq_id,
+    ret = esp_intr_alloc(cam_periph_signals[config->port].irq_id,
                          ESP_INTR_FLAG_LOWMED | ESP_INTR_FLAG_IRAM,
-                         dvp_dma_isr,
+                         dvp_receive_isr,
                          dvp,
                          &dvp->intr_handle);
     if (ret != ESP_OK) {
-        goto errout_alloc_dma_intr;
+        goto errout_disable_intr;
     }
+#endif
 
     dvp->event_queue = xQueueCreate(DVP_EVENT_QUEUE_SIZE, sizeof(dvp_int_event_t));
     if (!dvp->event_queue) {
@@ -532,13 +710,18 @@ errout_create_task:
 errout_create_mutex:
     vQueueDelete(dvp->event_queue);
 errout_create_queue:
+#if CONFIG_SOC_GDMA_SUPPORTED
+    dvp_dma_deinit(&dvp->dma);
+#else
     esp_intr_free(dvp->intr_handle);
-errout_alloc_dma_intr:
-    cam_hal_deinit(&dvp->hal);
-    periph_module_disable(signal_conn->module);
+#endif
 errout_disable_intr:
     gpio_isr_handler_remove(dvp->vsync_pin);
-errout_config_gpio:
+errout_add_gpioisr:
+    cam_hal_deinit(&dvp->hal);
+#ifndef CONFIG_DVP_ENABLE_OUTPUT_CLOCK
+    periph_module_disable(cam_periph_signals[config->port].module);
+#endif
     heap_caps_free(dvp);
 errout_calloc_dvp:
     return ret;
@@ -562,22 +745,32 @@ esp_err_t dvp_device_destroy(dvp_device_handle_t handle)
 
     /* Step 2: disable and free interrupt */
 
+#ifndef CONFIG_SOC_GDMA_SUPPORTED
     esp_intr_disable(handle->intr_handle);
+#endif
     gpio_intr_disable(handle->vsync_pin);
 
     /* Step 3: stop and de-initialize DVP receive */
 
-    cam_hal_stop_streaming(&handle->hal);
+    dvp_stop_capturing(handle);
     cam_hal_deinit(&handle->hal);
 
     /* Step 4: Free interrupt */
 
     gpio_isr_handler_remove(handle->vsync_pin);
+#if CONFIG_SOC_GDMA_SUPPORTED
+    if (dvp_dma_deinit(&handle->dma) != ESP_OK) {
+        ESP_LOGE(TAG, "failed to deinit GDMA");
+    }
+#else
     esp_intr_free(handle->intr_handle);
+#endif
 
+#ifndef CONFIG_DVP_ENABLE_OUTPUT_CLOCK
     /* Step 5: disable and reset DVP */
 
     periph_module_disable(cam_periph_signals[handle->port].module);
+#endif
 
     /* Step 6: free buffer in frame if needed */
 
@@ -595,7 +788,7 @@ esp_err_t dvp_device_destroy(dvp_device_handle_t handle)
     vQueueDelete(handle->event_queue);
     heap_caps_free(handle);
 
-    return -1;
+    return 0;
 }
 
 /**
@@ -624,7 +817,7 @@ esp_err_t dvp_device_start(dvp_device_handle_t handle)
                 handle->lldesc[i].length = 0;
             }
 
-            ret = dvp_start_receive(handle);
+            ret = dvp_start_receiving_vsync(handle);
             if (ret == ESP_OK) {
                 handle->state = DVP_DEV_WAIT;
             }
@@ -656,7 +849,7 @@ esp_err_t dvp_device_stop(dvp_device_handle_t handle)
 
     if (handle->state != DVP_DEV_IDLE) {
         gpio_intr_disable(handle->vsync_pin);
-        cam_hal_stop_streaming(&handle->hal);
+        dvp_stop_capturing(handle);
         dev_free_frame(handle);
         handle->state = DVP_DEV_IDLE;
         ret = ESP_OK;
@@ -700,7 +893,7 @@ esp_err_t dvp_device_add_buffer(dvp_device_handle_t handle, uint8_t *buffer, siz
 
     SLIST_INSERT_HEAD(&handle->frame_list, frame, node);
     if (handle->state == DVP_DEV_BLOCK) {
-        ret = dvp_start_receive(handle);
+        ret = dvp_start_receiving_vsync(handle);
         assert(ret == ESP_OK);
         handle->state = DVP_DEV_WAIT;
     }
