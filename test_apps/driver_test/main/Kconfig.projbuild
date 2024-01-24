@@ -1,0 +1,14 @@
+menu "Board Support Package"
+    choice
+        prompt "Choose Board Type"
+        default BSP_BOARD_TYPE_SAMPLE
+            config BSP_BOARD_TYPE_FLY_LINE
+                bool "Fly Line"
+
+            config BSP_BOARD_TYPE_FIB
+                bool "FIB"
+
+            config BSP_BOARD_TYPE_SAMPLE
+                bool "Customer Sample"
+    endchoice
+endmenu
