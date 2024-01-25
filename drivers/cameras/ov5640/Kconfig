@@ -19,4 +19,18 @@ menuconfig CAMERA_OV5640
             default y
             help
                 If enabled, the OV5640 will be connected to the CSI interface.
+        config CAMERA_OV5640_INTERFACE_DVP
+            bool "DVP"
+            default n
+            help
+                If enabled, the OV5640 will be connected to the DVP interface.
     endmenu
+
+    config CAMERA_OV5640_MAX_SUPPORT
+        int "Support for a maximum number of connected OV5640"
+        depends on CAMERA_OV5640
+        default 1
+        range 1 3 if IDF_TARGET_ESP32P4
+        range 1 1 if !IDF_TARGET_ESP32P4
+        help
+            Set the number of connected OV5640.
