@@ -1,26 +1,4 @@
 {
-  "interfaces": {
-    "sensors": [
-      {
-        "cmd_port": {
-          "type": "I2C",
-          "port": 1,
-          "scl_pin": 10,
-          "sda_pin": 11
-        },
-        "data_port": {
-          "type": "CSI",
-          "port": 1,
-          "xxx_pin": 12,
-          "yyy_pin": 13
-        },
-        "sensor": "SC3225"
-      }
-    ],
-    "ISPs": [
-      {}
-    ]
-  },
   "media": {
     "entities": [
       {
@@ -36,9 +14,7 @@
             "source_pad": 1,
             "sink_pad": 1
           }
-        ],
-        "type": "sensor",
-        "interface": 1
+        ]
       },
       {
         "bridges": [
@@ -53,9 +29,7 @@
         ],
         "name": "sim_cam1",
         "sink_pads": 3,
-        "source_pads": 2,
-        "type": "isp",
-        "interface": 1
+        "source_pads": 2
       }
     ],
     "pipelines": [

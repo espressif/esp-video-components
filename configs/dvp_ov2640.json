@@ -1,26 +1,4 @@
 {
-  "interfaces": {
-    "sensors": [
-      {
-        "cmd_port": {
-          "type": "I2C",
-          "port": 1,
-          "scl_pin": 10,
-          "sda_pin": 11
-        },
-        "data_port": {
-          "type": "CSI",
-          "port": 1,
-          "xxx_pin": 12,
-          "yyy_pin": 13
-        },
-        "sensor": "SC3225"
-      }
-    ],
-    "ISPs": [
-      {}
-    ]
-  },
   "media": {
     "entities": [
       {
@@ -32,9 +10,7 @@
             "source_pad": 0,
             "sink_pad": 0
           }
-        ],
-        "type": "sensor",
-        "interface": 1
+        ]
       }
     ],
     "pipelines": [
