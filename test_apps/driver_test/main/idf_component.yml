@@ -1,0 +1,17 @@
+dependencies:
+  idf: ">=4.4"
+  sc2336:
+    version: "~0.0.1"
+    override_path: "../../../drivers/cameras/sc2336"
+  ov5647:
+    version: "~0.0.1"
+    override_path: "../../../drivers/cameras/ov5647"
+  gc0308:
+    version: "~0.0.1"
+    override_path: "../../../drivers/cameras/gc0308"
+  ov2640:
+    version: "~0.0.1"
+    override_path: "../../../drivers/cameras/ov2640"
+  esp-video:
+    version: "~0.0.1"
+    override_path: "../../../"
