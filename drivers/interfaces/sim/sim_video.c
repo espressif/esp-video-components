@@ -9,11 +9,13 @@
 #include "esp_video.h"
 #include "esp_video_log.h"
 
+#define SIM_NAME                    "SIM"
 #define SIM_CAMERA_BUFFER_COUNT     CONFIG_SIMULATED_INTF_DEVICE_BUFFER_COUNT
 #define SIM_CAMERA_BUFFER_SIZE      (sim_picture_jpeg_len)
 
 extern unsigned int sim_picture_jpeg_len;
 
+static int g_sim_count;
 static const char *TAG = "sim_video";
 
 static void IRAM_ATTR sim_video_rxcb(void *arg, const uint8_t *buffer, size_t n)
@@ -140,18 +142,21 @@ static const struct esp_video_ops s_sim_video_ops = {
 
 esp_err_t sim_create_camera_video_device(esp_camera_device_t *cam_dev)
 {
-    const char *name;
+    int ret;
+    char name[8];
     struct esp_video *video;
 
-    name = esp_camera_get_name(cam_dev);
-    if (!name) {
-        return ESP_ERR_INVALID_ARG;
+    ret = snprintf(name, sizeof(name), SIM_NAME "%d", g_sim_count);
+    if (ret <= 0) {
+        return ESP_ERR_NO_MEM;
     }
 
     video = esp_video_create(name, cam_dev, &s_sim_video_ops, NULL);
     if (!video) {
         return ESP_FAIL;
     }
+
+    g_sim_count++;
 
     return ESP_OK;
 }

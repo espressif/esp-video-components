@@ -48,7 +48,7 @@ struct esp_video *esp_video_device_get_object(const char *name)
 /**
  * @brief Create video object.
  *
- * @param name         video device name
+ * @param name         video device port name
  * @param cam_dev      camera devcie
  * @param ops          video operations
  * @param priv         video private data

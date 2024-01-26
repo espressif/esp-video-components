@@ -108,7 +108,7 @@ struct esp_video {
 
     int id;                                 /*!< Video device ID */
     const struct esp_video_ops *ops;        /*!< Video operations */
-    char *dev_name;                         /*!< Video devic name */
+    char *dev_name;                         /*!< Video device port name */
     void *priv;                             /*!< Video device private data */
 
     struct esp_video_format format;         /*!< Current video format */
@@ -130,7 +130,7 @@ struct esp_video {
 /**
  * @brief Create video object.
  *
- * @param name         video device name
+ * @param name         video device port name
  * @param cam_dev      camera devcie
  * @param ops          video operations
  * @param priv         video private data

@@ -14,6 +14,7 @@
 #include "esp_video.h"
 #include "esp_color_formats.h"
 
+#define CSI_NAME        "MIPI-CSI"
 #define CSI_INIT_FORMAT PIXFORMAT_RGB565
 
 struct csi_video {
@@ -216,21 +217,15 @@ static const struct esp_video_ops s_csi_video_ops = {
 
 esp_err_t csi_create_camera_video_device(esp_camera_device_t *cam_dev, uint8_t port)
 {
-    const char *name;
     struct esp_video *video;
     struct csi_video *csi_video;
-
-    name = esp_camera_get_name(cam_dev);
-    if (!name) {
-        return ESP_ERR_INVALID_ARG;
-    }
 
     csi_video = heap_caps_malloc(sizeof(struct csi_video), MALLOC_CAP_8BIT | MALLOC_CAP_INTERNAL);
     if (!csi_video) {
         return ESP_ERR_NO_MEM;
     }
 
-    video = esp_video_create(name, cam_dev, &s_csi_video_ops, csi_video);
+    video = esp_video_create(CSI_NAME, cam_dev, &s_csi_video_ops, csi_video);
     if (!video) {
         heap_caps_free(csi_video);
         return ESP_FAIL;

@@ -20,14 +20,14 @@
 
 #define VIDEO_COUNT             2
 #ifdef CONFIG_CAMERA_SIM
-#define VIDEO_DEVICE_NAME       CONFIG_CAMERA_SIM_NAME
+#define VIDEO_DEVICE_NAME       "SIM"
 #define VIDEO_BUFFER_NUM        CONFIG_SIMULATED_INTF_DEVICE_BUFFER_COUNT
 #define VIDEO_CAM_WIDTH         200
 #define VIDEO_CAM_HEIGHT        200
 #define VIDEO_CAM_FORMAT        V4L2_PIX_FMT_JPEG
 #define VIDEO_CAM_PIXEL_SIZE    1
 #else
-#define VIDEO_DEVICE_NAME       "sc2336"
+#define VIDEO_DEVICE_NAME       "MIPI-CSI"
 #define VIDEO_BUFFER_NUM        4
 #define VIDEO_CAM_WIDTH         200
 #define VIDEO_CAM_HEIGHT        200
