@@ -204,7 +204,7 @@ esp_err_t esp_vfs_dev_video_unregister(const char *name)
         return ESP_ERR_NO_MEM;
     }
 
-    ret = esp_vfs_unregister(name);
+    ret = esp_vfs_unregister(vfs_name);
     free(vfs_name);
 
     return ret;
