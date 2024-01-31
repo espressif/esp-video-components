@@ -44,6 +44,7 @@ typedef struct esp_list {
 struct esp_media {
     esp_list_t *pipeline;
     int pipelines_num;
+    esp_list_t *entities;
     char *name;
 };
 
@@ -88,6 +89,7 @@ static esp_err_t esp_pipeline_entities_iterate_walk_custom(esp_pad_t *pad, entit
 static esp_err_t esp_pads_bind_pipeline_iterate(esp_pad_t *pad, void *param);
 
 static esp_err_t entities_walk(esp_pad_t *pad, esp_media_event_cmd_t cmd, struct esp_video_buffer_element *vb);
+static esp_err_t esp_media_cleanup_individual_entities(esp_media_t *media);
 
 static QueueHandle_t media_queue = NULL;
 static const char *TAG = "esp_media";
@@ -372,6 +374,11 @@ static esp_err_t esp_media_config_loader(const char *config_string)
             goto exit;
         }
         cJSON *bridges = cJSON_GetObjectItem(entity_cjson, "bridges");
+        if (!bridges) {
+            esp_entity_delete(entity);
+            entity = NULL;
+            goto exit;
+        }
         int bridges_num = cJSON_GetArraySize(bridges);
         for (int i = 0; i < bridges_num; i++) {
             cJSON *bridge = cJSON_GetArrayItem(bridges, i);
@@ -384,6 +391,7 @@ static esp_err_t esp_media_config_loader(const char *config_string)
                 goto exit;
             }
         }
+        esp_media_add_entity(media, entity);
     }
 
     // parse pipeline
@@ -450,7 +458,7 @@ static esp_err_t esp_media_config_loader(const char *config_string)
                     }
 
                     esp_pad_t *entry_pad = esp_pipeline_get_entry_pad(pipeline);
-                    if (entry_pad &&  (entry_pad != pad)) {
+                    if (entry_pad && (entry_pad != pad)) {
                         goto exit;
                     }
 
@@ -741,7 +749,7 @@ esp_err_t esp_pads_unlink(esp_pad_t *source, esp_pad_t *sink)
     return ESP_OK;
 }
 
-esp_list_t *esp_pad_list_create(esp_entity_t *entity, uint8_t pad_num, esp_pad_type_t type)
+esp_list_t *esp_pads_list_create(esp_entity_t *entity, uint8_t pad_num, esp_pad_type_t type)
 {
     esp_list_t *lists = NULL;
     esp_list_t *list = NULL;
@@ -849,9 +857,9 @@ esp_err_t esp_pads_list_delete(esp_list_t *list)
     }
 
     while (list) {
-        esp_pad_purge(list->payload);
         esp_list_t *pre_list = list;
         list = list->next;
+        esp_pad_purge(pre_list->payload);
         free(pre_list);
     }
 
@@ -869,8 +877,8 @@ esp_entity_t *esp_entity_create(int source_num, int sink_num, struct esp_video *
 
     if (entity) {
         memset(entity, 0x0, sizeof(esp_entity_t));
-        entity->source_pads = esp_pad_list_create(entity, source_num, ESP_PAD_TYPE_SOURCE);
-        entity->sink_pads = esp_pad_list_create(entity, sink_num, ESP_PAD_TYPE_SINK);
+        entity->source_pads = esp_pads_list_create(entity, source_num, ESP_PAD_TYPE_SOURCE);
+        entity->sink_pads = esp_pads_list_create(entity, sink_num, ESP_PAD_TYPE_SINK);
         if (((source_num > 0) && !entity->source_pads) || ((sink_num > 0) && !entity->sink_pads)) {
             if (entity->source_pads) {
                 esp_pads_list_delete(entity->source_pads);
@@ -892,6 +900,23 @@ esp_entity_t *esp_entity_create(int source_num, int sink_num, struct esp_video *
         }
         entity->is_initial_node = true;
     }
+    return entity;
+}
+
+esp_entity_t *esp_entity_create_with_media(esp_media_t *media, int source_num, int sink_num, struct esp_video *device)
+{
+    esp_entity_t *entity = esp_entity_create(source_num, sink_num, device);
+    if (!entity) {
+        return entity;
+    }
+
+    if (media) {
+        if (esp_media_add_entity(media, entity) != ESP_OK) {
+            esp_entity_delete(entity);
+            entity = NULL;
+            return entity;
+        }
+    }
 
     return entity;
 }
@@ -902,6 +927,7 @@ esp_err_t esp_entity_delete(esp_entity_t *entity)
         return ESP_FAIL;
     }
 
+    esp_media_remove_entity(entity->media, entity);
     esp_pads_list_delete(entity->source_pads);
     esp_pads_list_delete(entity->sink_pads);
 
@@ -1276,6 +1302,8 @@ esp_err_t esp_media_cleanup(esp_media_t *media)
         esp_pipeline_cleanup(list->payload);
         list = temp;
     }
+
+    esp_media_cleanup_individual_entities(media);
     free(media);
 
     return ESP_OK;
@@ -1344,6 +1372,7 @@ esp_err_t esp_media_remove_pipeline(esp_media_t *media, esp_pipeline_t *pipeline
     while (list) {
         esp_pipeline_t *tmp_pipeline = list->payload;
         if (tmp_pipeline == pipeline) {
+            pipeline->media = NULL;
             if (list->pre) {
                 list->pre->next = list->next;
             } else {
@@ -1357,6 +1386,7 @@ esp_err_t esp_media_remove_pipeline(esp_media_t *media, esp_pipeline_t *pipeline
             free(list);
             break;
         }
+        list = list->next;
     }
 
     return ESP_OK;
@@ -1455,6 +1485,94 @@ esp_media_t *esp_pipeline_get_media(esp_pipeline_t *pipeline)
 
     return pipeline->media;
 }
+
+esp_err_t esp_media_add_entity(esp_media_t *media, esp_entity_t *new_entity)
+{
+    if (!media || !new_entity) {
+        return ESP_FAIL;
+    }
+
+    esp_list_t *list = media->entities;
+
+    while (list) {
+        esp_entity_t *entity = list->payload;
+        if (entity == new_entity) {
+            return ESP_OK;
+        }
+        list = list->next;
+    }
+
+    if (!list) {
+        esp_list_t *new_list = (esp_list_t *)malloc(sizeof(esp_list_t));
+        if (!new_list) {
+            return ESP_FAIL;
+        }
+        memset(new_list, 0x0, sizeof(esp_list_t));
+        new_list->payload = new_entity;
+        new_entity->media = media;
+
+        if (!media->entities) {
+            media->entities = new_list;
+        } else {
+            list = media->entities;
+            while (list->next) {
+                list = list->next;
+            }
+            list->next = new_list;
+            new_list->pre = list;
+        }
+    }
+
+    return ESP_OK;
+}
+
+esp_err_t esp_media_remove_entity(esp_media_t *media, esp_entity_t *entity)
+{
+    if (!media || !entity) {
+        return ESP_FAIL;
+    }
+
+    esp_list_t *list = media->entities;
+
+    while (list) {
+        esp_entity_t *tmp_entity = list->payload;
+        if (tmp_entity == entity) {
+            if (list->pre) {
+                list->pre->next = list->next;
+            } else {
+                media->entities = list->next;
+            }
+
+            if (list->next) {
+                list->next->pre = list->pre;
+            }
+            free(list);
+            tmp_entity->media = NULL;
+            break;
+        }
+        list = list->next;
+    }
+
+    return ESP_OK;
+}
+
+static esp_err_t esp_media_cleanup_individual_entities(esp_media_t *media)
+{
+    if (!media) {
+        return ESP_FAIL;
+    }
+
+    esp_list_t *list = media->entities;
+    media->entities = NULL;
+    while (list) {
+        esp_list_t *tmp = list->next;
+        esp_entity_delete(list->payload);
+        free(list);
+        list = tmp;
+    }
+    return ESP_OK;
+}
+
 static void media_task(void *param)
 {
     esp_media_event_t event;
