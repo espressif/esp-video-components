@@ -233,7 +233,7 @@ struct esp_video *esp_entity_get_device(esp_entity_t *entity);
  *      - ESP_OK if successful
  *      - others if failed
  */
-esp_err_t esp_pipeline_update_entry_entity(esp_pipeline_t *pipeline, esp_pad_t *pad);
+esp_err_t esp_pipeline_update_entry_pad(esp_pipeline_t *pipeline, esp_pad_t *pad);
 
 /**
  * @brief get the entry pad of the pipeline.
@@ -244,7 +244,7 @@ esp_err_t esp_pipeline_update_entry_entity(esp_pipeline_t *pipeline, esp_pad_t *
  *      - Pad object pointer if successful
  *      - NULL if failed
  */
-esp_pad_t *esp_pipeline_get_entry_entity(esp_pipeline_t *pipeline);
+esp_pad_t *esp_pipeline_get_entry_pad(esp_pipeline_t *pipeline);
 
 /**
  * @brief Create a video buffer for the pipeline
@@ -326,6 +326,17 @@ esp_err_t esp_pipeline_delete(esp_pipeline_t *pipeline);
  *      - Others if failed
  */
 esp_err_t esp_pipeline_cleanup(esp_pipeline_t *pipeline);
+
+/**
+ * @brief Get media object by pipeline
+ *
+ * @param pipeline the pipeline pointer
+ *
+ * @return
+ *      - NULL if failed
+ *      - media object pointer if successful
+ */
+esp_media_t *esp_pipeline_get_media(esp_pipeline_t *pipeline);
 
 /**
  * @brief Add a pipeline into the media.
