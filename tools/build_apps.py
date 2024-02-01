@@ -23,6 +23,7 @@ IGNORE_WARNINGS = [
     r'warning: \'trig_io\' defined but not used',
     r'warning: unused variable \'bus_id\'',
     r'warning: unused variable \'uvc_buffer\'',
+    r'warning: \'async_fbcpy_done_cb\' defined but not used',
     r'dwc2_esp32.h:88:21: warning: cast from pointer to integer of different size',
     r'dwc2_esp32.h:94:97: warning: cast to pointer from integer of different size',
 ]
