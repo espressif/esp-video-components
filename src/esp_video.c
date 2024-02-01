@@ -118,6 +118,8 @@ struct esp_video *esp_video_create(const char *name, esp_camera_device_t *cam_de
         goto errout_video_exits;
     }
 
+    memset(video, 0x0, sizeof(struct esp_video));
+
     portMUX_INITIALIZE(&video->lock);
     SLIST_INIT(&video->done_list);
     video->dev_name = (char *)&video[1];
