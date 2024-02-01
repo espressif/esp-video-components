@@ -12,6 +12,7 @@
 #include "esp_video_log.h"
 #include "dvp.h"
 
+#define DVP_NAME                    "DVP"
 #define DVP_DMA_BUFFER_SIZE         CONFIG_DVP_DMA_BUFFER_MAX_SIZE
 
 struct dvp_video {
@@ -220,23 +221,17 @@ static const struct esp_video_ops s_dvp_video_ops = {
  */
 esp_err_t dvp_create_camera_video_device(esp_camera_device_t *cam_dev, uint8_t port, const dvp_pin_config_t *pin)
 {
-    const char *name;
     esp_err_t ret;
     struct esp_video *video;
     struct dvp_video *dvp_video;
     dvp_device_interface_config_t dvp_cfg;
-
-    name = esp_camera_get_name(cam_dev);
-    if (!name) {
-        return ESP_ERR_INVALID_ARG;
-    }
 
     dvp_video = heap_caps_malloc(sizeof(struct dvp_video), MALLOC_CAP_8BIT | MALLOC_CAP_INTERNAL);
     if (!dvp_video) {
         return ESP_ERR_NO_MEM;
     }
 
-    video = esp_video_create(name, cam_dev, &s_dvp_video_ops, dvp_video);
+    video = esp_video_create(DVP_NAME, cam_dev, &s_dvp_video_ops, dvp_video);
     if (!video) {
         heap_caps_free(dvp_video);
         return ESP_FAIL;

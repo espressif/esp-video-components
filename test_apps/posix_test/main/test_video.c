@@ -29,7 +29,7 @@ void setUp(void);
 
 #ifdef CONFIG_SIMULATED_INTF
 #define VIDEO_COUNT             2
-#define VIDEO_DEVICE_NAME       CONFIG_CAMERA_SIM_NAME
+#define VIDEO_DEVICE_NAME       "SIM"
 #define VIDEO_BUFFER_NUM        CONFIG_SIMULATED_INTF_DEVICE_BUFFER_COUNT
 #define VIDEO_BUFFER_SIZE       sim_picture_jpeg_len
 #define VIDEO_BUFFER_DATA       sim_picture_jpeg
