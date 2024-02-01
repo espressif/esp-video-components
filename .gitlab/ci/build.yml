@@ -16,7 +16,8 @@
     add_gitlab_ssh_keys
     cd $IDF_PATH
     git remote set-url origin ${GITLAB_SSH_SERVER}/espressif/esp-idf.git
-    git pull origin ${IDF_BRANCH}
+    git fetch origin ${IDF_BRANCH}
+    git checkout ${IDF_BRANCH}
     git submodule update --init --recursive
     cd -
   fi
