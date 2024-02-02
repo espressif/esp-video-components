@@ -141,6 +141,22 @@ esp_pipeline_t *esp_pad_get_pipeline(esp_pad_t *pad);
 esp_entity_t *esp_entity_create(int source_num, int sink_num, struct esp_video *device);
 
 /**
+ * @brief Create an entity and add the new entity into a media.
+ *
+ * @param media the media object pointer
+ * @param source_num the number of source pads in entity
+ * @param sink_num the number of sink pads in entity
+ * @param device the video device pointer
+ * @note  one pad only can belong to one pipeline, if you want to create one entity belong to multiple pipelines,
+ *        please create multiple pads, and make sure one pad only in one pipeline
+ *
+ * @return
+ *      - Entity object pointer if successful
+ *      - NULL if failed
+ */
+esp_entity_t *esp_entity_create_with_media(esp_media_t *media, int source_num, int sink_num, struct esp_video *device);
+
+/**
  * @brief Delete an entity. This API will also delete the pads of the entity
  *
  * @param entity the entity to be deleted
@@ -180,15 +196,6 @@ esp_pad_t *esp_entity_get_pad_by_index(esp_entity_t *entity, esp_pad_type_t type
 esp_err_t esp_entity_pad_bridge(esp_pad_t *source, esp_pad_t *sink);
 
 /**
- * @brief Create a pipeline.
- *
- * @return
- *      - Pipeline object pointer if successful
- *      - NULL if failed
- */
-esp_pipeline_t *esp_pipeline_create(void);
-
-/**
  * @brief register APIs for an entity.
  *
  * @param entity the entity which need be registered APIs
@@ -199,17 +206,6 @@ esp_pipeline_t *esp_pipeline_create(void);
  *      - NULL if failed
  */
 esp_err_t esp_entity_register_ops(esp_entity_t *entity, esp_entity_ops_t *ops);
-
-/**
- * @brief Check the video device whether it is an end node, which means if it is an user node.
- *
- * @param video the video device
- *
- * @return
- *      - True if the entity is an user node
- *      - False if the entity is not an user node
- */
-bool esp_video_device_is_user_node(struct esp_video *video);
 
 /**
  * @brief Get the video device pointer of the entity.
@@ -304,6 +300,15 @@ struct esp_video_buffer *esp_pipeline_get_video_buffer(esp_pipeline_t *pipeline)
 esp_pad_t *esp_pipeline_get_pad_by_entity(esp_pipeline_t *pipeline, esp_entity_t *entity, esp_pad_type_t type);
 
 /**
+ * @brief Create a pipeline.
+ *
+ * @return
+ *      - Pipeline object pointer if successful
+ *      - NULL if failed
+ */
+esp_pipeline_t *esp_pipeline_create(void);
+
+/**
  * @brief Remove the pipeline from it's media and delete it.
  *        This will free video buffer of the pipeline
  *
@@ -337,6 +342,30 @@ esp_err_t esp_pipeline_cleanup(esp_pipeline_t *pipeline);
  *      - media object pointer if successful
  */
 esp_media_t *esp_pipeline_get_media(esp_pipeline_t *pipeline);
+
+/**
+ * @brief Add an entity into a media.
+ *
+ * @param media  media object
+ * @param new_entity the entity to be added
+ *
+ * @return
+ *      - ESP_OK on success
+ *      - Others if failed
+ */
+esp_err_t esp_media_add_entity(esp_media_t *media, esp_entity_t *new_entity);
+
+/**
+ * @brief Remove an entity from a media.
+ *
+ * @param media  media object
+ * @param entity the entity to be removed
+ *
+ * @return
+ *      - ESP_OK on success
+ *      - Others if failed
+ */
+esp_err_t esp_media_remove_entity(esp_media_t *media, esp_entity_t *entity);
 
 /**
  * @brief Add a pipeline into the media.
@@ -415,6 +444,17 @@ esp_err_t esp_media_start(void);
  *      - Others if failed
  */
 esp_err_t esp_video_media_ioctl(struct esp_video *video, int cmd, va_list args);
+
+/**
+ * @brief Check the video device whether it is an end node, which means if it is an user node.
+ *
+ * @param video the video device
+ *
+ * @return
+ *      - True if the entity is an user node
+ *      - False if the entity is not an user node
+ */
+bool esp_video_device_is_user_node(struct esp_video *video);
 
 /**
  * @brief Process a video buffer which receives data done.
