@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Espressif Systems (Shanghai) CO LTD
+/* SPDX-FileCopyrightText: 2023-2024 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -107,6 +107,10 @@ static const esp_camera_dvp_config_t dvp_config[CONFIG_ESP_VIDEO_CAMERA_INTF_DVP
 #endif
 };
 #endif
+const esp_camera_sim_config_t s_sim_config[2] = {
+    {.id = 0},
+    {.id = 1}
+};
 
 static const esp_camera_config_t cam_config = {
     .sccb_num = CONFIG_ESP_VIDEO_CAMERA_SCCB_NUM,
@@ -117,6 +121,10 @@ static const esp_camera_config_t cam_config = {
 #if CONFIG_ESP_VIDEO_CAMERA_INTF_DVP_NUM > 0
     .dvp_num  = CONFIG_ESP_VIDEO_CAMERA_INTF_DVP_NUM,
     .dvp      = dvp_config,
+#endif
+#ifdef CONFIG_SIMULATED_INTF
+    .sim_num  = sizeof(s_sim_config) / sizeof(s_sim_config[0]),
+    .sim = s_sim_config,
 #endif
 };
 
