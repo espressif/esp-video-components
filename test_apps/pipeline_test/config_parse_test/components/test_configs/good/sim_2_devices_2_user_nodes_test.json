@@ -49,6 +49,15 @@
                 "sink_pad": 0
               }
             ]
+          },
+          {
+            "name": "video1",
+            "entities": [
+              {
+                "entity": "SIM0",
+                "sink_pad": 0
+              }
+            ]
           }
         ]
       }

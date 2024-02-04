@@ -51,6 +51,34 @@
             ]
           }
         ]
+      },
+      {
+        "name": "pipeline2",
+        "user_node": [
+          {
+            "name": "video1",
+            "entities": [
+              {
+                "entity": "SIM0",
+                "sink_pad": 1
+              },
+              {
+                "pre_entity": "SIM0",
+                "entity": "SIM1",
+                "sink_pad": 1
+              }
+            ]
+          },
+          {
+            "name": "video2",
+            "entities": [
+              {
+                "entity": "SIM0",
+                "sink_pad": 1
+              }
+            ]
+          }
+        ]
       }
     ]
   }

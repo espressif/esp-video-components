@@ -2,7 +2,7 @@
   "media": {
     "entities": [
       {
-        "name": "OV2640",
+        "name": "DVP",
         "sink_pads": 1,
         "source_pads": 1,
         "bridges": [
@@ -21,7 +21,7 @@
             "name": "video0",
             "entities": [
               {
-                "entity": "OV2640",
+                "entity": "DVP",
                 "sink_pad": 0
               }
             ]

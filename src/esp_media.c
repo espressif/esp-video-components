@@ -308,7 +308,7 @@ static esp_entity_ops_t entity_default_ops = {
     .event_cb = entity_event_default_cb
 };
 
-static esp_err_t esp_media_config_loader(const char *config_string)
+esp_err_t esp_media_config_loader(const char *config_string)
 {
     esp_err_t err_ret = ESP_FAIL;
     esp_media_t *media = NULL;
@@ -668,6 +668,8 @@ esp_pad_t *esp_entity_get_pad_by_index(esp_entity_t *entity, esp_pad_type_t type
         }
         list = entity->sink_pads;
         break;
+    default:
+        return NULL;
     }
 
     while (list) {

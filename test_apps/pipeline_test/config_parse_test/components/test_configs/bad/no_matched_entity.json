@@ -45,7 +45,7 @@
               },
               {
                 "pre_entity": "SIM0",
-                "entity": "SIM1",
+                "entity": "sim_err_0",
                 "sink_pad": 0
               }
             ]

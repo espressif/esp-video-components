@@ -433,6 +433,17 @@ esp_err_t esp_media_event_post(esp_media_event_t *event, TickType_t timeout);
 esp_err_t esp_media_start(void);
 
 /**
+ * @brief Load and parse the pipeline config which is the JSON string.
+ *
+ * @param config_string JSON string
+ *
+ * @return
+ *      - ESP_OK on success
+ *      - Others if failed
+ */
+esp_err_t esp_media_config_loader(const char *config_string);
+
+/**
  * @brief media device ioctl.
  *
  * @param video video object
@@ -466,7 +477,6 @@ bool esp_video_device_is_user_node(struct esp_video *video);
  * @return None
  */
 void esp_video_media_recvdone_buffer(struct esp_video *video, void *buffer, size_t size, uint32_t  offset);
-
 #ifdef __cplusplus
 }
 #endif

@@ -27,7 +27,7 @@
             "sink_pad": 1
           }
         ],
-        "name": "SIM1",
+        "name": "sim_err_0",
         "sink_pads": 3,
         "source_pads": 2
       }
@@ -45,7 +45,7 @@
               },
               {
                 "pre_entity": "SIM0",
-                "entity": "SIM1",
+                "entity": "sim_err_0",
                 "sink_pad": 0
               }
             ]
