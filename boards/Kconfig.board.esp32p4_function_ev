@@ -1,0 +1,281 @@
+config ESP_VIDEO_BOARD_ESP32P4_FUNCTION_EV
+    bool "ESP32-P4-Function-EV"
+        help
+            Use ESP32-P4-Function-EV as the development board, you need to add some components' dependency
+            in your project's idf_component.yml, such as OV2640 and so on.
+
+choice ESP_VIDEO_BOARD_ESP32P4_FUNCTION_EV_VERSION
+    bool "Board Version"
+    default ESP_VIDEO_BOARD_ESP32P4_FUNCTION_EV_VERSION_V1_0_B
+
+    config ESP_VIDEO_BOARD_ESP32P4_FUNCTION_EV_VERSION_V1_0_B
+        bool "V1.0B"
+endchoice
+
+menu "SCCB"
+    depends on ESP_VIDEO_BOARD_ESP32P4_FUNCTION_EV
+
+    config ESP_VIDEO_CAMERA_SCCB_NUM
+        int "Number of SCCB interfaces used"
+        default 1
+        range 1 2 if IDF_TARGET_ESP32P4
+        help
+            If 2 same type cameras are used, need to use 2 different SCCB interfaces.
+            Otherwise, 1 is enough.
+
+    menu "SCCB0 Interface"
+        depends on ESP_VIDEO_CAMERA_SCCB_NUM > 0
+
+        choice ESP_VIDEO_CAMERA_SCCB0_I2C_I3C_PORT
+            bool "I2C/I3C Peripheral used for SCCB0"
+            default ESP_VIDEO_CAMERA_SCCB0_I2C_PORT0
+
+            config ESP_VIDEO_CAMERA_SCCB0_I2C_PORT0
+                bool "I2C0"
+            config ESP_VIDEO_CAMERA_SCCB0_I2C_PORT1
+                bool "I2C1"
+            config ESP_VIDEO_CAMERA_SCCB0_I3C_PORT0
+                bool "I3C0"
+                depends on IDF_TARGET_ESP32P4
+        endchoice
+
+        config ESP_VIDEO_CAMERA_SCCB0_I2C_I3C
+            int
+            default 0 if ESP_VIDEO_CAMERA_SCCB0_I2C_PORT0 || ESP_VIDEO_CAMERA_SCCB0_I2C_PORT1
+            default 1 if ESP_VIDEO_CAMERA_SCCB0_I3C_PORT0
+
+        config ESP_VIDEO_CAMERA_SCCB0_I2C_I3C_PORT
+            int
+            default 0 if ESP_VIDEO_CAMERA_SCCB0_I2C_PORT0 || ESP_VIDEO_CAMERA_SCCB0_I3C_PORT0
+            default 1 if ESP_VIDEO_CAMERA_SCCB0_I2C_PORT1
+
+        config ESP_VIDEO_CAMERA_SCCB0_I2C_I3C_SCL_PIN
+            int "I2C/I3C SCL pin"
+            default 33
+            range -1 56
+
+        config ESP_VIDEO_CAMERA_SCCB0_I2C_I3C_SDA_PIN
+            int "I2C/I3C SDA pin"
+            default 32
+            range -1 56
+
+        config ESP_VIDEO_CAMERA_SCCB0_I2C_I3C_FREQ
+            int "I2C/I3C frequency used for SCCB0"
+            default 100000
+            range 100000 400000
+            help
+                Increasing this value can reduce the initialization time of the camera sensor.
+                Please refer to the relevant instructions of the camera sensor to adjust the value.
+    endmenu
+
+    menu "SCCB1 Interface"
+        depends on ESP_VIDEO_CAMERA_SCCB_NUM > 1
+
+        choice ESP_VIDEO_CAMERA_SCCB1_I2C_I3C_PORT
+            bool "I2C/I3C Peripheral used for SCCB1"
+            default ESP_VIDEO_CAMERA_SCCB1_I2C_PORT1
+
+            config ESP_VIDEO_CAMERA_SCCB1_I2C_PORT0
+                bool "I2C0"
+            config ESP_VIDEO_CAMERA_SCCB1_I2C_PORT1
+                bool "I2C1"
+            config ESP_VIDEO_CAMERA_SCCB1_I3C_PORT0
+                bool "I3C0"
+                depends on IDF_TARGET_ESP32P4
+        endchoice
+
+        config ESP_VIDEO_CAMERA_SCCB1_I2C_I3C
+            int
+            default 0 if ESP_VIDEO_CAMERA_SCCB0_I2C_PORT0 || ESP_VIDEO_CAMERA_SCCB0_I2C_PORT1
+            default 1 if ESP_VIDEO_CAMERA_SCCB0_I3C_PORT0
+
+        config ESP_VIDEO_CAMERA_SCCB1_I2C_I3C_PORT
+            int
+            default 0 if ESP_VIDEO_CAMERA_SCCB1_I2C_PORT0 || ESP_VIDEO_CAMERA_SCCB1_I3C_PORT0
+            default 1 if ESP_VIDEO_CAMERA_SCCB1_I2C_PORT1
+
+        config ESP_VIDEO_CAMERA_SCCB1_I2C_I3C_SCL_PIN
+            int "I2C/I3C SCL pin"
+            default 5
+            range -1 56
+
+        config ESP_VIDEO_CAMERA_SCCB1_I2C_I3C_SDA_PIN
+            int "I2C/I3C SDA pin"
+            default 4
+            range -1 56
+
+        config ESP_VIDEO_CAMERA_SCCB1_I2C_I3C_FREQ
+            int "I2C/I3C frequency used for SCCB1"
+            default 100000
+            range 100000 400000
+            help
+                Increasing this value can reduce the initialization time of the camera sensor.
+                Please refer to the relevant instructions of the camera sensor to adjust the value.
+    endmenu
+endmenu
+
+menu "CSI"
+    depends on ESP_VIDEO_BOARD_ESP32P4_FUNCTION_EV && IDF_TARGET_ESP32P4
+
+    config ESP_VIDEO_CAMERA_INTF_CSI_NUM
+        int "Number of CSI Interfaces used"
+        default 1
+        range 0 1
+
+    menu "CSI0 Interface"
+        depends on ESP_VIDEO_CAMERA_INTF_CSI_NUM > 0
+
+        config ESP_VIDEO_CAMERA_INTF_CSI0
+            bool
+            default y
+
+        choice ESP_VIDEO_CAMERA_CSI0_SCCB_INDEX
+            bool "Choose SCCB Interface Index"
+            default ESP_VIDEO_CAMERA_CSI0_SCCB_INDEX0
+
+            config ESP_VIDEO_CAMERA_CSI0_SCCB_INDEX0
+                bool "SCCB0 Interface"
+            config ESP_VIDEO_CAMERA_CSI0_SCCB_INDEX1
+                bool "SCCB1 Interface"
+                depends on ESP_VIDEO_CAMERA_SCCB_NUM > 1
+        endchoice
+
+        config ESP_VIDEO_CAMERA_CSI0_SCCB_INDEX
+            int
+            default 0 if ESP_VIDEO_CAMERA_CSI0_SCCB_INDEX0
+            default 1 if ESP_VIDEO_CAMERA_CSI0_SCCB_INDEX1
+
+        config ESP_VIDEO_CAMERA_CSI0_XCLK_FREQ
+            int "Frequency of XCLK signal"
+            default 16000000
+            range 0 20000000
+            help
+                Frequency of XCLK signal, in Hz.
+
+        config ESP_VIDEO_CAMERA_CSI0_PWDN_PIN
+            int "Power Down pin"
+            range -1 56
+            default -1
+
+        config ESP_VIDEO_CAMERA_CSI0_RESET_PIN
+            int "Reset pin"
+            range -1 56
+            default -1
+
+        config ESP_VIDEO_CAMERA_CSI0_XCLK_PIN
+            int "XCLK pin"
+            range 0 56
+            default 15
+    endmenu
+endmenu
+
+menu "DVP"
+    depends on ESP_VIDEO_BOARD_ESP32P4_FUNCTION_EV
+
+    config ESP_VIDEO_CAMERA_INTF_DVP_NUM
+        int "Number of DVP Interfaces used"
+        default 1
+        range 0 1
+
+    menu "DVP0 Interface"
+        depends on ESP_VIDEO_CAMERA_INTF_DVP_NUM > 0
+
+        config ESP_VIDEO_CAMERA_INTF_DVP0
+            bool
+            default y
+
+        choice ESP_VIDEO_CAMERA_DVP0_SCCB_INDEX
+            bool "Choose SCCB Interface Index"
+            default ESP_VIDEO_CAMERA_DVP0_SCCB_INDEX0
+
+            config ESP_VIDEO_CAMERA_DVP0_SCCB_INDEX0
+                bool "SCCB0 Interface"
+            config ESP_VIDEO_CAMERA_DVP0_SCCB_INDEX1
+                bool "SCCB1 Interface"
+                depends on ESP_VIDEO_CAMERA_SCCB_NUM > 1
+        endchoice
+
+        config ESP_VIDEO_CAMERA_DVP0_SCCB_INDEX
+            int
+            default 0 if ESP_VIDEO_CAMERA_DVP0_SCCB_INDEX0
+            default 1 if ESP_VIDEO_CAMERA_DVP0_SCCB_INDEX1
+
+        config ESP_VIDEO_CAMERA_DVP0_XCLK_FREQ
+            int "Frequency of XCLK signal"
+            default 16000000
+            range 0 20000000
+            help
+                Frequency of XCLK signal, in Hz.
+                EXPERIMENTAL: Set to 16000000 on ESP32-S2 or ESP32-S3 to enable EDMA mode.
+
+        config ESP_VIDEO_CAMERA_DVP0_PWDN_PIN
+            int "Power Down pin"
+            range -1 56
+            default -1
+
+        config ESP_VIDEO_CAMERA_DVP0_RESET_PIN
+            int "Reset pin"
+            range -1 56
+            default -1
+
+        config ESP_VIDEO_CAMERA_DVP0_XCLK_PIN
+            int "XCLK pin"
+            range 0 56
+            default 20
+
+        config ESP_VIDEO_CAMERA_DVP0_PCLK_PIN
+            int "PCLK pin"
+            range 0 56
+            default 21
+
+        config ESP_VIDEO_CAMERA_DVP0_VSYNC_PIN
+            int "VSYNC pin"
+            range 0 56
+            default 23
+
+        config ESP_VIDEO_CAMERA_DVP0_HREF_PIN
+            int "HREF pin"
+            range 0 56
+            default 22
+
+        config ESP_VIDEO_CAMERA_DVP0_D0_PIN
+            int "D0 pin"
+            range 0 56
+            default 53
+
+        config ESP_VIDEO_CAMERA_DVP0_D1_PIN
+            int "D1 pin"
+            range 0 56
+            default 54
+
+        config ESP_VIDEO_CAMERA_DVP0_D2_PIN
+            int "D2 pin"
+            range 0 56
+            default 52
+
+        config ESP_VIDEO_CAMERA_DVP0_D3_PIN
+            int "D3 pin"
+            range 0 56
+            default 1
+
+        config ESP_VIDEO_CAMERA_DVP0_D4_PIN
+            int "D4 pin"
+            range 0 56
+            default 0
+
+        config ESP_VIDEO_CAMERA_DVP0_D5_PIN
+            int "D5 pin"
+            range 0 56
+            default 45
+
+        config ESP_VIDEO_CAMERA_DVP0_D6_PIN
+            int "D6 pin"
+            range 0 56
+            default 46
+
+        config ESP_VIDEO_CAMERA_DVP0_D7_PIN
+            int "D7 pin"
+            range 0 56
+            default 47
+    endmenu
+endmenu

@@ -1,0 +1,32 @@
+menu "USB Video Class Configuration"
+
+    config UVC_CAM_FRAME_BUFFER_COUNT
+        int "UVC Camera Frame Buffer Count"
+        default 4
+        help
+            UVC camera frame buffer count, too large value may cause
+            memory allocation fails.
+
+    config UVC_CAM_ENABLE_MIPI_CSI
+        bool "Enable MIPI-CSI Camera"
+        default y
+        depends on MIPI_CSI_ENABLE
+        help
+            Select this option, MIPI-CSI interface camera is enabled.
+
+    config UVC_CAM_ENABLE_DVP
+        bool "Enable DVP Camera"
+        default y
+        depends on DVP_ENABLE
+        help
+            Select this option, DVP interface camera is enabled.
+    
+    config UVC_CAM_ENABLE_DVP_JPEG_SW_CODEC
+        bool "Enable DVP JPEG Software Codec"
+        default y
+        depends on UVC_CAM_ENABLE_DVP
+        select ESP_VIDEO_SW_CODEC
+        help
+            Select this option, frame from DVP interface camera is coded
+            by JPEG software codec.
+endmenu

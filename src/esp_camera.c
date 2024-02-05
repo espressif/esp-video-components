@@ -261,7 +261,7 @@ esp_err_t esp_camera_init(const esp_camera_config_t *config)
                 }
 #else
                 if (config->dvp[i].dvp_pin_cfg.xclk_pin >= 0) {
-                    const esp_camera_ctrl_config_t *ctrl_cfg = &config->dvp[i].ctrl_cfg;
+                    const esp_camera_dvp_ctrl_config_t *ctrl_cfg = &config->dvp[i].ctrl_cfg;
 
                     ret = xclk_enable_out_clock(ctrl_cfg->xclk_timer, ctrl_cfg->xclk_timer_channel,
                                                 ctrl_cfg->xclk_freq_hz, config->dvp[i].dvp_pin_cfg.xclk_pin);

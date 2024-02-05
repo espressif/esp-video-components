@@ -17,30 +17,41 @@
 #include "usb_device_uvc.h"
 #include "uvc_frame_config.h"
 
-#include "hal/jpeg_types.h"
-#include "jpeg.h"
-
 #include "linux/videodev2.h"
 #include "esp_video.h"
+#ifdef CONFIG_UVC_CAM_ENABLE_DVP_JPEG_SW_CODEC
+#include "img_converters.h"
+#else
+#include "hal/jpeg_types.h"
+#include "jpeg.h"
+#endif
 
-static const char *TAG = "uvc";
-
+#ifdef CONFIG_UVC_CAM_ENABLE_DVP_JPEG_SW_CODEC
 #define WIDTH                      CONFIG_UVC_DEFAULT_FRAMESIZE_WIDTH
 #define HEIGHT                     CONFIG_UVC_DEFAULT_FRAMESIZE_HEIGT
+#endif
+
 #define JPEG_ENC_QUALITY           (85)
 
 #define UVC_MAX_FRAMESIZE_SIZE     (800*1024)
 
 typedef struct {
+#ifndef CONFIG_UVC_CAM_ENABLE_DVP_JPEG_SW_CODEC
     jpeg_encoder_handle_t jpeg_handle;
+#endif
     uint8_t *jpeg_last_buf;
     uint8_t *jpeg_next_buf;
     uint8_t *camera_next_buf;
     uint8_t *camera_last_buf;
     uint8_t *jpeg_out_buf;
     uvc_fb_t uvc_fb;
+
+    uint32_t width;
+    uint32_t height;
+    uint32_t pixel_format;
 } fb_t;
 
+static const char *TAG = "uvc";
 static fb_t s_fb;
 static uint8_t *buffer[4];
 static int frame_count = 0;
@@ -65,6 +76,7 @@ static const esp_camera_sccb_config_t s_sccb_config[CONFIG_ESP_VIDEO_CAMERA_SCCB
 #endif
 };
 
+#if CONFIG_UVC_CAM_ENABLE_MIPI_CSI && CONFIG_ESP_VIDEO_CAMERA_INTF_CSI_NUM > 0
 static const esp_camera_csi_config_t s_csi_config[CONFIG_ESP_VIDEO_CAMERA_INTF_CSI_NUM] = {
     {
         .ctrl_cfg = {
@@ -73,14 +85,53 @@ static const esp_camera_csi_config_t s_csi_config[CONFIG_ESP_VIDEO_CAMERA_INTF_C
             .reset_pin         = CONFIG_ESP_VIDEO_CAMERA_CSI0_RESET_PIN,
             .pwdn_pin          = CONFIG_ESP_VIDEO_CAMERA_CSI0_PWDN_PIN,
             .xclk_freq_hz      = CONFIG_ESP_VIDEO_CAMERA_CSI0_XCLK_FREQ,
+            .xclk_timer        = LEDC_TIMER_0,
+            .xclk_timer_channel = LEDC_CHANNEL_0,
         }
     },
 };
+#endif
+
+#if CONFIG_UVC_CAM_ENABLE_DVP && CONFIG_ESP_VIDEO_CAMERA_INTF_DVP_NUM > 0
+static esp_camera_dvp_config_t s_dvp_config[CONFIG_ESP_VIDEO_CAMERA_INTF_DVP_NUM] = {
+    {
+        .ctrl_cfg = {
+            .sccb_config_index = CONFIG_ESP_VIDEO_CAMERA_DVP0_SCCB_INDEX,
+            .reset_pin         = CONFIG_ESP_VIDEO_CAMERA_DVP0_RESET_PIN,
+            .pwdn_pin          = CONFIG_ESP_VIDEO_CAMERA_DVP0_PWDN_PIN,
+            .xclk_freq_hz      = CONFIG_ESP_VIDEO_CAMERA_DVP0_XCLK_FREQ,
+#ifndef CONFIG_DVP_ENABLE_OUTPUT_CLOCK
+            .xclk_timer        = LEDC_TIMER_1,
+            .xclk_timer_channel = LEDC_CHANNEL_0,
+#endif
+        }
+        ,
+        .dvp_pin_cfg = {
+            .data_pin = {
+                CONFIG_ESP_VIDEO_CAMERA_DVP0_D0_PIN, CONFIG_ESP_VIDEO_CAMERA_DVP0_D1_PIN,
+                CONFIG_ESP_VIDEO_CAMERA_DVP0_D2_PIN, CONFIG_ESP_VIDEO_CAMERA_DVP0_D3_PIN,
+                CONFIG_ESP_VIDEO_CAMERA_DVP0_D4_PIN, CONFIG_ESP_VIDEO_CAMERA_DVP0_D5_PIN,
+                CONFIG_ESP_VIDEO_CAMERA_DVP0_D6_PIN, CONFIG_ESP_VIDEO_CAMERA_DVP0_D7_PIN,
+            },
+            .vsync_pin = CONFIG_ESP_VIDEO_CAMERA_DVP0_VSYNC_PIN,
+            .href_pin = CONFIG_ESP_VIDEO_CAMERA_DVP0_HREF_PIN,
+            .pclk_pin = CONFIG_ESP_VIDEO_CAMERA_DVP0_PCLK_PIN,
+            .xclk_pin = CONFIG_ESP_VIDEO_CAMERA_DVP0_XCLK_PIN,
+        }
+    }
+};
+#endif
 
 static const esp_camera_config_t s_cam_config = {
     .sccb_num = CONFIG_ESP_VIDEO_CAMERA_SCCB_NUM,
     .sccb     = s_sccb_config,
+#if CONFIG_UVC_CAM_ENABLE_MIPI_CSI && CONFIG_ESP_VIDEO_CAMERA_INTF_CSI_NUM > 0
     .csi      = s_csi_config,
+#endif
+#if CONFIG_UVC_CAM_ENABLE_DVP && CONFIG_ESP_VIDEO_CAMERA_INTF_DVP_NUM > 0
+    .dvp     = s_dvp_config,
+    .dvp_num = 1,
+#endif
 };
 
 static void camera_stop_cb(void *cb_ctx)
@@ -111,6 +162,7 @@ static esp_err_t camera_start_cb(uvc_format_t format, int width, int height, int
 
 static uvc_fb_t *camera_fb_get_cb(void *cb_ctx)
 {
+    esp_err_t err;
     int video_fd = (int)cb_ctx;
 
     int camera_img_size = 0;
@@ -129,7 +181,30 @@ static uvc_fb_t *camera_fb_get_cb(void *cb_ctx)
     }
 
     s_fb.jpeg_next_buf = buffer[buf.index];
-    esp_err_t err = jpeg_encoder_process(s_fb.jpeg_handle, s_fb.jpeg_next_buf, s_fb.jpeg_out_buf, &camera_img_size);
+
+#ifdef CONFIG_UVC_CAM_ENABLE_DVP_JPEG_SW_CODEC
+    if (s_fb.pixel_format == V4L2_PIX_FMT_JPEG) {
+        err = ESP_OK;
+        memcpy(s_fb.jpeg_out_buf, s_fb.jpeg_next_buf, buf.bytesused);
+        camera_img_size = buf.bytesused;
+    } else {
+        uint8_t *jpeg_ptr;
+        size_t jpeg_size;
+
+        bool tx_valid = fmt2jpg(s_fb.jpeg_next_buf, buf.bytesused, s_fb.width,
+                                s_fb.height, PIXFORMAT_RGB565, JPEG_ENC_QUALITY, &jpeg_ptr, &jpeg_size);
+        if (tx_valid) {
+            err = ESP_OK;
+            memcpy(s_fb.jpeg_out_buf, jpeg_ptr, jpeg_size);
+            camera_img_size = jpeg_size;
+            free(jpeg_ptr);
+        } else {
+            err = ESP_FAIL;
+        }
+    }
+#else
+    err = jpeg_encoder_process(s_fb.jpeg_handle, s_fb.jpeg_next_buf, s_fb.jpeg_out_buf, &camera_img_size);
+#endif
 
     if (ioctl(video_fd, VIDIOC_QBUF, &buf) != 0) {
         ESP_LOGE(TAG, "failed to free video frame");
@@ -148,8 +223,13 @@ static uvc_fb_t *camera_fb_get_cb(void *cb_ctx)
 
     s_fb.uvc_fb.buf = s_fb.jpeg_out_buf;
     s_fb.uvc_fb.len = camera_img_size;
+#ifdef CONFIG_UVC_CAM_ENABLE_DVP_JPEG_SW_CODEC
+    s_fb.uvc_fb.width = s_fb.width;
+    s_fb.uvc_fb.height = s_fb.height;
+#else
     s_fb.uvc_fb.width = WIDTH;
     s_fb.uvc_fb.height = HEIGHT;
+#endif
     s_fb.uvc_fb.format = UVC_FORMAT_JPEG;
     s_fb.uvc_fb.timestamp.tv_sec = us / 1000000UL;
     s_fb.uvc_fb.timestamp.tv_usec = us % 1000000UL;
@@ -167,6 +247,7 @@ static void camera_fb_return_cb(uvc_fb_t *fb, void *cb_ctx)
     assert(fb == &s_fb.uvc_fb);
 }
 
+#ifndef CONFIG_UVC_CAM_ENABLE_DVP_JPEG_SW_CODEC
 static esp_err_t jepg_encoder_init(void)
 {
     jpeg_encode_config_t enc_config = {
@@ -181,6 +262,7 @@ static esp_err_t jepg_encoder_init(void)
 
     return ESP_OK;
 }
+#endif
 
 static int camera_open(int port)
 {
@@ -210,6 +292,11 @@ static int camera_open(int port)
         goto errout_get_fmt;
     }
 
+#ifdef CONFIG_UVC_CAM_ENABLE_DVP_JPEG_SW_CODEC
+    s_fb.width = format.fmt.pix.width;
+    s_fb.height = format.fmt.pix.height;
+    s_fb.pixel_format = format.fmt.pix.pixelformat;
+#else
     if ((format.fmt.pix.height != HEIGHT) || (format.fmt.pix.width != WIDTH)) {
         format.fmt.pix.height = HEIGHT;
         format.fmt.pix.width = WIDTH;
@@ -218,6 +305,7 @@ static int camera_open(int port)
             ESP_LOGE(TAG, "VIDIOC_S_FMT fail");
         }
     }
+#endif
 
     memset(&req, 0, sizeof(req));
     req.count  = ARRAY_SIZE(buffer);
@@ -269,7 +357,10 @@ void app_main(void)
     if (fd < 0) {
         ESP_LOGE(TAG, "Open camera fail");;
     }
+
+#ifndef CONFIG_UVC_CAM_ENABLE_DVP_JPEG_SW_CODEC
     jepg_encoder_init();
+#endif
 
     ESP_ERROR_CHECK(esp_dma_calloc(1, UVC_MAX_FRAMESIZE_SIZE, ESP_DMA_MALLOC_FLAG_PSRAM, (void *)&s_fb.jpeg_out_buf, NULL));
     ESP_ERROR_CHECK(esp_dma_calloc(1, UVC_MAX_FRAMESIZE_SIZE, ESP_DMA_MALLOC_FLAG_PSRAM, (void *)&uvc_buffer, NULL));

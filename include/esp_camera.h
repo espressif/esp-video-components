@@ -421,18 +421,29 @@ typedef struct {
 
     int8_t  xclk_pin;
     int32_t xclk_freq_hz;
+    ledc_timer_t xclk_timer;
+    ledc_channel_t xclk_timer_channel;
+} esp_camera_csi_ctrl_config_t;
+
+typedef struct {
+    uint8_t sccb_config_index;          /*!< Specify the index number of esp_camera_sccb_config_t */
+    int8_t  reset_pin;
+    int8_t  pwdn_pin;
+
+    int8_t  xclk_pin;
+    int32_t xclk_freq_hz;
 #ifndef CONFIG_DVP_ENABLE_OUTPUT_CLOCK
     ledc_timer_t xclk_timer;
     ledc_channel_t xclk_timer_channel;
 #endif
-} esp_camera_ctrl_config_t;
+} esp_camera_dvp_ctrl_config_t;
 
 typedef struct {
-    esp_camera_ctrl_config_t ctrl_cfg;
+    esp_camera_csi_ctrl_config_t ctrl_cfg;
 } esp_camera_csi_config_t;
 
 typedef struct {
-    esp_camera_ctrl_config_t ctrl_cfg;
+    esp_camera_dvp_ctrl_config_t ctrl_cfg;
     dvp_pin_config_t dvp_pin_cfg;
 } esp_camera_dvp_config_t;
 

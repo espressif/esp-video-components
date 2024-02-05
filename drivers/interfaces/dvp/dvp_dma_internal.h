@@ -13,6 +13,16 @@
 extern "C" {
 #endif
 
+#if CONFIG_IDF_TARGET_ESP32P4
+#define DVP_DMA_DESC_BUFFER_MAX_SIZE    (DMA_DESCRIPTOR_BUFFER_MAX_SIZE_4B_ALIGNED & (~3))
+
+typedef dma_descriptor_align8_t dvp_dma_desc_t;
+#else
+#define DVP_DMA_DESC_BUFFER_MAX_SIZE    (DMA_DESCRIPTOR_BUFFER_MAX_SIZE & (~3))
+
+typedef dma_descriptor_t dvp_dma_desc_t;
+#endif
+
 typedef struct {
     gdma_channel_handle_t   gdma_chan;
 } dvp_dma_t;
@@ -42,7 +52,7 @@ esp_err_t dvp_dma_deinit(dvp_dma_t *dvp_dma);
  *
  * @return ESP_OK on success, otherwise see esp_err_t
  */
-esp_err_t dvp_dma_start(dvp_dma_t *dvp_dma, dma_descriptor_t *addr);
+esp_err_t dvp_dma_start(dvp_dma_t *dvp_dma, dvp_dma_desc_t *addr);
 
 /**
  * @brief Stop DVP DMA engine

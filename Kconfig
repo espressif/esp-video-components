@@ -1,5 +1,5 @@
 menu "Espressif Video Configuration"
-    orsource "commons/soc/$IDF_TARGET/include/soc/Kconfig.soc_caps.in"
+    orsource "drivers/commons/soc/$IDF_TARGET/include/soc/Kconfig.soc_caps.in"
 
     rsource "boards/Kconfig.boards"
     rsource "drivers/interfaces/Kconfig.interfaces"

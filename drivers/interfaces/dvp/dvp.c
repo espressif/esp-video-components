@@ -4,9 +4,10 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+#include <sys/param.h>
+#include "rom/cache.h"
 #include "hal/gpio_ll.h"
 #include "driver/gpio.h"
-#include "soc/lldesc.h"
 #include "esp_private/periph_ctrl.h"
 #include "esp_heap_caps.h"
 #include "esp_log.h"
@@ -19,9 +20,11 @@
 
 #define DVP_PORT_MAX                        (SOC_CAM_PERIPH_NUM - 1)
 
-#define DVP_CUR_BUF(d)                      (&(d)->buffer[(d)->lldesc_index * (d)->hsize])
-#define DVP_CUR_LLDESC(d)                   (&(d)->lldesc[(d)->lldesc_index * (d)->lldesc_hcnt])
+#define DVP_CUR_BUF(d)                      (&(d)->buffer[(d)->dma_desc_index * (d)->hsize])
+#define DVP_CUR_LLDESC(d)                   (&(d)->dma_desc[(d)->dma_desc_index * (d)->dma_desc_hcnt])
 #define FRAME_CUR_BUF(f)                    (&(f)->buffer[(f)->size])
+
+#define DVP_UP_ALIGN(v, a)                  (((v) + ((a) - 1)) & (~((a) - 1)))
 
 #define DVP_CONFIG_INPUT_PIN(pin, sig)                      \
 {                                                           \
@@ -110,6 +113,40 @@ static uint32_t esp_dvp_calculate_jpeg_size(const uint8_t *buffer, uint32_t size
 }
 
 /**
+ * @brief Config DVP DMA description list
+ *
+ * @param dma_desc DVP DMA description pointer
+ * @param buffer   DVM receive buffer pointer
+ * @param size     DMA buffer size
+ * @param next     DVP DMA description next pointer of this list
+ *
+ * @return None
+ */
+static void dvp_config_dma_desc(dvp_dma_desc_t *dma_desc, uint8_t *buffer, uint32_t size, dvp_dma_desc_t *next)
+{
+    int n = 0;
+
+    while (size) {
+        uint32_t dma_node_size = DVP_UP_ALIGN(MIN(size, DVP_DMA_DESC_BUFFER_MAX_SIZE), 4);
+
+        dma_desc[n].dw0.size = dma_node_size;
+        dma_desc[n].dw0.length = 0;
+        dma_desc[n].dw0.err_eof = 0;
+        dma_desc[n].dw0.suc_eof = 0;
+        dma_desc[n].dw0.owner = DMA_DESCRIPTOR_BUFFER_OWNER_DMA;
+        dma_desc[n].buffer = (uint8_t *)buffer;
+        dma_desc[n].next = &dma_desc[n + 1];
+
+        size -= dma_node_size;
+        buffer += dma_node_size;
+        n++;
+    }
+
+    dma_desc[n - 1].dw0.suc_eof = 1;
+    dma_desc[n - 1].next = next;
+}
+
+/**
  * @brief Clear DMA receive data size
  *
  * @param dvp DVP object data pointer
@@ -118,11 +155,13 @@ static uint32_t esp_dvp_calculate_jpeg_size(const uint8_t *buffer, uint32_t size
  */
 static void dvp_clear_dma_recv_size(dvp_device_handle_t dvp)
 {
-    lldesc_t *lldesc = DVP_CUR_LLDESC(dvp);
+#ifndef CONFIG_IDF_TARGET_ESP32P4
+    dvp_dma_desc_t *dma_desc = DVP_CUR_LLDESC(dvp);
 
-    for (int i = 0; i < dvp->lldesc_hcnt; i++) {
-        lldesc[i].length = 0;
+    for (int i = 0; i < dvp->dma_desc_hcnt; i++) {
+        dma_desc[i].dw0.length = 0;
     }
+#endif
 }
 
 /**
@@ -132,19 +171,26 @@ static void dvp_clear_dma_recv_size(dvp_device_handle_t dvp)
  *
  * @return DMA receive data size
  */
-static size_t get_and_clear_dma_recv_size(dvp_device_handle_t dvp)
+static uint32_t get_and_clear_dma_recv_size(dvp_device_handle_t dvp)
 {
-    size_t size = 0;
-    lldesc_t *lldesc = DVP_CUR_LLDESC(dvp);
+#ifndef CONFIG_IDF_TARGET_ESP32P4
+    uint32_t size = 0;
+    dvp_dma_desc_t *dma_desc = DVP_CUR_LLDESC(dvp);
 
-    for (int i = 0; i < dvp->lldesc_hcnt; i++) {
-        size += lldesc[i].length;
-        lldesc[i].length = 0;
+    for (int i = 0; i < dvp->dma_desc_hcnt; i++) {
+        /* Although dma_desc.length is equal to 0, but this DMA node can also have received data */
+
+        if (!dma_desc[i].dw0.length) {
+            return size + dma_desc[i].dw0.size;
+        }
+
+        size += dma_desc[i].dw0.length;
     }
 
-    /* Although lldesc.length is equal to 0, but this DMA node can also have received data */
-
-    return size + LLDESC_MAX_NUM_PER_DESC;
+    return size;
+#else
+    return dvp->hsize;
+#endif
 }
 
 /**
@@ -166,12 +212,23 @@ static esp_err_t dvp_start_capturing(dvp_device_t *dvp)
         ESP_LOGE(TAG, "failed to reset GDMA");
     }
 
-    ret = dvp_dma_start(&dvp->dma, (dma_descriptor_t *)dvp->lldesc);
+    ret = dvp_dma_start(&dvp->dma, dvp->dma_desc);
     if (ret != ESP_OK) {
         ESP_LOGE(TAG, "failed to start GDMA");
     }
 #endif
-    cam_hal_start_streaming(&dvp->hal, dvp->lldesc, dvp->hsize);
+
+#ifndef CONFIG_IDF_TARGET_ESP32P4
+    /* Clear DMA description receive length filed */
+
+    if (dvp->jpeg) {
+        for (int i = 0; i < dvp->dma_desc_hcnt * 2; i++) {
+            dvp->dma_desc[i].dw0.length = 0;
+        }
+    }
+#endif
+
+    cam_hal_start_streaming(&dvp->hal, (uint32_t)dvp->dma_desc, dvp->hsize);
 
     return ret;
 }
@@ -359,7 +416,7 @@ static void dvp_task(void *p)
 
                     cam_hal_memcpy(&dvp->hal, FRAME_CUR_BUF(frame), DVP_CUR_BUF(dvp), data_size);
                     frame->size += frame_size;
-                    dvp->lldesc_index = (dvp->lldesc_index + 1) % DVP_DMA_DIV;
+                    dvp->dma_desc_index = (dvp->dma_desc_index + 1) % DVP_DMA_DIV;
                 } else if ((frame->size + frame_size) == frame->length) {
                     /* Skip this event and let next "DVP_EVENT_VSYNC_END" event process this */
                 } else {
@@ -455,7 +512,7 @@ static void dvp_task(void *p)
                     /* Reset receive state data and start DVP receive */
 
                     dvp->cur_frame->size = 0;
-                    dvp->lldesc_index = 0;
+                    dvp->dma_desc_index = 0;
                     dvp_start_capturing(dvp);
                 }
             } else if (dvp->state == DVP_DEV_WAIT) {
@@ -464,7 +521,7 @@ static void dvp_task(void *p)
                 dvp->state = DVP_DEV_RXING;
 
                 frame->size = 0;
-                dvp->lldesc_index = 0;
+                dvp->dma_desc_index = 0;
                 dvp_start_capturing(dvp);
             }
             break;
@@ -518,21 +575,15 @@ static esp_err_t dvp_config_input_gpio(int pin, int signal)
 esp_err_t dvp_device_init_gpio(uint8_t port, const dvp_pin_config_t *pin)
 {
     esp_err_t ret;
-    gpio_config_t io_conf = {0};
     const cam_signal_conn_t *signal_conn = &cam_periph_signals[port];
 
-    io_conf.intr_type    = GPIO_INTR_NEGEDGE;
-    io_conf.pin_bit_mask = 1ull << pin->vsync_pin;
-    io_conf.mode         = GPIO_MODE_INPUT;
-    io_conf.pull_up_en   = 1;
-    io_conf.pull_down_en = 0;
-    ret = gpio_config(&io_conf);
+    DVP_CONFIG_INPUT_PIN(pin->vsync_pin, signal_conn->vsync_sig);
+    ret = gpio_set_intr_type(pin->vsync_pin, GPIO_INTR_NEGEDGE);
     if (ret != ESP_OK) {
         return ret;
     }
 
     DVP_CONFIG_INPUT_PIN(pin->pclk_pin,  signal_conn->pclk_sig);
-    DVP_CONFIG_INPUT_PIN(pin->vsync_pin, signal_conn->vsync_sig);
     for (int i = 0; i < DVP_INTF_DATA_PIN_NUM; i++) {
         DVP_CONFIG_INPUT_PIN(pin->data_pin[i], signal_conn->data_sigs[i]);
     }
@@ -551,12 +602,7 @@ esp_err_t dvp_device_init_gpio(uint8_t port, const dvp_pin_config_t *pin)
 #endif
 
 #ifdef CONFIG_DVP_ENABLE_OUTPUT_CLOCK
-    io_conf.intr_type    = GPIO_INTR_DISABLE;
-    io_conf.pin_bit_mask = 1ull << pin->xclk_pin;
-    io_conf.mode         = GPIO_MODE_OUTPUT;
-    io_conf.pull_up_en   = 0;
-    io_conf.pull_down_en = 0;
-    ret = gpio_config(&io_conf);
+    ret = gpio_set_direction(pin->xclk_pin, GPIO_MODE_OUTPUT);
     if (ret != ESP_OK) {
         return ret;
     }
@@ -581,17 +627,59 @@ esp_err_t dvp_device_init_ouput_clock(uint8_t port, uint32_t xclk_freq)
 {
     esp_err_t ret;
 
+#ifndef CONFIG_IDF_TARGET_ESP32P4
     periph_module_enable(cam_periph_signals[port].module);
+#endif
 
     ret = cam_hal_config_port_xclk(port, xclk_freq);
     if (ret != ESP_OK) {
+#ifndef CONFIG_IDF_TARGET_ESP32P4
         periph_module_disable(cam_periph_signals[port].module);
+#endif
         ESP_LOGE(TAG, "failed to config LCD_CAM xclock");
     }
 
     return ret;
 }
 #endif
+
+/**
+ * @brief Enable DVP clock. When select DVP_ENABLE_OUTPUT_CLOCK, initialize DVP device
+ *        will not enable DVP clock, because the clock is enabled for sensor.
+ *
+ * @param port DVP port
+ *
+ * @return None
+ */
+static void dvp_enable_clock(int port)
+{
+    /* ESP32-P4 has not supported this feature, clock is enabled in function "cam_hal_config_port_xclk" */
+
+#ifndef CONFIG_IDF_TARGET_ESP32P4
+#ifndef CONFIG_DVP_ENABLE_OUTPUT_CLOCK
+    periph_module_enable(cam_periph_signals[port].module);
+#endif
+#endif
+}
+
+/**
+ * @brief Disable DVP clock. When select DVP_ENABLE_OUTPUT_CLOCK, de-initialize DVP device
+ *        will not disable DVP clock, because the clock should be kept enabled for sensor.
+ *
+ * @param port DVP port
+ *
+ * @return None
+ */
+static void dvp_disable_clock(int port)
+{
+    /* ESP32-P4 has not supported this feature, clock is enabled in function "cam_hal_config_port_xclk" */
+
+#ifndef CONFIG_IDF_TARGET_ESP32P4
+#ifndef CONFIG_DVP_ENABLE_OUTPUT_CLOCK
+    periph_module_disable(cam_periph_signals[port].module);
+#endif
+#endif
+}
 
 /**
  * @brief Create DVP device by given configuration
@@ -628,10 +716,7 @@ esp_err_t dvp_device_create(dvp_device_handle_t *handle, const dvp_device_interf
 
     /* Initialize DVP controller */
 
-#ifndef CONFIG_DVP_ENABLE_OUTPUT_CLOCK
-    periph_module_enable(cam_periph_signals[config->port].module);
-#endif
-
+    dvp_enable_clock(config->port);
     cam_hal_init(&dvp->hal, dvp->port);
 
     /* Initialize DVP V-SYNC interrupt */
@@ -719,9 +804,7 @@ errout_disable_intr:
     gpio_isr_handler_remove(dvp->vsync_pin);
 errout_add_gpioisr:
     cam_hal_deinit(&dvp->hal);
-#ifndef CONFIG_DVP_ENABLE_OUTPUT_CLOCK
-    periph_module_disable(cam_periph_signals[config->port].module);
-#endif
+    dvp_disable_clock(config->port);
     heap_caps_free(dvp);
 errout_calloc_dvp:
     return ret;
@@ -766,11 +849,9 @@ esp_err_t dvp_device_destroy(dvp_device_handle_t handle)
     esp_intr_free(handle->intr_handle);
 #endif
 
-#ifndef CONFIG_DVP_ENABLE_OUTPUT_CLOCK
     /* Step 5: disable and reset DVP */
 
-    periph_module_disable(cam_periph_signals[handle->port].module);
-#endif
+    dvp_disable_clock(handle->port);
 
     /* Step 6: free buffer in frame if needed */
 
@@ -779,8 +860,8 @@ esp_err_t dvp_device_destroy(dvp_device_handle_t handle)
     /* Step 7: Free memory resocurce */
 
     vSemaphoreDelete(handle->mutex);
-    if (handle->lldesc) {
-        heap_caps_free(handle->lldesc);
+    if (handle->dma_desc) {
+        heap_caps_free(handle->dma_desc);
     }
     if (handle->buffer) {
         heap_caps_free(handle->buffer);
@@ -809,14 +890,8 @@ esp_err_t dvp_device_start(dvp_device_handle_t handle)
         return ESP_FAIL;
     }
 
-    if (handle->buffer && handle->lldesc) {
+    if (handle->buffer && handle->dma_desc) {
         if (handle->state == DVP_DEV_IDLE) {
-            /* Clear DMA description receive length filed */
-
-            for (int i = 0; i < handle->lldesc_cnt; i++) {
-                handle->lldesc[i].length = 0;
-            }
-
             ret = dvp_start_receiving_vsync(handle);
             if (ret == ESP_OK) {
                 handle->state = DVP_DEV_WAIT;
@@ -917,6 +992,7 @@ esp_err_t dvp_device_add_buffer(dvp_device_handle_t handle, uint8_t *buffer, siz
 esp_err_t dvp_setup_dma_receive_buffer(dvp_device_handle_t handle, uint32_t frame_size, bool jpeg)
 {
     esp_err_t ret;
+    uint32_t dma_desc_size;
     uint32_t buffer_align_size;
     dvp_device_t *dvp = handle;
 
@@ -941,9 +1017,9 @@ esp_err_t dvp_setup_dma_receive_buffer(dvp_device_handle_t handle, uint32_t fram
         dvp->buffer = NULL;
     }
 
-    if (dvp->lldesc) {
-        heap_caps_free(dvp->lldesc);
-        dvp->lldesc = NULL;
+    if (dvp->dma_desc) {
+        heap_caps_free(dvp->dma_desc);
+        dvp->dma_desc = NULL;
     }
 
     dvp->frame_size = 0;
@@ -964,16 +1040,21 @@ esp_err_t dvp_setup_dma_receive_buffer(dvp_device_handle_t handle, uint32_t fram
         goto errout_malloc_buffer;
     }
 
-    dvp->lldesc_hcnt = (dvp->hsize + LLDESC_MAX_NUM_PER_DESC - 1) / LLDESC_MAX_NUM_PER_DESC;
-    dvp->lldesc_cnt = dvp->lldesc_hcnt * DVP_DMA_DIV;
-    dvp->lldesc = heap_caps_malloc(dvp->lldesc_cnt * sizeof(lldesc_t), MALLOC_CAP_DMA);
-    if (!dvp->lldesc) {
+    dvp->dma_desc_hcnt = (dvp->hsize + DVP_DMA_DESC_BUFFER_MAX_SIZE - 1) / DVP_DMA_DESC_BUFFER_MAX_SIZE;
+
+    dma_desc_size = DVP_UP_ALIGN(DVP_DMA_DIV * dvp->dma_desc_hcnt * sizeof(dvp_dma_desc_t), buffer_align_size);
+    dvp->dma_desc = heap_caps_aligned_alloc(buffer_align_size, dma_desc_size, MALLOC_CAP_DMA);
+    if (!dvp->dma_desc) {
         goto errout_malloc_lldesc;
     } else {
-        lldesc_setup_link(dvp->lldesc, dvp->buffer, dvp->hsize, true);
-        lldesc_setup_link(&dvp->lldesc[dvp->lldesc_hcnt], &dvp->buffer[dvp->hsize], dvp->hsize, true);
-        dvp->lldesc[dvp->lldesc_hcnt - 1].qe.stqe_next = &dvp->lldesc[dvp->lldesc_hcnt];
-        dvp->lldesc[dvp->lldesc_cnt - 1].qe.stqe_next = dvp->lldesc;
+        dvp_config_dma_desc(dvp->dma_desc, dvp->buffer, dvp->hsize, &dvp->dma_desc[dvp->dma_desc_hcnt]);
+        dvp_config_dma_desc(&dvp->dma_desc[dvp->dma_desc_hcnt], &dvp->buffer[dvp->hsize], dvp->hsize, dvp->dma_desc);
+
+#if CONFIG_IDF_TARGET_ESP32P4
+        /* Flush data from cache to RAM so that DMA engine can get this configuration */
+
+        Cache_WriteBack_Addr(CACHE_MAP_L2_CACHE | CACHE_MAP_L1_DCACHE, (uint32_t)dvp->dma_desc, dma_desc_size);
+#endif
     }
 
     dvp->frame_size = frame_size;

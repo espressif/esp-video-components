@@ -41,3 +41,9 @@ idf_component_register(SRCS ${srcs}
 if (NOT "${CONFIG_ESP_VIDEO_MEDIA_EMBED_FILE}" STREQUAL "")
     add_definitions(-DCONFIG_ESP_VIDEO_MEDIA_EMBED_FILE_NAME="${embed_file_c_name}")
 endif()
+
+if (CONFIG_IDF_TARGET_ESP32P4)
+    # AEG-1300, add macro "#define CONFIG_SOC_LCDCAM_SUPPORTED 1" only for this component to avoid ESP-IDF compiling error
+
+    target_compile_options(${COMPONENT_LIB} PRIVATE "-DCONFIG_SOC_LCDCAM_SUPPORTED=1")
+endif()
