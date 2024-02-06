@@ -22,6 +22,7 @@
 
 #include "linux/videodev2.h"
 #include "esp_video.h"
+#include "img_converters.h"
 
 #define TEST_MEMORY_LEAK_THRESHOLD (-100)
 
@@ -34,7 +35,7 @@ void setUp(void);
 #define VIDEO_BUFFER_SIZE       sim_picture_jpeg_len
 #define VIDEO_BUFFER_DATA       sim_picture_jpeg
 #define VIDEO_DESC_BUFFER_SIZE  128
-#define VIDEO_LINUX_CAPS        (V4L2_CAP_VIDEO_CAPTURE | V4L2_CAP_STREAMING | V4L2_CAP_READWRITE)
+#define VIDEO_LINUX_CAPS        (V4L2_CAP_VIDEO_CAPTURE | V4L2_CAP_STREAMING | V4L2_CAP_READWRITE | V4L2_CAP_EXT_PIX_FORMAT | V4L2_CAP_DEVICE_CAPS)
 #define VIDEO_CAM_WIDTH         200
 #define VIDEO_CAM_HEIGHT        200
 #define VIDEO_CAM_FORMAT        V4L2_PIX_FMT_JPEG
@@ -92,8 +93,6 @@ static void test_video_basic_operation_task(void *p)
     struct esp_video_format fmt;
     int count;
     TickType_t tick;
-    uint32_t recv_size;
-    uint32_t offset;
     char buffer[VIDEO_DESC_BUFFER_SIZE];
 
     printf("task=%s starts\n", pcTaskGetName(NULL));
@@ -110,62 +109,68 @@ static void test_video_basic_operation_task(void *p)
     fmt.height = VIDEO_CAM_HEIGHT;
     fmt.pixel_format = V4L2_PIX_FMT_JPEG;
     fmt.bpp = VIDEO_CAM_PIXEL_SIZE * 8;
-    TEST_ESP_OK(esp_video_set_format(video, &fmt));
+    TEST_ESP_OK(esp_video_set_format(video, V4L2_BUF_TYPE_VIDEO_CAPTURE, &fmt));
     memset(&fmt, 0, sizeof(fmt));
-    TEST_ESP_OK(esp_video_get_format(video, &fmt));
+    TEST_ESP_OK(esp_video_get_format(video, V4L2_BUF_TYPE_VIDEO_CAPTURE, &fmt));
     TEST_ASSERT_EQUAL_INT(20, fmt.fps);
 
     /* Setup by given parameters */
 
-    TEST_ESP_OK(esp_video_setup_buffer(video, VIDEO_BUFFER_NUM));
+    TEST_ESP_OK(esp_video_setup_buffer(video, V4L2_BUF_TYPE_VIDEO_CAPTURE, VIDEO_BUFFER_NUM));
+
+    /* Put all buffer into queued list */
+
+    for (int i = 0; i < VIDEO_BUFFER_NUM; i++) {
+        TEST_ESP_OK(esp_video_queue_element_index(video, V4L2_BUF_TYPE_VIDEO_CAPTURE, i));
+    }
 
     /* Test receiving picture from video device in default FPS(20)  */
 
-    TEST_ESP_OK(esp_video_start_capture(video));
+    TEST_ESP_OK(esp_video_start_capture(video, V4L2_BUF_TYPE_VIDEO_CAPTURE));
 
     count = 0;
     tick = xTaskGetTickCount();
     while (xTaskGetTickCount() - tick < (1000 / portTICK_PERIOD_MS)) {
-        uint8_t *buffer = esp_video_recv_buffer(video, &recv_size, &offset, 100);
-        if (buffer) {
-            TEST_ASSERT_EQUAL_MEMORY(VIDEO_BUFFER_DATA, buffer, VIDEO_BUFFER_SIZE);
+        struct esp_video_buffer_element *element = esp_video_recv_element(video, V4L2_BUF_TYPE_VIDEO_CAPTURE, 100);
+        if (element) {
+            TEST_ASSERT_EQUAL_INT(VIDEO_BUFFER_SIZE, element->valid_size);
+            TEST_ASSERT_EQUAL_MEMORY(VIDEO_BUFFER_DATA, element->buffer, VIDEO_BUFFER_SIZE);
             count++;
-            esp_video_free_buffer(video, buffer);
-            TEST_ASSERT_EQUAL_INT(VIDEO_BUFFER_SIZE, recv_size);
+            esp_video_queue_element(video, V4L2_BUF_TYPE_VIDEO_CAPTURE, element);
         } else {
             break;
         }
     }
     TEST_ASSERT_GREATER_OR_EQUAL(fmt.fps - 1, count);
 
-    TEST_ESP_OK(esp_video_stop_capture(video));
+    TEST_ESP_OK(esp_video_stop_capture(video, V4L2_BUF_TYPE_VIDEO_CAPTURE));
 
     /* Test receiving picture from video device in FPS = 30 */
 
     fmt.fps = 30;
-    TEST_ESP_OK(esp_video_set_format(video, &fmt));
+    TEST_ESP_OK(esp_video_set_format(video, V4L2_BUF_TYPE_VIDEO_CAPTURE, &fmt));
     memset(&fmt, 0, sizeof(fmt));
-    TEST_ESP_OK(esp_video_get_format(video, &fmt));
+    TEST_ESP_OK(esp_video_get_format(video, V4L2_BUF_TYPE_VIDEO_CAPTURE, &fmt));
     TEST_ASSERT_EQUAL_INT(30, fmt.fps);
 
-    TEST_ESP_OK(esp_video_start_capture(video));
+    TEST_ESP_OK(esp_video_start_capture(video, V4L2_BUF_TYPE_VIDEO_CAPTURE));
 
     count = 0;
     tick = xTaskGetTickCount();
     while (xTaskGetTickCount() - tick < (1000 / portTICK_PERIOD_MS)) {
-        uint8_t *buffer = esp_video_recv_buffer(video, &recv_size, &offset, 100);
-        if (buffer) {
-            TEST_ASSERT_EQUAL_MEMORY(VIDEO_BUFFER_DATA, buffer, VIDEO_BUFFER_SIZE);
+        struct esp_video_buffer_element *element = esp_video_recv_element(video, V4L2_BUF_TYPE_VIDEO_CAPTURE, 100);
+        if (element) {
+            TEST_ASSERT_EQUAL_INT(VIDEO_BUFFER_SIZE, element->valid_size);
+            TEST_ASSERT_EQUAL_MEMORY(VIDEO_BUFFER_DATA, element->buffer, VIDEO_BUFFER_SIZE);
             count++;
-            esp_video_free_buffer(video, buffer);
-            TEST_ASSERT_EQUAL_INT(VIDEO_BUFFER_SIZE, recv_size);
+            esp_video_queue_element(video, V4L2_BUF_TYPE_VIDEO_CAPTURE, element);
         } else {
             break;
         }
     }
     TEST_ASSERT_GREATER_OR_EQUAL(fmt.fps - 1, count);
 
-    TEST_ESP_OK(esp_video_stop_capture(video));
+    TEST_ESP_OK(esp_video_stop_capture(video, V4L2_BUF_TYPE_VIDEO_CAPTURE));
 
     TEST_ESP_OK(esp_video_close(video));
 
@@ -247,6 +252,9 @@ static void test_linux_posix_with_v4l2_operation_task(void *p)
                                    fd,
                                    buf.m.offset);
         TEST_ASSERT_NOT_NULL(video_buffer_ptr[i]);
+
+        ret = ioctl(fd, VIDIOC_QBUF, &buf);
+        TEST_ESP_OK(ret);
     }
 
     fps = 20;
@@ -506,6 +514,131 @@ TEST_CASE("V4L2 external controller class set/get", "[video]")
 }
 
 #endif /* CONFIG_SIMULATED_INTF */
+
+TEST_CASE("V4L2 M2M device", "[video]")
+{
+    int fd;
+    int ret;
+    int val;
+    uint16_t width = 320;
+    uint16_t height = 240;
+    struct v4l2_buffer buf;
+    struct v4l2_format format;
+    struct v4l2_capability cap;
+    struct v4l2_requestbuffers req;
+    uint8_t *out_buf[VIDEO_BUFFER_NUM];
+    uint8_t *cap_buf[VIDEO_BUFFER_NUM];
+
+    init();
+
+    fd = open("/dev/video2", O_RDWR);
+    TEST_ASSERT_GREATER_OR_EQUAL(0, fd);
+
+    memset(&cap, 0, sizeof(cap));
+    ret = ioctl(fd, VIDIOC_QUERYCAP, &cap);
+    TEST_ESP_OK(ret);
+    TEST_ASSERT_EQUAL_INT(V4L2_CAP_VIDEO_M2M, cap.capabilities & V4L2_CAP_VIDEO_M2M);
+
+    /* Initialize output buffer */
+
+    memset(&format, 0, sizeof(format));
+    format.type = V4L2_BUF_TYPE_VIDEO_OUTPUT;
+    format.fmt.pix.width = width;
+    format.fmt.pix.height = height;
+    format.fmt.pix.pixelformat = V4L2_PIX_FMT_RGB565;
+    ret = ioctl(fd, VIDIOC_S_FMT, &format);
+    TEST_ESP_OK(ret);
+
+    memset(&req, 0, sizeof(req));
+    req.type   = V4L2_BUF_TYPE_VIDEO_OUTPUT;
+    req.memory = V4L2_MEMORY_MMAP;
+    req.count  = VIDEO_BUFFER_NUM;
+    ret = ioctl(fd, VIDIOC_REQBUFS, &req);
+    TEST_ESP_OK(ret);
+
+    for (int i = 0; i < VIDEO_BUFFER_NUM; i++) {
+        memset(&buf, 0, sizeof(buf));
+        buf.type        = V4L2_BUF_TYPE_VIDEO_OUTPUT;
+        buf.memory      = V4L2_MEMORY_MMAP;
+        buf.index       = i;
+        ret = ioctl(fd, VIDIOC_QUERYBUF, &buf);
+        TEST_ESP_OK(ret);
+
+        TEST_ASSERT_EQUAL_INT(width * height * 2, buf.length);
+
+        out_buf[i] = mmap(NULL, buf.length, PROT_READ | PROT_WRITE,
+                          MAP_SHARED, fd, buf.m.offset);
+        TEST_ASSERT_NOT_NULL(out_buf[i]);
+
+        ret = ioctl(fd, VIDIOC_QBUF, &buf);
+        TEST_ESP_OK(ret);
+    }
+
+    /* Initialize capture buffer */
+
+    memset(&format, 0, sizeof(format));
+    format.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
+    format.fmt.pix.width = width;
+    format.fmt.pix.height = height;
+    format.fmt.pix.pixelformat = V4L2_PIX_FMT_JPEG;
+    ret = ioctl(fd, VIDIOC_S_FMT, &format);
+    TEST_ESP_OK(ret);
+
+    memset(&req, 0, sizeof(req));
+    req.type   = V4L2_BUF_TYPE_VIDEO_CAPTURE;
+    req.memory = V4L2_MEMORY_MMAP;
+    req.count  = VIDEO_BUFFER_NUM;
+    ret = ioctl(fd, VIDIOC_REQBUFS, &req);
+    TEST_ESP_OK(ret);
+
+    for (int i = 0; i < VIDEO_BUFFER_NUM; i++) {
+        memset(&buf, 0, sizeof(buf));
+        buf.type   = V4L2_BUF_TYPE_VIDEO_CAPTURE;
+        buf.memory = V4L2_MEMORY_MMAP;
+        buf.index  = i;
+        ret = ioctl(fd, VIDIOC_QUERYBUF, &buf);
+        TEST_ESP_OK(ret);
+
+        TEST_ASSERT_EQUAL_INT(width * height, buf.length);
+
+        cap_buf[i] = mmap(NULL, buf.length, PROT_READ | PROT_WRITE,
+                          MAP_SHARED, fd, buf.m.offset);
+        TEST_ASSERT_NOT_NULL(cap_buf[i]);
+
+        ret = ioctl(fd, VIDIOC_QBUF, &buf);
+        TEST_ESP_OK(ret);
+    }
+
+    val = V4L2_BUF_TYPE_VIDEO_OUTPUT;
+    ret = ioctl(fd, VIDIOC_STREAMON, &val);
+    TEST_ESP_OK(ret);
+
+    val = V4L2_BUF_TYPE_VIDEO_CAPTURE;
+    ret = ioctl(fd, VIDIOC_STREAMON, &val);
+    TEST_ESP_OK(ret);
+
+    for (int i = 0; i < 100; i++) {
+        memset(&buf, 0, sizeof(buf));
+        buf.type   = V4L2_BUF_TYPE_VIDEO_CAPTURE;
+        buf.memory = V4L2_MEMORY_MMAP;
+        ret = ioctl(fd, VIDIOC_DQBUF, &buf);
+        TEST_ESP_OK(ret);
+
+        ret = ioctl(fd, VIDIOC_QBUF, &buf);
+        TEST_ESP_OK(ret);
+
+        memset(&buf, 0, sizeof(buf));
+        buf.type   = V4L2_BUF_TYPE_VIDEO_OUTPUT;
+        buf.memory = V4L2_MEMORY_MMAP;
+        ret = ioctl(fd, VIDIOC_DQBUF, &buf);
+        TEST_ESP_OK(ret);
+
+        ret = ioctl(fd, VIDIOC_QBUF, &buf);
+        TEST_ESP_OK(ret);
+    }
+
+    close(fd);
+}
 
 static size_t before_free_8bit;
 static size_t before_free_32bit;

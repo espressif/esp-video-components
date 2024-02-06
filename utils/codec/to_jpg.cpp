@@ -212,12 +212,19 @@ bool fmt2jpg(uint8_t *src, size_t src_len, uint16_t width, uint16_t height, pixf
     }
     memory_stream dst_stream(jpg_buf, jpg_buf_len);
 
+    *out = jpg_buf;
+    *out_len = dst_stream.get_size();
+    return true;
+}
+
+bool fmt2jpg_c(uint8_t *src, size_t src_len, uint16_t width, uint16_t height, pixformat_t format, uint8_t quality, uint8_t *dst, size_t dst_len, size_t *out_len)
+{
+    memory_stream dst_stream(dst, dst_len);
+
     if (!convert_image(src, width, height, format, quality, &dst_stream)) {
-        free(jpg_buf);
         return false;
     }
 
-    *out = jpg_buf;
     *out_len = dst_stream.get_size();
     return true;
 }

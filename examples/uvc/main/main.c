@@ -334,6 +334,12 @@ static int camera_open(int port)
             ESP_LOGE(TAG, "mmap fail");
             goto errout_get_fmt;
         }
+
+        if (ioctl(fd, VIDIOC_QBUF, &buf) != 0) {
+            ESP_LOGE(TAG, "failed to queue video frame");
+            ret = ESP_FAIL;
+            goto errout_get_fmt;
+        }
     }
 
     return fd;

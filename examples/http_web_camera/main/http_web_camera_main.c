@@ -38,6 +38,10 @@ static const char *STREAM_CONTENT_TYPE = "multipart/x-mixed-replace;boundary=" P
 static const char *STREAM_BOUNDARY = "\r\n--" PART_BOUNDARY "\r\n";
 static const char *STREAM_PART = "Content-Type: image/jpeg\r\nContent-Length: %u\r\nX-Timestamp: %d.%06d\r\n\r\n";
 
+static int s_jpeg_fd;
+static uint8_t *s_jpeg_out_buf;
+static uint8_t *s_jpeg_cap_buf;
+
 #if CONFIG_ESP_VIDEO_CAMERA_SCCB_NUM > 0
 static const esp_camera_sccb_config_t s_sccb_config[CONFIG_ESP_VIDEO_CAMERA_SCCB_NUM] = {
     {
@@ -162,6 +166,7 @@ static const esp_camera_config_t s_cam_config = {
 
 static esp_err_t stream_handler(httpd_req_t *req)
 {
+    int ret;
     esp_err_t res;
     int index = 0;
     int size = 0;
@@ -188,8 +193,8 @@ static esp_err_t stream_handler(httpd_req_t *req)
         memset(&buf, 0, sizeof(buf));
         buf.type   = type;
         buf.memory = V4L2_MEMORY_MMAP;
-        res = ioctl(wc->fd, VIDIOC_DQBUF, &buf);
-        if (res != 0) {
+        ret = ioctl(wc->fd, VIDIOC_DQBUF, &buf);
+        if (ret != 0) {
             ESP_LOGE(TAG, "failed to receive video frame");
             break;
         }
@@ -212,8 +217,41 @@ static esp_err_t stream_handler(httpd_req_t *req)
             }
 #ifdef CONFIG_ESP_VIDEO_SW_CODEC
             else if (wc->pixel_format == V4L2_PIX_FMT_RGB565) {
-                tx_valid = fmt2jpg(wc->buffer[buf.index], buf.bytesused, wc->width,
-                                   wc->height, PIXFORMAT_RGB565, 12, &jpeg_ptr, &jpeg_size);
+                struct v4l2_buffer jpeg_buf;
+
+                memcpy(s_jpeg_out_buf, wc->buffer[buf.index], buf.bytesused);
+
+                memset(&jpeg_buf, 0, sizeof(jpeg_buf));
+                jpeg_buf.type   = V4L2_BUF_TYPE_VIDEO_OUTPUT;
+                jpeg_buf.memory = V4L2_MEMORY_MMAP;
+                jpeg_buf.index  = 0;
+                ret = ioctl(s_jpeg_fd, VIDIOC_QBUF, &jpeg_buf);
+                assert(ret == 0);
+
+                memset(&jpeg_buf, 0, sizeof(jpeg_buf));
+                jpeg_buf.type   = V4L2_BUF_TYPE_VIDEO_CAPTURE;
+                jpeg_buf.memory = V4L2_MEMORY_MMAP;
+                jpeg_buf.index  = 0;
+                ret = ioctl(s_jpeg_fd, VIDIOC_QBUF, &jpeg_buf);
+                assert(ret == 0);
+
+                memset(&jpeg_buf, 0, sizeof(jpeg_buf));
+                jpeg_buf.type   = V4L2_BUF_TYPE_VIDEO_CAPTURE;
+                jpeg_buf.memory = V4L2_MEMORY_MMAP;
+                jpeg_buf.index  = 0;
+                ret = ioctl(s_jpeg_fd, VIDIOC_DQBUF, &jpeg_buf);
+                assert(ret == 0);
+
+                jpeg_ptr = s_jpeg_cap_buf;
+                jpeg_size = jpeg_buf.bytesused;
+                tx_valid = true;
+
+                memset(&jpeg_buf, 0, sizeof(jpeg_buf));
+                jpeg_buf.type   = V4L2_BUF_TYPE_VIDEO_OUTPUT;
+                jpeg_buf.memory = V4L2_MEMORY_MMAP;
+                jpeg_buf.index  = 0;
+                ret = ioctl(s_jpeg_fd, VIDIOC_DQBUF, &jpeg_buf);
+                assert(ret == 0);
             }
 #endif
             else {
@@ -237,7 +275,7 @@ static esp_err_t stream_handler(httpd_req_t *req)
             }
 
             if (jpeg_ptr != wc->buffer[buf.index]) {
-                free(jpeg_ptr);
+                // free(jpeg_ptr);
             }
         }
 
@@ -259,6 +297,112 @@ static esp_err_t stream_handler(httpd_req_t *req)
     }
 
     return res;
+}
+
+#define JPEG_DEVICE_NAME "/dev/video1"
+
+static esp_err_t jpeg_open(uint32_t width, uint32_t height, uint32_t out_format)
+{
+    int ret;
+    int fd;
+    struct v4l2_buffer buf;
+    struct v4l2_format format;
+    struct v4l2_requestbuffers req;
+
+    if (!width || !height) {
+        return ESP_ERR_INVALID_ARG;
+    }
+
+    if (out_format == V4L2_PIX_FMT_JPEG) {
+        ESP_LOGI(TAG, "Camera sensor capture stream format is JPEG, so not need to encode it");
+        return ESP_OK;
+    }
+
+    fd = open(JPEG_DEVICE_NAME, O_RDONLY);
+    if (fd < 0) {
+        ret = ESP_ERR_NOT_FOUND;
+        goto errout_open_dev;
+    }
+
+    memset(&format, 0, sizeof(format));
+    format.type = V4L2_BUF_TYPE_VIDEO_OUTPUT;
+    format.fmt.pix.width = width;
+    format.fmt.pix.height = height;
+    format.fmt.pix.pixelformat = V4L2_PIX_FMT_RGB565;
+    ret = ioctl(fd, VIDIOC_S_FMT, &format);
+    if (fd < 0) {
+        ret = ESP_FAIL;
+        goto errout_set_format;
+    }
+
+    memset(&format, 0, sizeof(format));
+    format.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
+    format.fmt.pix.width = width;
+    format.fmt.pix.height = height;
+    format.fmt.pix.pixelformat = V4L2_PIX_FMT_JPEG;
+    if (ioctl(fd, VIDIOC_S_FMT, &format) < 0) {
+        ret = ESP_FAIL;
+        goto errout_set_format;
+    }
+
+    memset(&req, 0, sizeof(req));
+    req.type   = V4L2_BUF_TYPE_VIDEO_OUTPUT;
+    req.memory = V4L2_MEMORY_MMAP;
+    req.count  = 1;
+    if (ioctl(fd, VIDIOC_REQBUFS, &req) != 0) {
+        ret = ESP_FAIL;
+        goto errout_set_format;
+    }
+
+    memset(&req, 0, sizeof(req));
+    req.type   = V4L2_BUF_TYPE_VIDEO_CAPTURE;
+    req.memory = V4L2_MEMORY_MMAP;
+    req.count  = 1;
+    if (ioctl(fd, VIDIOC_REQBUFS, &req) != 0) {
+        ret = ESP_FAIL;
+        goto errout_set_format;
+    }
+
+    memset(&buf, 0, sizeof(buf));
+    buf.type        = V4L2_BUF_TYPE_VIDEO_OUTPUT;
+    buf.memory      = V4L2_MEMORY_MMAP;
+    buf.index       = 0;
+    if (ioctl(fd, VIDIOC_QUERYBUF, &buf) != 0) {
+        ret = ESP_FAIL;
+        goto errout_set_format;
+    }
+
+    s_jpeg_out_buf = (uint8_t *)mmap(NULL, buf.length, PROT_READ | PROT_WRITE,
+                                     MAP_SHARED, fd, buf.m.offset);
+    if (!s_jpeg_out_buf) {
+        ret = ESP_FAIL;
+        goto errout_set_format;
+    }
+
+    memset(&buf, 0, sizeof(buf));
+    buf.type        = V4L2_BUF_TYPE_VIDEO_CAPTURE;
+    buf.memory      = V4L2_MEMORY_MMAP;
+    buf.index       = 0;
+    if (ioctl(fd, VIDIOC_QUERYBUF, &buf) != 0) {
+        ret = ESP_FAIL;
+        goto errout_set_format;
+    }
+
+    s_jpeg_cap_buf = (uint8_t *)mmap(NULL, buf.length, PROT_READ | PROT_WRITE,
+                                     MAP_SHARED, fd, buf.m.offset);
+    if (!s_jpeg_cap_buf) {
+        ret = ESP_FAIL;
+        goto errout_set_format;
+    }
+
+    s_jpeg_fd = fd;
+
+    return ESP_OK;
+
+errout_set_format:
+    close(fd);
+errout_open_dev:
+    return ret;
 }
 
 static esp_err_t camera_open(int port, web_cam_t **o_wc)
@@ -330,6 +474,18 @@ static esp_err_t camera_open(int port, web_cam_t **o_wc)
             ret = ESP_FAIL;
             goto errout_get_fmt;
         }
+
+        if (ioctl(wc->fd, VIDIOC_QBUF, &buf) != 0) {
+            ESP_LOGE(TAG, "failed to queue video frame");
+            ret = ESP_FAIL;
+            goto errout_get_fmt;
+        }
+    }
+
+    ret = jpeg_open(wc->width, wc->height, wc->pixel_format);
+    if (ret != ESP_OK) {
+        ret = ESP_FAIL;
+        goto errout_get_fmt;
     }
 
     *o_wc = wc;

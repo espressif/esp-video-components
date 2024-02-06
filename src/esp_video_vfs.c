@@ -17,6 +17,7 @@
 #include "esp_vfs.h"
 #include "esp_vfs_dev.h"
 #include "esp_video_vfs.h"
+#include "esp_video_ioctl.h"
 #include "esp_video_log.h"
 #include "esp_color_formats.h"
 
@@ -52,24 +53,24 @@ static ssize_t esp_video_vfs_write(void *ctx, int fd, const void *data, size_t s
 static ssize_t esp_video_vfs_read(void *ctx, int fd, void *data, size_t size)
 {
     size_t n;
-    uint8_t *vbuf;
-    uint32_t recv_size;
-    uint32_t offset;
+    struct esp_video_buffer_element *element;
     uint32_t ticks = portMAX_DELAY;
     struct esp_video *video = (struct esp_video *)ctx;
 
-    assert(fd >= 0 && data && size);
-    assert(video);
+    if (!ctx || fd < 0 || !data || !size) {
+        errno = EINVAL;
+        return -1;
+    }
 
-    vbuf = esp_video_recv_buffer(video, &recv_size, &offset, ticks);
-    if (!vbuf) {
+    element = esp_video_recv_element(video, V4L2_BUF_TYPE_VIDEO_CAPTURE, ticks);
+    if (!element) {
         return 0;
     }
 
-    n = MIN(size, recv_size);
+    n = MIN(size, element->valid_size);
     ESP_VIDEO_LOGD("actually read n=%d", n);
 
-    memcpy(data, vbuf + offset, n);
+    memcpy(data, element->buffer, n);
 
     return (ssize_t)n;
 }

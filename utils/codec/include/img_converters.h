@@ -60,6 +60,23 @@ bool fmt2jpg_cb(uint8_t *src, size_t src_len, uint16_t width, uint16_t height, p
 bool fmt2jpg(uint8_t *src, size_t src_len, uint16_t width, uint16_t height, pixformat_t format, uint8_t quality, uint8_t **out, size_t *out_len);
 
 /**
+ * @brief Convert image buffer to JPEG buffer
+ *
+ * @param src       Source buffer in RGB565, RGB888, YUYV or GRAYSCALE format
+ * @param src_len   Length in bytes of the source buffer
+ * @param width     Width in pixels of the source image
+ * @param height    Height in pixels of the source image
+ * @param format    Format of the source image
+ * @param quality   JPEG quality of the resulting image
+ * @param dst       Destination buffer
+ * @param dst_len   Length in bytes of the destination buffer
+ * @param out_len   Pointer to be populated with the length of the output buffer
+ *
+ * @return true on success
+ */
+bool fmt2jpg_c(uint8_t *src, size_t src_len, uint16_t width, uint16_t height, pixformat_t format, uint8_t quality, uint8_t *dst, size_t dst_len, size_t *out_len);
+
+/**
  * @brief Convert image buffer to BMP buffer
  *
  * @param src       Source buffer in JPEG, RGB565, RGB888, YUYV or GRAYSCALE format

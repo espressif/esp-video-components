@@ -471,7 +471,7 @@ bool esp_video_device_is_user_node(struct esp_video *video);
  * @brief Process a video buffer which receives data done.
  *
  * @param video  Video object
- * @param buffer Video buffer allocated by "esp_video_alloc_buffer"
+ * @param buffer Video buffer allocated by "esp_video_get_queued_element"
  * @param size   Actual received data size
  *
  * @return None

@@ -6,4 +6,11 @@ menu "Utils Configuration"
         help
             Select this option, enable software codec such as JPEG, BMP and YUV.
 
+    config ESP_VIDEO_SW_CODEC_JPEG_DEVICE
+        bool "Enable JPEG Video Device"
+        default n
+        help
+            Select this option, function "esp_camera_init" will create JPEG
+            video device.
+
 endmenu

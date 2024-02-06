@@ -31,6 +31,8 @@
 #include "esp_media.h"
 #endif
 
+#include "esp_jpeg_video.h"
+
 static const char *TAG = "esp_camera";
 
 esp_err_t esp_camera_query_para_desc(esp_camera_device_t *dev, struct v4l2_query_ext_ctrl *qctrl)
@@ -174,6 +176,7 @@ esp_err_t esp_camera_init(const esp_camera_config_t *config)
     extern esp_camera_detect_fn_t __esp_camera_detect_fn_array_start;
     extern esp_camera_detect_fn_t __esp_camera_detect_fn_array_end;
 
+    esp_err_t ret;
     esp_camera_detect_fn_t *p;
 
     if (config == NULL || config->sccb_num > 2
@@ -187,8 +190,6 @@ esp_err_t esp_camera_init(const esp_camera_config_t *config)
 
     for (size_t i = 0; i < config->sccb_num; i++) {
         if (config->sccb[i].sda_pin != -1 && config->sccb[i].scl_pin != -1) {
-            esp_err_t ret;
-
             ESP_LOGD(TAG, "Initializing SCCB[%d]", i);
 
             ret = sccb_i2c_init(config->sccb[i].port, config->sccb[i].sda_pin, config->sccb[i].scl_pin, config->sccb[i].freq);
@@ -203,7 +204,6 @@ esp_err_t esp_camera_init(const esp_camera_config_t *config)
     for (p = &__esp_camera_detect_fn_array_start; p < &__esp_camera_detect_fn_array_end; ++p) {
 #ifdef CONFIG_MIPI_CSI_ENABLE
         if (p->intf == CAMERA_INTF_CSI && config->csi != NULL) {
-            esp_err_t ret;
             esp_camera_driver_config_t cfg = {
                 .sccb_port = config->sccb[config->csi->ctrl_cfg.sccb_config_index].port,
                 .xclk_pin = config->csi->ctrl_cfg.xclk_pin,
@@ -238,7 +238,6 @@ esp_err_t esp_camera_init(const esp_camera_config_t *config)
 #ifdef CONFIG_DVP_ENABLE
         if (p->intf == CAMERA_INTF_DVP &&  config->sccb_num != 0 && config->dvp_num > 0 && config->dvp != NULL) {
             for (size_t i = 0; i < config->dvp_num; i++) {
-                esp_err_t ret;
                 esp_camera_device_t *cam_dev;
                 esp_camera_driver_config_t cfg = {
                     .sccb_port = config->sccb[config->dvp->ctrl_cfg.sccb_config_index].port,
@@ -294,8 +293,6 @@ esp_err_t esp_camera_init(const esp_camera_config_t *config)
 #endif
 
 #ifdef CONFIG_SIMULATED_INTF
-        esp_err_t ret;
-
         if (p->intf == CAMERA_INTF_SIM && config->sim_num && config->sim != NULL) {
             for (size_t i = 0; i < config->sim_num; i++) {
                 esp_camera_device_t *cam_dev = (*(p->fn))((void *)&config->sim[i]);
@@ -314,6 +311,14 @@ esp_err_t esp_camera_init(const esp_camera_config_t *config)
         }
 #endif
     }
+
+#if CONFIG_ESP_VIDEO_SW_CODEC_JPEG_DEVICE
+    ret = esp_sw_jpeg_create_video_device();
+    if (ret != ESP_OK) {
+        ESP_LOGE(TAG, "failed to create video device");
+        return ret;
+    }
+#endif
 
 #ifdef CONFIG_ESP_VIDEO_MEDIA_CONTROLLER
     if (esp_media_start() != ESP_OK) {

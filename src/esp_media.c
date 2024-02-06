@@ -112,7 +112,6 @@ void IRAM_ATTR esp_video_media_recvdone_buffer(struct esp_video *video, void *bu
             event.cmd = ESP_MEIDA_EVENT_CMD_DATA_RECV;
             event.pad = pad;
             event.param = element;
-            element->valid_offset = offset;
             element->valid_size = size;
             esp_media_event_post(&event, 0);
         }
@@ -290,14 +289,12 @@ static esp_err_t entity_event_default_cb(struct esp_pad *pad, esp_media_event_cm
     }
     if (cmd == ESP_MEIDA_EVENT_CMD_DATA_RECV) {
         struct esp_video *video = esp_entity_get_device(entity);
-        void *ptr = esp_video_recvdone_buffer(video, element->buffer, element->valid_size, element->valid_offset);
-        if (ptr) {
-            element = esp_video_buffer_get_element_by_buffer(video->buffer, ptr);
-            *out = element;
-        }
+
+        esp_video_done_element(video, element);
+        *out = element;
 
         if (pad->entity->user_node) {
-            esp_video_recvdone_buffer(entity->user_node, element->buffer, element->valid_size, element->valid_offset);
+            esp_video_done_element(entity->user_node, element);
             return ESP_ERR_NOT_FINISHED;
         }
     }
@@ -504,7 +501,7 @@ esp_err_t esp_media_async_done_cb(struct esp_pad *pad, esp_media_event_cmd_t cmd
     esp_media_event_t event;
 
     if (in != out) {
-        esp_video_buffer_element_free(in);
+        esp_video_buffer_element_queue(in);
     }
 
     memset(&event, 0x0, sizeof(event));
@@ -1058,13 +1055,13 @@ static esp_err_t entities_walk(esp_pad_t *pad, esp_media_event_cmd_t cmd, struct
         }
 
         if (err != ESP_OK) {
-            esp_video_buffer_element_free(vb);
+            esp_video_buffer_element_queue(vb);
             return ESP_FAIL;
         }
 
         if ((out != vb) && (vb != NULL)) {
             // free vb
-            esp_video_buffer_element_free(vb);
+            esp_video_buffer_element_queue(vb);
             vb = out;
         }
     }
@@ -1268,7 +1265,7 @@ struct esp_video_buffer_element *esp_pipeline_alloc_video_buffer(esp_pipeline_t 
         return NULL;
     }
 
-    return esp_video_buffer_alloc(pipeline->vb);
+    return esp_video_buffer_get_queued_element(pipeline->vb);
 }
 
 //////// media

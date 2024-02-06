@@ -40,7 +40,7 @@ struct esp_video_buffer *esp_video_buffer_create(const struct esp_video_buffer_i
         return NULL;
     }
 
-    SLIST_INIT(&buffer->free_list);
+    SLIST_INIT(&buffer->queued_list);
     for (int i = 0; i < info->count; i++) {
         struct esp_video_buffer_element *element = &buffer->element[i];
 
@@ -48,13 +48,14 @@ struct esp_video_buffer *esp_video_buffer_create(const struct esp_video_buffer_i
         if (element->buffer) {
             element->index = i;
             element->video_buffer = buffer;
-            SLIST_INSERT_HEAD(&buffer->free_list, element, node);
         } else {
             goto errout_alloc_buffer;
         }
     }
 
     portMUX_INITIALIZE(&buffer->lock);
+    SLIST_INIT(&buffer->queued_list);
+    SLIST_INIT(&buffer->done_list);
     buffer->info.count = info->count;
     buffer->info.size = info->size;
     buffer->info.align_size = info->align_size;
@@ -102,59 +103,71 @@ struct esp_video_buffer *esp_video_buffer_clone(const struct esp_video_buffer *b
  *      - Video buffer element object pointer on success
  *      - NULL if failed
  */
-struct esp_video_buffer_element *IRAM_ATTR esp_video_buffer_alloc(struct esp_video_buffer *buffer)
+struct esp_video_buffer_element *IRAM_ATTR esp_video_buffer_get_queued_element(struct esp_video_buffer *buffer)
 {
     struct esp_video_buffer_element *element = NULL;
 
     portENTER_CRITICAL_SAFE(&buffer->lock);
-    if (!SLIST_EMPTY(&buffer->free_list)) {
-        element = SLIST_FIRST(&buffer->free_list);
-        SLIST_REMOVE(&buffer->free_list, element, esp_video_buffer_element, node);
+    if (!SLIST_EMPTY(&buffer->queued_list)) {
+        element = SLIST_FIRST(&buffer->queued_list);
+        SLIST_REMOVE(&buffer->queued_list, element, esp_video_buffer_element, node);
     }
     portEXIT_CRITICAL_SAFE(&buffer->lock);
-
-    if (element) {
-        element->valid_offset = 0;
-        element->valid_size = 0;
-    }
 
     return element;
 }
 
 /**
- * @brief Free one buffer element, insert it to free list.
+ * @brief Get one buffer element from done list and remove it from done list.
+ *
+ * @param buffer Video buffer object
+ *
+ * @return
+ *      - Video buffer element object pointer on success
+ *      - NULL if failed
+ */
+struct esp_video_buffer_element *esp_video_buffer_get_done_element(struct esp_video_buffer *buffer)
+{
+    struct esp_video_buffer_element *element = NULL;
+
+    portENTER_CRITICAL_SAFE(&buffer->lock);
+    if (!SLIST_EMPTY(&buffer->done_list)) {
+        element = SLIST_FIRST(&buffer->done_list);
+        SLIST_REMOVE(&buffer->done_list, element, esp_video_buffer_element, node);
+    }
+    portEXIT_CRITICAL_SAFE(&buffer->lock);
+
+    return element;
+}
+
+/**
+ * @brief Put buffer element into queued list.
  *
  * @param buffer  Video buffer object
  * @param element Video buffer element object
  *
  * @return None
  */
-void esp_video_buffer_free(struct esp_video_buffer *buffer, struct esp_video_buffer_element *element)
+void esp_video_buffer_queue(struct esp_video_buffer *buffer, struct esp_video_buffer_element *element)
 {
     portENTER_CRITICAL_SAFE(&buffer->lock);
-    SLIST_INSERT_HEAD(&buffer->free_list, element, node);
+    SLIST_INSERT_HEAD(&buffer->queued_list, element, node);
     portEXIT_CRITICAL_SAFE(&buffer->lock);
 }
 
 /**
- * @brief Get current free element number.
+ * @brief Put buffer element into done list.
  *
  * @param buffer  Video buffer object
+ * @param element Video buffer element object
  *
- * @return Free element number
+ * @return None
  */
-uint32_t esp_video_buffer_get_element_num(struct esp_video_buffer *buffer)
+void IRAM_ATTR esp_video_buffer_done(struct esp_video_buffer *buffer, struct esp_video_buffer_element *element)
 {
-    uint32_t num = 0;
-    struct esp_video_buffer_element *element;
-
     portENTER_CRITICAL_SAFE(&buffer->lock);
-    SLIST_FOREACH(element, &buffer->free_list, node) {
-        num++;
-    }
+    SLIST_INSERT_HEAD(&buffer->done_list, element, node);
     portEXIT_CRITICAL_SAFE(&buffer->lock);
-
-    return num;
 }
 
 /**
@@ -168,11 +181,6 @@ uint32_t esp_video_buffer_get_element_num(struct esp_video_buffer *buffer)
  */
 esp_err_t esp_video_buffer_destroy(struct esp_video_buffer *buffer)
 {
-    uint32_t n;
-
-    n = esp_video_buffer_get_element_num(buffer);
-    assert (n == buffer->info.count);
-
     for (int i = 0; i < buffer->info.count; i++) {
         heap_caps_free(buffer->element[i].buffer);
     }
@@ -192,7 +200,7 @@ struct esp_video_buffer_element *esp_video_buffer_element_clone(const struct esp
 {
     struct esp_video_buffer_element *new_element;
 
-    new_element = esp_video_buffer_alloc(element->video_buffer);
+    new_element = esp_video_buffer_get_queued_element(element->video_buffer);
     if (!new_element) {
         return NULL;
     }
