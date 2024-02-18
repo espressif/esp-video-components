@@ -19,6 +19,7 @@ extern "C" {
 #define GC0308_REG_ANALOG_MODE    0x1a
 #define GC0308_REG_DEBUG_MODE     0x2e
 #define GC0308_REG_CISCTL_MODE1   0x14
+#define GC0308_REG_OUTPUT_FMT     0x24
 
 #ifdef __cplusplus
 }

@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2023 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2023-2024 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -34,6 +34,129 @@ static esp_camera_device_t *s_gc0308[GC0308_SUPPORT_NUM];
 
 static uint8_t s_gc0308_index;
 
+static const sensor_format_t gc0308_format_info[] = {
+    {
+        .index = GC0308_FORMAT_INDEX0,
+        .name = "DVP_8bit_20Minput_Only_Y_640x480_16fps",
+        .format = CAM_SENSOR_PIXFORMAT_GRAYSCALE,
+        .port = DVP_OUTPUT_8BITS,
+        .bayer_type = CAM_SENSOR_BAYER_GBRG,
+        .hdr_mode = CAM_SENSOR_HDR_LINEAR,
+        .xclk = 20000000,
+        .start_pos_x = 4,
+        .start_pos_y = 4,
+        .width = 640,
+        .height = 480,
+        .regs = DVP_8bit_20Minput_640x480_only_y_16fps,
+        .regs_size = ARRAY_SIZE(DVP_8bit_20Minput_640x480_only_y_16fps),
+        .bpp = 8,
+        .fps = 16,
+        .isp_info = NULL,
+        .mipi_info = {},
+        .reserved = NULL,
+    },
+    {
+        .index = GC0308_FORMAT_INDEX1,
+        .name = "DVP_8bit_20Minput_RGB565_640x480_16fps",
+        .format = CAM_SENSOR_PIXFORMAT_RGB565,
+        .port = DVP_OUTPUT_8BITS,
+        .bayer_type = CAM_SENSOR_BAYER_GBRG,
+        .hdr_mode = CAM_SENSOR_HDR_LINEAR,
+        .xclk = 20000000,
+        .start_pos_x = 4,
+        .start_pos_y = 4,
+        .width = 640,
+        .height = 480,
+        .regs = DVP_8bit_20Minput_640x480_rgb565_16fps,
+        .regs_size = ARRAY_SIZE(DVP_8bit_20Minput_640x480_rgb565_16fps),
+        .bpp = 16,
+        .fps = 16,
+        .isp_info = NULL,
+        .mipi_info = {},
+        .reserved = NULL,
+    },
+    {
+        .index = GC0308_FORMAT_INDEX2,
+        .name = "DVP_8bit_20Minput_YUV422_640x480_16fps",
+        .format = CAM_SENSOR_PIXFORMAT_YUV422,
+        .port = DVP_OUTPUT_8BITS,
+        .bayer_type = CAM_SENSOR_BAYER_GBRG,
+        .hdr_mode = CAM_SENSOR_HDR_LINEAR,
+        .xclk = 20000000,
+        .start_pos_x = 4,
+        .start_pos_y = 4,
+        .width = 640,
+        .height = 480,
+        .regs = DVP_8bit_20Minput_640x480_yuv422_16fps,
+        .regs_size = ARRAY_SIZE(DVP_8bit_20Minput_640x480_yuv422_16fps),
+        .bpp = 16,
+        .fps = 16,
+        .isp_info = NULL,
+        .mipi_info = {},
+        .reserved = NULL,
+    },
+    {
+        .index = GC0308_FORMAT_INDEX3,
+        .name = "DVP_8bit_20Minput_YUV422_320x240_20fps_subsample",
+        .format = CAM_SENSOR_PIXFORMAT_YUV422,
+        .port = DVP_OUTPUT_8BITS,
+        .bayer_type = CAM_SENSOR_BAYER_GBRG,
+        .hdr_mode = CAM_SENSOR_HDR_LINEAR,
+        .xclk = 20000000,
+        .start_pos_x = 0,
+        .start_pos_y = 0,
+        .width = 320,
+        .height = 240,
+        .regs = DVP_8bit_20Minput_320x240_yuv422_20fps_subsample,
+        .regs_size = ARRAY_SIZE(DVP_8bit_20Minput_320x240_yuv422_20fps_subsample),
+        .bpp = 16,
+        .fps = 20,
+        .isp_info = NULL,
+        .mipi_info = {},
+        .reserved = NULL,
+    },
+    {
+        .index = GC0308_FORMAT_INDEX4,
+        .name = "DVP_8bit_20Minput_only_y_320x240_20fps_subsample",
+        .format = CAM_SENSOR_PIXFORMAT_GRAYSCALE,
+        .port = DVP_OUTPUT_8BITS,
+        .bayer_type = CAM_SENSOR_BAYER_GBRG,
+        .hdr_mode = CAM_SENSOR_HDR_LINEAR,
+        .xclk = 20000000,
+        .start_pos_x = 0,
+        .start_pos_y = 0,
+        .width = 320,
+        .height = 240,
+        .regs = DVP_8bit_20Minput_320x240_only_y_20fps_subsample,
+        .regs_size = ARRAY_SIZE(DVP_8bit_20Minput_320x240_only_y_20fps_subsample),
+        .bpp = 8,
+        .fps = 20,
+        .isp_info = NULL,
+        .mipi_info = {},
+        .reserved = NULL,
+    },
+    {
+        .index = GC0308_FORMAT_INDEX5,
+        .name = "DVP_8bit_20Minput_RGB565_320x240_20fps_subsample",
+        .format = CAM_SENSOR_PIXFORMAT_RGB565,
+        .port = DVP_OUTPUT_8BITS,
+        .bayer_type = CAM_SENSOR_BAYER_GBRG,
+        .hdr_mode = CAM_SENSOR_HDR_LINEAR,
+        .xclk = 20000000,
+        .start_pos_x = 0,
+        .start_pos_y = 0,
+        .width = 320,
+        .height = 240,
+        .regs = DVP_8bit_20Minput_320x240_rgb565_20fps_subsample,
+        .regs_size = ARRAY_SIZE(DVP_8bit_20Minput_320x240_rgb565_20fps_subsample),
+        .bpp = 16,
+        .fps = 20,
+        .isp_info = NULL,
+        .mipi_info = {},
+        .reserved = NULL,
+    },
+};
+
 static int gc0308_read(uint8_t sccb_port, uint8_t reg, uint8_t *read_buf)
 {
     int value = -1;
@@ -56,14 +179,14 @@ static int gc0308_write_array(uint8_t sccb_port, gc0308_reginfo_t *regarray, siz
 {
     int i = 0, ret = 0;
     while (!ret && (i < regs_size)) {
-        if (regarray[i].reg == GC0308_REG_DELAY) {
-            delay_ms(10);
-        } else {
+        if (regarray[i].reg != GC0308_REG_DELAY) {
             ret = gc0308_write(sccb_port, regarray[i].reg, regarray[i].val);
+        } else {
+            delay_ms(regarray[i].val);
         }
         i++;
     }
-    ESP_LOGD(TAG, "count=%d", i);
+    ESP_LOGI(TAG, "count=%d", i);
     return ret;
 }
 
@@ -77,15 +200,20 @@ static int gc0308_set_reg_bits(uint8_t sccb_port, uint16_t reg, uint8_t offset, 
         return ret;
     }
     uint8_t mask = ((1 << length) - 1) << offset;
-    value = (ret & ~mask) | ((value << offset) & mask);
+    value = (reg_data & ~mask) | ((value << offset) & mask);
     ret = gc0308_write(sccb_port, reg, value);
     return ret;
 }
 
-static int gc0308_set_pattern(esp_camera_device_t *dev, int enable)
+static int gc0308_select_page(esp_camera_device_t *dev, uint8_t page)
+{
+    return gc0308_write(dev->sccb_port, GC0308_REG_PAGE_SELECT, page);
+}
+
+static int gc0308_set_test_pattern(esp_camera_device_t *dev, int enable)
 {
     int ret = 0;
-    ret = gc0308_write(dev->sccb_port, GC0308_REG_PAGE_SELECT, 0x00);
+    ret = gc0308_select_page(dev, 0x00);
     if (enable) {
         ret |= gc0308_set_reg_bits(dev->sccb_port, GC0308_REG_DEBUG_MODE, 0, 0x01, 0x01);
     } else {
@@ -96,7 +224,7 @@ static int gc0308_set_pattern(esp_camera_device_t *dev, int enable)
 
 static int gc0308_soft_reset(esp_camera_device_t *dev)
 {
-    int ret = gc0308_write(dev->sccb_port, GC0308_REG_PAGE_SELECT, 0x00);
+    int ret = gc0308_select_page(dev, 0x00);
     ret |= gc0308_set_reg_bits(dev->sccb_port, GC0308_REG_PAGE_SELECT, 7, 1, 0x01);
     delay_ms(5);
     return ret;
@@ -106,7 +234,7 @@ static int gc0308_get_sensor_id(esp_camera_device_t *dev, sensor_id_t *id)
 {
     int ret = -1;
     uint8_t pid_h;
-    ret = gc0308_write(dev->sccb_port, GC0308_REG_PAGE_SELECT, 0x00);
+    ret = gc0308_select_page(dev, 0x00);
     ret |= gc0308_read(dev->sccb_port, 0x00, &pid_h);
     if (!ret && pid_h) {
         id->PID = pid_h;
@@ -118,12 +246,12 @@ static int gc0308_get_sensor_id(esp_camera_device_t *dev, sensor_id_t *id)
 static int gc0308_set_stream(esp_camera_device_t *dev, int enable)
 {
     int ret = -1;
-    // gc0308_set_pattern(dev, 1);
+    ret = gc0308_select_page(dev, 0x00);
     if (enable) {
-        ret = gc0308_set_reg_bits(dev->sccb_port, GC0308_REG_ANALOG_MODE, 0, 1, 0);
+        ret |= gc0308_set_reg_bits(dev->sccb_port, GC0308_REG_ANALOG_MODE, 0, 1, 0);
         ret |= gc0308_write(dev->sccb_port, GC0308_REG_OUTPUT_EN, 0x0f);
     } else {
-        ret = gc0308_set_reg_bits(dev->sccb_port, GC0308_REG_ANALOG_MODE, 0, 1, 0x01);
+        ret |= gc0308_set_reg_bits(dev->sccb_port, GC0308_REG_ANALOG_MODE, 0, 1, 0x01);
         ret |= gc0308_write(dev->sccb_port, GC0308_REG_OUTPUT_EN, 0x00);
     }
 
@@ -137,7 +265,7 @@ static int gc0308_set_stream(esp_camera_device_t *dev, int enable)
 static int gc0308_set_mirror(esp_camera_device_t *dev, int enable)
 {
     int ret = -1;
-    ret = gc0308_write(dev->sccb_port, GC0308_REG_PAGE_SELECT, 0x00);
+    ret = gc0308_select_page(dev, 0x00);
     ret |= gc0308_set_reg_bits(dev->sccb_port, GC0308_REG_CISCTL_MODE1, 0, 0x01, enable != 0);
     if (ret == 0) {
         ESP_LOGD(TAG, "Set h-mirror to: %d", enable);
@@ -148,7 +276,7 @@ static int gc0308_set_mirror(esp_camera_device_t *dev, int enable)
 static int gc0308_set_vflip(esp_camera_device_t *dev, int enable)
 {
     int ret = -1;
-    ret = gc0308_write(dev->sccb_port, GC0308_REG_PAGE_SELECT, 0x00);
+    ret = gc0308_select_page(dev, 0x00);
     ret |= gc0308_set_reg_bits(dev->sccb_port, GC0308_REG_CISCTL_MODE1, 1, 0x01, enable != 0);
     if (ret == 0) {
         ESP_LOGD(TAG, "Set h-mirror to: %d", enable);
@@ -256,7 +384,7 @@ static int gc0308_priv_ioctl(esp_camera_device_t *dev, unsigned int cmd, void *a
             ret = gc0308_set_stream(dev, *(int *)arg);
             break;
         case CAM_SENSOR_IOC_S_TEST_PATTERN:
-            ret = gc0308_set_pattern(dev, *(int *)arg);
+            ret = gc0308_set_test_pattern(dev, *(int *)arg);
             break;
         }
     } else {
