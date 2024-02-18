@@ -7,11 +7,18 @@
 #include "esp_idf_version.h"
 #include "esp_check.h"
 #include "dvp_dma_internal.h"
+#include "hal/gdma_hal.h"
 
 #define DVP_DMA_PSRAM_TRANS_ALIGN_SIZE             CONFIG_DVP_DMA_PSRAM_ALIGN_SIZE
 #define DVP_DMA_SRAM_TRANS_ALIGN_SIZE              (4)
 
 static const char *TAG = "dvp_dma";
+
+#ifdef CONFIG_IDF_TARGET_ESP32S3
+#define dvp_dma_ll_get_next_dma_desc_addr(chan)    (GDMA.channel[chan].in.dscr_bf0)
+#elif CONFIG_IDF_TARGET_ESP32P4
+#define dvp_dma_ll_get_next_dma_desc_addr(chan)    (AXI_DMA.in[chan].conf.in_dscr_bf0.inlink_dscr_bf0_chn)
+#endif
 
 esp_err_t dvp_dma_deinit(dvp_dma_t *dvp_dma)
 {
@@ -79,4 +86,17 @@ esp_err_t dvp_dma_stop(dvp_dma_t *dvp_dma)
 esp_err_t dvp_dma_reset(dvp_dma_t *dvp_dma)
 {
     return gdma_reset(dvp_dma->gdma_chan);
+}
+
+uint32_t dvp_dma_get_next_dma_desc_addr(dvp_dma_t *dvp_dma)
+{
+    int dma_chan;
+    esp_err_t ret;
+
+    ret = gdma_get_channel_id(dvp_dma->gdma_chan, &dma_chan);
+    if (ret != ESP_OK) {
+        return 0;
+    }
+
+    return dvp_dma_ll_get_next_dma_desc_addr(dma_chan);
 }

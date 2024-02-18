@@ -187,6 +187,7 @@ typedef struct dvp_device {
     size_t hsize;                               /*!< DVP cache buffer half size */
     size_t item_size;                           /*!< DVP cache receive data item size */
     dvp_dma_desc_t *dma_desc;                   /*!< DVP cache buffer DMA description */
+    size_t dma_desc_size;                       /*!< DVP cache buffer DMA description size per node */
     size_t dma_desc_hcnt;                       /*!< DVP cache buffer DMA description half count */
     size_t dma_desc_index;                      /*!< DVP cache buffer DMA description index */
 

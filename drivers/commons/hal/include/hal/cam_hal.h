@@ -146,6 +146,15 @@ void cam_hal_clear_int_status(cam_hal_context_t *hal, uint32_t status);
  */
 uint32_t cam_hal_dma_align_size(cam_hal_context_t *hal);
 
+/**
+ * @brief Get next DMA description address
+ *
+ * @param hal CAM object data pointer
+ *
+ * @return Next DMA description address
+ */
+uint32_t cam_hal_get_next_dma_desc_addr(cam_hal_context_t *hal);
+
 #if CONFIG_SOC_LCDCAM_SUPPORTED
 /**
  * @brief Configure the CAM module to generate the specified XCLK clock

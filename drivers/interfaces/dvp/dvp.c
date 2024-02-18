@@ -17,6 +17,7 @@
 #define DVP_TASK_STACK_SIZE                 CONFIG_DVP_TASK_STACK_SIZE
 #define DVP_DMA_DIV                         2
 #define DVP_EVENT_QUEUE_SIZE                2
+#define DVP_DMA_DESC_JPEG_SIZE              512
 
 #define DVP_PORT_MAX                        (SOC_CAM_PERIPH_NUM - 1)
 
@@ -115,19 +116,20 @@ static uint32_t esp_dvp_calculate_jpeg_size(const uint8_t *buffer, uint32_t size
 /**
  * @brief Config DVP DMA description list
  *
- * @param dma_desc DVP DMA description pointer
- * @param buffer   DVM receive buffer pointer
- * @param size     DMA buffer size
- * @param next     DVP DMA description next pointer of this list
+ * @param dma_desc  DVP DMA description pointer
+ * @param desc_size DVP DMA description node max size
+ * @param buffer    DVP receive buffer pointer
+ * @param size      DMA buffer size
+ * @param next      DVP DMA description next pointer of this list
  *
  * @return None
  */
-static void dvp_config_dma_desc(dvp_dma_desc_t *dma_desc, uint8_t *buffer, uint32_t size, dvp_dma_desc_t *next)
+static void dvp_config_dma_desc(dvp_dma_desc_t *dma_desc, uint32_t desc_size, uint8_t *buffer, uint32_t size, dvp_dma_desc_t *next)
 {
     int n = 0;
 
     while (size) {
-        uint32_t dma_node_size = DVP_UP_ALIGN(MIN(size, DVP_DMA_DESC_BUFFER_MAX_SIZE), 4);
+        uint32_t dma_node_size = DVP_UP_ALIGN(MIN(size, desc_size), 4);
 
         dma_desc[n].dw0.size = dma_node_size;
         dma_desc[n].dw0.length = 0;
@@ -147,50 +149,37 @@ static void dvp_config_dma_desc(dvp_dma_desc_t *dma_desc, uint8_t *buffer, uint3
 }
 
 /**
- * @brief Clear DMA receive data size
+ * @brief Get DMA valid size in DMA description list
  *
- * @param dvp DVP object data pointer
+ * @param dvp                DVP device handle
+ * @param next_dma_desc_addr DVP next DMA description address
  *
- * @return None
+ * @return DMA valid size
  */
-static void dvp_clear_dma_recv_size(dvp_device_handle_t dvp)
+static uint32_t dvp_get_dma_valid_size(dvp_device_t *dvp, uint32_t next_dma_desc_addr)
 {
-#ifndef CONFIG_IDF_TARGET_ESP32P4
-    dvp_dma_desc_t *dma_desc = DVP_CUR_LLDESC(dvp);
+    uint32_t size;
 
-    for (int i = 0; i < dvp->dma_desc_hcnt; i++) {
-        dma_desc[i].dw0.length = 0;
-    }
-#endif
-}
+    if ((next_dma_desc_addr == (uint32_t)&dvp->dma_desc[0]) ||
+            (next_dma_desc_addr == (uint32_t)&dvp->dma_desc[dvp->dma_desc_hcnt])) {
+        size = dvp->hsize;
+    } else {
+        uint32_t count = (next_dma_desc_addr - (uint32_t)&dvp->dma_desc[0]) / sizeof(dvp_dma_desc_t);
 
-/**
- * @brief Get and clear DMA receive data size
- *
- * @param dvp DVP object data pointer
- *
- * @return DMA receive data size
- */
-static uint32_t get_and_clear_dma_recv_size(dvp_device_handle_t dvp)
-{
-#ifndef CONFIG_IDF_TARGET_ESP32P4
-    uint32_t size = 0;
-    dvp_dma_desc_t *dma_desc = DVP_CUR_LLDESC(dvp);
-
-    for (int i = 0; i < dvp->dma_desc_hcnt; i++) {
-        /* Although dma_desc.length is equal to 0, but this DMA node can also have received data */
-
-        if (!dma_desc[i].dw0.length) {
-            return size + dma_desc[i].dw0.size;
+        if (dvp->dma_desc_index) {
+            count -= dvp->dma_desc_hcnt;
         }
 
-        size += dma_desc[i].dw0.length;
+        /* This means hardware issue triggers, and the frame should be dropped */
+
+        if (count > dvp->dma_desc_hcnt) {
+            return 0;
+        }
+
+        size = count * dvp->dma_desc_size;
     }
 
     return size;
-#else
-    return dvp->hsize;
-#endif
 }
 
 /**
@@ -215,16 +204,6 @@ static esp_err_t dvp_start_capturing(dvp_device_t *dvp)
     ret = dvp_dma_start(&dvp->dma, dvp->dma_desc);
     if (ret != ESP_OK) {
         ESP_LOGE(TAG, "failed to start GDMA");
-    }
-#endif
-
-#ifndef CONFIG_IDF_TARGET_ESP32P4
-    /* Clear DMA description receive length filed */
-
-    if (dvp->jpeg) {
-        for (int i = 0; i < dvp->dma_desc_hcnt * 2; i++) {
-            dvp->dma_desc[i].dw0.length = 0;
-        }
     }
 #endif
 
@@ -403,12 +382,6 @@ static void dvp_task(void *p)
                 size_t frame_size = data_size / dvp->item_size;
                 dvp_frame_t *frame = dvp->cur_frame;
 
-                /* Clear DMA description length field if frame format is JPEG */
-
-                if (dvp->jpeg) {
-                    dvp_clear_dma_recv_size(dvp);
-                }
-
                 /* Calculate received data size and check if frame left space is enough */
 
                 if ((frame->size + frame_size) < frame->length) {
@@ -436,11 +409,21 @@ static void dvp_task(void *p)
             if (dvp->state == DVP_DEV_RXING) {
                 size_t data_size;
                 size_t frame_size;
+                dvp_frame_t *frame;
                 dvp_rx_cb_ret_t ret;
-                dvp_frame_t *frame = dvp->cur_frame;
+                uint32_t next_dma_desc_addr = 0;
+
+                if (dvp->jpeg) {
+#if CONFIG_SOC_GDMA_SUPPORTED
+                    next_dma_desc_addr = dvp_dma_get_next_dma_desc_addr(&dvp->dma);
+#else
+                    next_dma_desc_addr = cam_hal_get_next_dma_desc_addr(&dvp->hal);
+#endif
+                }
 
                 /* Stop DVP receive, and then no event will be sent */
 
+                frame = dvp->cur_frame;
                 dvp->state = DVP_DEV_RXED;
 
                 dvp_stop_capturing(dvp);
@@ -453,7 +436,7 @@ static void dvp_task(void *p)
                 /* Get rest received data size and check if frame left space is enough */
 
                 if (dvp->jpeg) {
-                    data_size = get_and_clear_dma_recv_size(dvp);
+                    data_size = dvp_get_dma_valid_size(dvp, next_dma_desc_addr);
                 } else {
                     data_size = dvp->hsize;
                 }
@@ -993,10 +976,10 @@ esp_err_t dvp_setup_dma_receive_buffer(dvp_device_handle_t handle, uint32_t fram
 {
     esp_err_t ret;
     uint32_t dma_desc_size;
-    uint32_t buffer_align_size;
     dvp_device_t *dvp = handle;
+    uint32_t buffer_align_size = cam_hal_dma_align_size(&dvp->hal);
 
-    if (!handle || !frame_size) {
+    if (!handle || !frame_size || (frame_size % buffer_align_size)) {
         return ESP_ERR_INVALID_ARG;
     }
 
@@ -1031,7 +1014,6 @@ esp_err_t dvp_setup_dma_receive_buffer(dvp_device_handle_t handle, uint32_t fram
      * API "dvp_device_add_buffer".
      */
 
-    buffer_align_size = cam_hal_dma_align_size(&dvp->hal);
     dvp->hsize = dvp_get_dma_buffer_hsize(dvp->dma_buffer_max_size, buffer_align_size, frame_size, jpeg);
     dvp->size = dvp->hsize * DVP_DMA_DIV;
 
@@ -1040,15 +1022,18 @@ esp_err_t dvp_setup_dma_receive_buffer(dvp_device_handle_t handle, uint32_t fram
         goto errout_malloc_buffer;
     }
 
-    dvp->dma_desc_hcnt = (dvp->hsize + DVP_DMA_DESC_BUFFER_MAX_SIZE - 1) / DVP_DMA_DESC_BUFFER_MAX_SIZE;
+    /* JPEG format uses smaller DMA description to reduce copying and decoding invalid data */
+
+    dvp->dma_desc_size = jpeg ? DVP_DMA_DESC_JPEG_SIZE : DVP_DMA_DESC_BUFFER_MAX_SIZE;
+    dvp->dma_desc_hcnt = (dvp->hsize + dvp->dma_desc_size - 1) / dvp->dma_desc_size;
 
     dma_desc_size = DVP_UP_ALIGN(DVP_DMA_DIV * dvp->dma_desc_hcnt * sizeof(dvp_dma_desc_t), buffer_align_size);
     dvp->dma_desc = heap_caps_aligned_alloc(buffer_align_size, dma_desc_size, MALLOC_CAP_DMA);
     if (!dvp->dma_desc) {
         goto errout_malloc_lldesc;
     } else {
-        dvp_config_dma_desc(dvp->dma_desc, dvp->buffer, dvp->hsize, &dvp->dma_desc[dvp->dma_desc_hcnt]);
-        dvp_config_dma_desc(&dvp->dma_desc[dvp->dma_desc_hcnt], &dvp->buffer[dvp->hsize], dvp->hsize, dvp->dma_desc);
+        dvp_config_dma_desc(dvp->dma_desc, dvp->dma_desc_size, dvp->buffer, dvp->hsize, &dvp->dma_desc[dvp->dma_desc_hcnt]);
+        dvp_config_dma_desc(&dvp->dma_desc[dvp->dma_desc_hcnt], dvp->dma_desc_size, &dvp->buffer[dvp->hsize], dvp->hsize, dvp->dma_desc);
 
 #if CONFIG_IDF_TARGET_ESP32P4
         /* Flush data from cache to RAM so that DMA engine can get this configuration */
