@@ -1,0 +1,37 @@
+{
+  "media": {
+    "entities": [
+      {
+        "name": "SIM0",
+        "sink_pads": 3,
+        "source_pads": 3,
+        "bridges": [
+          {
+            "source_pad": 0,
+            "sink_pad": 0
+          },
+          {
+            "source_pad": 1,
+            "sink_pad": 1
+          }
+        ]
+      }
+    ],
+    "pipelines": [
+      {
+        "name": "pipeline1",
+        "user_node": [
+          {
+            "name": "video0",
+            "entities": [
+              {
+                "entity": "SIM0",
+                "sink_pad": 0
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}
