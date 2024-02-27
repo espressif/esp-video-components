@@ -18,6 +18,7 @@
 #include "esp_video.h"
 
 #include "esp_video_vfs.h"
+#include "esp_video_ioctl.h"
 
 #include "cJSON.h"
 
@@ -77,10 +78,26 @@ struct esp_pad {
     esp_pipeline_t *pipeline;
 };
 
+// wrapped struct
 typedef struct {
     int cmd;
     va_list args;
 } __user_node_ioctl_param_t;
+
+typedef struct {
+    uint32_t type;
+    struct esp_video_buffer_info *info;
+} __esp_video_buffer_info_t;
+
+typedef struct {
+    uint32_t type;
+    struct esp_video_buffer_element *element;
+} __esp_video_buffer_elememt_t;
+
+typedef struct {
+    uint32_t type;
+    const struct esp_video_format *format;
+} __esp_video_format_t;
 
 // internal
 typedef esp_err_t (*entities_iterate_walk_cb_t)(esp_pad_t *pad, void *param);
@@ -88,21 +105,29 @@ static esp_err_t esp_pipeline_entities_iterate_walk_custom(esp_pad_t *pad, entit
         entities_iterate_walk_cb_t completed_cb, void *param, bool reverse);
 static esp_err_t esp_pads_bind_pipeline_iterate(esp_pad_t *pad, void *param);
 
-static esp_err_t entities_walk(esp_pad_t *pad, esp_media_event_cmd_t cmd, struct esp_video_buffer_element *vb);
+static esp_err_t entities_walk(esp_pad_t *pad, esp_media_event_cmd_t cmd, uint32_t type, struct esp_video_buffer_element *vb);
 static esp_err_t esp_media_cleanup_individual_entities(esp_media_t *media);
 
 static QueueHandle_t media_queue = NULL;
 static const char *TAG = "esp_media";
 
 // This API can not meet AEG-1182, but currently, it is enough
-void IRAM_ATTR esp_video_media_recvdone_buffer(struct esp_video *video, void *buffer, size_t size, uint32_t  offset)
+void IRAM_ATTR esp_video_media_done_buffer(struct esp_video *video, uint32_t type, uint8_t *buffer, uint32_t n)
 {
-    struct esp_video_buffer_element *element = esp_video_buffer_get_element_by_buffer(video->buffer, buffer);
-    esp_pad_t *pad = NULL;
     esp_media_event_t event;
+    __esp_video_buffer_elememt_t *buffer_element = (__esp_video_buffer_elememt_t *)malloc(sizeof(__esp_video_buffer_elememt_t));
+    struct esp_video_buffer *vbuf = video->stream->buffer;
+    if (!vbuf) {
+        return;
+    }
+    struct esp_video_buffer_element *element = esp_video_buffer_get_element_by_buffer(vbuf, buffer);
+    element->valid_size = n;
+    memset(buffer_element, 0x0, sizeof(__esp_video_buffer_elememt_t));
 
+    buffer_element->element = element;
+    buffer_element->type = type;
     for (int i = 0; ; i++) {
-        pad = esp_entity_get_pad_by_index(video->entity, ESP_PAD_TYPE_SINK, i);
+        esp_pad_t *pad = esp_entity_get_pad_by_index(video->entity, ESP_PAD_TYPE_SINK, i);
         if (!pad) {
             break;
         }
@@ -111,8 +136,7 @@ void IRAM_ATTR esp_video_media_recvdone_buffer(struct esp_video *video, void *bu
             memset(&event, 0x0, sizeof(event));
             event.cmd = ESP_MEIDA_EVENT_CMD_DATA_RECV;
             event.pad = pad;
-            event.param = element;
-            element->valid_size = size;
+            event.param = buffer_element;
             esp_media_event_post(&event, 0);
         }
     }
@@ -144,6 +168,15 @@ static esp_err_t user_node_device_iterate_deinit(esp_pad_t *pad, void *param)
     return esp_video_close(video);
 }
 
+static esp_err_t get_video_buffer_type(esp_pad_t *pad, void *param)
+{
+    uint32_t *buffer_type_shift = param;
+
+    *buffer_type_shift |= esp_video_get_buffer_type_bits(pad->entity->device);
+
+    return ESP_OK;
+}
+
 static esp_err_t user_node_device_deinit(esp_user_node_device_t *user_node_device)
 {
     esp_pad_t *pad = (esp_pad_t *)user_node_device->priv;
@@ -151,44 +184,51 @@ static esp_err_t user_node_device_deinit(esp_user_node_device_t *user_node_devic
     return esp_pipeline_entities_iterate_walk_custom(pad, user_node_device_iterate_deinit, NULL, NULL, true);
 }
 
-static esp_err_t user_node_device_iterate_start_capture(esp_pad_t *pad, void *param)
+static esp_err_t user_node_device_iterate_start(esp_pad_t *pad, void *param)
 {
     esp_entity_t *entity = esp_pad_get_entity(pad);
     struct esp_video *video = entity->device;
-    return esp_video_start_capture(video);
+    uint32_t type = (uint32_t)param;
+    return esp_video_start_capture(video, type);
 }
 
-static esp_err_t user_node_device_start_capture(esp_user_node_device_t *user_node_device)
+static esp_err_t user_node_device_start(esp_user_node_device_t *user_node_device, uint32_t type)
 {
     esp_pad_t *pad = (esp_pad_t *)user_node_device->priv;
 
-    return esp_pipeline_entities_iterate_walk_custom(pad, user_node_device_iterate_start_capture, NULL, NULL, true);
+    return esp_pipeline_entities_iterate_walk_custom(pad, user_node_device_iterate_start, NULL, (void *)type, true);
 }
 
-static esp_err_t user_node_device_iterate_stop_capture(esp_pad_t *pad, void *param)
+static esp_err_t user_node_device_iterate_stop(esp_pad_t *pad, void *param)
 {
     esp_entity_t *entity = esp_pad_get_entity(pad);
     struct esp_video *video = entity->device;
-    return esp_video_stop_capture(video);
+    uint32_t type = (uint32_t)param;
+    return esp_video_stop_capture(video, type);
 }
 
-static esp_err_t user_node_device_stop_capture(esp_user_node_device_t *user_node_device)
+static esp_err_t user_node_device_stop(esp_user_node_device_t *user_node_device, uint32_t type)
 {
     esp_pad_t *pad = (esp_pad_t *)user_node_device->priv;
-    return esp_pipeline_entities_iterate_walk_custom(pad, user_node_device_iterate_stop_capture, NULL, NULL, true);
+    return esp_pipeline_entities_iterate_walk_custom(pad, user_node_device_iterate_stop, NULL, (void *)type, true);
 }
 
 static esp_err_t user_node_device_iterate_set_format(esp_pad_t *pad, void *param)
 {
     esp_entity_t *entity = esp_pad_get_entity(pad);
     struct esp_video *video = entity->device;
-    return esp_video_set_format(video, param);
+    __esp_video_format_t *media_format = (__esp_video_format_t *)param;
+    return esp_video_set_format(video, media_format->type, media_format->format);
 }
 
-static esp_err_t user_node_device_set_format(esp_user_node_device_t *user_node_device, const struct esp_video_format *format)
+static esp_err_t user_node_device_set_format(esp_user_node_device_t *user_node_device, uint32_t type, const struct esp_video_format *format)
 {
     esp_pad_t *pad = (esp_pad_t *)user_node_device->priv;
-    return esp_pipeline_entities_iterate_walk_custom(pad, user_node_device_iterate_set_format, NULL, (void *)format, true);
+    __esp_video_format_t media_format;
+    memset(&media_format, 0x0, sizeof(media_format));
+    media_format.type = type;
+    media_format.format = format;
+    return esp_pipeline_entities_iterate_walk_custom(pad, user_node_device_iterate_set_format, NULL, &media_format, true);
 }
 
 static esp_err_t user_node_device_iterate_get_capability(esp_pad_t *pad, void *param)
@@ -219,6 +259,48 @@ static esp_err_t user_node_device_get_description(esp_user_node_device_t *user_n
     return esp_pipeline_entities_iterate_walk_custom(pad, user_node_device_iterate_get_description, NULL, buffer, true);
 }
 
+static esp_err_t user_node_device_iterate_ioctl_querycap(esp_pad_t *pad, void *param)
+{
+    __user_node_ioctl_param_t *ioctl_param = (__user_node_ioctl_param_t *)param;
+    struct v4l2_capability *cap = ioctl_param->args;
+    struct v4l2_capability temp_cap;
+    esp_err_t ret = esp_video_ioctl(pad->entity->device, ioctl_param->cmd, &temp_cap);
+    if (ret == ESP_OK) {
+        cap->capabilities |= temp_cap.capabilities;
+        cap->device_caps |= temp_cap.device_caps;
+    }
+
+    return ret;
+}
+
+static esp_err_t user_node_device_ioctl_querycap(struct esp_video *video, struct v4l2_capability *cap)
+{
+    memset(cap, 0, sizeof(struct v4l2_capability));
+
+    strlcpy((char *)cap->driver, video->dev_name, sizeof(cap->driver));
+    strlcpy((char *)cap->card, video->dev_name, sizeof(cap->driver));
+    __user_node_ioctl_param_t ioctl_param;
+    memset(&ioctl_param, 0x0, sizeof(ioctl_param));
+    ioctl_param.cmd = VIDIOC_QUERYCAP;
+    ioctl_param.args = cap;
+
+    if (esp_pipeline_entities_iterate_walk_custom(video->priv,
+            user_node_device_iterate_ioctl_querycap, NULL, &ioctl_param, true) != ESP_OK) {
+        return ESP_FAIL;
+    }
+    cap->capabilities = video->caps;
+    if (video->caps & V4L2_CAP_DEVICE_CAPS) {
+        cap->device_caps = video->device_caps;
+    }
+
+    return ESP_OK;
+}
+
+static esp_err_t user_node_device_iterate_update_device_priv_data(esp_pad_t *pad, void *param)
+{
+    return esp_video_set_priv_data(pad->entity->device, param);
+}
+
 static esp_err_t user_node_device_iterate_ioctl(esp_pad_t *pad, void *param)
 {
     __user_node_ioctl_param_t *ioctl_param = param;
@@ -230,16 +312,30 @@ esp_err_t esp_video_media_ioctl(struct esp_video *user_device, int cmd, va_list 
 {
     bool iterate = true;
     int ret = ESP_OK;
-
+    struct esp_video_buffer_info *buf_info = &user_device->stream->buf_info;
     if ((cmd == VIDIOC_DQBUF)
             || (cmd == VIDIOC_QUERYBUF)
             || (cmd == VIDIOC_MMAP)) {
         iterate = false;
         ret = esp_video_ioctl(user_device, cmd, args);
     } else if (cmd == VIDIOC_REQBUFS) {
-        memset(&user_device->buf_info, 0x0, sizeof(user_device->buf_info));
-        user_device->buf_info.align_size = 1;
-        esp_pipeline_entities_iterate_walk_custom(user_device->priv, get_video_buffer_size_cb, NULL, &user_device->buf_info, true);
+        memset(buf_info, 0x0, sizeof(struct esp_video_buffer_info));
+        buf_info->align_size = 1;
+
+        uint32_t buffer_type_shift = 0;
+        ret = esp_pipeline_entities_iterate_walk_custom(user_device->priv, get_video_buffer_type, NULL, &buffer_type_shift, true);
+        uint32_t type = 0;
+        while (buffer_type_shift != 0) {
+            if (buffer_type_shift & 0x01) {
+                __esp_video_buffer_info_t video_buffer_info;
+                memset(&video_buffer_info, 0, sizeof(video_buffer_info));
+                video_buffer_info.type = type;
+                video_buffer_info.info = buf_info;
+                ret = esp_pipeline_entities_iterate_walk_custom(user_device->priv, get_video_buffer_size_cb, NULL, &video_buffer_info, true);
+            }
+            buffer_type_shift = buffer_type_shift >> 1;
+            type++;
+        }
         ret = esp_video_ioctl(user_device, cmd, args);
     } else if (cmd == VIDIOC_QBUF) {
         esp_video_ioctl(user_device, cmd, args);
@@ -250,6 +346,9 @@ esp_err_t esp_video_media_ioctl(struct esp_video *user_device, int cmd, va_list 
         ioctl_param.args = args;
 
         ret = esp_pipeline_entities_iterate_walk_custom(user_device->priv, user_node_device_iterate_ioctl, NULL, &ioctl_param, true);
+    } else if (cmd == VIDIOC_QUERYCAP) {
+        user_node_device_ioctl_querycap(user_device, args);
+        iterate = false;
     }
 
     if (iterate && (ret == ESP_OK)) {
@@ -262,9 +361,21 @@ esp_err_t esp_video_media_ioctl(struct esp_video *user_device, int cmd, va_list 
     }
 
     if (cmd == VIDIOC_S_FMT) {
-        memset(&user_device->buf_info, 0x0, sizeof(user_device->buf_info));
-        user_device->buf_info.align_size = 1;
-        esp_pipeline_entities_iterate_walk_custom(user_device->priv, get_video_buffer_size_cb, NULL, &user_device->buf_info, true);
+        memset(buf_info, 0x0, sizeof(struct esp_video_buffer_info));
+        buf_info->align_size = 1;
+        struct v4l2_format *format = va_arg(args, void *);
+        if (!format) {
+            return ESP_ERR_INVALID_ARG;
+        }
+        __esp_video_buffer_info_t video_buffer_info;
+        memset(&video_buffer_info, 0, sizeof(video_buffer_info));
+        video_buffer_info.type = format->type;
+        video_buffer_info.info = buf_info;
+        if (esp_pipeline_entities_iterate_walk_custom(user_device->priv,
+                get_video_buffer_size_cb, NULL, &video_buffer_info, true) != ESP_OK) {
+            return ESP_FAIL;
+        }
+        memcpy(&user_device->stream->buf_info, buf_info, sizeof(struct esp_video_buffer_info));
     }
 
     return ret;
@@ -273,14 +384,14 @@ esp_err_t esp_video_media_ioctl(struct esp_video *user_device, int cmd, va_list 
 static const struct esp_video_ops s_user_node_device_ops = {
     .init          = user_node_device_init,
     .deinit        = user_node_device_deinit,
-    .start_capture = user_node_device_start_capture,
-    .stop_capture  = user_node_device_stop_capture,
+    .start         = user_node_device_start,
+    .stop          = user_node_device_stop,
     .set_format    = user_node_device_set_format,
     .capability    = user_node_device_get_capability,
     .description   = user_node_device_get_description
 };
 
-static esp_err_t entity_event_default_cb(struct esp_pad *pad, esp_media_event_cmd_t cmd, void *in, void **out)
+static esp_err_t entity_event_default_cb(struct esp_pad *pad, esp_media_event_cmd_t cmd, uint32_t type, void *in, void **out)
 {
     struct esp_video_buffer_element *element = (struct esp_video_buffer_element *)in;
     esp_entity_t *entity = esp_pad_get_entity(pad);
@@ -290,11 +401,11 @@ static esp_err_t entity_event_default_cb(struct esp_pad *pad, esp_media_event_cm
     if (cmd == ESP_MEIDA_EVENT_CMD_DATA_RECV) {
         struct esp_video *video = esp_entity_get_device(entity);
 
-        esp_video_done_element(video, element);
+        esp_video_done_buffer(video, type, element->buffer, element->valid_size);
         *out = element;
 
         if (pad->entity->user_node) {
-            esp_video_done_element(entity->user_node, element);
+            esp_video_done_buffer(entity->user_node, type, element->buffer, element->valid_size);
             return ESP_ERR_NOT_FINISHED;
         }
     }
@@ -466,7 +577,7 @@ esp_err_t esp_media_config_loader(const char *config_string)
             }
             pipeline->last_pad = last_pad;
 
-            esp_user_node_device_t *user_node_device = esp_video_create(user_node_name_cjson->valuestring, NULL, &s_user_node_device_ops, last_pad);
+            esp_user_node_device_t *user_node_device = esp_video_create(user_node_name_cjson->valuestring, NULL, &s_user_node_device_ops, last_pad, V4L2_CAP_VIDEO_CAPTURE, 0);
             if (!user_node_device) {
                 goto exit;
             }
@@ -477,6 +588,9 @@ esp_err_t esp_media_config_loader(const char *config_string)
             } else {
                 last_pad->entity->user_node = user_node_device;
             }
+        }
+        if (esp_pipeline_entities_iterate_walk_custom(pipeline->last_pad, user_node_device_iterate_update_device_priv_data, NULL, pipeline->last_pad, true) != ESP_OK) {
+            goto exit;
         }
     }
     if (root) {
@@ -575,10 +689,18 @@ esp_err_t esp_entity_pad_bridge(esp_pad_t *source, esp_pad_t *sink)
 static esp_err_t esp_video_device_unbind_video_buffer(esp_pad_t *pad, void *param)
 {
     struct esp_video *video = pad->entity->device;
-    if (video && video->buffer) {
-        video->buffer = NULL;
-    }
 
+    if (video) {
+        uint32_t type_bits = esp_video_get_buffer_type_bits(video);
+        uint32_t type = 0;
+        while (type_bits != 0) {
+            if (type_bits & 0x01) {
+                esp_video_set_stream_buffer(video, type, NULL);
+            }
+            type_bits = type_bits >> 1;
+            type++;
+        }
+    }
     return ESP_OK;
 }
 
@@ -1013,7 +1135,7 @@ esp_pad_t *esp_pipeline_get_pad_by_entity(esp_pipeline_t *pipeline, esp_entity_t
     return NULL;
 }
 
-static esp_err_t pads_walk(esp_pad_t *pad, esp_media_event_cmd_t cmd, struct esp_video_buffer_element *vb)
+static esp_err_t pads_walk(esp_pad_t *pad, esp_media_event_cmd_t cmd, uint32_t type, struct esp_video_buffer_element *vb)
 {
     esp_list_t *list = pad->remote_pads;
 
@@ -1025,9 +1147,9 @@ static esp_err_t pads_walk(esp_pad_t *pad, esp_media_event_cmd_t cmd, struct esp
             if (!vb_fork) {
                 return ESP_FAIL;
             }
-            entities_walk(remote_pad, cmd, vb_fork);
+            entities_walk(remote_pad, cmd, type, vb_fork);
         } else {
-            entities_walk(remote_pad, cmd, vb);
+            entities_walk(remote_pad, cmd, type, vb);
         }
         list = list->next;
     }
@@ -1035,20 +1157,20 @@ static esp_err_t pads_walk(esp_pad_t *pad, esp_media_event_cmd_t cmd, struct esp
     return ESP_OK;
 }
 
-static esp_err_t entities_walk(esp_pad_t *pad, esp_media_event_cmd_t cmd, struct esp_video_buffer_element *vb)
+static esp_err_t entities_walk(esp_pad_t *pad, esp_media_event_cmd_t cmd, uint32_t type, struct esp_video_buffer_element *vb)
 {
     if (!pad) {
         return ESP_FAIL;
     }
 
     if (pad->type == ESP_PAD_TYPE_SOURCE) {
-        return pads_walk(pad, cmd, vb);
+        return pads_walk(pad, cmd, type, vb);
     }
 
     esp_entity_t *entity = esp_pad_get_entity(pad);
     if (entity->ops && entity->ops->event_cb) {
         struct esp_video_buffer_element *out = vb;
-        esp_err_t err = entity->ops->event_cb(pad, cmd, vb, (void **)&out);
+        esp_err_t err = entity->ops->event_cb(pad, cmd, type, vb, (void **)&out);
 
         if (err == ESP_ERR_NOT_FINISHED) {
             return ESP_ERR_NOT_FINISHED;
@@ -1066,7 +1188,7 @@ static esp_err_t entities_walk(esp_pad_t *pad, esp_media_event_cmd_t cmd, struct
         }
     }
 
-    return pads_walk(pad->bridge_pad, cmd, vb);
+    return pads_walk(pad->bridge_pad, cmd, type, vb);
 }
 
 static esp_err_t pads_iterate_walk_custom(esp_pad_t *pad,
@@ -1137,9 +1259,9 @@ static esp_err_t esp_pipeline_entities_iterate_walk_custom(esp_pad_t *pad,
 }
 
 //////// pipeline
-static void pipeline_walk (esp_pad_t *pad, esp_media_event_cmd_t cmd, struct esp_video_buffer_element *vb)
+static void pipeline_walk (esp_pad_t *pad, esp_media_event_cmd_t cmd, uint32_t type, struct esp_video_buffer_element *vb)
 {
-    entities_walk(pad, cmd, vb);
+    entities_walk(pad, cmd, type, vb);
 }
 
 esp_pipeline_t *esp_pipeline_create(void)
@@ -1410,11 +1532,12 @@ static esp_err_t get_video_buffer_size_cb(esp_pad_t *pad, void *param)
     esp_entity_t *entity = pad->entity;
     struct esp_video *video = entity->device;
 
-    struct esp_video_buffer_info *info = param;
+    __esp_video_buffer_info_t *video_buffer_info = param;
+    struct esp_video_buffer_info *info = video_buffer_info->info;
     struct esp_video_buffer_info buffer_info;
     memset(&buffer_info, 0x0, sizeof(buffer_info));
 
-    if (esp_video_get_buffer_info(video, &buffer_info) == ESP_OK) {
+    if (esp_video_get_buffer_info(video, video_buffer_info->type, &buffer_info) == ESP_OK) {
         if (info->count < buffer_info.count) {
             info->count = buffer_info.count;
         }
@@ -1435,7 +1558,18 @@ static esp_err_t pipeline_update_vb_cb(esp_pad_t *pad, void *param)
     esp_entity_t *entity = pad->entity;
     struct esp_video *video = entity->device;
 
-    video->buffer = param;
+    if (video) {
+        uint32_t type_bits = esp_video_get_buffer_type_bits(video);
+        uint32_t type = 0;
+        while (type_bits != 0) {
+            if (type_bits & 0x01) {
+                esp_video_set_stream_buffer(video, type, param);
+            }
+            type_bits = type_bits >> 1;
+            type++;
+        }
+    }
+
     return ESP_OK;
 }
 
@@ -1450,11 +1584,23 @@ esp_err_t esp_pipeline_create_video_buffer(esp_pipeline_t *pipeline)
     }
 
     esp_user_node_device_t *device = pipeline->last_pad->entity->user_node;
-
+    uint32_t buffer_type_shift = 0;
     struct esp_video_buffer_info info;
-    memcpy(&info, &device->buf_info, sizeof(info));
+    memcpy(&info, &device->stream->buf_info, sizeof(struct esp_video_buffer_info));
 
-    esp_pipeline_entities_iterate_walk_custom(pipeline->entry_pad, get_video_buffer_size_cb, NULL, &info, false);
+    esp_pipeline_entities_iterate_walk_custom(pipeline->entry_pad, get_video_buffer_type, NULL, &buffer_type_shift, false);
+    uint32_t type = 0;
+    while (buffer_type_shift != 0) {
+        if (buffer_type_shift & 0x01) {
+            __esp_video_buffer_info_t video_buffer_info;
+            memset(&video_buffer_info, 0, sizeof(video_buffer_info));
+            video_buffer_info.type = type;
+            video_buffer_info.info = &info;
+            esp_pipeline_entities_iterate_walk_custom(pipeline->entry_pad, get_video_buffer_size_cb, NULL, &video_buffer_info, false);
+        }
+        buffer_type_shift = buffer_type_shift >> 1;
+        type++;
+    }
     pipeline->vb = esp_video_buffer_create(&info);
     esp_pipeline_entities_iterate_walk_custom(pipeline->entry_pad, pipeline_update_vb_cb, NULL,  pipeline->vb, false);
 
@@ -1578,17 +1724,15 @@ static void media_task(void *param)
     while (1) {
         if (xQueueReceive(media_queue, (void * )&event, (TickType_t)portMAX_DELAY)) {
             assert(event.pad && event.pad->pipeline);
-            switch (event.cmd) {
-            case ESP_MEIDA_EVENT_CMD_START:
-                break;
-            case ESP_MEIDA_EVENT_CMD_DATA_RECV:
-                break;
-            case ESP_MEIDA_EVENT_CMD_STOP:
-                break;
-            case ESP_MEIDA_EVENT_CMD_IOCTL:
-                break;
+            __esp_video_buffer_elememt_t *buffer_element = event.param;
+            struct esp_video_buffer_element *vb = NULL;
+            uint32_t type = 0;
+            if (buffer_element) {
+                vb = buffer_element->element;
+                type = buffer_element->type;
+                free(buffer_element);
             }
-            pipeline_walk(event.pad, event.cmd, event.param);
+            pipeline_walk(event.pad, event.cmd, type, vb);
         }
     }
 }

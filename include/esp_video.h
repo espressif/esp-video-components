@@ -55,7 +55,12 @@ extern "C" {
 
 #define CAPTURE_VIDEO_STREAM(v)             ((v)->stream)
 #define CAPTURE_VIDEO_BUF_SIZE(v)           STREAM_BUFFER_SIZE(CAPTURE_VIDEO_STREAM(v))
+
+#ifdef CONFIG_ESP_VIDEO_MEDIA_CONTROLLER
+#define CAPTURE_VIDEO_DONE_BUF(v, b, n)     esp_video_media_done_buffer(v, V4L2_BUF_TYPE_VIDEO_CAPTURE, b, n)
+#else
 #define CAPTURE_VIDEO_DONE_BUF(v, b, n)     esp_video_done_buffer(v, V4L2_BUF_TYPE_VIDEO_CAPTURE, b, n)
+#endif
 
 #define CAPTURE_VIDEO_SET_FORMAT(v, fps, w, h, pixel_format, bpp)       \
     SET_STREAM_FORMAT(CAPTURE_VIDEO_STREAM(v), fps, w, h, pixel_format, bpp)
@@ -472,6 +477,39 @@ struct esp_video *esp_video_device_get_object(const char *name);
  */
 struct esp_video_stream *esp_video_get_stream(struct esp_video *video, enum v4l2_buf_type type);
 
+/**
+ * @brief Get video buffer type.
+ *
+ * @param video  Video object
+ *
+ * @return the type left shift bits
+ */
+uint32_t esp_video_get_buffer_type_bits(struct esp_video *video);
+
+/**
+ * @brief Set video stream buffer
+ *
+ * @param video  Video object
+ * @param type   Video stream type
+ * @param buffer video buffer
+ *
+ * @return
+ *      - ESP_OK on success
+ *      - Others if failed
+ */
+esp_err_t esp_video_set_stream_buffer(struct esp_video *video, enum v4l2_buf_type type, struct esp_video_buffer *buffer);
+
+/**
+ * @brief Set video priv data
+ *
+ * @param video  Video object
+ * @param priv   priv data to be set
+ *
+ * @return
+ *      - ESP_OK on success
+ *      - Others if failed
+ */
+esp_err_t esp_video_set_priv_data(struct esp_video *video, void *priv);
 #ifdef __cplusplus
 }
 #endif

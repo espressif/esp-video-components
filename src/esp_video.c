@@ -27,6 +27,88 @@ static SLIST_HEAD(esp_video_list, esp_video) s_video_list = SLIST_HEAD_INITIALIZ
 static const char *TAG = "esp_video";
 
 /**
+ * @brief Get video buffer type.
+ *
+ * @param video  Video object
+ *
+ * @return the type left shift bits
+ */
+uint32_t esp_video_get_buffer_type_bits(struct esp_video *video)
+{
+    uint32_t buffer_type_bits = 0;
+
+    if (video->caps & V4L2_CAP_VIDEO_CAPTURE) {
+        buffer_type_bits = 0x1 << V4L2_BUF_TYPE_VIDEO_CAPTURE;
+    } else if (video->caps & V4L2_CAP_VIDEO_OUTPUT) {
+        buffer_type_bits = 0x1 << V4L2_BUF_TYPE_VIDEO_OUTPUT;
+    } else if (video->caps & V4L2_CAP_VIDEO_M2M) {
+        buffer_type_bits = (0x1 << V4L2_BUF_TYPE_VIDEO_CAPTURE) | (0x1 << V4L2_BUF_TYPE_VIDEO_OUTPUT);
+    }
+
+    return buffer_type_bits;
+}
+
+/**
+ * @brief Set video stream buffer
+ *
+ * @param video  Video object
+ * @param type   Video stream type
+ * @param buffer video buffer
+ *
+ * @return
+ *      - ESP_OK on success
+ *      - Others if failed
+ */
+esp_err_t esp_video_set_stream_buffer(struct esp_video *video, enum v4l2_buf_type type, struct esp_video_buffer *buffer)
+{
+    if (video->caps & V4L2_CAP_VIDEO_CAPTURE) {
+        if (type == V4L2_BUF_TYPE_VIDEO_CAPTURE) {
+            if (video->stream) {
+                video->stream->buffer = buffer;
+            }
+        }
+    } else if (video->caps & V4L2_CAP_VIDEO_OUTPUT) {
+        if (type == V4L2_BUF_TYPE_VIDEO_OUTPUT) {
+            if (video->stream) {
+                video->stream->buffer = buffer;
+            }
+        }
+    }  else if (video->caps & V4L2_CAP_VIDEO_M2M) {
+        if (type == V4L2_BUF_TYPE_VIDEO_CAPTURE) {
+            if (video->stream) {
+                video->stream[0].buffer = buffer;
+            }
+        } else if (type == V4L2_BUF_TYPE_VIDEO_OUTPUT) {
+            if (video->stream) {
+                video->stream[1].buffer = buffer;
+            }
+        }
+    }
+
+    return ESP_OK;
+}
+
+/**
+ * @brief Set video priv data
+ *
+ * @param video  Video object
+ * @param priv   priv data to be set
+ *
+ * @return
+ *      - ESP_OK on success
+ *      - Others if failed
+ */
+esp_err_t esp_video_set_priv_data(struct esp_video *video, void *priv)
+{
+    if (!video) {
+        return ESP_ERR_INVALID_ARG;
+    }
+
+    video->priv = priv;
+    return ESP_OK;
+}
+
+/**
  * @brief Get video stream object pointer by stream type.
  *
  * @param video  Video object
@@ -775,8 +857,8 @@ esp_err_t esp_video_setup_buffer(struct esp_video *video, uint32_t type, uint32_
 #else
         if (esp_video_device_is_user_node(video)) {
             esp_pipeline_destory_video_buffer(esp_pad_get_pipeline(video->priv));
-            stream->buffer = NULL;
         }
+        stream->buffer = NULL;
 #endif
     }
 
@@ -788,13 +870,13 @@ esp_err_t esp_video_setup_buffer(struct esp_video *video, uint32_t type, uint32_
 
 #ifdef CONFIG_ESP_VIDEO_MEDIA_CONTROLLER
     esp_pipeline_t *pipeline = NULL;
+    pipeline = esp_pad_get_pipeline(video->priv);
     if (esp_video_device_is_user_node(video)) {
-        pipeline = esp_pad_get_pipeline(video->priv);
         esp_pipeline_create_video_buffer(pipeline);
-        video->buffer = esp_pipeline_get_video_buffer(pipeline);
     }
+    stream->buffer = esp_pipeline_get_video_buffer(pipeline);
 
-    ESP_VIDEO_LOGI("%s buffer created %p", video->dev_name, video->buffer);
+    ESP_VIDEO_LOGI("%s buffer created %p", video->dev_name, video->stream->buffer);
 #else
     stream->buffer = esp_video_buffer_create(info);
 #endif

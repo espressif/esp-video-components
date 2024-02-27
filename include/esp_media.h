@@ -37,7 +37,7 @@ typedef struct esp_media esp_media_t;
 typedef struct esp_entity esp_entity_t;
 typedef struct esp_pipeline esp_pipeline_t;
 
-typedef esp_err_t (*esp_entity_event_cb_t)(struct esp_pad *pad, esp_media_event_cmd_t cmd, void *in, void **out);
+typedef esp_err_t (*esp_entity_event_cb_t)(struct esp_pad *pad, esp_media_event_cmd_t cmd, uint32_t type, void *in, void **out);
 
 typedef struct esp_entity_ops {
     esp_entity_event_cb_t event_cb;
@@ -468,15 +468,16 @@ esp_err_t esp_video_media_ioctl(struct esp_video *video, int cmd, va_list args);
 bool esp_video_device_is_user_node(struct esp_video *video);
 
 /**
- * @brief Process a video buffer which receives data done.
+ * @brief Process a video buffer element's payload which receives data done.
  *
  * @param video  Video object
- * @param buffer Video buffer allocated by "esp_video_get_queued_element"
- * @param size   Actual received data size
+ * @param type   Video stream type
+ * @param buffer Video buffer element's payload
+ * @param n      Video buffer element's payload valid data size
  *
  * @return None
  */
-void esp_video_media_recvdone_buffer(struct esp_video *video, void *buffer, size_t size, uint32_t  offset);
+void esp_video_media_done_buffer(struct esp_video *video, uint32_t type, uint8_t *buffer, uint32_t n);
 #ifdef __cplusplus
 }
 #endif

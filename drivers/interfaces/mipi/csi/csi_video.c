@@ -29,11 +29,7 @@ static esp_err_t csi_video_recv_vb(uint8_t *buffer, uint32_t offset, uint32_t si
 
     ESP_LOGD(TAG, "size=%" PRIu32, size);
 
-#ifdef CONFIG_ESP_VIDEO_MEDIA_CONTROLLER
-    esp_video_media_recvdone_buffer(video, buffer, size, 0);
-#else
     CAPTURE_VIDEO_DONE_BUF(video, buffer, size);
-#endif
 
     return ESP_OK;
 }
