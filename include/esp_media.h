@@ -454,7 +454,7 @@ esp_err_t esp_media_config_loader(const char *config_string);
  *      - ESP_OK on success
  *      - Others if failed
  */
-esp_err_t esp_video_media_ioctl(struct esp_video *video, int cmd, va_list args);
+esp_err_t esp_video_media_ioctl(struct esp_video *user_device, int cmd, va_list args);
 
 /**
  * @brief Check the video device whether it is an end node, which means if it is an user node.

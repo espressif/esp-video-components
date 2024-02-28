@@ -81,7 +81,10 @@ struct esp_pad {
 // wrapped struct
 typedef struct {
     int cmd;
-    va_list args;
+    union {
+        void *ptr;
+        va_list args;
+    };
 } __user_node_ioctl_param_t;
 
 typedef struct {
@@ -259,12 +262,22 @@ static esp_err_t user_node_device_get_description(esp_user_node_device_t *user_n
     return esp_pipeline_entities_iterate_walk_custom(pad, user_node_device_iterate_get_description, NULL, buffer, true);
 }
 
+static esp_err_t __esp_video_ioctl(struct esp_video *video, int cmd, ...)
+{
+    va_list args;
+    va_start(args, cmd);
+    esp_err_t ret = esp_video_ioctl(video, cmd, args);
+    va_end(args);
+
+    return ret;
+}
+
 static esp_err_t user_node_device_iterate_ioctl_querycap(esp_pad_t *pad, void *param)
 {
     __user_node_ioctl_param_t *ioctl_param = (__user_node_ioctl_param_t *)param;
-    struct v4l2_capability *cap = ioctl_param->args;
+    struct v4l2_capability *cap = ioctl_param->ptr;
     struct v4l2_capability temp_cap;
-    esp_err_t ret = esp_video_ioctl(pad->entity->device, ioctl_param->cmd, &temp_cap);
+    esp_err_t ret = __esp_video_ioctl(pad->entity->device, ioctl_param->cmd, &temp_cap);
     if (ret == ESP_OK) {
         cap->capabilities |= temp_cap.capabilities;
         cap->device_caps |= temp_cap.device_caps;
@@ -282,7 +295,7 @@ static esp_err_t user_node_device_ioctl_querycap(struct esp_video *video, struct
     __user_node_ioctl_param_t ioctl_param;
     memset(&ioctl_param, 0x0, sizeof(ioctl_param));
     ioctl_param.cmd = VIDIOC_QUERYCAP;
-    ioctl_param.args = cap;
+    ioctl_param.ptr = cap;
 
     if (esp_pipeline_entities_iterate_walk_custom(video->priv,
             user_node_device_iterate_ioctl_querycap, NULL, &ioctl_param, true) != ESP_OK) {
@@ -304,7 +317,7 @@ static esp_err_t user_node_device_iterate_update_device_priv_data(esp_pad_t *pad
 static esp_err_t user_node_device_iterate_ioctl(esp_pad_t *pad, void *param)
 {
     __user_node_ioctl_param_t *ioctl_param = param;
-    return esp_video_ioctl(pad->entity->device, ioctl_param->cmd, ioctl_param->args);
+    return __esp_video_ioctl(pad->entity->device, ioctl_param->cmd, ioctl_param->args);
 }
 
 static esp_err_t get_video_buffer_size_cb(esp_pad_t *pad, void *param);
@@ -312,12 +325,17 @@ esp_err_t esp_video_media_ioctl(struct esp_video *user_device, int cmd, va_list 
 {
     bool iterate = true;
     int ret = ESP_OK;
+
+    __user_node_ioctl_param_t ioctl_param;
+    memset(&ioctl_param, 0x0, sizeof(ioctl_param));
+    ioctl_param.cmd = cmd;
+    ioctl_param.ptr = va_arg(args, void *);
     struct esp_video_buffer_info *buf_info = &user_device->stream->buf_info;
     if ((cmd == VIDIOC_DQBUF)
             || (cmd == VIDIOC_QUERYBUF)
             || (cmd == VIDIOC_MMAP)) {
         iterate = false;
-        ret = esp_video_ioctl(user_device, cmd, args);
+        ret = __esp_video_ioctl(user_device, cmd, ioctl_param.ptr);
     } else if (cmd == VIDIOC_REQBUFS) {
         memset(buf_info, 0x0, sizeof(struct esp_video_buffer_info));
         buf_info->align_size = 1;
@@ -336,34 +354,23 @@ esp_err_t esp_video_media_ioctl(struct esp_video *user_device, int cmd, va_list 
             buffer_type_shift = buffer_type_shift >> 1;
             type++;
         }
-        ret = esp_video_ioctl(user_device, cmd, args);
+        ret = __esp_video_ioctl(user_device, cmd, ioctl_param.ptr);
     } else if (cmd == VIDIOC_QBUF) {
-        esp_video_ioctl(user_device, cmd, args);
-
-        __user_node_ioctl_param_t ioctl_param;
-        memset(&ioctl_param, 0x0, sizeof(ioctl_param));
-        ioctl_param.cmd = cmd;
-        ioctl_param.args = args;
-
+        __esp_video_ioctl(user_device, cmd, ioctl_param.ptr);
         ret = esp_pipeline_entities_iterate_walk_custom(user_device->priv, user_node_device_iterate_ioctl, NULL, &ioctl_param, true);
     } else if (cmd == VIDIOC_QUERYCAP) {
-        user_node_device_ioctl_querycap(user_device, args);
+        ret = user_node_device_ioctl_querycap(user_device, ioctl_param.ptr);
         iterate = false;
     }
 
     if (iterate && (ret == ESP_OK)) {
-        __user_node_ioctl_param_t ioctl_param;
-        memset(&ioctl_param, 0x0, sizeof(ioctl_param));
-        ioctl_param.cmd = cmd;
-        ioctl_param.args = args;
-
         ret = esp_pipeline_entities_iterate_walk_custom(user_device->priv, user_node_device_iterate_ioctl, NULL, &ioctl_param, true);
     }
 
     if (cmd == VIDIOC_S_FMT) {
         memset(buf_info, 0x0, sizeof(struct esp_video_buffer_info));
         buf_info->align_size = 1;
-        struct v4l2_format *format = va_arg(args, void *);
+        struct v4l2_format *format = ioctl_param.ptr;
         if (!format) {
             return ESP_ERR_INVALID_ARG;
         }

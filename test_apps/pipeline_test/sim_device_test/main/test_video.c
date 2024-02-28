@@ -25,10 +25,6 @@
 
 #define TEST_MEMORY_LEAK_THRESHOLD (-100)
 
-#ifdef CONFIG_HEAP_TRACING
-heap_trace_record_t recs[HEAP_RES_NUM];
-#endif
-
 void setUp(void);
 
 #ifdef CONFIG_SIMULATED_INTF
@@ -48,6 +44,7 @@ void setUp(void);
 
 #ifdef CONFIG_HEAP_TRACING
 #define HEAP_RES_NUM            8
+static heap_trace_record_t recs[HEAP_RES_NUM];
 #endif
 
 static bool s_inited;

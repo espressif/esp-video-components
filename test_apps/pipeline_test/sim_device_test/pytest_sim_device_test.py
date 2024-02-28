@@ -6,16 +6,16 @@ Steps to run these cases:
 - Build
   - . ${IDF_PATH}/export.sh
   - pip install idf_build_apps==1.1.4
-  - python tools/build_apps.py test_apps/pipeline_test/sim_device_test -t esp32p4
+  - python tools/build_apps.py test_apps/pipeline_test/sim_device_test -t esp32s3
 - Test
   - pip install -r tools/requirements/requirement.pytest.txt
-  - pytest test_apps/pipeline_test/sim_device_test --target esp32p4
+  - pytest test_apps/pipeline_test/sim_device_test --target esp32s3
 '''
 
 import pytest
 from pytest_embedded import Dut
 
-@pytest.mark.target('esp32p4')
+@pytest.mark.target('esp32s3')
 @pytest.mark.env('quad_psram')
 def test_esp_video(dut: Dut)-> None:
     dut.expect_exact('Press ENTER to see the list of tests.')
