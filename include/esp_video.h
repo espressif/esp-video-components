@@ -159,6 +159,9 @@ struct esp_video_stream {
     struct esp_video_format format;         /*!< Video stream format */
     struct esp_video_buffer_info buf_info;  /*!< Video stream buffer information */
 
+    esp_video_buffer_list_t queued_list;    /*!< Workqueue buffer elements list */
+    esp_video_buffer_list_t done_list;      /*!< Done buffer elements list */
+
     struct esp_video_buffer *buffer;        /*!< Video stream buffer */
     SemaphoreHandle_t ready_sem;            /*!< Video stream buffer element ready semaphore */
 };
@@ -179,6 +182,7 @@ struct esp_video {
 
     esp_camera_device_t *cam_dev;           /*!< Camera device object */
 
+    portMUX_TYPE stream_lock;               /*!< Stream list lock */
     struct esp_video_stream *stream;        /*!< Video device stream, capture-only or output-only device has 1 stream, M2M device has 2 streams */
 
 #ifdef CONFIG_ESP_VIDEO_MEDIA_CONTROLLER
@@ -388,13 +392,15 @@ void esp_video_stream_done_element(struct esp_video *video, struct esp_video_str
 /**
  * @brief Put element into done lost and give semaphore.
  *
- * @param video  Video object
+ * @param video   Video object
  * @param type    Video stream type
  * @param element Video buffer element object get by "esp_video_get_queued_element"
  *
- * @return None
+ * @return
+ *      - ESP_OK on success
+ *      - Others if failed
  */
-void esp_video_done_element(struct esp_video *video, uint32_t type, struct esp_video_buffer_element *element);
+esp_err_t esp_video_done_element(struct esp_video *video, uint32_t type, struct esp_video_buffer_element *element);
 
 /**
  * @brief Process a video buffer element's payload which receives data done.
@@ -404,9 +410,11 @@ void esp_video_done_element(struct esp_video *video, uint32_t type, struct esp_v
  * @param buffer Video buffer element's payload
  * @param n      Video buffer element's payload valid data size
  *
- * @return None
+ * @return
+ *      - ESP_OK on success
+ *      - Others if failed
  */
-void esp_video_done_buffer(struct esp_video *video, uint32_t type, uint8_t *buffer, uint32_t n);
+esp_err_t esp_video_done_buffer(struct esp_video *video, uint32_t type, uint8_t *buffer, uint32_t n);
 
 /**
  * @brief Receive buffer element from video device.
@@ -422,15 +430,17 @@ void esp_video_done_buffer(struct esp_video *video, uint32_t type, uint8_t *buff
 struct esp_video_buffer_element *esp_video_recv_element(struct esp_video *video, uint32_t type, uint32_t ticks);
 
 /**
- * @brief Free one video buffer element.
+ * @brief Put buffer element into queued list.
  *
  * @param video   Video object
  * @param type    Video stream type
  * @param element Video buffer element
  *
- * @return None
+ * @return
+ *      - ESP_OK on success
+ *      - Others if failed
  */
-void esp_video_queue_element(struct esp_video *video, uint32_t type, struct esp_video_buffer_element *element);
+esp_err_t esp_video_queue_element(struct esp_video *video, uint32_t type, struct esp_video_buffer_element *element);
 
 /**
  * @brief Put buffer element index into queued list.
@@ -510,6 +520,64 @@ esp_err_t esp_video_set_stream_buffer(struct esp_video *video, enum v4l2_buf_typ
  *      - Others if failed
  */
 esp_err_t esp_video_set_priv_data(struct esp_video *video, void *priv);
+
+/**
+ * @brief Put buffer elements into M2M buffer queue list.
+ *
+ * @param video       Video object
+ * @param src_type    Video resource stream type
+ * @param src_element Video resource stream buffer element
+ * @param dst_type    Video destination stream type
+ * @param dst_element Video destination stream buffer element
+ *
+ * @return
+ *      - ESP_OK on success
+ *      - Others if failed
+ */
+esp_err_t esp_video_queue_m2m_elements(struct esp_video *video,
+                                       uint32_t src_type,
+                                       struct esp_video_buffer_element *src_element,
+                                       uint32_t dst_type,
+                                       struct esp_video_buffer_element *dst_element);
+
+/**
+ * @brief Put buffer elements into M2M buffer done list.
+ *
+ * @param video       Video object
+ * @param src_type    Video resource stream type
+ * @param src_element Video resource stream buffer element
+ * @param dst_type    Video destination stream type
+ * @param dst_element Video destination stream buffer element
+ *
+ * @return
+ *      - ESP_OK on success
+ *      - Others if failed
+ */
+esp_err_t esp_video_done_m2m_elements(struct esp_video *video,
+                                      uint32_t src_type,
+                                      struct esp_video_buffer_element *src_element,
+                                      uint32_t dst_type,
+                                      struct esp_video_buffer_element *dst_element);
+
+/**
+ * @brief Get buffer elements from M2M buffer queue list.
+ *
+ * @param video       Video object
+ * @param src_type    Video resource stream type
+ * @param src_element Video resource stream buffer element buffer
+ * @param dst_type    Video destination stream type
+ * @param dst_element Video destination stream buffer element buffer
+ *
+ * @return
+ *      - ESP_OK on success
+ *      - Others if failed
+ */
+esp_err_t esp_video_get_m2m_queued_elements(struct esp_video *video,
+        uint32_t src_type,
+        struct esp_video_buffer_element **src_element,
+        uint32_t dst_type,
+        struct esp_video_buffer_element **dst_element);
+
 #ifdef __cplusplus
 }
 #endif

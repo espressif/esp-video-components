@@ -397,8 +397,13 @@ struct esp_video *esp_video_open(const char *name)
         } else {
             int stream_count = video->caps & V4L2_CAP_VIDEO_M2M ? 2 : 1;
 
+            portMUX_INITIALIZE(&video->stream_lock);
             for (int i = 0; i < stream_count; i++) {
-                video->stream[i].buffer = NULL;
+                struct esp_video_stream *stream = &video->stream[i];
+
+                stream->buffer = NULL;
+                SLIST_INIT(&stream->queued_list);
+                SLIST_INIT(&stream->done_list);
             }
         }
     } else {
@@ -952,13 +957,22 @@ esp_err_t esp_video_get_buffer_info(struct esp_video *video, uint32_t type, stru
 struct esp_video_buffer_element *IRAM_ATTR esp_video_get_queued_element(struct esp_video *video, uint32_t type)
 {
     struct esp_video_stream *stream;
+    struct esp_video_buffer_element *element = NULL;
 
     stream = esp_video_get_stream(video, type);
     if (!stream) {
         return NULL;
     }
 
-    return esp_video_buffer_get_queued_element(stream->buffer);
+    portENTER_CRITICAL_SAFE(&video->stream_lock);
+    if (!SLIST_EMPTY(&stream->queued_list)) {
+        element = SLIST_FIRST(&stream->queued_list);
+        SLIST_REMOVE(&stream->queued_list, element, esp_video_buffer_element, node);
+        ELEMENT_SET_FREE(element);
+    }
+    portEXIT_CRITICAL_SAFE(&video->stream_lock);
+
+    return element;
 }
 
 /**
@@ -996,13 +1010,22 @@ uint8_t *IRAM_ATTR esp_video_get_queued_buffer(struct esp_video *video, uint32_t
 struct esp_video_buffer_element *esp_video_get_done_element(struct esp_video *video, uint32_t type)
 {
     struct esp_video_stream *stream;
+    struct esp_video_buffer_element *element = NULL;
 
     stream = esp_video_get_stream(video, type);
     if (!stream) {
         return NULL;
     }
 
-    return esp_video_buffer_get_done_element(stream->buffer);
+    portENTER_CRITICAL_SAFE(&video->stream_lock);
+    if (!SLIST_EMPTY(&stream->done_list)) {
+        element = SLIST_FIRST(&stream->done_list);
+        SLIST_REMOVE(&stream->done_list, element, esp_video_buffer_element, node);
+        ELEMENT_SET_FREE(element);
+    }
+    portEXIT_CRITICAL_SAFE(&video->stream_lock);
+
+    return element;
 }
 
 /**
@@ -1012,9 +1035,11 @@ struct esp_video_buffer_element *esp_video_get_done_element(struct esp_video *vi
  * @param type    Video stream type
  * @param element Video buffer element object get by "esp_video_get_queued_element"
  *
- * @return None
+ * @return
+ *      - ESP_OK on success
+ *      - Others if failed
  */
-void IRAM_ATTR esp_video_done_element(struct esp_video *video, uint32_t type, struct esp_video_buffer_element *element)
+esp_err_t IRAM_ATTR esp_video_done_element(struct esp_video *video, uint32_t type, struct esp_video_buffer_element *element)
 {
     bool user_node = true;
 
@@ -1029,10 +1054,18 @@ void IRAM_ATTR esp_video_done_element(struct esp_video *video, uint32_t type, st
 
         stream = esp_video_get_stream(video, type);
         if (!stream) {
-            return;
+            return ESP_ERR_INVALID_ARG;
         }
 
-        esp_video_buffer_done(stream->buffer, element);
+        portENTER_CRITICAL_SAFE(&video->stream_lock);
+        if (!ELEMENT_IS_FREE(element)) {
+            portEXIT_CRITICAL_SAFE(&video->stream_lock);
+            return ESP_ERR_INVALID_ARG;
+        }
+
+        ELEMENT_SET_ALLOCATED(element);
+        SLIST_INSERT_HEAD(&stream->done_list, element, node);
+        portEXIT_CRITICAL_SAFE(&video->stream_lock);
 
         if (xPortInIsrContext()) {
             BaseType_t wakeup = pdFALSE;
@@ -1045,6 +1078,8 @@ void IRAM_ATTR esp_video_done_element(struct esp_video *video, uint32_t type, st
             xSemaphoreGive(stream->ready_sem);
         }
     }
+
+    return ESP_OK;
 }
 
 /**
@@ -1055,23 +1090,33 @@ void IRAM_ATTR esp_video_done_element(struct esp_video *video, uint32_t type, st
  * @param buffer Video buffer element's payload
  * @param n      Video buffer element's payload valid data size
  *
- * @return None
+ * @return
+ *      - ESP_OK on success
+ *      - Others if failed
  */
-void IRAM_ATTR esp_video_done_buffer(struct esp_video *video, uint32_t type, uint8_t *buffer, uint32_t n)
+esp_err_t IRAM_ATTR esp_video_done_buffer(struct esp_video *video, uint32_t type, uint8_t *buffer, uint32_t n)
 {
+    esp_err_t ret;
     struct esp_video_stream *stream;
     struct esp_video_buffer_element *element;
 
     stream = esp_video_get_stream(video, type);
     if (!stream) {
-        return;
+        return ESP_ERR_INVALID_ARG;
     }
 
     element = esp_video_buffer_get_element_by_buffer(stream->buffer, buffer);
     if (element) {
         element->valid_size = n;
-        esp_video_done_element(video, type, element);
+        ret = esp_video_done_element(video, type, element);
+        if (ret != ESP_OK) {
+            return ret;
+        }
+    } else {
+        return ESP_ERR_INVALID_ARG;
     }
+
+    return ESP_OK;
 }
 
 /**
@@ -1081,18 +1126,35 @@ void IRAM_ATTR esp_video_done_buffer(struct esp_video *video, uint32_t type, uin
  * @param type    Video stream type
  * @param element Video buffer element
  *
- * @return None
+ * @return
+ *      - ESP_OK on success
+ *      - Others if failed
  */
-void esp_video_queue_element(struct esp_video *video, uint32_t type, struct esp_video_buffer_element *element)
+esp_err_t esp_video_queue_element(struct esp_video *video, uint32_t type, struct esp_video_buffer_element *element)
 {
     uint32_t val = type;
-    struct esp_video_buffer *vbuf = element->video_buffer;
+    struct esp_video_stream *stream;
 
-    esp_video_buffer_queue(vbuf, element);
+    stream = esp_video_get_stream(video, type);
+    if (!stream) {
+        return ESP_ERR_INVALID_ARG;
+    }
+
+    portENTER_CRITICAL_SAFE(&video->stream_lock);
+    if (!ELEMENT_IS_FREE(element)) {
+        portEXIT_CRITICAL_SAFE(&video->stream_lock);
+        return ESP_ERR_INVALID_ARG;
+    }
+
+    ELEMENT_SET_ALLOCATED(element);
+    SLIST_INSERT_HEAD(&stream->queued_list, element, node);
+    portEXIT_CRITICAL_SAFE(&video->stream_lock);
 
     if (video->ops->notify) {
         video->ops->notify(video, ESP_VIDEO_BUFFER_VALID, &val);
     }
+
+    return ESP_OK;
 }
 
 /**
@@ -1108,6 +1170,7 @@ void esp_video_queue_element(struct esp_video *video, uint32_t type, struct esp_
  */
 esp_err_t esp_video_queue_element_index(struct esp_video *video, uint32_t type, int index)
 {
+    esp_err_t ret;
     struct esp_video_stream *stream;
     struct esp_video_buffer_element *element;
 
@@ -1118,9 +1181,9 @@ esp_err_t esp_video_queue_element_index(struct esp_video *video, uint32_t type, 
 
     element = ESP_VIDEO_BUFFER_ELEMENT(stream->buffer, index);
 
-    esp_video_queue_element(video, type, element);
+    ret = esp_video_queue_element(video, type, element);
 
-    return ESP_OK;
+    return ret;
 }
 
 /**
@@ -1190,7 +1253,182 @@ struct esp_video_buffer_element *esp_video_recv_element(struct esp_video *video,
         return NULL;
     }
 
-    element = esp_video_buffer_get_done_element(stream->buffer);
+    element = esp_video_get_done_element(video, type);
 
     return element;
+}
+
+/**
+ * @brief Put buffer elements into M2M buffer queue list.
+ *
+ * @param video       Video object
+ * @param src_type    Video resource stream type
+ * @param src_element Video resource stream buffer element
+ * @param dst_type    Video destination stream type
+ * @param dst_element Video destination stream buffer element
+ *
+ * @return
+ *      - ESP_OK on success
+ *      - Others if failed
+ */
+esp_err_t esp_video_queue_m2m_elements(struct esp_video *video,
+                                       uint32_t src_type,
+                                       struct esp_video_buffer_element *src_element,
+                                       uint32_t dst_type,
+                                       struct esp_video_buffer_element *dst_element)
+{
+    esp_err_t ret;
+    struct esp_video_stream *stream[2];
+
+    stream[0] = esp_video_get_stream(video, src_type);
+    if (!stream[0]) {
+        return ESP_ERR_INVALID_ARG;
+    }
+
+    stream[1] = esp_video_get_stream(video, dst_type);
+    if (!stream[1]) {
+        return ESP_ERR_INVALID_ARG;
+    }
+
+    portENTER_CRITICAL_SAFE(&video->stream_lock);
+    if (ELEMENT_IS_FREE(src_element) && ELEMENT_IS_FREE(dst_element)) {
+        ELEMENT_SET_ALLOCATED(src_element);
+        SLIST_INSERT_HEAD(&stream[0]->queued_list, src_element, node);
+
+        ELEMENT_SET_ALLOCATED(dst_element);
+        SLIST_INSERT_HEAD(&stream[1]->queued_list, dst_element, node);
+
+        ret = ESP_OK;
+    } else {
+        ret = ESP_ERR_INVALID_STATE;
+    }
+    portEXIT_CRITICAL_SAFE(&video->stream_lock);
+
+    return ret;
+}
+
+/**
+ * @brief Put buffer elements into M2M buffer done list.
+ *
+ * @param video       Video object
+ * @param src_type    Video resource stream type
+ * @param src_element Video resource stream buffer element
+ * @param dst_type    Video destination stream type
+ * @param dst_element Video destination stream buffer element
+ *
+ * @return
+ *      - ESP_OK on success
+ *      - Others if failed
+ */
+esp_err_t esp_video_done_m2m_elements(struct esp_video *video,
+                                      uint32_t src_type,
+                                      struct esp_video_buffer_element *src_element,
+                                      uint32_t dst_type,
+                                      struct esp_video_buffer_element *dst_element)
+{
+    esp_err_t ret;
+    bool user_node = true;
+    struct esp_video_stream *stream[2];
+
+    stream[0] = esp_video_get_stream(video, src_type);
+    if (!stream[0]) {
+        return ESP_ERR_INVALID_ARG;
+    }
+
+    stream[1] = esp_video_get_stream(video, dst_type);
+    if (!stream[1]) {
+        return ESP_ERR_INVALID_ARG;
+    }
+
+    portENTER_CRITICAL_SAFE(&video->stream_lock);
+    if (ELEMENT_IS_FREE(src_element) && ELEMENT_IS_FREE(dst_element)) {
+        ELEMENT_SET_ALLOCATED(src_element);
+        SLIST_INSERT_HEAD(&stream[0]->done_list, src_element, node);
+
+        ELEMENT_SET_ALLOCATED(dst_element);
+        SLIST_INSERT_HEAD(&stream[1]->done_list, dst_element, node);
+
+        ret = ESP_OK;
+    } else {
+        ret = ESP_ERR_INVALID_STATE;
+    }
+    portEXIT_CRITICAL_SAFE(&video->stream_lock);
+
+#ifdef CONFIG_ESP_VIDEO_MEDIA_CONTROLLER
+    if (!esp_video_device_is_user_node(video)) {
+        user_node = false;
+    }
+#endif
+
+    if (ret == ESP_OK && user_node) {
+        if (xPortInIsrContext()) {
+            BaseType_t wakeup = pdFALSE;
+
+            xSemaphoreGiveFromISR(stream[0]->ready_sem, &wakeup);
+            if (wakeup == pdTRUE) {
+                portYIELD_FROM_ISR();
+            }
+
+            xSemaphoreGiveFromISR(stream[1]->ready_sem, &wakeup);
+            if (wakeup == pdTRUE) {
+                portYIELD_FROM_ISR();
+            }
+        } else {
+            xSemaphoreGive(stream[0]->ready_sem);
+            xSemaphoreGive(stream[1]->ready_sem);
+        }
+    }
+
+    return ret;
+}
+
+/**
+ * @brief Get buffer elements from M2M buffer queue list.
+ *
+ * @param video       Video object
+ * @param src_type    Video resource stream type
+ * @param src_element Video resource stream buffer element buffer
+ * @param dst_type    Video destination stream type
+ * @param dst_element Video destination stream buffer element buffer
+ *
+ * @return
+ *      - ESP_OK on success
+ *      - Others if failed
+ */
+esp_err_t esp_video_get_m2m_queued_elements(struct esp_video *video,
+        uint32_t src_type,
+        struct esp_video_buffer_element **src_element,
+        uint32_t dst_type,
+        struct esp_video_buffer_element **dst_element)
+{
+    esp_err_t ret;
+    struct esp_video_stream *stream[2];
+
+    stream[0] = esp_video_get_stream(video, src_type);
+    if (!stream[0]) {
+        return ESP_ERR_INVALID_ARG;
+    }
+
+    stream[1] = esp_video_get_stream(video, dst_type);
+    if (!stream[1]) {
+        return ESP_ERR_INVALID_ARG;
+    }
+
+    portENTER_CRITICAL_SAFE(&video->stream_lock);
+    if (!SLIST_EMPTY(&stream[0]->queued_list) && !SLIST_EMPTY(&stream[1]->queued_list)) {
+        *src_element = SLIST_FIRST(&stream[0]->queued_list);
+        SLIST_REMOVE(&stream[0]->queued_list, *src_element, esp_video_buffer_element, node);
+        ELEMENT_SET_FREE(*src_element);
+
+        *dst_element = SLIST_FIRST(&stream[1]->queued_list);
+        SLIST_REMOVE(&stream[1]->queued_list, *dst_element, esp_video_buffer_element, node);
+        ELEMENT_SET_FREE(*dst_element);
+
+        ret = ESP_OK;
+    } else {
+        ret = ESP_ERR_NOT_FOUND;
+    }
+    portEXIT_CRITICAL_SAFE(&video->stream_lock);
+
+    return ret;
 }

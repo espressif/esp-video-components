@@ -19,6 +19,8 @@ struct sw_jpeg_video {
     uint8_t quality;
 };
 
+static char *TAG = "jpeg_video";
+
 static esp_err_t sw_jpeg_video_init(struct esp_video *video)
 {
     struct sw_jpeg_video *sw_jpeg_video = VIDEO_PRIV_DATA(struct sw_jpeg_video *, video);
@@ -89,20 +91,19 @@ static esp_err_t sw_jpeg_video_notify(struct esp_video *video, enum esp_video_ev
             }
 
             if ((out_format->pixel_format == V4L2_PIX_FMT_RGB565) && (cap_format->pixel_format == V4L2_PIX_FMT_JPEG)) {
-                struct esp_video_buffer_element *cap_element;
-                struct esp_video_buffer_element *out_element;
                 bool codec_ret;
                 size_t out_len;
+                esp_err_t ret;
+                struct esp_video_buffer_element *cap_element;
+                struct esp_video_buffer_element *out_element;
 
-                cap_element = esp_video_get_queued_element(video, V4L2_BUF_TYPE_VIDEO_CAPTURE);
-                if (!cap_element) {
-                    return ESP_ERR_NO_MEM;
-                }
-
-                out_element = esp_video_get_queued_element(video, V4L2_BUF_TYPE_VIDEO_OUTPUT);
-                if (!out_element) {
-                    esp_video_buffer_queue(cap_stream->buffer, cap_element);
-                    return ESP_ERR_NO_MEM;
+                ret = esp_video_get_m2m_queued_elements(video,
+                                                        V4L2_BUF_TYPE_VIDEO_CAPTURE,
+                                                        &cap_element,
+                                                        V4L2_BUF_TYPE_VIDEO_OUTPUT,
+                                                        &out_element);
+                if (ret != ESP_OK) {
+                    return ret;
                 }
 
                 codec_ret = fmt2jpg_c(ELEMENT_BUFFER(out_element),
@@ -116,11 +117,23 @@ static esp_err_t sw_jpeg_video_notify(struct esp_video *video, enum esp_video_ev
                                       &out_len);
                 if (codec_ret) {
                     cap_element->valid_size = out_len;
-                    esp_video_done_element(video, V4L2_BUF_TYPE_VIDEO_CAPTURE, cap_element);
-                    esp_video_done_element(video, V4L2_BUF_TYPE_VIDEO_OUTPUT, out_element);
+                    ret = esp_video_done_m2m_elements(video,
+                                                      V4L2_BUF_TYPE_VIDEO_CAPTURE,
+                                                      cap_element,
+                                                      V4L2_BUF_TYPE_VIDEO_OUTPUT,
+                                                      out_element);
+                    if (ret != ESP_OK) {
+                        return ret;
+                    }
                 } else {
-                    esp_video_queue_element(video, V4L2_BUF_TYPE_VIDEO_CAPTURE, cap_element);
-                    esp_video_queue_element(video, V4L2_BUF_TYPE_VIDEO_OUTPUT, out_element);
+                    ret = esp_video_queue_m2m_elements(video,
+                                                       V4L2_BUF_TYPE_VIDEO_CAPTURE,
+                                                       cap_element,
+                                                       V4L2_BUF_TYPE_VIDEO_OUTPUT,
+                                                       out_element);
+                    if (ret != ESP_OK) {
+                        ESP_LOGE(TAG, "failed to put elements back into queue list");
+                    }
                     return ESP_FAIL;
                 }
             } else {

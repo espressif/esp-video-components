@@ -188,10 +188,6 @@ static esp_err_t camera_capture_stream(void)
             goto errout_get_fmt;
         }
 
-        memset(&buf, 0, sizeof(buf));
-        buf.type   = type;
-        buf.memory = V4L2_MEMORY_MMAP;
-        buf.index  = index;
         if (ioctl(fd, VIDIOC_QBUF, &buf) != 0) {
             ESP_LOGE(TAG, "failed to queue video frame");
             ret = ESP_FAIL;
