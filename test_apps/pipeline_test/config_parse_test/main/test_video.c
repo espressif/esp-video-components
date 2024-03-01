@@ -86,7 +86,7 @@ static void init(void)
                 .freq       = CONFIG_ESP_VIDEO_CAMERA_SCCB0_I2C_I3C_FREQ,
             }
         };
-#ifdef CONFIG_MIPI_CSI_ENABLE
+#ifdef CONFIG_MIPI_CSI_VIDEO_DEVICE_ENABLE
         static const esp_camera_csi_config_t s_csi_config[] = {
             {
                 .ctrl_cfg = {
@@ -138,7 +138,7 @@ static void init(void)
         const esp_camera_config_t s_cam_config = {
             .sccb_num = 1,
             .sccb     = s_sccb_config,
-#ifdef CONFIG_MIPI_CSI_ENABLE
+#ifdef CONFIG_MIPI_CSI_VIDEO_DEVICE_ENABLE
             .csi      = s_csi_config,
 #endif
 #ifdef CONFIG_DVP_ENABLE

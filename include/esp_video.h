@@ -71,6 +71,12 @@ extern "C" {
 #define CAPTURE_VIDEO_GET_QUEUED_BUF(v)                                 \
     esp_video_get_queued_buffer(v, V4L2_BUF_TYPE_VIDEO_CAPTURE);
 
+#define CAPTURE_VIDEO_QUEUE_ELEMENT(v, e)                               \
+    esp_video_queue_element(v, V4L2_BUF_TYPE_VIDEO_CAPTURE, e)
+
+#define CAPTURE_VIDEO_GET_QUEUED_ELEMENT(v)                             \
+    esp_video_get_queued_element(v, V4L2_BUF_TYPE_VIDEO_CAPTURE)
+
 #define M2M_VIDEO_CAPTURE_STREAM(v)         (&(v)->stream[0])
 #define M2M_VIDEO_OUTPUT_STREAM(v)          (&(v)->stream[1])
 

@@ -12,6 +12,7 @@
 #include "soc/hp_sys_clkrst_struct.h"
 #include "soc/isp_struct.h"
 #include "esp_log.h"
+#include "driver/esp_isp.h"
 
 /* ISP OUTPUT mode: 0: RAW8 1: YUV422 2: RGB888 3: YUV420 4: RGB565, see ISP.cntl.out_format */
 #define MIPI_ISP_OUTPUT_RAW8_MODE (0)
@@ -143,4 +144,35 @@ int isp_init(uint32_t frame_width, uint32_t frame_height, pixformat_t in_format,
 
     ESP_LOGD(TAG, "h_num=%u, v_num=%u, ISP_cntl.en: %u", ISP.frame_cfg.hadr_num, ISP.frame_cfg.vadr_num, ISP.cntl.isp_en);
     return 0;
+}
+
+/**
+ * @brief New an ISP processor
+ *
+ * @param[in]  proc_config  Pointer to ISP config. Refer to ``esp_isp_processor_cfg_t``.
+ * @param[out] ret_proc     Processor handle
+ *
+ * @return
+ *         - ESP_OK                On success
+ *         - ESP_ERR_INVALID_ARG   If the combination of arguments is invalid.
+ *         - ESP_ERR_NOT_FOUND     No free interrupt found with the specified flags
+ *         - ESP_ERR_NOT_SUPPORTED Not supported mode
+ *         - ESP_ERR_NO_MEM        If out of memory
+ */
+esp_err_t esp_isp_new_processor(const esp_isp_processor_cfg_t *proc_config, esp_isp_processor_t *ret_proc)
+{
+    esp_err_t ret;
+
+    if (!proc_config || !ret_proc) {
+        return ESP_ERR_INVALID_ARG;
+    }
+
+    ret = isp_init(proc_config->h_res,
+                   proc_config->v_res,
+                   proc_config->input_data_color_type,
+                   proc_config->output_data_color_type,
+                   true,
+                   NULL);
+
+    return ret;
 }

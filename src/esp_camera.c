@@ -19,7 +19,7 @@
 #include "dvp_video.h"
 #endif
 
-#ifdef CONFIG_MIPI_CSI_ENABLE
+#ifdef CONFIG_MIPI_CSI_VIDEO_DEVICE_ENABLE
 #include "mipi_csi_video.h"
 #endif
 
@@ -148,7 +148,7 @@ const char *esp_camera_get_name(esp_camera_device_t *dev)
     return dev->name;
 }
 
-#if CONFIG_MIPI_CSI_ENABLE || CONFIG_DVP_ENABLE
+#if CONFIG_MIPI_CSI_VIDEO_DEVICE_ENABLE || CONFIG_DVP_ENABLE
 static esp_err_t esp_camera_init_format(esp_camera_device_t *dev, int index)
 {
     esp_err_t ret;
@@ -202,7 +202,7 @@ esp_err_t esp_camera_init(const esp_camera_config_t *config)
     }
 
     for (p = &__esp_camera_detect_fn_array_start; p < &__esp_camera_detect_fn_array_end; ++p) {
-#ifdef CONFIG_MIPI_CSI_ENABLE
+#ifdef CONFIG_MIPI_CSI_VIDEO_DEVICE_ENABLE
         if (p->intf == CAMERA_INTF_CSI && config->csi != NULL) {
             esp_camera_driver_config_t cfg = {
                 .sccb_port = config->sccb[config->csi->ctrl_cfg.sccb_config_index].port,
@@ -223,7 +223,7 @@ esp_err_t esp_camera_init(const esp_camera_config_t *config)
                     return ret;
                 }
 
-                ret = csi_create_camera_video_device(cam_dev);
+                ret = cam_ctrl_create_video_device(cam_dev, MIPI_CSI_PORT);
                 if (ret != ESP_OK) {
                     ESP_LOGE(TAG, "failed to create MIPI-CSI video device");
                     return ret;
