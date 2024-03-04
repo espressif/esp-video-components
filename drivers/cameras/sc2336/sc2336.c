@@ -694,13 +694,17 @@ esp_camera_device_t *sc2336_dvp_detect(esp_camera_driver_config_t *config)
 }
 
 #if CONFIG_CAMERA_SC2336_AUTO_DETECT
+#if CONFIG_CAMERA_SC2336_INTERFACE_CSI
 ESP_CAMERA_DETECT_FN(sc2336_csi_detect, CAMERA_INTF_CSI)
 {
     return sc2336_csi_detect(config);
 }
+#endif
 
+#if CONFIG_CAMERA_SC2336_INTERFACE_DVP
 ESP_CAMERA_DETECT_FN(sc2336_dvp_detect, CAMERA_INTF_DVP)
 {
     return sc2336_dvp_detect(config);
 }
+#endif
 #endif
