@@ -23,6 +23,8 @@
 #include "img_converters.h"
 #endif
 
+#define JPEG_DEVICE_NAME        "/dev/video1"
+
 #define PART_BOUNDARY           "123456789000000000000987654321"
 
 typedef struct web_cam {
@@ -298,8 +300,6 @@ static esp_err_t stream_handler(httpd_req_t *req)
 
     return res;
 }
-
-#define JPEG_DEVICE_NAME "/dev/video1"
 
 static esp_err_t jpeg_open(uint32_t width, uint32_t height, uint32_t out_format)
 {

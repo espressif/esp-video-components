@@ -1432,3 +1432,65 @@ esp_err_t esp_video_get_m2m_queued_elements(struct esp_video *video,
 
     return ret;
 }
+
+/**
+ * @brief Clone video buffer
+ *
+ * @param video   Video object
+ * @param type    Video stream type
+ * @param element Video resource element
+ *
+ * @return
+ *      - Video buffer element object pointer on success
+ *      - NULL if failed
+ */
+struct esp_video_buffer_element *esp_video_clone_element(struct esp_video *video, uint32_t type, struct esp_video_buffer_element *element)
+{
+    struct esp_video_buffer_element *new_element;
+
+    new_element = esp_video_get_done_element(video, type);
+    if (new_element) {
+        new_element->valid_size = element->valid_size;
+        memcpy(new_element->buffer, element->buffer, element->valid_size);
+    }
+
+    return new_element;
+}
+
+/**
+ * @brief Get buffer type from video
+ *
+ * @param video    Video object
+ * @param type     Video buffer type pointer
+ * @param is_input true: buffer is input into the device; false: buffer is output from the device
+ *
+ * @return
+ *      - ESP_OK on success
+ *      - Others if failed
+ */
+esp_err_t esp_video_get_buf_type(struct esp_video *video, uint32_t *type, bool is_input)
+{
+    if (video->caps & V4L2_CAP_VIDEO_CAPTURE) {
+        if (is_input) {
+            return ESP_ERR_INVALID_ARG;
+        }
+
+        *type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
+    } else if (video->caps & V4L2_CAP_VIDEO_OUTPUT) {
+        if (!is_input) {
+            return ESP_ERR_INVALID_ARG;
+        }
+
+        *type = V4L2_BUF_TYPE_VIDEO_OUTPUT;
+    }  else if (video->caps & V4L2_CAP_VIDEO_M2M) {
+        if (is_input) {
+            *type = V4L2_BUF_TYPE_VIDEO_OUTPUT;
+        } else {
+            *type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
+        }
+    } else {
+        return ESP_ERR_INVALID_ARG;
+    }
+
+    return ESP_OK;
+}
