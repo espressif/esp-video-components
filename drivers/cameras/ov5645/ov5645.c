@@ -37,6 +37,7 @@ enum {
     OV5645_FORMAT_INDEX0,
     OV5645_FORMAT_INDEX1,
     OV5645_FORMAT_INDEX2,
+    OV5645_FORMAT_INDEX3,
 };
 
 static const sensor_format_t ov5645_format_info[] = {
@@ -103,6 +104,28 @@ static const sensor_format_t ov5645_format_info[] = {
         .isp_info = NULL,
         .mipi_info = {
             .mipi_clk = OV5645_LINE_RATE_16BITS_1920x1080_15FPS,
+        },
+        .reserved = NULL,
+    },
+    {
+        .index = OV5645_FORMAT_INDEX3,
+        .name = "MIPI_24Minput_2lane_YUV422_640x480_24fps",
+        .format = CAM_SENSOR_PIXFORMAT_YUV422,
+        .port = MIPI_CSI_OUTPUT_LANE2,
+        .bayer_type = CAM_SENSOR_BAYER_GBRG,
+        .hdr_mode = CAM_SENSOR_HDR_LINEAR,
+        .xclk = 24000000,
+        .start_pos_x = 8,
+        .start_pos_y = 8,
+        .width = 640,
+        .height = 480,
+        .regs = ov5645_MIPI_2lane_yuv422_640x480_24fps,
+        .regs_size = ARRAY_SIZE(ov5645_MIPI_2lane_yuv422_640x480_24fps),
+        .bpp = 16,
+        .fps = 24,
+        .isp_info = NULL,
+        .mipi_info = {
+            .mipi_clk = OV5645_LINE_RATE_16BITS_640x480_24FPS,
         },
         .reserved = NULL,
     },
