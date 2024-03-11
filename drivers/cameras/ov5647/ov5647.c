@@ -60,6 +60,14 @@ static const sensor_isp_info_t ov5647_isp_info[] = {
             .hts = 984,
         }
     },
+    {
+        .isp_v1_info = {
+            .version = SENSOR_ISP_INFO_VERSION_DEFAULT,
+            .pclk = 81666700,
+            .vts = 1732,
+            .hts = 2394,
+        }
+    },
 };
 
 static const sensor_format_t ov5647_format_info[] = {
@@ -87,7 +95,7 @@ static const sensor_format_t ov5647_format_info[] = {
     },
     {
         .index = OV5647_RAW_FORMAT_INDEX1,
-        .name = "MIPI_24Minput_2lane_RAW8_800x800_50fps",
+        .name = "MIPI_24Minput_2lane_RAW8_800x800_30fps",
         .format = CAM_SENSOR_PIXFORMAT_RAW8,
         .port = MIPI_CSI_OUTPUT_LANE2,
         .bayer_type = CAM_SENSOR_BAYER_GBRG,
@@ -104,6 +112,28 @@ static const sensor_format_t ov5647_format_info[] = {
         .isp_info = &ov5647_isp_info[OV5647_RAW_FORMAT_INDEX1],
         .mipi_info = {
             .mipi_clk = OV5647_MIPI_CSI_LINE_RATE_800x800_50FPS,
+        },
+        .reserved = NULL,
+    },
+    {
+        .index = OV5647_RAW_FORMAT_INDEX2,
+        .name = "MIPI_24Minput_2lane_RAW8_1920x1080_20fps",
+        .format = CAM_SENSOR_PIXFORMAT_RAW8,
+        .port = MIPI_CSI_OUTPUT_LANE2,
+        .bayer_type = CAM_SENSOR_BAYER_GBRG,
+        .hdr_mode = CAM_SENSOR_HDR_LINEAR,
+        .xclk = 24000000,
+        .start_pos_x = 4,
+        .start_pos_y = 4,
+        .width = 1920,
+        .height = 1080,
+        .regs = init_reglist_input_24M_MIPI_2lane_raw8_1920x1080_20fps,
+        .regs_size = ARRAY_SIZE(init_reglist_input_24M_MIPI_2lane_raw8_1920x1080_20fps),
+        .bpp = 8,
+        .fps = 20,
+        .isp_info = &ov5647_isp_info[OV5647_RAW_FORMAT_INDEX2],
+        .mipi_info = {
+            .mipi_clk = OV5647_MIPI_CSI_LINE_RATE_1080P_20FPS,
         },
         .reserved = NULL,
     },
