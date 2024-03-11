@@ -10,6 +10,8 @@ variables:
   # Docker images
   ESP_ENV_IMAGE: "${CI_DOCKER_REGISTRY}/esp-env-v5.3:1"
 
+  MEDIA_PIPE_LINE_ENABLE: "false"
+
 workflow:
   rules:
     # Disable those non-protected push triggered pipelines
