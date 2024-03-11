@@ -30,7 +30,7 @@ typedef struct sccb_io_i2c_t sccb_io_i2c_t;
  */
 struct sccb_io_i2c_t {
     i2c_master_dev_handle_t i2c_device;
-    struct sccb_io_t base;
+    struct esp_sccb_io_t base;
 };
 
 #ifdef __cplusplus
