@@ -1,4 +1,4 @@
-# esp-video
+# esp-video-components
 
 
 
@@ -15,14 +15,14 @@ Already a pro? Just edit this README.md and make it your own. Want to make it ea
 
 ```
 cd existing_repo
-git remote add origin https://gitlab.espressif.cn:6688/ae_group/esp-video.git
+git remote add origin https://gitlab.espressif.cn:6688/espressif/esp-video-components.git
 git branch -M main
 git push -uf origin main
 ```
 
 ## Integrate with your tools
 
-- [ ] [Set up project integrations](https://gitlab.espressif.cn:6688/ae_group/esp-video/-/settings/integrations)
+- [ ] [Set up project integrations](https://gitlab.espressif.cn:6688/espressif/esp-video-components/-/settings/integrations)
 
 ## Collaborate with your team
 
