@@ -12,6 +12,6 @@ dependencies:
   ov2640:
     version: "~0.0.1"
     override_path: "../../../drivers/cameras/ov2640"
-  esp-video:
+  esp-video-components:
     version: "~0.0.1"
     override_path: "../../../"

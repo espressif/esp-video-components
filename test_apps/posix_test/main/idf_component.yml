@@ -6,6 +6,6 @@ dependencies:
   sim:
     version: "~0.0.1"
     override_path: "../../../drivers/cameras/sim"
-  esp-video:
+  esp-video-components:
     version: "~0.0.1"
     override_path: "../../../"

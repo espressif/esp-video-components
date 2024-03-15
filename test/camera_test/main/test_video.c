@@ -244,7 +244,7 @@ void app_main()
     char *name;
     TaskHandle_t th;
 
-    /* Initialize esp-video system */
+    /* Initialize esp-video-components system */
 
     init();
 

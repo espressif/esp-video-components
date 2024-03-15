@@ -4,7 +4,7 @@ endif()
 
 idf_component_register(SRCS ${srcs}
                        PRIV_INCLUDE_DIRS "private_include"
-                       PRIV_REQUIRES "esp-video" "driver"
+                       PRIV_REQUIRES "esp-video-components" "driver"
                        )
 
 if(CONFIG_CAMERA_OV5640_AUTO_DETECT)

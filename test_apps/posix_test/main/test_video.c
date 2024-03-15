@@ -303,7 +303,7 @@ TEST_CASE("video basic operation", "[video]")
     TaskHandle_t th;
     struct esp_video *video;
 
-    /* Initialize esp-video system */
+    /* Initialize esp-video-components system */
 
     init();
 
@@ -349,7 +349,7 @@ TEST_CASE("Linux POSIX with V4L2 operation", "[video]")
     char *name;
     TaskHandle_t th;
 
-    /* Initialize esp-video system */
+    /* Initialize esp-video-components system */
 
     init();
 
@@ -401,7 +401,7 @@ TEST_CASE("V4L2 external controller class set/get", "[video]")
     };
     const int fps = (uint16_t)random() % 90 + 10;
 
-    /* Initialize esp-video system */
+    /* Initialize esp-video-components system */
 
     init();
 
