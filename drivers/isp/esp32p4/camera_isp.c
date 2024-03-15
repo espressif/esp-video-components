@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2023 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2023-2024 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -114,14 +114,8 @@ int isp_init(uint32_t frame_width, uint32_t frame_height, pixformat_t in_format,
     ISP.cntl.mipi_data_en = 1;
 
     // This must be the same as the sensor configuration. See sensor_config.h.
-
-#if CONFIG_MIPI_CSI_LINESYNC_SUPPORT
     ISP.frame_cfg.hsync_start_exist = 1;
     ISP.frame_cfg.hsync_end_exist = 1;
-#else
-    ISP.frame_cfg.hsync_start_exist = 0;
-    ISP.frame_cfg.hsync_end_exist = 0;
-#endif
 
     ISP.frame_cfg.bayer_mode = CONFIG_CAM_SENSOR_COLOR_BAYER_MODE;
     ISP.int_ena.val = 0;

@@ -143,7 +143,7 @@ static reginfo_t init_reglist_input_24M_MIPI_2lane_raw8_800x800_30fps[] = {
     {0x4837, (1000000000 / OV5647_IDI_CLOCK_RATE_800x800_50FPS) * 2},
     {0x4050, 0x6e},
     {0x4051, 0x8f},
-    {0x4800, OV5647_MIPI_CSI_LINESYNC_SUPPORT ? 0x14 : 0x04},
+    {0x4800, CONFIG_CAMERA_OV5647_CSI_LINESYNC_ENABLE ? 0x14 : 0x04},
 
     {0x3002, 0x01}, // AF DW5714 XSD <-> set OV5647 GPIO0 to high
     {0x3010, 0x01},
@@ -259,7 +259,7 @@ static reginfo_t init_reglist_input_24M_MIPI_2lane_raw8_1280x720_50fps[] = {
     {0x4837, 1000000000ULL * 2 / OV5647_MIPI_IDI_CLOCK_RATE_720P_50FPS},
     {0x4050, 0x6e},
     {0x4051, 0x8f},
-    {0x4800, OV5647_MIPI_CSI_LINESYNC_SUPPORT ? 0x14 : 0x04},
+    {0x4800, CONFIG_CAMERA_OV5647_CSI_LINESYNC_ENABLE ? 0x14 : 0x04},
     // AF DW5714 XSD <-> set OV5647 GPIO0 to high
     {0x3002, 0x01},
     {0x3010, 0x01},
@@ -402,7 +402,7 @@ static reginfo_t init_reglist_input_24M_MIPI_2lane_raw8_1920x1080_20fps[] = {
     {0x4050, 0x6e},
     {0x4051, 0x8f},
     {0x5903, 0xff},
-    {0x4800, OV5647_MIPI_CSI_LINESYNC_SUPPORT ? 0x14 : 0x04},
+    {0x4800, CONFIG_CAMERA_OV5647_CSI_LINESYNC_ENABLE ? 0x14 : 0x04},
 
     {0x3002, 0x01}, // AF DW5714 XSD <-> set OV5647 GPIO0 to high
     {0x3010, 0x01},
