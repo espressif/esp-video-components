@@ -138,9 +138,22 @@ build_test_apps_pipeline_test_config_parse_test_esp32p4:
   extends:
     - .build_examples_template
     - .rules:build:test_apps
+    - .rules:build:check_media
   parallel:
     matrix:
       - IMAGE: espressif/idf:latest
   variables:
     EXAMPLE_TARGET: esp32p4
     EXAMPLE_DIR: test_apps/pipeline_test/config_parse_test
+
+build_test_apps_pipeline_test_sim_device_test_esp32s3:
+  extends:
+    - .build_examples_template
+    - .rules:build:test_apps
+    - .rules:build:check_media
+  parallel:
+    matrix:
+      - IMAGE: espressif/idf:release-v5.0
+  variables:
+    EXAMPLE_TARGET: esp32s3
+    EXAMPLE_DIR: test_apps/pipeline_test/sim_device_test

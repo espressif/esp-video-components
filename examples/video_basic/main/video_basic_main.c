@@ -135,6 +135,7 @@ static esp_err_t camera_capture_stream(void)
     int index = 0;
     uint8_t *buffer[4];
     char format_desc[5] = {0};
+    struct v4l2_buffer buf;
     struct v4l2_format format;
     struct v4l2_requestbuffers req;
     int type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
@@ -186,6 +187,12 @@ static esp_err_t camera_capture_stream(void)
             ret = ESP_FAIL;
             goto errout_get_fmt;
         }
+
+        if (ioctl(fd, VIDIOC_QBUF, &buf) != 0) {
+            ESP_LOGE(TAG, "failed to queue video frame");
+            ret = ESP_FAIL;
+            goto errout_get_fmt;
+        }
     }
 
     if (ioctl(fd, VIDIOC_STREAMON, &type) != 0) {
@@ -195,8 +202,6 @@ static esp_err_t camera_capture_stream(void)
     }
 
     while (1) {
-        struct v4l2_buffer buf;
-
         memset(&buf, 0, sizeof(buf));
         buf.type   = type;
         buf.memory = V4L2_MEMORY_MMAP;
@@ -207,7 +212,7 @@ static esp_err_t camera_capture_stream(void)
         }
 
         if (ioctl(fd, VIDIOC_QBUF, &buf) != 0) {
-            ESP_LOGE(TAG, "failed to free video frame");
+            ESP_LOGE(TAG, "failed to queue video frame");
             ret = ESP_FAIL;
             goto errout_get_fmt;
         }

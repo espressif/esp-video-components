@@ -58,5 +58,30 @@ test_apps_posix_test:
   image: $DOCKER_TARGET_TEST_v5_0_ENV_IMAGE
   variables:
     TEST_TARGET: ${IDF_TARGET}
-    TEST_FOLDER: .
+    TEST_FOLDER: ./test_apps/posix_test
+    TEST_ENV: ${ENV_TAG}
+
+test_apps_pipeline_test_sim_device_test:
+  extends:
+    - .pytest_template
+    - .rules:build:test_apps
+    - .rules:build:check_media
+  needs:
+    - job: "build_test_apps_pipeline_test_sim_device_test_esp32s3"
+      artifacts: true
+      optional: true
+  retry:
+    max: 2
+  parallel:
+    matrix:
+      - IDF_TARGET: esp32s3
+        IDF_VERSION: "5.0"
+        ENV_TAG: quad_psram
+  tags:
+    - ${IDF_TARGET}
+    - ${ENV_TAG}
+  image: $DOCKER_TARGET_TEST_v5_0_ENV_IMAGE
+  variables:
+    TEST_TARGET: ${IDF_TARGET}
+    TEST_FOLDER: ./test_apps/pipeline_test
     TEST_ENV: ${ENV_TAG}

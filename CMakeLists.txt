@@ -31,7 +31,7 @@ if (NOT "${CONFIG_ESP_VIDEO_MEDIA_EMBED_FILE}" STREQUAL "")
 endif()
 
 if(CONFIG_ESP_VIDEO_API_LINUX)
-    list(APPEND srcs "src/esp_video_vfs.c" "src/esp_video_mman.c")
+    list(APPEND srcs "src/esp_video_vfs.c" "src/esp_video_mman.c" "src/esp_video_ioctl.c")
 endif()
 
 idf_component_register(SRCS ${srcs}
