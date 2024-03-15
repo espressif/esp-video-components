@@ -34,3 +34,10 @@ menuconfig CAMERA_OV5640
         range 1 1 if !IDF_TARGET_ESP32P4
         help
             Set the number of connected OV5640.
+    
+    config CAMERA_OV5640_CSI_LINESYNC_ENABLE
+        bool "CSI Line sync enable"
+        depends on CAMERA_OV5640_INTERFACE_CSI
+        default y
+        help
+            If enabled, send line short packet for each line.

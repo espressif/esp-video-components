@@ -17,7 +17,6 @@ extern "C" {
 #define OV5640_JPEG_QUALITY_DEFAULT                        (0x11)
 #define OV5640_8BIT_MODE                                   (0x18)
 #define OV5640_10BIT_MODE                                  (0x1A)
-#define OV5640_MIPI_CSI_LINESYNC_SUPPORT                   CONFIG_MIPI_CSI_LINESYNC_SUPPORT
 #define OV5640_IDI_CLOCK_RATE_800x800_50FPS                (80000000ULL)
 #define OV5640_LINE_RATE_RGB565_FROM_RAW8_800x800_50FPS    (OV5640_IDI_CLOCK_RATE_800x800_50FPS * 8)
 
@@ -131,7 +130,7 @@ static const reginfo_t input_24M_MIPI_2lane_rgb565_800x800_30fps[] = {
     //[7:5]=001 Two lane mode, [4]=0 MIPI HS TX no power down, [3]=0 MIPI LP RX no power down, [2]=1 MIPI enable, [1:0]=10 Debug mode; Default=0x58
     {0x300e, 0x45},
     //[5]=0 Clock free running, [4]=1 Send line short packet, [3]=0 Use lane1 as default, [2]=1 MIPI bus LP11 when no packet; Default=0x04
-    {0x4800, OV5640_MIPI_CSI_LINESYNC_SUPPORT ? 0x14 : 0x04},
+    {0x4800, CONFIG_CAMERA_OV5640_CSI_LINESYNC_ENABLE ? 0x14 : 0x04},
     {0x302e, 0x08},
     //[7:4]=0x6 RGB565, [3:0]=0x0 {b[4:0],g[5:3],g[2:0],r[4:0]}
     {0x4300, 0x6f},

@@ -15,7 +15,6 @@ extern "C" {
 #include "ov5647_regs.h"
 
 #define BIT(nr)                                    (1UL << (nr))
-#define OV5647_MIPI_CSI_LINESYNC_SUPPORT           CONFIG_MIPI_CSI_LINESYNC_SUPPORT
 #define OV5647_IDI_CLOCK_RATE_800x800_50FPS        (100000000ULL)
 #define OV5647_MIPI_CSI_LINE_RATE_800x800_50FPS    (OV5647_IDI_CLOCK_RATE_800x800_50FPS * 4)
 #define OV5647_MIPI_IDI_CLOCK_RATE_720P_50FPS      (74000000ULL)
