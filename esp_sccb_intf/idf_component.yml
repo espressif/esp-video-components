@@ -1,0 +1,4 @@
+version: "0.0.1"
+description: "SCCB interface driver for camera"
+dependencies:
+    idf: ">=5.2"
