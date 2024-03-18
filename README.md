@@ -4,6 +4,7 @@ This is the repository for a some video related components, which aims to be upl
 
 ## Component list in this project
 
+- esp_cam_sensor
 - esp_sccb_intf
 
 ## License

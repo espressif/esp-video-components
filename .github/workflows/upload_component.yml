@@ -35,6 +35,7 @@ jobs:
           #
           directories: >
             esp_sccb_intf;
+            esp_cam_sensor;
           namespace: "espressif"
           # API token will only be available in the master branch in the main repository.
           # However, dry-run doesn't require a valid token.

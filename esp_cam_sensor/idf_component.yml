@@ -1,0 +1,13 @@
+version: "0.1.0"
+description: "Espressif camera sensor drivers"
+targets:
+  - esp32p4
+url: https://github.com/espressif/esp-video-components/tree/master/esp_cam_sensor
+repository: https://github.com/espressif/esp-video-components.git
+issues: https://github.com/espressif/esp-video-components/issues
+dependencies:
+    idf: ">=5.3"
+    esp_sccb_intf:
+      version: ">=0.0.2"
+      override_path: "../esp_sccb_intf"
+    cmake_utilities: "0.*"
