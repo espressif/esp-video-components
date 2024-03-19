@@ -28,8 +28,7 @@
 
 #define CSI_CTRL_ID                 0
 #define CSI_CLK_SRC                 MIPI_CSI_PHY_CLK_SRC_DEFAULT
-#define CSI_CLK_FRRQ_HZ             (200 * 1000 * 1000)
-#define CSI_DATA_LANE_NUM           2
+#define CSI_CLK_FREQ_HZ             (200 * 1000 * 1000)
 #define CSI_BYTE_SWAP_EN            false
 #define CSI_QUEUE_ITEMS             1
 
@@ -43,7 +42,7 @@
 #define ISP_HAS_LINE_END_PACKET     false
 
 struct cam_ctrl {
-    cam_ctrl_port_t port;
+    esp_video_cam_intf_t intf;
 
     esp_cam_ctlr_handle_t cam_ctrl_handle;
     esp_ldo_unit_handle_t ldo_handle;
@@ -189,6 +188,25 @@ static esp_err_t isp_get_output_frame_type(uint32_t output_fmt, isp_color_t *isp
     return ret;
 }
 
+static esp_err_t csi_get_data_lane(sensor_port_t port, uint8_t *data_lane_num)
+{
+    esp_err_t ret = ESP_OK;
+
+    switch (port) {
+    case MIPI_CSI_OUTPUT_LANE1:
+        *data_lane_num = 1;
+        break;
+    case MIPI_CSI_OUTPUT_LANE2:
+        *data_lane_num = 2;
+        break;
+    default:
+        ret = ESP_ERR_INVALID_ARG;
+        break;
+    }
+
+    return ret;
+}
+
 static bool IRAM_ATTR cam_ctrl_on_trans_finished(esp_cam_ctlr_handle_t handle, esp_cam_ctlr_trans_t *trans, void *user_data)
 {
     struct esp_video *video = (struct esp_video *)user_data;
@@ -239,6 +257,12 @@ static esp_err_t cam_ctrl_csi_init(struct esp_video *video)
                              CSI_INIT_FORMAT,
                              CSI_INIT_FORMAT_BPP);
 
+    ret = csi_get_data_lane(sensor_format.port, &csi_config.data_lane_num);
+    if (ret != ESP_OK) {
+        ESP_LOGE(TAG, "failed to get CSI data lane number");
+        return ret;
+    }
+
     ret = csi_get_input_frame_type(sensor_format.format, &csi_config.input_data_color_type);
     if (ret != ESP_OK) {
         ESP_LOGE(TAG, "failed to get CSI input frame type");
@@ -272,13 +296,16 @@ static esp_err_t cam_ctrl_csi_init(struct esp_video *video)
     }
 
     csi_config.ctlr_id = CSI_CTRL_ID;
-    csi_config.clk_freq_hz = CSI_CLK_FRRQ_HZ;
     csi_config.clk_src = CSI_CLK_SRC;
-    csi_config.data_lane_num = CSI_DATA_LANE_NUM;
     csi_config.byte_swap_en = CSI_BYTE_SWAP_EN;
     csi_config.queue_items = CSI_QUEUE_ITEMS;
     csi_config.h_res = sensor_format.width;
     csi_config.v_res = sensor_format.height;
+    if (sensor_format.mipi_info.mipi_clk) {
+        csi_config.clk_freq_hz = sensor_format.mipi_info.mipi_clk;
+    } else {
+        csi_config.clk_freq_hz = CSI_CLK_FREQ_HZ;
+    }
     ret = esp_cam_new_csi_ctlr(&csi_config, &cam_ctrl->cam_ctrl_handle);
     if (ret != ESP_OK) {
         ESP_LOGE(TAG, "failed to create CSI");
@@ -305,12 +332,12 @@ static esp_err_t cam_ctrl_csi_init(struct esp_video *video)
     CAPTURE_VIDEO_SET_BUF_INFO(video, buf_size, CSI_DMA_ALIGN_BYTES, CSI_MEM_CAPS);
 
     isp_config.clk_src = ISP_CLK_SRC;
-    isp_config.clk_hz = ISP_CLK_FREQ_HZ;
     isp_config.input_data_source = ISP_INPUT_DATA_SRC;
     isp_config.has_line_start_packet = ISP_HAS_LINE_START_PACKET;
     isp_config.has_line_end_packet = ISP_HAS_LINE_END_PACKET;
     isp_config.h_res = sensor_format.width;
     isp_config.v_res = sensor_format.height;
+    isp_config.clk_hz = ISP_CLK_FREQ_HZ;
     ret = esp_isp_new_processor(&isp_config, &cam_ctrl->isp_processor);
     if (ret != ESP_OK) {
         ESP_LOGE(TAG, "failed to create ISP");
@@ -356,7 +383,7 @@ static esp_err_t cam_ctrl_video_init(struct esp_video *video)
     esp_err_t ret = ESP_FAIL;
     struct cam_ctrl *cam_ctrl = VIDEO_PRIV_DATA(struct cam_ctrl *, video);
 
-    if (cam_ctrl->port == MIPI_CSI_PORT) {
+    if (cam_ctrl->intf == ESP_VIDEO_CAM_INTF_MIPI_CSI) {
         ret = cam_ctrl_csi_init(video);
     }
 
@@ -368,7 +395,7 @@ static esp_err_t cam_ctrl_video_deinit(struct esp_video *video)
     esp_err_t ret = ESP_FAIL;
     struct cam_ctrl *cam_ctrl = VIDEO_PRIV_DATA(struct cam_ctrl *, video);
 
-    if (cam_ctrl->port == MIPI_CSI_PORT) {
+    if (cam_ctrl->intf == ESP_VIDEO_CAM_INTF_MIPI_CSI) {
         ret = cam_ctrl_csi_deinit(video);
     }
 
@@ -485,13 +512,13 @@ static const struct esp_video_ops s_cam_ctrl_video_ops = {
  * @brief Create camera controller video device
  *
  * @param cam_dev camera sensor devcie
- * @param port    camera controller port
+ * @param intf    camera controller interface
  *
  * @return
  *      - ESP_OK on success
  *      - Others if failed
  */
-esp_err_t cam_ctrl_create_video_device(esp_camera_device_t *cam_dev, cam_ctrl_port_t port)
+esp_err_t esp_video_create_cam_device(esp_camera_device_t *cam_dev, esp_video_cam_intf_t intf)
 {
     char *name = NULL;
     struct esp_video *video;
@@ -500,7 +527,7 @@ esp_err_t cam_ctrl_create_video_device(esp_camera_device_t *cam_dev, cam_ctrl_po
                            V4L2_CAP_STREAMING;
     uint32_t caps = device_caps | V4L2_CAP_DEVICE_CAPS;
 
-    if (port != MIPI_CSI_PORT) {
+    if (intf != ESP_VIDEO_CAM_INTF_MIPI_CSI) {
         return ESP_ERR_INVALID_ARG;
     }
 
@@ -509,8 +536,8 @@ esp_err_t cam_ctrl_create_video_device(esp_camera_device_t *cam_dev, cam_ctrl_po
         return ESP_ERR_NO_MEM;
     }
 
-    cam_ctrl->port = port;
-    if (port == MIPI_CSI_PORT) {
+    cam_ctrl->intf = intf;
+    if (intf == ESP_VIDEO_CAM_INTF_MIPI_CSI) {
         name = CSI_NAME;
     }
 

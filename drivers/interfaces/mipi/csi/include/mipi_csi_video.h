@@ -14,26 +14,26 @@ extern "C" {
 #endif
 
 /**
- * @brief Camera controller port
+ * @brief Camera controller interface
  */
 typedef enum cam_ctrl_port {
-    MIPI_CSI_PORT = 0,      /*!< MIPI-CSI port for ESP32-P4 */
-    ISP_DVP_PORT,           /*!< ISP-DVP port for ESP32-P4, not support yet */
-    DEFAULT_DVP_PORT,       /*!< I2S port for ESP32 and ESP32-S2, LCD_CAM port for ESP32-S3 and ESP32-P4, not support yet */
-    CAM_CTRL_PORT_MAX       /*!< Camera controller port max number */
-} cam_ctrl_port_t;
+    ESP_VIDEO_CAM_INTF_MIPI_CSI = 0,    /*!< MIPI-CSI port for ESP32-P4 */
+    ESP_VIDEO_CAM_INTF_ISP_DVP,         /*!< ISP-DVP port for ESP32-P4, not support yet */
+    ESP_VIDEO_CAM_INTF_GENERA_DVP,      /*!< I2S port for ESP32 and ESP32-S2, LCD_CAM port for ESP32-S3 and ESP32-P4, not support yet */
+    ESP_VIDEO_CAM_INTF_MAX              /*!< Camera controller interface max number */
+} esp_video_cam_intf_t;
 
 /**
  * @brief Create camera controller video device
  *
  * @param cam_dev camera sensor devcie
- * @param port    camera controller port
+ * @param intf    camera controller interface
  *
  * @return
  *      - ESP_OK on success
  *      - Others if failed
  */
-esp_err_t cam_ctrl_create_video_device(esp_camera_device_t *cam_dev, cam_ctrl_port_t port);
+esp_err_t esp_video_create_cam_device(esp_camera_device_t *cam_dev, esp_video_cam_intf_t intf);
 
 #ifdef __cplusplus
 }

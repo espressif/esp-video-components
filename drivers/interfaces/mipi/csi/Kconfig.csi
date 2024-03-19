@@ -1,10 +1,10 @@
-menu "MIPI-CSI Video Device Configuration"
+menu "Camera Video Device Configuration"
     depends on SOC_MIPI_CSI_SUPPORTED
 
     config MIPI_CSI_VIDEO_DEVICE_ENABLE
-        bool "Enable MIPI-CSI Video Device"
+        bool "Enable MIPI-CSI based Video Device"
         default y
         help
-            Select this option, enable MIPI-CSI video device.
+            Select this option, enable MIPI-CSI based video device.
 
 endmenu

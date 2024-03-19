@@ -223,7 +223,7 @@ esp_err_t esp_camera_init(const esp_camera_config_t *config)
                     return ret;
                 }
 
-                ret = cam_ctrl_create_video_device(cam_dev, MIPI_CSI_PORT);
+                ret = esp_video_create_cam_device(cam_dev, ESP_VIDEO_CAM_INTF_MIPI_CSI);
                 if (ret != ESP_OK) {
                     ESP_LOGE(TAG, "failed to create MIPI-CSI video device");
                     return ret;
