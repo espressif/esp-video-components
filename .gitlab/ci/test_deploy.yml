@@ -10,6 +10,10 @@ test_deploy_component_staging:
     GITHUB_WORKSPACE: .
     DEFAULT_COMPONENT_SERVICE_URL: ${STAGING_COMPONENT_SERVICE_URL}
     IDF_COMPONENT_API_TOKEN: ${STAGING_IDF_COMPONENT_API_TOKEN}
+    DRY_RUN: 1
+    MR_LABELS: $CI_MERGE_REQUEST_LABELS
   script:
     - pip install idf-component-manager
+    # Override default parameter DRY_RUN if test_deploy label is set, to actually upload the component
+    - if echo $MR_LABELS | grep -Eq ',\btest_deploy\b|^\btest_deploy\b$'; then echo 'test_deploy label set. Uploading...'; export DRY_RUN=0; fi
     - ./tools/ci/upload.sh

@@ -44,7 +44,6 @@ for ITEM in "${DIRECTORIES[@]}"; do
     fi
 
     echo "Processing component \"$NAME\" at $ITEM"
-    echo ${UPLOAD_ARGUMENTS[@]}
 
     PARAMS=("${UPLOAD_ARGUMENTS[@]}")
     PARAMS+=("--project-dir=${FULL_PATH}" "--name=${NAME}" )
@@ -62,6 +61,7 @@ for ITEM in "${DIRECTORIES[@]}"; do
       PARAMS+=("--repository-path=${ITEM}")
     fi
 
+    echo ${PARAMS[@]}
     compote component upload "${PARAMS[@]}"
 
     EXIT_CODE=$?

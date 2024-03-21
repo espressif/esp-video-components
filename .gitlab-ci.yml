@@ -1,7 +1,7 @@
 stages:
   - pre_check
   - build
-- test_deploy
+  - test_deploy
 
 variables:
 # System environment
