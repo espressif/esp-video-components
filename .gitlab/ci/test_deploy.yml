@@ -1,0 +1,15 @@
+test_deploy_component_staging:
+  stage: test_deploy
+  image: $CI_DOCKER_REGISTRY/target-test-env-v5.3:1
+  tags:
+    - internet
+  variables:
+    COMPONENT_NAMESPACE: espressif
+    SKIP_PRE_RELEASE: 0
+    COMPONENTS_DIRECTORIES: 'esp_sccb_intf;'
+    GITHUB_WORKSPACE: .
+    DEFAULT_COMPONENT_SERVICE_URL: ${STAGING_COMPONENT_SERVICE_URL}
+    IDF_COMPONENT_API_TOKEN: ${STAGING_IDF_COMPONENT_API_TOKEN}
+  script:
+    - pip install idf-component-manager
+    - ./tools/ci/upload.sh
