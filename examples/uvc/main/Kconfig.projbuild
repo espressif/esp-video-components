@@ -10,7 +10,7 @@ menu "USB Video Class Configuration"
     config UVC_CAM_ENABLE_MIPI_CSI
         bool "Enable MIPI-CSI Camera"
         default y
-        depends on MIPI_CSI_ENABLE
+        depends on MIPI_CSI_VIDEO_DEVICE_ENABLE
         help
             Select this option, MIPI-CSI interface camera is enabled.
 

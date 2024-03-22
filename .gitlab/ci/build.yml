@@ -46,7 +46,7 @@
     # By configuring this macro, you can append the compiled configuration file.
     # For example, using "sdkconf.etc=default" specifies the default sdkconfig file.
     EXAMPLE_CONFIG: "="
-    IDF_BRANCH: feat/mipi_quanjiatong_idf_dev
+    IDF_BRANCH: master
   script:
     - *get_quanjiatong
     - pip install --upgrade idf-component-manager
@@ -85,6 +85,8 @@ build_uvc_esp32p4:
   extends:
     - .build_examples_template
     - .rules:build:examples
+  # IDF master has not integrated UVC
+  allow_failure: true
   parallel:
     matrix:
       - IMAGE: espressif/idf:latest
@@ -115,9 +117,6 @@ build_test_apps_posix_test_esp32s3:
     - .rules:build:test_apps
   parallel:
     matrix:
-      - IMAGE: espressif/idf:release-v5.0
-      - IMAGE: espressif/idf:release-v5.1
-      - IMAGE: espressif/idf:release-v5.2
       - IMAGE: espressif/idf:latest
   variables:
     EXAMPLE_TARGET: esp32s3
@@ -153,7 +152,7 @@ build_test_apps_pipeline_test_sim_device_test_esp32s3:
     - .rules:build:check_media
   parallel:
     matrix:
-      - IMAGE: espressif/idf:release-v5.0
+      - IMAGE: espressif/idf:latest
   variables:
     EXAMPLE_TARGET: esp32s3
     EXAMPLE_DIR: test_apps/pipeline_test/sim_device_test

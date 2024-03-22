@@ -1,6 +1,3 @@
-CONFIG_MIPI_CSI_LINESYNC_SUPPORT=y
-
-
 #
 # These configurations are only for esp32p4 can run, should be removed later
 #

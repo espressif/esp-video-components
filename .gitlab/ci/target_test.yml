@@ -6,7 +6,7 @@ variables:
   DOCKER_TARGET_TEST_v5_3_ENV_IMAGE: "$CI_DOCKER_REGISTRY/target-test-env-v5.3:1"
 
 .test_template: &test_template
-  image: DOCKER_TARGET_TEST_v5_0_ENV_IMAGE
+  image: DOCKER_TARGET_TEST_v5_3_ENV_IMAGE
   stage: target_test
   timeout: 4 hour
   variables:
@@ -50,12 +50,12 @@ test_apps_posix_test:
   parallel:
     matrix:
       - IDF_TARGET: esp32s3
-        IDF_VERSION: "5.0"
+        IDF_VERSION: "5.3"
         ENV_TAG: quad_psram
   tags:
     - ${IDF_TARGET}
     - ${ENV_TAG}
-  image: $DOCKER_TARGET_TEST_v5_0_ENV_IMAGE
+  image: $DOCKER_TARGET_TEST_v5_3_ENV_IMAGE
   variables:
     TEST_TARGET: ${IDF_TARGET}
     TEST_FOLDER: ./test_apps/posix_test
@@ -75,12 +75,12 @@ test_apps_pipeline_test_sim_device_test:
   parallel:
     matrix:
       - IDF_TARGET: esp32s3
-        IDF_VERSION: "5.0"
+        IDF_VERSION: "5.3"
         ENV_TAG: quad_psram
   tags:
     - ${IDF_TARGET}
     - ${ENV_TAG}
-  image: $DOCKER_TARGET_TEST_v5_0_ENV_IMAGE
+  image: $DOCKER_TARGET_TEST_v5_3_ENV_IMAGE
   variables:
     TEST_TARGET: ${IDF_TARGET}
     TEST_FOLDER: ./test_apps/pipeline_test

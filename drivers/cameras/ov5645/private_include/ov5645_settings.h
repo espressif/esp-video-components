@@ -19,7 +19,6 @@ typedef struct {
     uint8_t val;
 } reginfo_t;
 
-#define OV5645_MIPI_CSI_LINESYNC_SUPPORT          CONFIG_MIPI_CSI_LINESYNC_SUPPORT
 #define OV5645_SOFT_POWER_DOWN_EN                 (0x42)
 #define OV5645_SOFT_POWER_DOWN_DIS                (0x02)
 #define OV5645_OUTPUT_ENABLE_DEFAULT              (0)
@@ -95,7 +94,7 @@ static const reginfo_t ov5645_MIPI_2lane_yuv422_960p_30fps[] = {
     {0x3006, 0xc3},
     {0x300e, 0x45}, /* MIPI 2 lane */
     //[5]=0 Clock free running, [4]=1 Send line short packet, [3]=0 Use lane1 as default, [2]=1 MIPI bus LP11 when no packet; Default=0x04
-    {0x4800, OV5645_MIPI_CSI_LINESYNC_SUPPORT ? 0x14 : 0x04},
+    {0x4800, CONFIG_CAMERA_OV5645_CSI_LINESYNC_ENABLE ? 0x14 : 0x04},
     {0x3017, 0x40},
     {0x3018, 0x00},
     {0x302e, 0x0b},
@@ -396,7 +395,7 @@ static const reginfo_t ov5645_MIPI_2lane_yuv422_1080p_15fps[] = {
     {0x3002, 0x1c},
     {0x3006, 0xc3},
     {0x300e, 0x45}, /* MIPI 2 lane */
-    {0x4800, OV5645_MIPI_CSI_LINESYNC_SUPPORT ? 0x14 : 0x04},
+    {0x4800, CONFIG_CAMERA_OV5645_CSI_LINESYNC_ENABLE ? 0x14 : 0x04},
     {0x3017, 0x40},
     {0x3018, 0x00},
     {0x302e, 0x0b},
@@ -698,7 +697,7 @@ static const reginfo_t ov5645_MIPI_2lane_yuv422_2592x1944_15fps[] = {
     {0x3002, 0x1c},
     {0x3006, 0xc3},
     {0x300e, 0x45}, /* MIPI 2 lane */
-    {0x4800, OV5645_MIPI_CSI_LINESYNC_SUPPORT ? 0x14 : 0x04},
+    {0x4800, CONFIG_CAMERA_OV5645_CSI_LINESYNC_ENABLE ? 0x14 : 0x04},
     {0x3017, 0x40},
     {0x3018, 0x00},
     {0x302e, 0x0b},
@@ -1108,7 +1107,7 @@ static const reginfo_t ov5645_MIPI_2lane_yuv422_640x480_24fps[] = {
     {0x4823, 0x70},
     {0x4831, 0x14},
     //[5]=0 Clock free running, [4]=1 Send line short packet, [3]=0 Use lane1 as default, [2]=1 MIPI bus LP11 when no packet; Default=0x04
-    {0x4800, OV5645_MIPI_CSI_LINESYNC_SUPPORT ? 0x14 : 0x04},
+    {0x4800, CONFIG_CAMERA_OV5645_CSI_LINESYNC_ENABLE ? 0x14 : 0x04},
     {0x5000, 0xa7},
     {0x501d, 0x00},
     {0x503d, 0x00},

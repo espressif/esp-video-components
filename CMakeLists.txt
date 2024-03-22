@@ -11,7 +11,7 @@ endif()
 set(include_dirs "include")
 set(priv_include_dirs "private_include")
 set(priv_requires "esp_timer" "vfs" "json")
-set(requires "driver")
+set(requires "driver" "esp_driver_cam")
 
 include(${COMPONENT_DIR}/drivers/commons/sources.cmake)
 include(${COMPONENT_DIR}/drivers/interfaces/sources.cmake)

@@ -1,31 +1,10 @@
-menu "CSI"
-    depends on IDF_TARGET_ESP32P4 # TODO: Modify to CONFIG_SOC_CSI_SUPPORTED
+menu "Camera Video Device Configuration"
+    depends on SOC_MIPI_CSI_SUPPORTED
 
-    config MIPI_CSI_ENABLE
-        bool "Enable MIPI-CSI Driver and Video Device"
+    config MIPI_CSI_VIDEO_DEVICE_ENABLE
+        bool "Enable MIPI-CSI based Video Device"
         default y
         help
-            Select this option, enable MIPI-CSI driver and video device.
+            Select this option, enable MIPI-CSI based video device.
 
-    choice CSI_TR_WIDTH
-        bool "CSI DMA transfer width"
-        default CSI_TR_WIDTH_64BIT
-        depends on MIPI_CSI_ENABLE
-
-        config CSI_TR_WIDTH_64BIT
-            bool "64bits"
-
-        config CSI_TR_WIDTH_32BIT
-            bool "32bits"
-    endchoice
-
-    menu "MIPI D-PHY Config"
-        config MIPI_CSI_LINESYNC_SUPPORT
-        bool "Line Sync Enabled"
-        default n
-        depends on MIPI_CSI_ENABLE
-        help
-            Enable this option if the mipi camera sensor send line short packet for each line.
-
-    endmenu
 endmenu
