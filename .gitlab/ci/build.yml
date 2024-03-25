@@ -1,0 +1,49 @@
+.build_template: &build_template
+  stage: build
+  tags:
+    - build
+  image: ${IMAGE}
+  variables:
+    # Enable ccache for all build jobs. See configure_ci_environment.sh for more ccache related settings.
+    IDF_CCACHE_ENABLE: "1"
+    BATCH_BUILD: "1"
+    V: "0"
+    WARNING_STR: ""
+
+.build_examples_template: &build_examples_template
+  <<: *build_template
+  artifacts:
+    when: always
+    paths:
+      - "**/build*/size.json"
+      - "**/build*/build_log.txt"
+      - "**/build*/*.bin"
+      # upload to s3 server to save the artifacts size
+      - "**/build*/*.map"
+      - "**/build*/*.elf"
+      - "**/build*/flasher_args.json"
+      - "**/build*/flash_project_args"
+      - "**/build*/config/sdkconfig.json"
+      - "**/build*/bootloader/*.bin"
+      - "**/build*/bootloader/*.elf"
+      - "**/build*/partition_table/*.bin"
+      - size_info.txt
+    expire_in: 1 week
+  variables:
+    IDF_CI_BUILD: "1"
+  script:
+    - pip install --upgrade idf-component-manager
+    - pip install idf_build_apps==1.1.4
+    - export PEDANTIC_FLAGS="-DIDF_CI_BUILD -Werror -Werror=deprecated-declarations -Werror=unused-variable -Werror=unused-but-set-variable -Werror=unused-function"
+    - export EXTRA_CFLAGS="${PEDANTIC_FLAGS} -Wstrict-prototypes"
+    - export EXTRA_CXXFLAGS="${PEDANTIC_FLAGS}"
+    - python tools/ci/build_apps.py
+
+build_test:
+  extends:
+    - .build_examples_template
+    - .rules:build:test_apps
+  parallel:
+    matrix:
+      # Due to limitation of esp_sccb_intf, now only IDF v5.3 is built
+      - IMAGE: espressif/idf:latest

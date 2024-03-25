@@ -1,5 +1,7 @@
 stages:
-- test_deploy
+  - pre_check
+  - build
+  - test_deploy
 
 variables:
 # System environment
@@ -25,6 +27,31 @@ workflow:
         IS_MR_PIPELINE: 0
     - when: always
 
+################################################
+# `before_script` and `after_script` Templates #
+################################################
+.common_before_scripts: &common-before_scripts |
+  source tools/ci/utils.sh
+
+.setup_tools_and_idf_python_venv: &setup_tools_and_idf_python_venv |
+  # must use after setup_tools_except_target_test
+  # otherwise the export.sh won't work properly
+
+  # Install esp-clang if necessary
+  if [[ "$IDF_TOOLCHAIN" == "clang" ]]; then
+    $IDF_PATH/tools/idf_tools.py --non-interactive install esp-clang
+  fi
+
+  source $IDF_PATH/export.sh
+
+.before_script:build:
+  before_script:
+    - *common-before_scripts
+    - *setup_tools_and_idf_python_venv
+
 include:
+  - '.gitlab/ci/rules.yml'
+  - '.gitlab/ci/pre_check.yml'
+  - '.gitlab/ci/build.yml'
   - '.gitlab/ci/test_deploy.yml'
 
