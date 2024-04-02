@@ -32,7 +32,7 @@ check_pre_commit:
         git fetch origin $CI_COMMIT_SHA --depth=2 ${GIT_FETCH_EXTRA_FLAGS}
         export GIT_DIFF_OUTPUT=$(git diff --name-only $CI_COMMIT_SHA~1 $CI_COMMIT_SHA)
       fi
-      MODIFIED_FILES=$(echo $GIT_DIFF_OUTPUT | xargs)
+      export MODIFIED_FILES=$(echo $GIT_DIFF_OUTPUT | xargs)
       # print the MODIFIED_FILES
       echo "MODIFIED_FILES: $MODIFIED_FILES"
     - pre-commit install --allow-missing-config -t pre-commit -t commit-msg
