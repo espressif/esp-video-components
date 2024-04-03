@@ -1,0 +1,4 @@
+menu "Espressif Camera Sensors Configurations"
+
+    rsource "sensors/sc2336/Kconfig.sc2336"
+endmenu
