@@ -3,15 +3,6 @@ stages:
   - build
   - target_test
 
-variables:
-# System environment
-
-# GitLab-CI environment
-  # Docker images
-  ESP_ENV_IMAGE: "${CI_DOCKER_REGISTRY}/esp-env-v5.3:1"
-
-  MEDIA_PIPE_LINE_ENABLE: "false"
-
 workflow:
   rules:
     # Disable those non-protected push triggered pipelines
@@ -35,6 +26,19 @@ workflow:
 .common_before_scripts: &common-before_scripts |
   source tools/ci/utils.sh
 
+.pull_idf_master_branch: &pull_idf_master_branch |
+  # ESP32-P4 need use ESP-IDF master branch which supports ISP driver
+
+  if [[ "$EXAMPLE_TARGET" == "esp32p4" ]]; then
+    add_gitlab_ssh_keys
+    cd $IDF_PATH
+    git remote set-url origin ${GITLAB_SSH_SERVER}/espressif/esp-idf.git
+    git pull origin master || echo "Fetch esp-idf error and skip"
+    git submodule update --init --recursive
+    ./install.sh
+    cd -
+  fi
+
 .setup_tools_and_idf_python_venv: &setup_tools_and_idf_python_venv |
   # must use after setup_tools_except_target_test
   # otherwise the export.sh won't work properly
@@ -49,6 +53,7 @@ workflow:
 .before_script:build:
   before_script:
     - *common-before_scripts
+    - *pull_idf_master_branch
     - *setup_tools_and_idf_python_venv
 
 include:

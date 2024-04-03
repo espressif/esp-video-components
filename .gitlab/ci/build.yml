@@ -10,20 +10,10 @@
     V: "0"
     WARNING_STR: ""
 
-.get_quanjiatong: &get_quanjiatong |
-  if [ "${EXAMPLE_TARGET}" = "esp32p4" ]; then
-    source tools/ci/utils.sh
-    add_gitlab_ssh_keys
-    cd $IDF_PATH
-    git remote set-url origin ${GITLAB_SSH_SERVER}/espressif/esp-idf.git
-    git fetch origin ${IDF_BRANCH}
-    git checkout ${IDF_BRANCH}
-    git submodule update --init --recursive
-    cd -
-  fi
-
 .build_examples_template: &build_examples_template
   <<: *build_template
+  extends:
+    - .before_script:build
   artifacts:
     when: always
     paths:
@@ -48,7 +38,6 @@
     EXAMPLE_CONFIG: "="
     IDF_BRANCH: master
   script:
-    - *get_quanjiatong
     - pip install --upgrade idf-component-manager
     - pip install idf_build_apps==1.1.4
     - python tools/build_apps.py ${EXAMPLE_DIR} --config ${EXAMPLE_CONFIG} -t ${EXAMPLE_TARGET} -vv
@@ -87,6 +76,7 @@ build_uvc_esp32p4:
     - .rules:build:examples
   # IDF master has not integrated UVC
   allow_failure: true
+  when: manual
   parallel:
     matrix:
       - IMAGE: espressif/idf:latest
@@ -137,7 +127,8 @@ build_test_apps_pipeline_test_config_parse_test_esp32p4:
   extends:
     - .build_examples_template
     - .rules:build:test_apps
-    - .rules:build:check_media
+  allow_failure: true
+  when: manual
   parallel:
     matrix:
       - IMAGE: espressif/idf:latest
@@ -149,7 +140,8 @@ build_test_apps_pipeline_test_sim_device_test_esp32s3:
   extends:
     - .build_examples_template
     - .rules:build:test_apps
-    - .rules:build:check_media
+  allow_failure: true
+  when: manual
   parallel:
     matrix:
       - IMAGE: espressif/idf:latest

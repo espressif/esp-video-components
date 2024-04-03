@@ -13,6 +13,7 @@ clang_tidy_check:
     expire_in: 1 day
   variables:
     IDF_TOOLCHAIN: clang
+    EXAMPLE_TARGET: esp32p4
   script:
     - mkdir clang_tidy_reports
     - idf.py set-target esp32s3 clang-check -C examples/video_basic

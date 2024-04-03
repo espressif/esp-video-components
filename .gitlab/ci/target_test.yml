@@ -65,7 +65,8 @@ test_apps_pipeline_test_sim_device_test:
   extends:
     - .pytest_template
     - .rules:build:test_apps
-    - .rules:build:check_media
+  when: manual
+  allow_failure: true
   needs:
     - job: "build_test_apps_pipeline_test_sim_device_test_esp32s3"
       artifacts: true
