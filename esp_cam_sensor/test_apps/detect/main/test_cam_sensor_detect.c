@@ -17,7 +17,10 @@
 #include "unity_test_utils.h"
 #include "unity_test_utils_memory.h"
 
-#if CONFIG_CAMERA_SC2336
+#if CONFIG_CAMERA_OV5645
+#include "ov5645.h"
+#define SCCB0_CAM_DEVICE_ADDR OV5645_SCCB_ADDR
+#elif CONFIG_CAMERA_SC2336
 #include "sc2336.h"
 #define SCCB0_CAM_DEVICE_ADDR SC2336_SCCB_ADDR
 #else
@@ -84,7 +87,12 @@ TEST_CASE("Camera sensor detect test", "[video]")
         .pwdn_pin = -1,
         .xclk_pin = -1,
     };
-#if CONFIG_CAMERA_SC2336
+#if CONFIG_CAMERA_OV5645
+    esp_cam_sensor_device_t *cam0 = ov5645_detect(&cam0_config);
+    TEST_ASSERT_MESSAGE(cam0 != NULL, "detect fail");
+
+    TEST_ESP_OK(esp_cam_sensor_del_dev(cam0));
+#elif CONFIG_CAMERA_SC2336
     esp_cam_sensor_device_t *cam0 = sc2336_detect(&cam0_config);
     TEST_ASSERT_MESSAGE(cam0 != NULL, "detect fail");
 

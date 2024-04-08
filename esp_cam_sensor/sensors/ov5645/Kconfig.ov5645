@@ -1,0 +1,44 @@
+menuconfig CAMERA_OV5645
+    bool "OV5645"
+    default n
+    help
+        Enabling this option will add the support for OV5645.
+
+if CAMERA_OV5645
+    menuconfig CAMERA_OV5645_AUTO_DETECT
+        bool "Auto detect OV5645"
+        default y
+        help
+           When enabled, it provides the ability in application layer to automatically detect camera sensors one by one.
+
+    if CAMERA_OV5645_AUTO_DETECT
+        config CAMERA_OV5645_AUTO_DETECT_MIPI_INTERFACE_SENSOR
+            bool "Detect for MIPI interface sensor"
+            default y
+            help
+                When enabled, you don't need to call ov5645_detect manaually, OV5645 will be automatically detected
+                and connected to the MIPI CSI interface when the application starts.
+    endif
+
+    config CAMERA_OV5645_MIPI_IF_FORMAT_INDEX_DAFAULT
+        int "Default format index for OV5645 MIPI Interface"
+        default 0
+        range 0 0
+        help
+            Set the configuration loaded by default for the MIPI CSI interface.
+            More information can be obtained by calling the query_formats().
+
+    config CAMERA_OV5645_MAX_SUPPORT
+        int "Support for a maximum number of connected OV5645"
+        depends on CAMERA_OV5645
+        default 1
+        range 1 1
+        help
+            Set the number of connected OV5645.
+    
+    config CAMERA_OV5645_CSI_LINESYNC_ENABLE
+        bool "CSI Line sync enable"
+        default y
+        help
+            If enabled, send line short packet for each line.
+endif
