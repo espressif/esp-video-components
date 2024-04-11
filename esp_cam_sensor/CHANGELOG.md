@@ -2,6 +2,7 @@
 
 - Add support for OV5645 camera sensor driver
 - Add support for OV5647 camera sensor MIPI driver
+- Add sensor_port parameter in SC2336 DETECT_FN definition
 
 ## 0.1.0
 
