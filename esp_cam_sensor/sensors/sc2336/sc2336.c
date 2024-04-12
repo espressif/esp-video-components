@@ -81,7 +81,7 @@ static const esp_cam_sensor_isp_info_t sc2336_isp_info[] = {
     {
         .isp_v1_info = {
             .version = SENSOR_ISP_INFO_VERSION_DEFAULT,
-            .pclk = 66000000,
+            .pclk = 81000000,
             .vts = 2250,
             .hts = 1200,
             .bayer_type = ESP_CAM_SENSOR_BAYER_BGGR,
@@ -203,18 +203,18 @@ static const esp_cam_sensor_format_t sc2336_format_info[] = {
         .reserved = NULL,
     },
     {
-        .name = "MIPI_2lane_24Minput_RAW10_1920x1080_25fps",
+        .name = "MIPI_2lane_24Minput_RAW10_1920x1080_30fps",
         .format = ESP_CAM_SENSOR_PIXFORMAT_RAW10,
         .port = ESP_CAM_SENSOR_MIPI_CSI,
         .xclk = 24000000,
         .width = 1920,
         .height = 1080,
-        .regs = init_reglist_MIPI_2lane_1080p_25fps,
-        .regs_size = ARRAY_SIZE(init_reglist_MIPI_2lane_1080p_25fps),
-        .fps = 25,
+        .regs = init_reglist_MIPI_2lane_1080p_30fps,
+        .regs_size = ARRAY_SIZE(init_reglist_MIPI_2lane_1080p_30fps),
+        .fps = 30,
         .isp_info = &sc2336_isp_info[5],
         .mipi_info = {
-            .mipi_clk = 330000000,
+            .mipi_clk = 405000000,
             .lane_num = 2,
         },
         .reserved = NULL,
@@ -657,6 +657,7 @@ ESP_CAM_SENSOR_DETECT_FN(sc2336_detect, ESP_CAM_SENSOR_MIPI_CSI, SC2336_SCCB_ADD
 #if CONFIG_CAMERA_SC2336_AUTO_DETECT_DVP_INTERFACE_SENSOR
 ESP_CAM_SENSOR_DETECT_FN(sc2336_detect, ESP_CAM_SENSOR_DVP, SC2336_SCCB_ADDR)
 {
+    config->sensor_port = ESP_CAM_SENSOR_MIPI_CSI;
     return sc2336_detect(config);
 }
 #endif
