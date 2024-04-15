@@ -68,6 +68,7 @@ static const esp_cam_sensor_format_t ov5647_format_info[] = {
         .mipi_info = {
             .mipi_clk = OV5647_MIPI_CSI_LINE_RATE_800x800_50FPS,
             .lane_num = 2,
+            .line_sync_en = CONFIG_CAMERA_OV5647_CSI_LINESYNC_ENABLE ? true : false,
         },
         .reserved = NULL,
     },
@@ -85,6 +86,7 @@ static const esp_cam_sensor_format_t ov5647_format_info[] = {
         .mipi_info = {
             .mipi_clk = OV5647_MIPI_CSI_LINE_RATE_800x640_50FPS,
             .lane_num = 2,
+            .line_sync_en = CONFIG_CAMERA_OV5647_CSI_LINESYNC_ENABLE ? true : false,
         },
         .reserved = NULL,
     },
@@ -499,7 +501,7 @@ err_free_handler:
 #if CONFIG_CAMERA_OV5647_AUTO_DETECT_MIPI_INTERFACE_SENSOR
 ESP_CAM_SENSOR_DETECT_FN(ov5647_detect, ESP_CAM_SENSOR_MIPI_CSI, OV5647_SCCB_ADDR)
 {
-    config->sensor_port = ESP_CAM_SENSOR_MIPI_CSI;
+    ((esp_cam_sensor_config_t *)config)->sensor_port = ESP_CAM_SENSOR_MIPI_CSI;
     return ov5647_detect(config);
 }
 #endif

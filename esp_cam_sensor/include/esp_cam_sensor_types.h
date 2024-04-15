@@ -207,6 +207,7 @@ typedef struct {
     uint32_t mipi_clk;     /*!< Frequency of MIPI-RX clock Lane, in Hz */
     uint32_t hs_settle;    /*!< HS-RX settle time */
     uint32_t lane_num;     /*!< data lane num */
+    bool line_sync_en;     /*!< Send line short packet for each line */
 } esp_cam_sensor_mipi_info_t;
 
 /**
