@@ -620,6 +620,11 @@ esp_cam_sensor_device_t *sc2336_detect(esp_cam_sensor_config_t *config)
     dev->pwdn_pin = config->pwdn_pin;
     dev->sensor_port = config->sensor_port;
     dev->ops = &sc2336_ops;
+    if (config->sensor_port != ESP_CAM_SENSOR_DVP) {
+        dev->cur_format = &sc2336_format_info[CONFIG_CAMERA_SC2336_MIPI_IF_FORMAT_INDEX_DAFAULT];
+    } else {
+        dev->cur_format = &sc2336_format_info[CONFIG_CAMERA_SC2336_DVP_IF_FORMAT_INDEX_DAFAULT];
+    }
 
     // Configure sensor power, clock, and SCCB port
     if (sc2336_power_on(dev) != ESP_OK) {

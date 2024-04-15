@@ -464,6 +464,11 @@ esp_cam_sensor_device_t *ov5647_detect(esp_cam_sensor_config_t *config)
     dev->pwdn_pin = config->pwdn_pin;
     dev->sensor_port = config->sensor_port;
     dev->ops = &ov5647_ops;
+    if (config->sensor_port == ESP_CAM_SENSOR_MIPI_CSI) {
+        dev->cur_format = &ov5647_format_info[CONFIG_CAMERA_OV5647_MIPI_IF_FORMAT_INDEX_DAFAULT];
+    } else {
+        ESP_LOGE(TAG, "Not support DVP port");
+    }
 
     // Configure sensor power, clock, and SCCB port
     if (ov5647_power_on(dev) != ESP_OK) {
