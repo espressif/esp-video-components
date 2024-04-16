@@ -131,6 +131,7 @@ static const esp_cam_sensor_format_t sc2336_format_info[] = {
         .mipi_info = {
             .mipi_clk = 405000000,
             .lane_num = 2,
+            .line_sync_en = false,
         },
         .reserved = NULL,
     },
@@ -148,6 +149,7 @@ static const esp_cam_sensor_format_t sc2336_format_info[] = {
         .mipi_info = {
             .mipi_clk = 405000000,
             .lane_num = 2,
+            .line_sync_en = false,
         },
         .reserved = NULL,
     },
@@ -165,6 +167,7 @@ static const esp_cam_sensor_format_t sc2336_format_info[] = {
         .mipi_info = {
             .mipi_clk = 405000000,
             .lane_num = 2,
+            .line_sync_en = false,
         },
         .reserved = NULL,
     },
@@ -182,6 +185,7 @@ static const esp_cam_sensor_format_t sc2336_format_info[] = {
         .mipi_info = {
             .mipi_clk = 660000000,
             .lane_num = 1,
+            .line_sync_en = false,
         },
         .reserved = NULL,
     },
@@ -199,6 +203,7 @@ static const esp_cam_sensor_format_t sc2336_format_info[] = {
         .mipi_info = {
             .mipi_clk = 330000000,
             .lane_num = 2,
+            .line_sync_en = false,
         },
         .reserved = NULL,
     },
@@ -216,6 +221,7 @@ static const esp_cam_sensor_format_t sc2336_format_info[] = {
         .mipi_info = {
             .mipi_clk = 405000000,
             .lane_num = 2,
+            .line_sync_en = false,
         },
         .reserved = NULL,
     },
@@ -233,6 +239,7 @@ static const esp_cam_sensor_format_t sc2336_format_info[] = {
         .mipi_info = {
             .mipi_clk = 336000000,
             .lane_num = 2,
+            .line_sync_en = false,
         },
         .reserved = NULL,
     },
@@ -250,6 +257,7 @@ static const esp_cam_sensor_format_t sc2336_format_info[] = {
         .mipi_info = {
             .mipi_clk = 210000000,
             .lane_num = 2,
+            .line_sync_en = false,
         },
         .reserved = NULL,
     },
@@ -620,6 +628,11 @@ esp_cam_sensor_device_t *sc2336_detect(esp_cam_sensor_config_t *config)
     dev->pwdn_pin = config->pwdn_pin;
     dev->sensor_port = config->sensor_port;
     dev->ops = &sc2336_ops;
+    if (config->sensor_port != ESP_CAM_SENSOR_DVP) {
+        dev->cur_format = &sc2336_format_info[CONFIG_CAMERA_SC2336_MIPI_IF_FORMAT_INDEX_DAFAULT];
+    } else {
+        dev->cur_format = &sc2336_format_info[CONFIG_CAMERA_SC2336_DVP_IF_FORMAT_INDEX_DAFAULT];
+    }
 
     // Configure sensor power, clock, and SCCB port
     if (sc2336_power_on(dev) != ESP_OK) {
@@ -650,6 +663,7 @@ err_free_handler:
 #if CONFIG_CAMERA_SC2336_AUTO_DETECT_MIPI_INTERFACE_SENSOR
 ESP_CAM_SENSOR_DETECT_FN(sc2336_detect, ESP_CAM_SENSOR_MIPI_CSI, SC2336_SCCB_ADDR)
 {
+    ((esp_cam_sensor_config_t *)config)->sensor_port = ESP_CAM_SENSOR_MIPI_CSI;
     return sc2336_detect(config);
 }
 #endif
@@ -657,7 +671,7 @@ ESP_CAM_SENSOR_DETECT_FN(sc2336_detect, ESP_CAM_SENSOR_MIPI_CSI, SC2336_SCCB_ADD
 #if CONFIG_CAMERA_SC2336_AUTO_DETECT_DVP_INTERFACE_SENSOR
 ESP_CAM_SENSOR_DETECT_FN(sc2336_detect, ESP_CAM_SENSOR_DVP, SC2336_SCCB_ADDR)
 {
-    config->sensor_port = ESP_CAM_SENSOR_MIPI_CSI;
+    ((esp_cam_sensor_config_t *)config)->sensor_port = ESP_CAM_SENSOR_DVP;
     return sc2336_detect(config);
 }
 #endif

@@ -6,7 +6,7 @@ from pathlib import Path
 from idf_build_apps.constants import SUPPORTED_TARGETS
 
 if __name__ == '__main__':
-    preview_targets = ['esp32p4']
+    preview_targets = []
     root = '.'
 
     args = [
@@ -29,6 +29,9 @@ if __name__ == '__main__':
         'size_info.txt',
         '--keep-going',
         '--copy-sdkconfig',
+        '--config',
+        'sdkconfig.ci.*=',
+        '=default',
         '-v',
     ]
 

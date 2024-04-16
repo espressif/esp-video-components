@@ -1,3 +1,8 @@
+## 0.2.1
+
+- Add line_sync_en parameter to mipi_info struct
+- Use default format as the current format in sensor_detect
+
 ## 0.2.0
 
 - Add support for OV5645 camera sensor driver

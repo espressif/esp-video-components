@@ -47,6 +47,7 @@ static const esp_cam_sensor_format_t ov5645_format_info[] = {
         .mipi_info = {
             .mipi_clk = OV5645_LINE_RATE_16BITS_1280x960_30FPS,
             .lane_num = 2,
+            .line_sync_en = CONFIG_CAMERA_OV5645_CSI_LINESYNC_ENABLE ? true : false,
         },
         .reserved = NULL,
     },
@@ -404,6 +405,11 @@ esp_cam_sensor_device_t *ov5645_detect(esp_cam_sensor_config_t *config)
     dev->reset_pin = config->reset_pin;
     dev->pwdn_pin = config->pwdn_pin;
     dev->sensor_port = config->sensor_port;
+    if (config->sensor_port == ESP_CAM_SENSOR_MIPI_CSI) {
+        dev->cur_format = &ov5645_format_info[CONFIG_CAMERA_OV5645_MIPI_IF_FORMAT_INDEX_DAFAULT];
+    } else {
+        ESP_LOGE(TAG, "Not support DVP port");
+    }
 
     // Configure sensor power, clock, and SCCB port
     if (ov5645_power_on(dev) != ESP_OK) {
@@ -432,9 +438,9 @@ err_free_handler:
 }
 
 #if CONFIG_CAMERA_OV5645_AUTO_DETECT_MIPI_INTERFACE_SENSOR
-ESP_CAMERA_DETECT_FN(ov5645_detect, ESP_CAM_SENSOR_MIPI_CSI, OV5645_SCCB_ADDR)
+ESP_CAM_SENSOR_DETECT_FN(ov5645_detect, ESP_CAM_SENSOR_MIPI_CSI, OV5645_SCCB_ADDR)
 {
-    config->sensor_port = ESP_CAM_SENSOR_MIPI_CSI;
+    ((esp_cam_sensor_config_t *)config)->sensor_port = ESP_CAM_SENSOR_MIPI_CSI;
     return ov5645_detect(config);
 }
 #endif
