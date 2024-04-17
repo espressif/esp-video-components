@@ -1,0 +1,16 @@
+menu "Espressif Video Configuration"
+
+    config ESP_VIDEO_CHECK_PARAMETERS
+        bool "Check Video Function Parameters"
+        default y
+        help
+            Select this option, espressif video core functions will check
+            input parameters.
+
+    menuconfig ESP_VIDEO_ENABLE_MIPI_CSI_VIDEO_DEVICE
+        bool "Enable MIPI-CSI based Video Device"
+        depends on SOC_MIPI_CSI_SUPPORTED
+        default y
+        help
+            Select this option, enable MIPI-CSI based video device.
+endmenu

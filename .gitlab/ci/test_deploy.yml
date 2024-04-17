@@ -6,7 +6,7 @@ test_deploy_component_staging:
   variables:
     COMPONENT_NAMESPACE: espressif
     SKIP_PRE_RELEASE: 0
-    COMPONENTS_DIRECTORIES: 'esp_cam_sensor;esp_sccb_intf;'
+    COMPONENTS_DIRECTORIES: 'esp_cam_sensor;esp_sccb_intf;esp_video;'
     GITHUB_WORKSPACE: .
     DEFAULT_COMPONENT_SERVICE_URL: ${STAGING_COMPONENT_SERVICE_URL}
     IDF_COMPONENT_API_TOKEN: ${STAGING_IDF_COMPONENT_API_TOKEN}

@@ -25,10 +25,10 @@ GPATH
 .cache/
 
 # Example project files
-examples/**/build/
-examples/**/build_esp*_*/
-examples/**/sdkconfig
-examples/**/sdkconfig.old
+**/examples/**/build/
+**/examples/**/build_esp*_*/
+**/examples/**/sdkconfig
+**/examples/**/sdkconfig.old
 **/test/**/build/
 **/test/**/build_esp*_*/
 **/test/**/sdkconfig
