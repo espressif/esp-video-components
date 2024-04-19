@@ -293,17 +293,17 @@ typedef struct {
  */
 typedef struct _esp_cam_sensor_ops {
     /*!< Mainly used by ISP， and can be used to control other accessories on the camera module */
-    int (*query_para_desc)          (esp_cam_sensor_device_t *dev, esp_cam_sensor_param_desc_t *qdesc);
-    int (*get_para_value)           (esp_cam_sensor_device_t *dev, uint32_t id, void *arg, size_t size);
-    int (*set_para_value)           (esp_cam_sensor_device_t *dev, uint32_t id, const void *arg, size_t size);
+    int (*query_para_desc)(esp_cam_sensor_device_t *dev, esp_cam_sensor_param_desc_t *qdesc);
+    int (*get_para_value)(esp_cam_sensor_device_t *dev, uint32_t id, void *arg, size_t size);
+    int (*set_para_value)(esp_cam_sensor_device_t *dev, uint32_t id, const void *arg, size_t size);
 
     /*!< Common */
-    int (*query_support_formats)    (esp_cam_sensor_device_t *dev, esp_cam_sensor_format_array_t *parry);
-    int (*query_support_capability) (esp_cam_sensor_device_t *dev, esp_cam_sensor_capability_t *arg);
-    int (*set_format)               (esp_cam_sensor_device_t *dev, const esp_cam_sensor_format_t *format);
-    int (*get_format)               (esp_cam_sensor_device_t *dev, esp_cam_sensor_format_t *format);
-    int (*priv_ioctl)               (esp_cam_sensor_device_t *dev, uint32_t cmd, void *arg);
-    int (*del)                      (esp_cam_sensor_device_t *dev);
+    int (*query_support_formats)(esp_cam_sensor_device_t *dev, esp_cam_sensor_format_array_t *parry);
+    int (*query_support_capability)(esp_cam_sensor_device_t *dev, esp_cam_sensor_capability_t *arg);
+    int (*set_format)(esp_cam_sensor_device_t *dev, const esp_cam_sensor_format_t *format);
+    int (*get_format)(esp_cam_sensor_device_t *dev, esp_cam_sensor_format_t *format);
+    int (*priv_ioctl)(esp_cam_sensor_device_t *dev, uint32_t cmd, void *arg);
+    int (*del)(esp_cam_sensor_device_t *dev);
 } esp_cam_sensor_ops_t;
 
 /**

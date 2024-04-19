@@ -9,22 +9,25 @@ if CAMERA_SC2336
         bool "Auto detect SC2336"
         default y
         help
-            When enabled, it provides the ability in application layer to automatically detect camera sensors one by one.
+            When enabled, it provides the ability in application layer to automatically
+            detect camera sensors one by one.
 
     if CAMERA_SC2336_AUTO_DETECT
         config CAMERA_SC2336_AUTO_DETECT_MIPI_INTERFACE_SENSOR
             bool "Detect for MIPI interface sensor"
             default y
             help
-                When enabled, you don't need to call sc2336_detect manaually, SC2336 will be automatically detected
-                and connected to the MIPI CSI interface when the application starts.
+                When enabled, you don't need to call sc2336_detect manaually, SC2336 will
+                be automatically detected and connected to the MIPI CSI interface when
+                the application starts.
 
         config CAMERA_SC2336_AUTO_DETECT_DVP_INTERFACE_SENSOR
             bool "Detect for DVP interface sensor"
             default n
             help
-                When enabled, you don't need to call sc2336_detect manaually, SC2336 will be automatically detected
-                and connected to the DVP interface when the application starts.
+                When enabled, you don't need to call sc2336_detect manaually, SC2336 will
+                be automatically detected and connected to the DVP interface when the
+                application starts.
     endif
 
     config CAMERA_SC2336_MIPI_IF_FORMAT_INDEX_DAFAULT

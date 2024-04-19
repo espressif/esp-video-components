@@ -51,22 +51,31 @@ static const esp_cam_sensor_isp_info_t ov5647_isp_info[] = {
             .bayer_type = ESP_CAM_SENSOR_BAYER_BGGR,
         }
     },
+    {
+        .isp_v1_info = {
+            .version = SENSOR_ISP_INFO_VERSION_DEFAULT,
+            .pclk = 81666700,
+            .vts = 1896,
+            .hts = 984,
+            .bayer_type = ESP_CAM_SENSOR_BAYER_BGGR,
+        }
+    },
 };
 
 static const esp_cam_sensor_format_t ov5647_format_info[] = {
     {
-        .name = "MIPI_2lane_24Minput_RAW8_800x800_50fps",
+        .name = "MIPI_2lane_24Minput_RAW8_800x1280_50fps",
         .format = ESP_CAM_SENSOR_PIXFORMAT_RAW8,
         .port = ESP_CAM_SENSOR_MIPI_CSI,
         .xclk = 24000000,
         .width = 800,
-        .height = 800,
-        .regs = ov5647_input_24M_MIPI_2lane_raw8_800x800_50fps,
-        .regs_size = ARRAY_SIZE(ov5647_input_24M_MIPI_2lane_raw8_800x800_50fps),
+        .height = 1280,
+        .regs = ov5647_input_24M_MIPI_2lane_raw8_800x1280_50fps,
+        .regs_size = ARRAY_SIZE(ov5647_input_24M_MIPI_2lane_raw8_800x1280_50fps),
         .fps = 50,
         .isp_info = &ov5647_isp_info[0],
         .mipi_info = {
-            .mipi_clk = OV5647_MIPI_CSI_LINE_RATE_800x800_50FPS,
+            .mipi_clk = OV5647_MIPI_CSI_LINE_RATE_800x1280_50FPS,
             .lane_num = 2,
             .line_sync_en = CONFIG_CAMERA_OV5647_CSI_LINESYNC_ENABLE ? true : false,
         },
@@ -85,6 +94,24 @@ static const esp_cam_sensor_format_t ov5647_format_info[] = {
         .isp_info = &ov5647_isp_info[1],
         .mipi_info = {
             .mipi_clk = OV5647_MIPI_CSI_LINE_RATE_800x640_50FPS,
+            .lane_num = 2,
+            .line_sync_en = CONFIG_CAMERA_OV5647_CSI_LINESYNC_ENABLE ? true : false,
+        },
+        .reserved = NULL,
+    },
+    {
+        .name = "MIPI_2lane_24Minput_RAW8_800x800_50fps",
+        .format = ESP_CAM_SENSOR_PIXFORMAT_RAW8,
+        .port = ESP_CAM_SENSOR_MIPI_CSI,
+        .xclk = 24000000,
+        .width = 800,
+        .height = 800,
+        .regs = ov5647_input_24M_MIPI_2lane_raw8_800x800_50fps,
+        .regs_size = ARRAY_SIZE(ov5647_input_24M_MIPI_2lane_raw8_800x800_50fps),
+        .fps = 50,
+        .isp_info = &ov5647_isp_info[2],
+        .mipi_info = {
+            .mipi_clk = OV5647_MIPI_CSI_LINE_RATE_800x800_50FPS,
             .lane_num = 2,
             .line_sync_en = CONFIG_CAMERA_OV5647_CSI_LINESYNC_ENABLE ? true : false,
         },
@@ -185,13 +212,21 @@ static esp_err_t ov5647_set_stream(esp_cam_sensor_device_t *dev, int enable)
         val |= OV5647_MIPI_CTRL00_CLOCK_LANE_GATE | OV5647_MIPI_CTRL00_CLOCK_LANE_DISABLE;
     }
 
-    ret = ov5647_write(dev->sccb_handle, OV5647_REG_MIPI_CTRL00, val);
-    ESP_RETURN_ON_FALSE(ret == ESP_OK, ret, TAG, "write mipi ctrl00 failed");
+    ret = ov5647_write(dev->sccb_handle, 0x4800, CONFIG_CAMERA_OV5647_CSI_LINESYNC_ENABLE ? 0x14 : 0x00);
+    ESP_RETURN_ON_FALSE(ret == ESP_OK, ret, TAG, "write pad out failed");
 
-    ret = ov5647_write(dev->sccb_handle, OV5647_REG_FRAME_OFF_NUMBER, enable ? 0x00 : 0x0f);
-    ESP_RETURN_ON_FALSE(ret == ESP_OK, ret, TAG, "write frame off failed");
+#if CONFIG_CAMERA_OV5647_ISP_AF_ENABLE
+    ret = ov5647_write(dev->sccb_handle, 0x3002, enable ? 0x01 : 0x00);
+    ESP_RETURN_ON_FALSE(ret == ESP_OK, ret, TAG, "write pad out failed");
 
-    ret = ov5647_write(dev->sccb_handle, OV5640_REG_PAD_OUT, enable ? 0x00 : 0x01);
+    ret = ov5647_write(dev->sccb_handle, 0x3010, enable ? 0x01 : 0x00);
+    ESP_RETURN_ON_FALSE(ret == ESP_OK, ret, TAG, "write pad out failed");
+
+    ret = ov5647_write(dev->sccb_handle, 0x300D, enable ? 0x01 : 0x00);
+    ESP_RETURN_ON_FALSE(ret == ESP_OK, ret, TAG, "write pad out failed");
+#endif
+
+    ret = ov5647_write(dev->sccb_handle, 0x0100, enable ? 0x01 : 0x00);
     ESP_RETURN_ON_FALSE(ret == ESP_OK, ret, TAG, "write pad out failed");
 
     dev->stream_status = enable;
@@ -367,7 +402,7 @@ static esp_err_t ov5647_power_on(esp_cam_sensor_device_t *dev)
         ret = gpio_config(&conf);
         ESP_RETURN_ON_FALSE(ret == ESP_OK, ret, TAG, "pwdn pin config failed");
 
-        // carefull, logic is inverted compared to reset pin
+        // carefully, logic is inverted compared to reset pin
         gpio_set_level(dev->pwdn_pin, 1);
         delay_ms(10);
         gpio_set_level(dev->pwdn_pin, 0);
