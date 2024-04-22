@@ -9,15 +9,17 @@ if CAMERA_OV5645
         bool "Auto detect OV5645"
         default y
         help
-           When enabled, it provides the ability in application layer to automatically detect camera sensors one by one.
+            When enabled, it provides the ability in application layer to automatically
+            detect camera sensors one by one.
 
     if CAMERA_OV5645_AUTO_DETECT
         config CAMERA_OV5645_AUTO_DETECT_MIPI_INTERFACE_SENSOR
             bool "Detect for MIPI interface sensor"
             default y
             help
-                When enabled, you don't need to call ov5645_detect manaually, OV5645 will be automatically detected
-                and connected to the MIPI CSI interface when the application starts.
+                When enabled, you don't need to call ov5645_detect manaually, OV5645
+                will be automatically detected and connected to the MIPI CSI interface
+                when the application starts.
     endif
 
     config CAMERA_OV5645_MIPI_IF_FORMAT_INDEX_DAFAULT
@@ -35,7 +37,7 @@ if CAMERA_OV5645
         range 1 1
         help
             Set the number of connected OV5645.
-    
+
     config CAMERA_OV5645_CSI_LINESYNC_ENABLE
         bool "CSI Line sync enable"
         default y

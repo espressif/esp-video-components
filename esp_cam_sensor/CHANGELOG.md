@@ -1,3 +1,7 @@
+## 0.2.2
+
+- Fixed wrong initialization sequence for OV5647
+
 ## 0.2.1
 
 - Add line_sync_en parameter to mipi_info struct
@@ -12,5 +16,5 @@
 
 ## 0.1.0
 
-- Inititial version for esp_cam_sensor component
+- Initial version for esp_cam_sensor component
 - Add support for SC2336 camera sensor driver

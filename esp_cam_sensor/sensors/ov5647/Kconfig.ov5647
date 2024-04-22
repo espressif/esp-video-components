@@ -9,15 +9,17 @@ if CAMERA_OV5647
         bool "Auto detect OV5647"
         default y
         help
-           When enabled, it provides the ability in application layer to automatically detect camera sensors one by one.
+            When enabled, it provides the ability in application layer to automatically
+            detect camera sensors one by one.
 
     if CAMERA_OV5647_AUTO_DETECT
         config CAMERA_OV5647_AUTO_DETECT_MIPI_INTERFACE_SENSOR
             bool "Detect for MIPI interface sensor"
             default y
             help
-                When enabled, you don't need to call ov5647_detect manaually, ov5647 will be automatically detected
-                and connected to the MIPI CSI interface when the application starts.
+                When enabled, you don't need to call ov5647_detect manaually, ov5647
+                will be automatically detected and connected to the MIPI CSI interface
+                when the application starts.
     endif
 
     config CAMERA_OV5647_MIPI_IF_FORMAT_INDEX_DAFAULT
@@ -35,16 +37,17 @@ if CAMERA_OV5647
         range 1 1
         help
             Set the number of connected OV5647.
-    
+
     config CAMERA_OV5647_CSI_LINESYNC_ENABLE
         bool "CSI Line sync enable"
         default y
         help
             If enabled, send line short packet for each line.
-    
+
     config CAMERA_OV5647_ISP_AF_ENABLE
         bool "AF(auto focus) enable"
         default y
         help
-            If enabled, the camera module will enable some IO pins to drive the VCM motor.
+            If enabled, the camera module will enable some IO pins to drive the
+            VCM motor.
 endif

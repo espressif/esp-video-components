@@ -308,7 +308,7 @@ static esp_err_t ov5645_power_on(esp_cam_sensor_device_t *dev)
         conf.mode = GPIO_MODE_OUTPUT;
         ret = gpio_config(&conf);
 
-        // carefull, logic is inverted compared to reset pin
+        // carefully, logic is inverted compared to reset pin
         gpio_set_level(dev->pwdn_pin, 1);
         delay_ms(10);
         gpio_set_level(dev->pwdn_pin, 0);

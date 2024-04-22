@@ -32,13 +32,13 @@ extern "C" {
 
 #define SC2336_REG_TOTAL_WIDTH_H           0x320c // HTS,line width
 #define SC2336_REG_TOTAL_WIDTH_L           0x320d
-#define SC2336_REG_TOTAL_HEIGHT_H          0x320e // VTS,frame hight
+#define SC2336_REG_TOTAL_HEIGHT_H          0x320e // VTS,frame height
 #define SC2336_REG_TOTAL_HEIGHT_L          0x320f
 
 #define SC2336_REG_OUT_WIDTH_H             0x3208 // width
 #define SC2336_REG_OUT_WIDTH_L             0x3209
-#define SC2336_REG_OUT_HEIHT_H             0x320a // hight
-#define SC2336_REG_OUT_HEIHT_L             0x320b
+#define SC2336_REG_OUT_HEIGHT_H            0x320a // height
+#define SC2336_REG_OUT_HEIGHT_L            0x320b
 
 #define SC2336_REG_OUT_START_PIXEL_H       0x3210 // start X
 #define SC2336_REG_OUT_START_PIXEL_L       0x3211

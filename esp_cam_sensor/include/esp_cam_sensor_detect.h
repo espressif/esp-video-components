@@ -13,14 +13,14 @@ extern "C" {
 #endif
 
 /**
- * @brief Define a camera detect function which can be executed automatically in application layer.
+ * @brief Define a camera detect function which can be executed automatically, in application layer.
  *
  * @param f  function name (identifier)
  * @param i  interface which is used to communicate with the camera
  * @param (varargs)  optional, additional attributes for the function declaration (such as IRAM_ATTR)
  *
  * The function defined using this macro must return esp_cam_sensor_device_t on success. Any other value will be
- * logged and the automatical process in application layer should be abort.
+ * logged and the automatic, process in application layer should be abort.
  *
  * There should be at lease one undefined symble to be added in the camera driver in order to avoid
  * the optimization of the linker. Because otherwise the linker will ignore camera driver as it has
