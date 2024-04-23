@@ -1,3 +1,7 @@
+## 0.3.0
+
+- Added support for OV2640 dvp camera sensor driver
+
 ## 0.2.2
 
 - Fixed wrong initialization sequence for OV5647
