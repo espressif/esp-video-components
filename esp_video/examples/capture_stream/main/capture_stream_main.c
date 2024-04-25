@@ -48,9 +48,42 @@ static const esp_video_init_csi_config_t csi_config[] = {
 };
 #endif
 
+#if CONFIG_EXAMPLE_ENABLE_DVP_CAM_SENSOR
+static const esp_video_init_dvp_config_t dvp_config[] = {
+    {
+        .sccb_config = {
+            .init_sccb = true,
+            .i2c_config = {
+                .port      = CONFIG_EXAMPLE_DVP_SCCB_I2C_PORT,
+                .scl_pin   = CONFIG_EXAMPLE_DVP_SCCB_I2C_SCL_PIN,
+                .sda_pin   = CONFIG_EXAMPLE_DVP_SCCB_I2C_SDA_PIN,
+            },
+            .freq      = CONFIG_EXAMPLE_DVP_SCCB_I2C_FREQ,
+        },
+        .reset_pin = CONFIG_EXAMPLE_DVP_CAM_SENSOR_RESET_PIN,
+        .pwdn_pin  = CONFIG_EXAMPLE_DVP_CAM_SENSOR_PWDN_PIN,
+        .dvp_pin = {
+            .data_width = CAM_CTLR_DATA_WIDTH_8,
+            .data_io = {
+                CONFIG_EXAMPLE_DVP_D0_PIN, CONFIG_EXAMPLE_DVP_D1_PIN, CONFIG_EXAMPLE_DVP_D2_PIN, CONFIG_EXAMPLE_DVP_D3_PIN,
+                CONFIG_EXAMPLE_DVP_D4_PIN, CONFIG_EXAMPLE_DVP_D5_PIN, CONFIG_EXAMPLE_DVP_D6_PIN, CONFIG_EXAMPLE_DVP_D7_PIN,
+            },
+            .vsync_io = CONFIG_EXAMPLE_DVP_VSYNC_PIN,
+            .de_io = CONFIG_EXAMPLE_DVP_DE_PIN,
+            .pclk_io = CONFIG_EXAMPLE_DVP_PCLK_PIN,
+            .xclk_io = CONFIG_EXAMPLE_DVP_XCLK_PIN,
+        },
+        .xclk_freq = CONFIG_EXAMPLE_DVP_XCLK_FREQ,
+    },
+};
+#endif
+
 static const esp_video_init_config_t cam_config = {
-#if CONFIG_EXAMPLE_ENABLE_MIPI_CSI_CAM_SENSOR > 0
+#if CONFIG_EXAMPLE_ENABLE_MIPI_CSI_CAM_SENSOR
     .csi      = csi_config,
+#endif
+#if CONFIG_EXAMPLE_ENABLE_DVP_CAM_SENSOR
+    .dvp      = dvp_config,
 #endif
 };
 
@@ -69,8 +102,10 @@ static esp_err_t camera_capture_stream(void)
     struct v4l2_format init_format;
     struct v4l2_requestbuffers req;
     struct v4l2_capability capability;
+#if CONFIG_EXAMPLE_ENABLE_CAM_SENSOR_PIC_VFLIP || CONFIG_EXAMPLE_ENABLE_CAM_SENSOR_PIC_HFLIP
     struct v4l2_ext_controls controls;
     struct v4l2_ext_control control[1];
+#endif
     const int type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
 
     fd = open("/dev/video0", O_RDONLY);
@@ -134,6 +169,7 @@ static esp_err_t camera_capture_stream(void)
         goto exit_0;
     }
 
+#if CONFIG_EXAMPLE_ENABLE_CAM_SENSOR_PIC_VFLIP
     controls.ctrl_class = V4L2_CTRL_CLASS_USER;
     controls.count      = 1;
     controls.controls   = control;
@@ -142,7 +178,9 @@ static esp_err_t camera_capture_stream(void)
     if (ioctl(fd, VIDIOC_S_EXT_CTRLS, &controls) != 0) {
         ESP_LOGW(TAG, "failed to mirror the frame horizontally and skip this step");
     }
+#endif
 
+#if CONFIG_EXAMPLE_ENABLE_CAM_SENSOR_PIC_HFLIP
     controls.ctrl_class = V4L2_CTRL_CLASS_USER;
     controls.count      = 1;
     controls.controls   = control;
@@ -151,6 +189,7 @@ static esp_err_t camera_capture_stream(void)
     if (ioctl(fd, VIDIOC_S_EXT_CTRLS, &controls) != 0) {
         ESP_LOGW(TAG, "failed to mirror the frame horizontally and skip this step");
     }
+#endif
 
     while (1) {
         struct v4l2_fmtdesc fmtdesc = {

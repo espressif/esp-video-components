@@ -10,6 +10,7 @@
 #include <stdbool.h>
 #include "esp_err.h"
 #include "driver/i2c_master.h"
+#include "esp_cam_ctlr_dvp.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -45,10 +46,25 @@ typedef struct esp_video_init_csi_config {
 } esp_video_init_csi_config_t;
 
 /**
+ * @brief DVP initialization and camera sensor connection configuration
+ */
+typedef struct esp_video_init_dvp_config {
+    esp_video_init_sccb_config_t sccb_config;   /*!< Camera sensor SCCB configuration */
+
+    int8_t  reset_pin;                          /*!< Camera sensor reset pin, if hardware has no reset pin, set reset_pin to be -1 */
+    int8_t  pwdn_pin;                           /*!< Camera sensor power down pin, if hardware has no power down pin, set pwdn_pin to be -1 */
+
+    esp_cam_ctlr_dvp_pin_config_t dvp_pin;      /*!< DVP pin configuration */
+
+    uint32_t xclk_freq;                         /*!< DVP hardware output clock frequency */
+} esp_video_init_dvp_config_t;
+
+/**
  * @brief Video hardware initialization configuration
  */
 typedef struct esp_video_init_config {
-    const esp_video_init_csi_config_t *csi;    /*!< MIPI CSI initialization configuration */
+    const esp_video_init_csi_config_t *csi;     /*!< MIPI CSI initialization configuration */
+    const esp_video_init_dvp_config_t *dvp;     /*!< DVP initialization configuration array */
 } esp_video_init_config_t;
 
 /**

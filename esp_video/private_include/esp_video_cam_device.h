@@ -26,6 +26,19 @@ extern "C" {
 esp_err_t esp_video_create_csi_video_device(esp_cam_sensor_device_t *cam_dev);
 #endif
 
+/**
+ * @brief Create DVP video device
+ *
+ * @param cam_dev camera sensor device
+ *
+ * @return
+ *      - ESP_OK on success
+ *      - Others if failed
+ */
+#if CONFIG_ESP_VIDEO_ENABLE_DVP_VIDEO_DEVICE
+esp_err_t esp_video_create_dvp_video_device(esp_cam_sensor_device_t *cam_dev);
+#endif
+
 #ifdef __cplusplus
 }
 #endif

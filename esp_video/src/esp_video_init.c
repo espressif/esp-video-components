@@ -15,27 +15,70 @@
 
 #include "esp_video_init.h"
 #include "esp_video_cam_device.h"
+#include "esp_private/esp_cam_dvp.h"
+
+#define SCCB_NUM_MAX                I2C_NUM_MAX
+
+#define INTF_PORT_NAME(port)        (((port) == ESP_CAM_SENSOR_DVP) ? "DVP" : "CSI")
+
+/**
+ * @brief SCCB initialization mark
+ */
+typedef struct sccb_mark {
+    i2c_master_bus_handle_t handle;             /*!< I2C master handle */
+    const esp_video_init_sccb_config_t *config; /*!< SCCB initialization config pointer */
+    uint16_t dev_addr;                          /*!< Slave device address */
+    esp_cam_sensor_port_t port;                 /*!< Slave device data interface */
+} esp_video_init_sccb_mark_t;
 
 static const char *TAG = "esp_video_init";
 
 /**
- * @brief Create SCCB device
+ * @brief Create I2C master handle
  *
+ * @param mark SCCB initialization make array
+ * @param port Slave device data interface
  * @param init_sccb_config SCCB initialization configuration
  * @param dev_addr device address
  *
  * @return
- *      - SCCB handle on success
+ *      - I2C master handle on success
  *      - NULL if failed
  */
-static esp_sccb_io_handle_t create_sccb_device(const esp_video_init_sccb_config_t *init_sccb_config, uint16_t dev_addr)
+static i2c_master_bus_handle_t create_i2c_master_bus(esp_video_init_sccb_mark_t *mark,
+        esp_cam_sensor_port_t port,
+        const esp_video_init_sccb_config_t *init_sccb_config,
+        uint16_t dev_addr)
 {
     esp_err_t ret;
-    esp_sccb_io_handle_t sccb_io;
-    sccb_i2c_config_t sccb_config = {0};
-    i2c_master_bus_handle_t bus_handle;
+    i2c_master_bus_handle_t bus_handle = NULL;
+    int i2c_port = init_sccb_config->i2c_config.port;
 
-    if (init_sccb_config->init_sccb) {
+    if (i2c_port > SCCB_NUM_MAX) {
+        return NULL;
+    }
+
+    if (mark[i2c_port].handle != NULL) {
+        if (init_sccb_config->i2c_config.scl_pin != mark[i2c_port].config->i2c_config.scl_pin) {
+            ESP_LOGE(TAG, "Interface %s and %s: I2C port %d SCL pin is mismatched", INTF_PORT_NAME(i2c_port),
+                     INTF_PORT_NAME(mark[i2c_port].port), i2c_port);
+            return NULL;
+        }
+
+        if (init_sccb_config->i2c_config.sda_pin != mark[i2c_port].config->i2c_config.sda_pin) {
+            ESP_LOGE(TAG, "Interface %s and %s: I2C port %d SDA pin is mismatched", INTF_PORT_NAME(i2c_port),
+                     INTF_PORT_NAME(mark[i2c_port].port), i2c_port);
+            return NULL;
+        }
+
+        if (dev_addr == mark[i2c_port].dev_addr) {
+            ESP_LOGE(TAG, "Interface %s and %s: use same SCCB device address %d", INTF_PORT_NAME(i2c_port),
+                     INTF_PORT_NAME(mark[i2c_port].port), dev_addr);
+            return NULL;
+        }
+
+        bus_handle = mark[i2c_port].handle;
+    } else {
         i2c_master_bus_config_t i2c_bus_config = {0};
 
         i2c_bus_config.clk_source = I2C_CLK_SRC_DEFAULT;
@@ -50,8 +93,46 @@ static esp_sccb_io_handle_t create_sccb_device(const esp_video_init_sccb_config_
             ESP_LOGE(TAG, "failed to initialize I2C master bus port %d", init_sccb_config->i2c_config.port);
             return NULL;
         }
+
+        mark[i2c_port].handle = bus_handle;
+        mark[i2c_port].config = init_sccb_config;
+        mark[i2c_port].dev_addr = dev_addr;
+        mark[i2c_port].port = port;
+    }
+
+    return bus_handle;
+}
+
+/**
+ * @brief Create SCCB device
+ *
+ * @param mark SCCB initialization make array
+ * @param port Slave device data interface
+ * @param init_sccb_config SCCB initialization configuration
+ * @param dev_addr device address
+ *
+ * @return
+ *      - SCCB handle on success
+ *      - NULL if failed
+ */
+static esp_sccb_io_handle_t create_sccb_device(esp_video_init_sccb_mark_t *mark,
+        esp_cam_sensor_port_t port,
+        const esp_video_init_sccb_config_t *init_sccb_config,
+        uint16_t dev_addr)
+{
+    esp_err_t ret;
+    esp_sccb_io_handle_t sccb_io;
+    sccb_i2c_config_t sccb_config = {0};
+    i2c_master_bus_handle_t bus_handle;
+
+    if (init_sccb_config->init_sccb) {
+        bus_handle = create_i2c_master_bus(mark, port, init_sccb_config, dev_addr);
     } else {
         bus_handle = init_sccb_config->i2c_handle;
+    }
+
+    if (!bus_handle) {
+        return NULL;
     }
 
     sccb_config.dev_addr_length = I2C_ADDR_BIT_LEN_7,
@@ -78,6 +159,7 @@ static esp_sccb_io_handle_t create_sccb_device(const esp_video_init_sccb_config_
 esp_err_t esp_video_init(const esp_video_init_config_t *config)
 {
     esp_err_t ret;
+    esp_video_init_sccb_mark_t sccb_mark[SCCB_NUM_MAX] = {0};
 
     if (config == NULL) {
         ESP_LOGW(TAG, "Please validate camera config");
@@ -90,7 +172,7 @@ esp_err_t esp_video_init(const esp_video_init_config_t *config)
             esp_cam_sensor_config_t cfg;
             esp_cam_sensor_device_t *cam_dev;
 
-            cfg.sccb_handle = create_sccb_device(&config->csi->sccb_config, p->sccb_addr);
+            cfg.sccb_handle = create_sccb_device(sccb_mark, ESP_CAM_SENSOR_MIPI_CSI, &config->csi->sccb_config, p->sccb_addr);
             if (!cfg.sccb_handle) {
                 return ESP_FAIL;
             }
@@ -106,6 +188,43 @@ esp_err_t esp_video_init(const esp_video_init_config_t *config)
             ret = esp_video_create_csi_video_device(cam_dev);
             if (ret != ESP_OK) {
                 ESP_LOGE(TAG, "failed to create MIPI-CSI video device");
+                return ret;
+            }
+        }
+#endif
+
+#if CONFIG_ESP_VIDEO_ENABLE_DVP_VIDEO_DEVICE
+        if (p->port == ESP_CAM_SENSOR_DVP && config->dvp != NULL) {
+            int dvp_ctlr_id = 0;
+            esp_cam_sensor_config_t cfg;
+            esp_cam_sensor_device_t *cam_dev;
+
+            ret = esp_cam_ctlr_dvp_init(dvp_ctlr_id, CAM_CLK_SRC_DEFAULT, &config->dvp->dvp_pin);
+            if (ret != ESP_OK) {
+                return ret;
+            }
+
+            ret = esp_cam_ctlr_dvp_output_clock(dvp_ctlr_id, CAM_CLK_SRC_DEFAULT, config->dvp->xclk_freq);
+            if (ret != ESP_OK) {
+                return ret;
+            }
+
+            cfg.sccb_handle = create_sccb_device(sccb_mark, ESP_CAM_SENSOR_DVP, &config->dvp->sccb_config, p->sccb_addr);
+            if (!cfg.sccb_handle) {
+                return ESP_FAIL;
+            }
+
+            cfg.reset_pin = config->dvp->reset_pin,
+            cfg.pwdn_pin = config->dvp->pwdn_pin,
+            cam_dev = (*(p->fn))((void *)&cfg);
+            if (!cam_dev) {
+                ESP_LOGE(TAG, "failed to detect DVP camera");
+                return ESP_FAIL;
+            }
+
+            ret = esp_video_create_dvp_video_device(cam_dev);
+            if (ret != ESP_OK) {
+                ESP_LOGE(TAG, "failed to create DVP video device");
                 return ret;
             }
         }
