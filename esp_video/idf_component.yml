@@ -2,7 +2,7 @@ version: "0.1.0"
 description: A framework designed to support Linux V4L2, multiple cameras and video streaming.
 targets:
   - esp32p4
-url: https://github.com/espressif/esp-video-components/esp_video
+url: https://github.com/espressif/esp-video-components/tree/master/esp_video
 repository: https://github.com/espressif/esp-video-components.git
 issues: https://github.com/espressif/esp-video-components/issues
 dependencies:
