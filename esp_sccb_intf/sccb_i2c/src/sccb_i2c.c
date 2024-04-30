@@ -32,7 +32,7 @@ static esp_err_t s_sccb_i2c_transmit_receive_reg_a8v16(esp_sccb_io_t *io_handle,
 static esp_err_t s_sccb_i2c_transmit_receive_reg_a16v16(esp_sccb_io_t *io_handle, const uint8_t *write_buffer, size_t write_size, uint8_t *read_buffer, size_t read_size, int xfer_timeout_ms);
 static esp_err_t s_sccb_i2c_destroy(esp_sccb_io_t *io_handle);
 
-esp_err_t sccb_new_i2c_io(i2c_master_bus_handle_t bus_handle, const sccb_i2c_config_t* config, esp_sccb_io_handle_t *io_handle)
+esp_err_t sccb_new_i2c_io(i2c_master_bus_handle_t bus_handle, const sccb_i2c_config_t *config, esp_sccb_io_handle_t *io_handle)
 {
     esp_err_t ret = ESP_FAIL;
     ESP_RETURN_ON_FALSE(bus_handle && config && io_handle, ESP_ERR_INVALID_ARG, TAG, "invalid argument");
@@ -134,5 +134,8 @@ static esp_err_t s_sccb_i2c_destroy(esp_sccb_io_t *io_handle)
 {
     sccb_io_i2c_t *io_i2c = __containerof(io_handle, sccb_io_i2c_t, base);
     ESP_RETURN_ON_ERROR(i2c_master_bus_rm_device(io_i2c->i2c_device), TAG, "failed to remove device");
+
+    heap_caps_free(io_i2c);
+
     return ESP_OK;
 }
