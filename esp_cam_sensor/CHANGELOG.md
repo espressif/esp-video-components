@@ -1,3 +1,8 @@
+## 0.3.1
+
+- Added support for OV5645 640x480、1920x1080、2592x1944 resolution
+- Fix OV2640 compile issue
+
 ## 0.3.0
 
 - Added support for OV2640 dvp camera sensor driver
