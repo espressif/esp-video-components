@@ -32,8 +32,14 @@ check_pre_commit:
         git fetch origin $CI_COMMIT_SHA --depth=2 ${GIT_FETCH_EXTRA_FLAGS}
         export GIT_DIFF_OUTPUT=$(git diff --name-only $CI_COMMIT_SHA~1 $CI_COMMIT_SHA)
       fi
-      export MODIFIED_FILES=$(echo $GIT_DIFF_OUTPUT | xargs)
-      # print the MODIFIED_FILES
-      echo "MODIFIED_FILES: $MODIFIED_FILES"
+    - MODIFIED_FILES=$(echo $GIT_DIFF_OUTPUT | xargs)
+    - echo "MODIFIED_FILES=$MODIFIED_FILES" >> pipeline.env
     - pre-commit install --allow-missing-config -t pre-commit -t commit-msg
     - pre-commit run --files $MODIFIED_FILES
+  artifacts:
+    reports:
+      dotenv: pipeline.env
+    paths:
+      - pipeline.env
+    expire_in: 1 week
+    when: always
