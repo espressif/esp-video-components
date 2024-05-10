@@ -32,6 +32,7 @@
   variables:
     IDF_CI_BUILD: "1"
   script:
+    - echo "MODIFIED_FILES $MODIFIED_FILES"
     - pip install --upgrade idf-component-manager
     - pip install idf_build_apps==1.1.4
     - export PEDANTIC_FLAGS="-DIDF_CI_BUILD -Werror -Werror=deprecated-declarations -Werror=unused-variable -Werror=unused-but-set-variable -Werror=unused-function"
