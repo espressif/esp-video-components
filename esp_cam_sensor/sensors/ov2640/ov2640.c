@@ -52,7 +52,7 @@ static const esp_cam_sensor_isp_info_t ov2640_isp_info[] = {
             .bayer_type = ESP_CAM_SENSOR_BAYER_BGGR,
         }
     },
-}
+};
 
 static const esp_cam_sensor_format_t ov2640_format_info[] = {
     {
