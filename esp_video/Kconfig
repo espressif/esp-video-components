@@ -1,5 +1,9 @@
 menu "Espressif Video Configuration"
 
+    config ESP_VIDEO_ENABLE_H264_VIDEO_DEVICE
+        bool
+        default n
+
     config ESP_VIDEO_CHECK_PARAMETERS
         bool "Check Video Function Parameters"
         default y
@@ -20,4 +24,13 @@ menu "Espressif Video Configuration"
         default y
         help
             Select this option, enable DVP based video device.
+
+    menuconfig ESP_VIDEO_ENABLE_HW_H264_VIDEO_DEVICE
+        bool "Enable Hardware H.264 based Video Device"
+        depends on IDF_TARGET_ESP32P4
+        select ESP_VIDEO_ENABLE_H264_VIDEO_DEVICE
+        default n
+        help
+            Select this option, enable hardware H.264 based video device.
+
 endmenu

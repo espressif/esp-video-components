@@ -71,6 +71,8 @@ extern "C" {
 #define GET_STREAM_FORMAT_PIXEL_FORMAT(st)                              \
     GET_FORMAT_PIXEL_FORMAT(STREAM_FORMAT(st))
 
+/* video capture operations */
+
 #define CAPTURE_VIDEO_STREAM(v)             ((v)->stream)
 #define CAPTURE_VIDEO_BUF_SIZE(v)           STREAM_BUFFER_SIZE(CAPTURE_VIDEO_STREAM(v))
 
@@ -114,8 +116,90 @@ extern "C" {
 #define CAPTURE_VIDEO_GET_QUEUED_ELEMENT(v)                             \
     esp_video_get_queued_element(v, V4L2_BUF_TYPE_VIDEO_CAPTURE)
 
+/* video M2M operations */
+
 #define M2M_VIDEO_CAPTURE_STREAM(v)         (&(v)->stream[0])
 #define M2M_VIDEO_OUTPUT_STREAM(v)          (&(v)->stream[1])
+
+#define M2M_VIDEO_CAPTURE_BUF_SIZE(v)       STREAM_BUFFER_SIZE(M2M_VIDEO_CAPTURE_STREAM(v))
+#define M2M_VIDEO_OUTPUT_BUF_SIZE(v)        STREAM_BUFFER_SIZE(M2M_VIDEO_OUTPUT_STREAM(v))
+
+#define M2M_VIDEO_DONE_CAPTURE_BUF(v, b, n) esp_video_done_buffer(v, V4L2_BUF_TYPE_VIDEO_CAPTURE, b, n)
+#define M2M_VIDEO_DONE_OUTPUT_BUF(v, b, n)  esp_video_done_buffer(v, V4L2_BUF_TYPE_VIDEO_OUTPUT, b, n)
+
+#define M2M_VIDEO_SET_CAPTURE_FORMAT_WIDTH(v, w)                        \
+    SET_STREAM_FORMAT_WIDTH(M2M_VIDEO_CAPTURE_STREAM(v), w)
+
+#define M2M_VIDEO_SET_OUTPUT_FORMAT_WIDTH(v, w)                         \
+    SET_STREAM_FORMAT_WIDTH(M2M_VIDEO_OUTPUT_STREAM(v), w)
+
+#define M2M_VIDEO_SET_CAPTURE_FORMAT_HEIGHT(v, h)                       \
+    SET_STREAM_FORMAT_HEIGHT(M2M_VIDEO_CAPTURE_STREAM(v), h)
+
+#define M2M_VIDEO_SET_OUTPUT_FORMAT_HEIGHT(v, h)                        \
+    SET_STREAM_FORMAT_HEIGHT(M2M_VIDEO_OUTPUT_STREAM(v), h)
+
+#define M2M_VIDEO_SET_CAPTURE_FORMAT_PIXEL_FORMAT(v, f)                 \
+    SET_STREAM_FORMAT_PIXEL_FORMAT(M2M_VIDEO_CAPTURE_STREAM(v), f)
+
+#define M2M_VIDEO_SET_OUTPUT_FORMAT_PIXEL_FORMAT(v, f)                  \
+    SET_STREAM_FORMAT_PIXEL_FORMAT(M2M_VIDEO_OUTPUT_STREAM(v), f)
+
+#define M2M_VIDEO_GET_CAPTURE_FORMAT_WIDTH(v)                           \
+    GET_STREAM_FORMAT_WIDTH(M2M_VIDEO_CAPTURE_STREAM(v))
+
+#define M2M_VIDEO_GET_OUTPUT_FORMAT_WIDTH(v)                            \
+    GET_STREAM_FORMAT_WIDTH(M2M_VIDEO_OUTPUT_STREAM(v))
+
+#define M2M_VIDEO_GET_CAPTURE_FORMAT_HEIGHT(v)                          \
+    GET_STREAM_FORMAT_HEIGHT(M2M_VIDEO_CAPTURE_STREAM(v))
+
+#define M2M_VIDEO_GET_OUTPUT_FORMAT_HEIGHT(v)                           \
+    GET_STREAM_FORMAT_HEIGHT(M2M_VIDEO_OUTPUT_STREAM(v))
+
+#define M2M_VIDEO_GET_CAPTURE_FORMAT_PIXEL_FORMAT(v)                    \
+    GET_STREAM_FORMAT_PIXEL_FORMAT(M2M_VIDEO_CAPTURE_STREAM(v))
+
+#define M2M_VIDEO_GET_OUTPUT_FORMAT_PIXEL_FORMAT(v)                     \
+    GET_STREAM_FORMAT_PIXEL_FORMAT(M2M_VIDEO_OUTPUT_STREAM(v))
+
+#define M2M_VIDEO_SET_CAPTURE_FORMAT(v, w, h, f)                        \
+{                                                                       \
+    M2M_VIDEO_SET_CAPTURE_FORMAT_WIDTH(v, w);                           \
+    M2M_VIDEO_SET_CAPTURE_FORMAT_HEIGHT(v, h);                          \
+    M2M_VIDEO_SET_CAPTURE_FORMAT_PIXEL_FORMAT(v, f);                    \
+}
+
+#define M2M_VIDEO_SET_OUTPUT_FORMAT(v, w, h, f)                         \
+{                                                                       \
+    M2M_VIDEO_SET_OUTPUT_FORMAT_WIDTH(v, w);                            \
+    M2M_VIDEO_SET_OUTPUT_FORMAT_HEIGHT(v, h);                           \
+    M2M_VIDEO_SET_OUTPUT_FORMAT_PIXEL_FORMAT(v, f);                     \
+}
+
+#define M2M_VIDEO_SET_CAPTURE_BUF_INFO(v, s, a, c)                      \
+    SET_STREAM_BUF_INFO(M2M_VIDEO_CAPTURE_STREAM(v), s, a, c)
+
+#define M2M_VIDEO_SET_OUTPUT_BUF_INFO(v, s, a, c)                       \
+    SET_STREAM_BUF_INFO(M2M_VIDEO_OUTPUT_STREAM(v), s, a, c)
+
+#define M2M_VIDEO_GET_CAPTURE_QUEUED_BUF(v)                             \
+    esp_video_get_queued_buffer(v, V4L2_BUF_TYPE_VIDEO_CAPTURE);
+
+#define M2M_VIDEO_GET_OUTPUT_QUEUED_BUF(v)                              \
+    esp_video_get_queued_buffer(v, V4L2_BUF_TYPE_VIDEO_OUTPUT);
+
+#define M2M_VIDEO_QUEUE_CAPTURE_ELEMENT(v, e)                           \
+    esp_video_queue_element(v, V4L2_BUF_TYPE_VIDEO_CAPTURE, e)
+
+#define M2M_VIDEO_QUEUE_OUTPUT_ELEMENT(v, e)                            \
+    esp_video_queue_element(v, V4L2_BUF_TYPE_VIDEO_OUTPUT, e)
+
+#define M2M_VIDEO_GET_CAPTURE_QUEUED_ELEMENT(v)                         \
+    esp_video_get_queued_element(v, V4L2_BUF_TYPE_VIDEO_CAPTURE)
+
+#define M2M_VIDEO_GET_OUTPUT_QUEUED_ELEMENT(v)                          \
+    esp_video_get_queued_element(v, V4L2_BUF_TYPE_VIDEO_OUTPUT)
 
 /**
  * @brief Video event.
