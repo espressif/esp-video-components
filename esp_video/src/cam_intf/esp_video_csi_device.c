@@ -16,6 +16,7 @@
 #include "driver/isp.h"
 
 #include "esp_video.h"
+#include "esp_video_sensor.h"
 #include "esp_video_cam_device.h"
 
 #define CSI_NAME                    "MIPI-CSI"
@@ -53,6 +54,8 @@ struct csi_video {
     esp_cam_ctlr_handle_t cam_ctrl_handle;
     esp_ldo_channel_handle_t ldo_handle;
     isp_proc_handle_t isp_processor;
+
+    esp_cam_sensor_device_t *cam_dev;
 };
 
 static const char *TAG = "csi_video";
@@ -214,13 +217,14 @@ static esp_err_t csi_video_init(struct esp_video *video)
     esp_err_t ret;
     esp_cam_sensor_format_t sensor_format;
     struct csi_video *csi_video = VIDEO_PRIV_DATA(struct csi_video *, video);
+    esp_cam_sensor_device_t *cam_dev = csi_video->cam_dev;
 
-    ret = esp_cam_sensor_set_format(video->cam_dev, NULL);
+    ret = esp_cam_sensor_set_format(cam_dev, NULL);
     if (ret != ESP_OK) {
         return ret;
     }
 
-    ret = esp_cam_sensor_get_format(video->cam_dev, &sensor_format);
+    ret = esp_cam_sensor_get_format(cam_dev, &sensor_format);
     if (ret != ESP_OK) {
         return ret;
     }
@@ -282,8 +286,8 @@ static esp_err_t csi_video_init(struct esp_video *video)
 static esp_err_t csi_video_start(struct esp_video *video, uint32_t type)
 {
     esp_err_t ret;
-    esp_cam_sensor_device_t *cam_dev = VIDEO_CAM_DEV(video);
     struct csi_video *csi_video = VIDEO_PRIV_DATA(struct csi_video *, video);
+    esp_cam_sensor_device_t *cam_dev = csi_video->cam_dev;
 
     esp_cam_ctlr_csi_config_t csi_config = {
         .ctlr_id = CSI_CTRL_ID,
@@ -367,7 +371,7 @@ exit_2:
     esp_isp_del_processor(csi_video->isp_processor);
     csi_video->isp_processor = NULL;
 exit_1:
-    esp_cam_del_ctlr(csi_video->cam_ctrl_handle);
+    esp_cam_ctlr_del(csi_video->cam_ctrl_handle);
     csi_video->cam_ctrl_handle = NULL;
 exit_0:
     esp_isp_disable(csi_video->isp_processor);
@@ -378,8 +382,8 @@ static esp_err_t csi_video_stop(struct esp_video *video, uint32_t type)
 {
     esp_err_t ret;
     int flags = 0;
-    esp_cam_sensor_device_t *cam_dev = VIDEO_CAM_DEV(video);
     struct csi_video *csi_video = VIDEO_PRIV_DATA(struct csi_video *, video);
+    esp_cam_sensor_device_t *cam_dev = csi_video->cam_dev;
 
     ret = esp_cam_sensor_ioctl(cam_dev, ESP_CAM_SENSOR_IOC_S_STREAM, &flags);
     if (ret != ESP_OK) {
@@ -407,7 +411,7 @@ static esp_err_t csi_video_stop(struct esp_video *video, uint32_t type)
 
     csi_video->isp_processor = NULL;
 
-    ret = esp_cam_del_ctlr(csi_video->cam_ctrl_handle);
+    ret = esp_cam_ctlr_del(csi_video->cam_ctrl_handle);
     if (ret != ESP_OK) {
         ESP_LOGE(TAG, "failed to delete cam ctlr");
         return ret;
@@ -484,6 +488,27 @@ static esp_err_t csi_video_notify(struct esp_video *video, enum esp_video_event 
     return ESP_OK;
 }
 
+static esp_err_t csi_video_set_ext_ctrl(struct esp_video *video, const struct v4l2_ext_controls *ctrls)
+{
+    struct csi_video *csi_video = VIDEO_PRIV_DATA(struct csi_video *, video);
+
+    return esp_video_set_ext_ctrls_to_sensor(csi_video->cam_dev, ctrls);
+}
+
+static esp_err_t csi_video_get_ext_ctrl(struct esp_video *video, struct v4l2_ext_controls *ctrls)
+{
+    struct csi_video *csi_video = VIDEO_PRIV_DATA(struct csi_video *, video);
+
+    return esp_video_get_ext_ctrls_from_sensor(csi_video->cam_dev, ctrls);
+}
+
+static esp_err_t csi_video_query_ext_ctrl(struct esp_video *video, struct v4l2_query_ext_ctrl *qctrl)
+{
+    struct csi_video *csi_video = VIDEO_PRIV_DATA(struct csi_video *, video);
+
+    return esp_video_query_ext_ctrls_from_sensor(csi_video->cam_dev, qctrl);
+}
+
 static const struct esp_video_ops s_csi_video_ops = {
     .init          = csi_video_init,
     .deinit        = csi_video_deinit,
@@ -491,7 +516,10 @@ static const struct esp_video_ops s_csi_video_ops = {
     .stop          = csi_video_stop,
     .enum_format   = csi_video_enum_format,
     .set_format    = csi_video_set_format,
-    .notify        = csi_video_notify
+    .notify        = csi_video_notify,
+    .set_ext_ctrl  = csi_video_set_ext_ctrl,
+    .get_ext_ctrl  = csi_video_get_ext_ctrl,
+    .query_ext_ctrl = csi_video_query_ext_ctrl,
 };
 
 /**
@@ -516,7 +544,9 @@ esp_err_t esp_video_create_csi_video_device(esp_cam_sensor_device_t *cam_dev)
         return ESP_ERR_NO_MEM;
     }
 
-    video = esp_video_create(CSI_NAME, cam_dev, &s_csi_video_ops, csi_video, caps, device_caps);
+    csi_video->cam_dev = cam_dev;
+
+    video = esp_video_create(CSI_NAME, &s_csi_video_ops, csi_video, caps, device_caps);
     if (!video) {
         heap_caps_free(csi_video);
         return ESP_FAIL;

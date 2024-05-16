@@ -7,9 +7,11 @@
 #include <stdio.h>
 #include <string.h>
 #include <sys/lock.h>
+#include "esp_log.h"
 #include "esp_heap_caps.h"
 #include "esp_video.h"
 #include "esp_video_vfs.h"
+#include "esp_cam_sensor.h"
 
 #include "freertos/portmacro.h"
 
@@ -205,7 +207,6 @@ struct esp_video *esp_video_device_get_object(const char *name)
  * @brief Create video object.
  *
  * @param name         video driver name
- * @param cam_dev      camera devcie
  * @param ops          video operations
  * @param priv         video private data
  * @param caps         video physical device capabilities
@@ -215,8 +216,7 @@ struct esp_video *esp_video_device_get_object(const char *name)
  *      - Video object pointer on success
  *      - NULL if failed
  */
-struct esp_video *esp_video_create(const char *name, esp_cam_sensor_device_t *cam_dev,
-                                   const struct esp_video_ops *ops, void *priv,
+struct esp_video *esp_video_create(const char *name, const struct esp_video_ops *ops, void *priv,
                                    uint32_t caps, uint32_t device_caps)
 {
     esp_err_t ret;
@@ -297,7 +297,6 @@ struct esp_video *esp_video_create(const char *name, esp_cam_sensor_device_t *ca
     video->ops = ops;
     video->priv = priv;
     video->id = id;
-    video->cam_dev = cam_dev;
     video->caps = caps;
     video->device_caps = device_caps;
     SLIST_INSERT_HEAD(&s_video_list, video, node);
@@ -1461,6 +1460,162 @@ esp_err_t esp_video_get_buf_type(struct esp_video *video, uint32_t *type, bool i
         }
     } else {
         return ESP_ERR_INVALID_ARG;
+    }
+
+    return ESP_OK;
+}
+
+/**
+ * @brief Set the value of several external controls
+ *
+ * @param video Video object
+ * @param ctrls Controls arrary pointer
+ *
+ * @return
+ *      - ESP_OK on success
+ *      - Others if failed
+ */
+esp_err_t esp_video_set_ext_controls(struct esp_video *video, const struct v4l2_ext_controls *ctrls)
+{
+    esp_err_t ret;
+
+#if CONFIG_ESP_VIDEO_CHECK_PARAMETERS
+    bool found = false;
+    struct esp_video *it;
+
+    if (!video) {
+        ESP_LOGE(TAG, "Input arguments are invalid");
+        return ESP_ERR_INVALID_ARG;
+    }
+
+    _lock_acquire(&s_video_lock);
+    SLIST_FOREACH(it, &s_video_list, node) {
+        if (it == video) {
+            found = true;
+            break;
+        }
+    }
+    _lock_release(&s_video_lock);
+
+    if (!found) {
+        ESP_LOGE(TAG, "Not find video=%p", video);
+        return ESP_ERR_INVALID_ARG;
+    }
+#endif
+
+    if (video->ops->set_ext_ctrl) {
+        ret = video->ops->set_ext_ctrl(video, ctrls);
+        if (ret != ESP_OK) {
+            ESP_LOGE(TAG, "video->ops->set_ext_ctrl=%x", ret);
+            return ret;
+        }
+    } else {
+        ESP_LOGD(TAG, "video->ops->set_ext_ctrl=NULL");
+        return ESP_ERR_NOT_SUPPORTED;
+    }
+
+    return ESP_OK;
+}
+
+/**
+ * @brief Get the value of several external controls
+ *
+ * @param video Video object
+ * @param ctrls Controls arrary pointer
+ *
+ * @return
+ *      - ESP_OK on success
+ *      - Others if failed
+ */
+esp_err_t esp_video_get_ext_controls(struct esp_video *video, struct v4l2_ext_controls *ctrls)
+{
+    esp_err_t ret;
+
+#if CONFIG_ESP_VIDEO_CHECK_PARAMETERS
+    bool found = false;
+    struct esp_video *it;
+
+    if (!video) {
+        ESP_LOGE(TAG, "Input arguments are invalid");
+        return ESP_ERR_INVALID_ARG;
+    }
+
+    _lock_acquire(&s_video_lock);
+    SLIST_FOREACH(it, &s_video_list, node) {
+        if (it == video) {
+            found = true;
+            break;
+        }
+    }
+    _lock_release(&s_video_lock);
+
+    if (!found) {
+        ESP_LOGE(TAG, "Not find video=%p", video);
+        return ESP_ERR_INVALID_ARG;
+    }
+#endif
+
+    if (video->ops->get_ext_ctrl) {
+        ret = video->ops->get_ext_ctrl(video, ctrls);
+        if (ret != ESP_OK) {
+            ESP_LOGE(TAG, "video->ops->get_ext_ctrl=%x", ret);
+            return ret;
+        }
+    } else {
+        ESP_LOGD(TAG, "video->ops->get_ext_ctrl=NULL");
+        return ESP_ERR_NOT_SUPPORTED;
+    }
+
+    return ESP_OK;
+}
+
+/**
+ * @brief Query the description of the control
+ *
+ * @param video Video object
+ * @param qctrl Control description buffer pointer
+ *
+ * @return
+ *      - ESP_OK on success
+ *      - Others if failed
+ */
+esp_err_t esp_video_query_ext_control(struct esp_video *video, struct v4l2_query_ext_ctrl *qctrl)
+{
+    esp_err_t ret;
+
+#if CONFIG_ESP_VIDEO_CHECK_PARAMETERS
+    bool found = false;
+    struct esp_video *it;
+
+    if (!video) {
+        ESP_LOGE(TAG, "Input arguments are invalid");
+        return ESP_ERR_INVALID_ARG;
+    }
+
+    _lock_acquire(&s_video_lock);
+    SLIST_FOREACH(it, &s_video_list, node) {
+        if (it == video) {
+            found = true;
+            break;
+        }
+    }
+    _lock_release(&s_video_lock);
+
+    if (!found) {
+        ESP_LOGE(TAG, "Not find video=%p", video);
+        return ESP_ERR_INVALID_ARG;
+    }
+#endif
+
+    if (video->ops->query_ext_ctrl) {
+        ret = video->ops->query_ext_ctrl(video, qctrl);
+        if (ret != ESP_OK) {
+            ESP_LOGE(TAG, "video->ops->query_ext_ctrl=%x", ret);
+            return ret;
+        }
+    } else {
+        ESP_LOGD(TAG, "video->ops->query_ext_ctrl=NULL");
+        return ESP_ERR_NOT_SUPPORTED;
     }
 
     return ESP_OK;

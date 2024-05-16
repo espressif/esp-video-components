@@ -13,7 +13,6 @@ extern "C" {
 #endif
 
 #define VIDEO_PRIV_DATA(t, v)               ((t)(v)->priv)
-#define VIDEO_CAM_DEV(v)                    ((v)->cam_dev)
 
 #define STREAM_FORMAT(s)                    (&(s)->format)
 #define STREAM_BUF_INFO(s)                  (&(s)->buf_info)
@@ -161,6 +160,18 @@ struct esp_video_ops {
     /*!< Notify driver event triggers */
 
     esp_err_t (*notify)(struct esp_video *video, enum esp_video_event event, void *arg);
+
+    /*!< Set external control value */
+
+    esp_err_t (*set_ext_ctrl)(struct esp_video *video, const struct v4l2_ext_controls *ctrls);
+
+    /*!< Get external control value */
+
+    esp_err_t (*get_ext_ctrl)(struct esp_video *video, struct v4l2_ext_controls *ctrls);
+
+    /*!< Query external control descrption */
+
+    esp_err_t (*query_ext_ctrl)(struct esp_video *video, struct v4l2_query_ext_ctrl *qctrl);
 };
 
 #ifdef __cplusplus

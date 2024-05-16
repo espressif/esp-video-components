@@ -14,6 +14,7 @@
 #include <sys/errno.h>
 #include <sys/param.h>
 #include "linux/videodev2.h"
+#include "esp_log.h"
 #include "esp_vfs.h"
 #include "esp_vfs_dev.h"
 #include "esp_video_vfs.h"

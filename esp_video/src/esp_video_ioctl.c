@@ -16,48 +16,6 @@
 #define BUF_OFF_2_INDEX(buf_off)            ((buf_off) & 0x00ffffff)
 #define BUF_OFF_2_TYPE(buf_off)             ((buf_off) >> 24)
 
-struct control_map {
-    uint32_t esp_cam_sensor_id;
-    uint32_t v4l2_id;
-};
-
-/**
- * Todo: AEG-1094
- */
-static const struct control_map s_control_map_table[] = {
-    {
-        .esp_cam_sensor_id = ESP_CAM_SENSOR_JPEG_QUALITY,
-        .v4l2_id = V4L2_CID_JPEG_COMPRESSION_QUALITY,
-    },
-    {
-        .esp_cam_sensor_id = ESP_CAM_SENSOR_3A_LOCK,
-        .v4l2_id = V4L2_CID_3A_LOCK,
-    },
-    {
-        .esp_cam_sensor_id = ESP_CAM_SENSOR_FLASH_LED,
-        .v4l2_id = V4L2_CID_FLASH_LED_MODE,
-    },
-    {
-        .esp_cam_sensor_id = ESP_CAM_SENSOR_VFLIP,
-        .v4l2_id = V4L2_CID_VFLIP,
-    },
-    {
-        .esp_cam_sensor_id = ESP_CAM_SENSOR_HMIRROR,
-        .v4l2_id = V4L2_CID_HFLIP,
-    },
-};
-
-static const struct control_map *get_v4l2_ext_control_map(uint32_t v4l2_id)
-{
-    for (int i = 0; i < ARRAY_SIZE(s_control_map_table); i++) {
-        if (s_control_map_table[i].v4l2_id == v4l2_id) {
-            return &s_control_map_table[i];
-        }
-    }
-
-    return NULL;
-}
-
 static esp_err_t esp_video_ioctl_querycap(struct esp_video *video, struct v4l2_capability *cap)
 {
     memset(cap, 0, sizeof(struct v4l2_capability));
@@ -260,90 +218,19 @@ static esp_err_t esp_video_ioctl_dqbuf(struct esp_video *video, struct v4l2_buff
     return ESP_OK;
 }
 
-static esp_err_t esp_video_ioctl_op_ext_ctrls(struct esp_video *video, struct v4l2_ext_controls *controls, bool set)
+static inline esp_err_t esp_video_ioctl_set_ext_ctrls(struct esp_video *video, const struct v4l2_ext_controls *controls)
 {
-    esp_err_t ret = ESP_ERR_INVALID_ARG;
-    esp_cam_sensor_device_t *cam_dev = video->cam_dev;
-
-    for (int i = 0; i < controls->count; i++) {
-        const struct control_map *control_map;
-        struct v4l2_ext_control *ctrl = &controls->controls[i];
-
-        control_map = get_v4l2_ext_control_map(ctrl->id);
-        if (!control_map) {
-            ret = ESP_ERR_NOT_SUPPORTED;
-            break;
-        }
-
-        if (set) {
-            ret = esp_cam_sensor_set_para_value(cam_dev, control_map->esp_cam_sensor_id, &ctrl->value, sizeof(ctrl->value));
-        } else {
-            ret = esp_cam_sensor_get_para_value(cam_dev, control_map->esp_cam_sensor_id, &ctrl->value, sizeof(ctrl->value));
-        }
-
-        if (ret != ESP_OK) {
-            break;
-        }
-    }
-
-    return ret;
+    return esp_video_set_ext_controls(video, controls);
 }
 
-/**
- * Todo: AEG-1095
- */
-static esp_err_t esp_video_ioctl_query_ext_ctrls(struct esp_video *video, struct v4l2_query_ext_ctrl *qctrl)
+static inline esp_err_t esp_video_ioctl_get_ext_ctrls(struct esp_video *video, struct v4l2_ext_controls *controls)
 {
-    esp_err_t ret = 0;
-    const struct control_map *control_map;
-    esp_cam_sensor_param_desc_t qdesc;
-    esp_cam_sensor_device_t *cam_dev = video->cam_dev;
+    return esp_video_get_ext_controls(video, controls);
+}
 
-    control_map = get_v4l2_ext_control_map(qctrl->id);
-    if (!control_map) {
-        return ESP_ERR_NOT_SUPPORTED;
-    }
-
-    qdesc.id = control_map->esp_cam_sensor_id;
-    ret = esp_cam_sensor_query_para_desc(cam_dev, &qdesc);
-    if (ret != ESP_OK) {
-        return ret;
-    }
-
-    switch (qdesc.type) {
-    case ESP_CAM_SENSOR_PARAM_TYPE_NUMBER:
-        qctrl->type = V4L2_CTRL_TYPE_INTEGER;
-        qctrl->maximum = qdesc.number.minimum;
-        qctrl->minimum = qdesc.number.maximum;
-        qctrl->step = qdesc.number.step;;
-        qctrl->elems = 1;
-        qctrl->nr_of_dims = 0;
-        qctrl->default_value = qdesc.default_value;
-        break;
-    case ESP_CAM_SENSOR_PARAM_TYPE_ENUMERATION:
-        qctrl->type = V4L2_CTRL_TYPE_MENU;
-        qctrl->elem_size = sizeof(uint32_t);
-        qctrl->elems = qdesc.enumeration.count;
-        qctrl->nr_of_dims = qdesc.enumeration.count;
-        for (int i = 0; i < MIN(qctrl->nr_of_dims, V4L2_CTRL_MAX_DIMS); i++) {
-            qctrl->dims[i] = qdesc.enumeration.elements[i];
-        }
-        qctrl->default_value = qdesc.default_value;
-        break;
-    case ESP_CAM_SENSOR_PARAM_TYPE_BITMASK:
-        qctrl->type = V4L2_CTRL_TYPE_BITMASK;
-        qctrl->minimum = 0;
-        qctrl->maximum = qdesc.bitmask.value;
-        qctrl->step = 1;
-        qctrl->elems = 1;
-        qctrl->nr_of_dims = 0;
-        qctrl->default_value = qdesc.default_value;
-        break;
-    default:
-        return ESP_ERR_NOT_SUPPORTED;
-    }
-
-    return ESP_OK;
+static inline esp_err_t esp_video_ioctl_query_ext_ctrls(struct esp_video *video, struct v4l2_query_ext_ctrl *qctrl)
+{
+    return esp_video_query_ext_control(video, qctrl);
 }
 
 esp_err_t esp_video_ioctl(struct esp_video *video, int cmd, va_list args)
@@ -393,10 +280,10 @@ esp_err_t esp_video_ioctl(struct esp_video *video, int cmd, va_list args)
         ret = esp_video_ioctl_mmap(video, (struct esp_video_ioctl_mmap *)arg_ptr);
         break;
     case VIDIOC_G_EXT_CTRLS:
-        ret = esp_video_ioctl_op_ext_ctrls(video, (struct v4l2_ext_controls *)arg_ptr, false);
+        ret = esp_video_ioctl_get_ext_ctrls(video, (struct v4l2_ext_controls *)arg_ptr);
         break;
     case VIDIOC_S_EXT_CTRLS:
-        ret = esp_video_ioctl_op_ext_ctrls(video, (struct v4l2_ext_controls *)arg_ptr, true);
+        ret = esp_video_ioctl_set_ext_ctrls(video, (const struct v4l2_ext_controls *)arg_ptr);
         break;
     case VIDIOC_QUERY_EXT_CTRL:
         ret = esp_video_ioctl_query_ext_ctrls(video, (struct v4l2_query_ext_ctrl *)arg_ptr);
