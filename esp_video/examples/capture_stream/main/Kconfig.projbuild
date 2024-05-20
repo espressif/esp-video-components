@@ -40,4 +40,21 @@ menu "Example Configuration"
             range -1 56
     endif
 
+    choice EXAMPLE_VIDEO_BUFFER_TYPE
+        prompt "Video Buffer Type"
+        default EXAMPLE_VIDEO_BUFFER_TYPE_USER
+        depends on EXAMPLE_ENABLE_MIPI_CSI_CAM_SENSOR
+        help
+            Select video buffer type:
+            
+            - User buffer, users should allocate and free the buffer manually
+            - Driver buffer, drivers allocate and free the buffer automatically
+
+        config EXAMPLE_VIDEO_BUFFER_TYPE_USER
+            bool "User Buffer"
+
+        config EXAMPLE_VIDEO_BUFFER_TYPE_DRIVER
+            bool "Driver Buffer"
+    endchoice
+
 endmenu

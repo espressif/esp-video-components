@@ -107,9 +107,8 @@ static esp_err_t esp_video_ioctl_reqbufs(struct esp_video *video, struct v4l2_re
 {
     esp_err_t ret;
 
-    /* Only support memory buffer MMAP mode */
-
-    if (req_bufs->memory != V4L2_MEMORY_MMAP) {
+    if ((req_bufs->memory != V4L2_MEMORY_MMAP) &&
+            (req_bufs->memory != V4L2_MEMORY_USERPTR) ) {
         return ESP_ERR_INVALID_ARG;
     }
 
@@ -117,7 +116,7 @@ static esp_err_t esp_video_ioctl_reqbufs(struct esp_video *video, struct v4l2_re
         return ESP_ERR_INVALID_ARG;
     }
 
-    ret = esp_video_setup_buffer(video, req_bufs->type, req_bufs->count);
+    ret = esp_video_setup_buffer(video, req_bufs->type, req_bufs->memory, req_bufs->count);
 
     return ret;
 }
@@ -127,25 +126,21 @@ static esp_err_t esp_video_ioctl_querybuf(struct esp_video *video, struct v4l2_b
     esp_err_t ret;
     struct esp_video_buffer_info info;
 
-    /* Only support memory buffer MMAP mode */
-
-    if (vbuf->memory != V4L2_MEMORY_MMAP) {
-        return ESP_ERR_INVALID_ARG;
-    }
-
     ret = esp_video_get_buffer_info(video, vbuf->type, &info);
     if (ret != ESP_OK) {
         return ret;
     }
 
-    if (vbuf->index >= info.count) {
+    if ((vbuf->memory != info.memory_type) || (vbuf->index >= info.count)) {
         return ESP_ERR_INVALID_ARG;
     }
 
-    /* offset contains of stream ID and buffer index  */
-
     vbuf->length = info.size;
-    vbuf->m.offset = BUF_OFF(vbuf->type, vbuf->index);
+    if (vbuf->memory == V4L2_MEMORY_MMAP) {
+        /* offset contains of stream ID and buffer index  */
+
+        vbuf->m.offset = BUF_OFF(vbuf->type, vbuf->index);
+    }
 
     return ESP_OK;
 }
@@ -162,7 +157,9 @@ static esp_err_t esp_video_ioctl_mmap(struct esp_video *video, struct esp_video_
         return ret;
     }
 
-    if ((ioctl_mmap->length > info.size) || (index >= info.count)) {
+    if ((info.memory_type != V4L2_MEMORY_MMAP) ||
+            (ioctl_mmap->length > info.size) ||
+            (index >= info.count)) {
         return ESP_ERR_INVALID_ARG;
     }
 
@@ -176,34 +173,43 @@ static esp_err_t esp_video_ioctl_qbuf(struct esp_video *video, struct v4l2_buffe
     esp_err_t ret;
     struct esp_video_buffer_info info;
 
-    /* Only support memory buffer MMAP mode */
-
-    if (vbuf->memory != V4L2_MEMORY_MMAP) {
-        return ESP_ERR_INVALID_ARG;
-    }
-
     ret = esp_video_get_buffer_info(video, vbuf->type, &info);
     if (ret != ESP_OK) {
         return ret;
     }
 
-    if (vbuf->index >= info.count) {
+    if ((vbuf->memory != info.memory_type) || (vbuf->index >= info.count)) {
         return ESP_ERR_INVALID_ARG;
     }
 
-    ret = esp_video_queue_element_index(video, vbuf->type, vbuf->index);
+    if (info.memory_type == V4L2_MEMORY_USERPTR) {
+        if (!vbuf->m.userptr) {
+            return ESP_ERR_INVALID_ARG;
+        }
+    }
+
+    if (info.memory_type == V4L2_MEMORY_MMAP) {
+        ret = esp_video_queue_element_index(video, vbuf->type, vbuf->index);
+    } else {
+        ret = esp_video_queue_element_index_buffer(video, vbuf->type, vbuf->index, (uint8_t *)vbuf->m.userptr, vbuf->length);
+    }
 
     return ret;
 }
 
 static esp_err_t esp_video_ioctl_dqbuf(struct esp_video *video, struct v4l2_buffer *vbuf)
 {
+    esp_err_t ret;
     uint32_t ticks = portMAX_DELAY;
+    struct esp_video_buffer_info info;
     struct esp_video_buffer_element *element;
 
-    /* Only support memory buffer MMAP mode */
+    ret = esp_video_get_buffer_info(video, vbuf->type, &info);
+    if (ret != ESP_OK) {
+        return ret;
+    }
 
-    if (vbuf->memory != V4L2_MEMORY_MMAP) {
+    if (vbuf->memory != info.memory_type) {
         return ESP_ERR_INVALID_ARG;
     }
 
@@ -214,6 +220,9 @@ static esp_err_t esp_video_ioctl_dqbuf(struct esp_video *video, struct v4l2_buff
 
     vbuf->index     = element->index;
     vbuf->bytesused = element->valid_size;
+    if (vbuf->memory != V4L2_MEMORY_USERPTR) {
+        vbuf->m.userptr = (unsigned long)element->buffer;
+    }
 
     return ESP_OK;
 }

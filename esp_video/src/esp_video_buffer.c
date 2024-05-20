@@ -7,6 +7,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <sys/lock.h>
+#include "linux/videodev2.h"
 #include "esp_log.h"
 #include "esp_heap_caps.h"
 #include "esp_video_buffer.h"
@@ -39,16 +40,22 @@ struct esp_video_buffer *esp_video_buffer_create(const struct esp_video_buffer_i
     for (int i = 0; i < info->count; i++) {
         struct esp_video_buffer_element *element = &buffer->element[i];
 
-        element->buffer = heap_caps_aligned_alloc(info->align_size, info->size, info->caps);
-        if (element->buffer) {
+        if (info->memory_type == V4L2_MEMORY_MMAP) {
+            element->buffer = heap_caps_aligned_alloc(info->align_size, info->size, info->caps);
+            if (element->buffer) {
+                element->index = i;
+                element->video_buffer = buffer;
+                ELEMENT_SET_FREE(element);
+            } else {
+                goto exit_0;
+            }
+        } else {
             element->index = i;
             element->video_buffer = buffer;
+            element->buffer = NULL;
             ELEMENT_SET_FREE(element);
-        } else {
-            goto exit_0;
         }
     }
-
 
     memcpy(&buffer->info, info, sizeof(struct esp_video_buffer_info));
 
@@ -96,9 +103,12 @@ struct esp_video_buffer *esp_video_buffer_clone(const struct esp_video_buffer *b
  */
 esp_err_t esp_video_buffer_destroy(struct esp_video_buffer *buffer)
 {
-    for (int i = 0; i < buffer->info.count; i++) {
-        heap_caps_free(buffer->element[i].buffer);
+    if (buffer->info.memory_type == V4L2_MEMORY_MMAP) {
+        for (int i = 0; i < buffer->info.count; i++) {
+            heap_caps_free(buffer->element[i].buffer);
+        }
     }
+
     heap_caps_free(buffer);
 
     return ESP_OK;

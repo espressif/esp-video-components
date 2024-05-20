@@ -16,6 +16,15 @@
 #include "linux/videodev2.h"
 #include "esp_video_init.h"
 
+#if CONFIG_EXAMPLE_VIDEO_BUFFER_TYPE_USER
+#include "esp_heap_caps.h"
+
+#define MEMORY_TYPE V4L2_MEMORY_USERPTR
+#define MEMORY_ALIGN 64
+#else
+#define MEMORY_TYPE V4L2_MEMORY_MMAP
+#endif
+
 #define BUFFER_COUNT 2
 #define CAPTURE_SECONDS 3
 
@@ -54,6 +63,9 @@ static esp_err_t camera_capture_stream(void)
     uint32_t frame_count;
     struct v4l2_buffer buf;
     uint8_t *buffer[BUFFER_COUNT];
+#if CONFIG_EXAMPLE_VIDEO_BUFFER_TYPE_USER
+    uint32_t buffer_size[BUFFER_COUNT];
+#endif
     struct v4l2_format init_format;
     struct v4l2_requestbuffers req;
     struct v4l2_capability capability;
@@ -172,7 +184,7 @@ static esp_err_t camera_capture_stream(void)
         memset(&req, 0, sizeof(req));
         req.count  = BUFFER_COUNT;
         req.type   = type;
-        req.memory = V4L2_MEMORY_MMAP;
+        req.memory = MEMORY_TYPE;
         if (ioctl(fd, VIDIOC_REQBUFS, &req) != 0) {
             ESP_LOGE(TAG, "failed to require buffer");
             ret = ESP_FAIL;
@@ -184,7 +196,7 @@ static esp_err_t camera_capture_stream(void)
 
             memset(&buf, 0, sizeof(buf));
             buf.type        = type;
-            buf.memory      = V4L2_MEMORY_MMAP;
+            buf.memory      = MEMORY_TYPE;
             buf.index       = i;
             if (ioctl(fd, VIDIOC_QUERYBUF, &buf) != 0) {
                 ESP_LOGE(TAG, "failed to query buffer");
@@ -192,13 +204,23 @@ static esp_err_t camera_capture_stream(void)
                 goto exit_0;
             }
 
+#if CONFIG_EXAMPLE_VIDEO_BUFFER_TYPE_USER
+            buffer[i] = heap_caps_aligned_alloc(MEMORY_ALIGN, buf.length, MALLOC_CAP_SPIRAM);
+#else
             buffer[i] = (uint8_t *)mmap(NULL, buf.length, PROT_READ | PROT_WRITE,
                                         MAP_SHARED, fd, buf.m.offset);
+#endif
             if (!buffer[i]) {
                 ESP_LOGE(TAG, "failed to map buffer");
                 ret = ESP_FAIL;
                 goto exit_0;
             }
+#if CONFIG_EXAMPLE_VIDEO_BUFFER_TYPE_USER
+            else {
+                buf.m.userptr = (unsigned long)buffer[i];
+                buffer_size[i] = buf.length;
+            }
+#endif
 
             if (ioctl(fd, VIDIOC_QBUF, &buf) != 0) {
                 ESP_LOGE(TAG, "failed to queue video frame");
@@ -219,7 +241,7 @@ static esp_err_t camera_capture_stream(void)
         while (esp_timer_get_time() - start_time_us < (CAPTURE_SECONDS * 1000 * 1000)) {
             memset(&buf, 0, sizeof(buf));
             buf.type   = type;
-            buf.memory = V4L2_MEMORY_MMAP;
+            buf.memory = MEMORY_TYPE;
             if (ioctl(fd, VIDIOC_DQBUF, &buf) != 0) {
                 ESP_LOGE(TAG, "failed to receive video frame");
                 ret = ESP_FAIL;
@@ -228,6 +250,10 @@ static esp_err_t camera_capture_stream(void)
 
             frame_size += buf.bytesused;
 
+#if CONFIG_EXAMPLE_VIDEO_BUFFER_TYPE_USER
+            buf.m.userptr = (unsigned long)buffer[buf.index];
+            buf.length = buffer_size[buf.index];
+#endif
             if (ioctl(fd, VIDIOC_QBUF, &buf) != 0) {
                 ESP_LOGE(TAG, "failed to queue video frame");
                 ret = ESP_FAIL;
@@ -242,6 +268,12 @@ static esp_err_t camera_capture_stream(void)
             ret = ESP_FAIL;
             goto exit_0;
         }
+
+#if CONFIG_EXAMPLE_VIDEO_BUFFER_TYPE_USER
+        for (int i = 0; i < BUFFER_COUNT; i++) {
+            heap_caps_free(buffer[i]);
+        }
+#endif
 
         ESP_LOGI(TAG, "\twidth:  %" PRIu32, format.fmt.pix.width);
         ESP_LOGI(TAG, "\theight: %" PRIu32, format.fmt.pix.height);
