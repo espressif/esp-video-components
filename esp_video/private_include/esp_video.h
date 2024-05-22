@@ -12,7 +12,6 @@
 #include "freertos/task.h"
 #include "freertos/semphr.h"
 #include "esp_err.h"
-#include "esp_cam_sensor.h"
 #include "linux/videodev2.h"
 #include "esp_video_buffer.h"
 #include "esp_video_internal.h"
@@ -68,8 +67,6 @@ struct esp_video {
 
     void *priv;                             /*!< Video device private data */
 
-    esp_cam_sensor_device_t *cam_dev;       /*!< Camera device object */
-
     portMUX_TYPE stream_lock;               /*!< Stream list lock */
     struct esp_video_stream *stream;        /*!< Video device stream, capture-only or output-only device has 1 stream, M2M device has 2 streams */
 };
@@ -78,7 +75,6 @@ struct esp_video {
  * @brief Create video object.
  *
  * @param name         video driver name
- * @param cam_dev      camera devcie
  * @param ops          video operations
  * @param priv         video private data
  * @param caps         video physical device capabilities
@@ -88,8 +84,7 @@ struct esp_video {
  *      - Video object pointer on success
  *      - NULL if failed
  */
-struct esp_video *esp_video_create(const char *name, esp_cam_sensor_device_t *cam_dev,
-                                   const struct esp_video_ops *ops, void *priv,
+struct esp_video *esp_video_create(const char *name, const struct esp_video_ops *ops, void *priv,
                                    uint32_t caps, uint32_t device_caps);
 
 /**
@@ -476,6 +471,42 @@ struct esp_video_buffer_element *esp_video_clone_element(struct esp_video *video
  *      - Others if failed
  */
 esp_err_t esp_video_get_buf_type(struct esp_video *video, uint32_t *type, bool is_input);
+
+/**
+ * @brief Set the value of several external controls
+ *
+ * @param video Video object
+ * @param ctrls Controls arrary pointer
+ *
+ * @return
+ *      - ESP_OK on success
+ *      - Others if failed
+ */
+esp_err_t esp_video_set_ext_controls(struct esp_video *video, const struct v4l2_ext_controls *ctrls);
+
+/**
+ * @brief Get the value of several external controls
+ *
+ * @param video Video object
+ * @param ctrls Controls arrary pointer
+ *
+ * @return
+ *      - ESP_OK on success
+ *      - Others if failed
+ */
+esp_err_t esp_video_get_ext_controls(struct esp_video *video, struct v4l2_ext_controls *ctrls);
+
+/**
+ * @brief Query the description of the control
+ *
+ * @param video Video object
+ * @param qctrl Control description buffer pointer
+ *
+ * @return
+ *      - ESP_OK on success
+ *      - Others if failed
+ */
+esp_err_t esp_video_query_ext_control(struct esp_video *video, struct v4l2_query_ext_ctrl *qctrl);
 
 #ifdef __cplusplus
 }

@@ -128,9 +128,7 @@ static esp_err_t camera_capture_stream(void)
     control[0].id       = V4L2_CID_VFLIP;
     control[0].value    = 1;
     if (ioctl(fd, VIDIOC_S_EXT_CTRLS, &controls) != 0) {
-        ESP_LOGE(TAG, "failed to mirror the frame vertically");
-        ret = ESP_FAIL;
-        goto exit_0;
+        ESP_LOGW(TAG, "failed to mirror the frame horizontally and skip this step");
     }
 
     controls.ctrl_class = V4L2_CTRL_CLASS_USER;
@@ -139,9 +137,7 @@ static esp_err_t camera_capture_stream(void)
     control[0].id       = V4L2_CID_HFLIP;
     control[0].value    = 1;
     if (ioctl(fd, VIDIOC_S_EXT_CTRLS, &controls) != 0) {
-        ESP_LOGE(TAG, "failed to mirror the frame horizontally");
-        ret = ESP_FAIL;
-        goto exit_0;
+        ESP_LOGW(TAG, "failed to mirror the frame horizontally and skip this step");
     }
 
     while (1) {

@@ -3,7 +3,8 @@ set(srcs "src/esp_video_buffer.c"
          "src/esp_video_ioctl.c"
          "src/esp_video_mman.c"
          "src/esp_video_vfs.c"
-         "src/esp_video.c")
+         "src/esp_video.c"
+         "src/esp_video_sensor.c")
 
 set(include_dirs "include")
 set(priv_include_dirs "private_include")
