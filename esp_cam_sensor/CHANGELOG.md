@@ -1,3 +1,8 @@
+## 0.3.2
+
+- Added support for OV5645 RGB565 and YUV420 on 960p resolution
+- Removed the override_path of esp_sccb_intf in component dependencies
+
 ## 0.3.1
 
 - Added support for OV5645 640x480、1920x1080、2592x1944 resolution
