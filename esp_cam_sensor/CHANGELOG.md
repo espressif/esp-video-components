@@ -1,3 +1,7 @@
+## 0.4.0
+
+- - Added support for SC202CS MIPI camera sensor driver
+
 ## 0.3.2
 
 - Added support for OV5645 RGB565 and YUV420 on 960p resolution
