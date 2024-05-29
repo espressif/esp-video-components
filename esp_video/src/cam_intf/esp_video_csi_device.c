@@ -525,7 +525,7 @@ static const struct esp_video_ops s_csi_video_ops = {
 /**
  * @brief Create MIPI CSI video device
  *
- * @param cam_dev camera sensor devcie
+ * @param cam_dev camera sensor device
  *
  * @return
  *      - ESP_OK on success

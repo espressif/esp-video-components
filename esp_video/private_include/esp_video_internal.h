@@ -133,11 +133,11 @@ struct esp_video_format;
  */
 struct esp_video_ops {
 
-    /*!< Initializa video hardware and allocate software resource, and must set buffer information and video format */
+    /*!< Initialize video hardware and allocate software resource, and must set buffer information and video format */
 
     esp_err_t (*init)(struct esp_video *video);
 
-    /*!< De-initializa video hardware and free software resource */
+    /*!< De-initialize video hardware and free software resource */
 
     esp_err_t (*deinit)(struct esp_video *video);
 
@@ -169,7 +169,7 @@ struct esp_video_ops {
 
     esp_err_t (*get_ext_ctrl)(struct esp_video *video, struct v4l2_ext_controls *ctrls);
 
-    /*!< Query external control descrption */
+    /*!< Query external control description */
 
     esp_err_t (*query_ext_ctrl)(struct esp_video *video, struct v4l2_query_ext_ctrl *qctrl);
 };

@@ -16,7 +16,7 @@ extern "C" {
 /**
  * @brief Create MIPI CSI video device
  *
- * @param cam_dev camera sensor devcie
+ * @param cam_dev camera sensor device
  *
  * @return
  *      - ESP_OK on success

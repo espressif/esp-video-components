@@ -386,7 +386,7 @@ esp_err_t esp_video_destroy(struct esp_video *video)
 }
 
 /**
- * @brief Open a video device, this function will initializa hardware.
+ * @brief Open a video device, this function will initialize hardware.
  *
  * @param name video device name
  *
@@ -441,7 +441,7 @@ struct esp_video *esp_video_open(const char *name)
 }
 
 /**
- * @brief Close a video device, this function will de-initializa hardware.
+ * @brief Close a video device, this function will de-initialize hardware.
  *
  * @param video Video object
  *
@@ -1469,7 +1469,7 @@ esp_err_t esp_video_get_buf_type(struct esp_video *video, uint32_t *type, bool i
  * @brief Set the value of several external controls
  *
  * @param video Video object
- * @param ctrls Controls arrary pointer
+ * @param ctrls Controls array pointer
  *
  * @return
  *      - ESP_OK on success
@@ -1521,7 +1521,7 @@ esp_err_t esp_video_set_ext_controls(struct esp_video *video, const struct v4l2_
  * @brief Get the value of several external controls
  *
  * @param video Video object
- * @param ctrls Controls arrary pointer
+ * @param ctrls Controls array pointer
  *
  * @return
  *      - ESP_OK on success
