@@ -43,8 +43,8 @@
 struct csi_video {
     uint32_t lane_bit_rate_mbps;
     uint8_t csi_data_lane_num;
-    mipi_csi_color_t csi_in_color;
-    mipi_csi_color_t csi_out_color;
+    cam_ctlr_color_t csi_in_color;
+    cam_ctlr_color_t csi_out_color;
     uint8_t csi_out_bpp;
     bool csi_line_sync;
 
@@ -60,19 +60,19 @@ struct csi_video {
 
 static const char *TAG = "csi_video";
 
-static esp_err_t csi_get_input_frame_type(uint32_t sensor_fmt, mipi_csi_color_t *csi_color)
+static esp_err_t csi_get_input_frame_type(uint32_t sensor_fmt, cam_ctlr_color_t *csi_color)
 {
     esp_err_t ret = ESP_OK;
 
     switch (sensor_fmt) {
     case ESP_CAM_SENSOR_PIXFORMAT_RAW8:
-        *csi_color = MIPI_CSI_COLOR_RAW8;
+        *csi_color = CAM_CTLR_COLOR_RAW8;
         break;
     case ESP_CAM_SENSOR_PIXFORMAT_RAW10:
-        *csi_color = MIPI_CSI_COLOR_RAW10;
+        *csi_color = CAM_CTLR_COLOR_RAW10;
         break;
     case ESP_CAM_SENSOR_PIXFORMAT_RAW12:
-        *csi_color = MIPI_CSI_COLOR_RAW12;
+        *csi_color = CAM_CTLR_COLOR_RAW12;
         break;
     default:
         ret = ESP_ERR_NOT_SUPPORTED;
@@ -82,29 +82,29 @@ static esp_err_t csi_get_input_frame_type(uint32_t sensor_fmt, mipi_csi_color_t 
     return ret;
 }
 
-static esp_err_t csi_get_output_frame_type(uint32_t output_fmt, mipi_csi_color_t *csi_color, uint8_t *out_bpp)
+static esp_err_t csi_get_output_frame_type(uint32_t output_fmt, cam_ctlr_color_t *csi_color, uint8_t *out_bpp)
 {
     esp_err_t ret = ESP_OK;
 
     switch (output_fmt) {
     case V4L2_PIX_FMT_SBGGR8:
-        *csi_color = MIPI_CSI_COLOR_RAW8;
+        *csi_color = CAM_CTLR_COLOR_RAW8;
         *out_bpp = 8;
         break;
     case V4L2_PIX_FMT_RGB565:
-        *csi_color = MIPI_CSI_COLOR_RGB565;
+        *csi_color = CAM_CTLR_COLOR_RGB565;
         *out_bpp = 16;
         break;
     case V4L2_PIX_FMT_RGB24:
-        *csi_color = MIPI_CSI_COLOR_RGB888;
+        *csi_color = CAM_CTLR_COLOR_RGB888;
         *out_bpp = 24;
         break;
     case V4L2_PIX_FMT_YUV420:
-        *csi_color = MIPI_CSI_COLOR_YUV420;
+        *csi_color = CAM_CTLR_COLOR_YUV420;
         *out_bpp = 12;
         break;
     case V4L2_PIX_FMT_YUV422P:
-        *csi_color = MIPI_CSI_COLOR_YUV422;
+        *csi_color = CAM_CTLR_COLOR_YUV422;
         *out_bpp = 16;
         break;
     default:
@@ -264,7 +264,7 @@ static esp_err_t csi_video_init(struct esp_video *video)
         return ret;
     }
 
-    csi_video->csi_out_color = MIPI_CSI_COLOR_RGB565;
+    csi_video->csi_out_color = CAM_CTLR_COLOR_RGB565;
     csi_video->csi_out_bpp = 16;
     csi_video->isp_out_color = ISP_COLOR_RGB565;
     csi_video->csi_line_sync = sensor_format.mipi_info.line_sync_en;
