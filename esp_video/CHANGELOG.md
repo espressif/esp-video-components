@@ -1,10 +1,14 @@
+## 0.1.2
+
+- Update the API and macro to support ESP-IDF new version
+
 ## 0.1.1
 
 - Modify API `esp_video_create` and put camera device management from video core to hardware device driver
 
 ## 0.1.0
 
-- Inititial version for esp_video component
+- Initial version for esp_video component
 
 ### Enhancements
 
