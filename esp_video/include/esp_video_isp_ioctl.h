@@ -9,7 +9,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include "sdkconfig.h"
-#include "hal/isp_types.h"
+#include "driver/isp.h"
 #include <linux/v4l2-controls.h>
 
 #ifdef __cplusplus
@@ -26,6 +26,7 @@ extern "C" {
 #define V4L2_CID_USER_ESP_ISP_BF            (V4L2_CID_USER_ESP_ISP_BASE + 0x0002)   /*!< BF V4L2 controller ID */
 #define V4L2_CID_USER_ESP_ISP_SHARPEN       (V4L2_CID_USER_ESP_ISP_BASE + 0x0003)   /*!< Sharpen V4L2 controller ID */
 #define V4L2_CID_USER_ESP_ISP_DEMOSAIC      (V4L2_CID_USER_ESP_ISP_BASE + 0x0004)   /*!< Demosaic V4L2 controller ID */
+#define V4L2_CID_USER_ESP_ISP_WB            (V4L2_CID_USER_ESP_ISP_BASE + 0x0005)   /*!< White balance V4L2 controller ID */
 
 /**
  * @brief ESP32XXX ISP image statistics output, data type is "esp_ipa_stats_t"
@@ -38,6 +39,15 @@ extern "C" {
 
 #define V4L2_CID_RED_BALANCE_DEN            1000    /*!< Red balance denominator */
 #define V4L2_CID_BLUE_BALANCE_DEN           1000    /*!< Blue balance denominator */
+
+
+/**
+ * @brief ISP statistics flags
+ */
+#define ESP_VIDEO_ISP_STATS_FLAG_AE         (1 << 0)    /*!< ISP statistics has AE */
+#define ESP_VIDEO_ISP_STATS_FLAG_AWB        (1 << 1)    /*!< ISP statistics has AWB */
+#define ESP_VIDEO_ISP_STATS_FLAG_HIST       (1 << 2)    /*!< ISP statistics has histogram */
+#define ESP_VIDEO_ISP_STATS_FLAG_SHARPEN    (1 << 3)    /*!< ISP statistics has sharpen */
 
 /**
  * @brief GAMMA point coordinate.
@@ -128,6 +138,29 @@ typedef struct esp_video_isp_demosaic {
 
     float gradient_ratio;   /*!< Demosaic gradient ratio */
 } esp_video_isp_demosaic_t;
+
+/**
+ * @brief White balance configuration.
+ */
+typedef struct esp_video_isp_wb {
+    bool enable;        /*!< true: enable white balance, false: disable white balance */
+
+    float red_gain;     /*!< Red channel gain */
+    float blue_gain;    /*!< Blue channel gain */
+} esp_video_isp_wb_t;
+
+/**
+ * @brief ISP statistics.
+ */
+typedef struct esp_video_isp_stats {
+    uint32_t flags;     /*!< ISP statistics flags */
+    uint64_t seq;       /*!< ISP statistics sequence number */
+
+    esp_isp_ae_env_detector_evt_data_t ae;  /*!< ISP exposure statistics */
+    esp_isp_awb_evt_data_t awb;             /*!< ISP white balance statistics */
+    esp_isp_hist_evt_data_t hist;           /*!< ISP histogram statistics */
+    esp_isp_sharpen_evt_data_t sharpen;     /*!< ISP sharpen statistics */
+} esp_video_isp_stats_t;
 
 #ifdef __cplusplus
 }

@@ -72,4 +72,15 @@ menu "Espressif Video Configuration"
             Select this option, enable ISP based video device. When using
             camera sensor's internal ISP, this option can be disable.
 
+    if ESP_VIDEO_ENABLE_ISP_VIDEO_DEVICE
+
+        config ESP_VIDEO_ENABLE_ISP_PIPELINE_CONTROLLER
+            bool "Enable ISP Pipeline Controller"
+            default n
+            help
+                Select this option, enable ISP pipeline controller by creating
+                the task "isp_task". This task reads statistics from the ISP
+                statistics module, passes statistics to the image process algorithm
+                module, and writes calculated data to the ISP or sensor.
+    endif
 endmenu

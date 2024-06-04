@@ -16,6 +16,7 @@
 #include "esp_video_init.h"
 #include "esp_video_device_internal.h"
 #include "esp_private/esp_cam_dvp.h"
+#include "esp_video_pipeline_isp.h"
 
 #define SCCB_NUM_MAX                I2C_NUM_MAX
 
@@ -32,6 +33,34 @@ typedef struct sccb_mark {
 } esp_video_init_sccb_mark_t;
 
 static const char *TAG = "esp_video_init";
+
+#if CONFIG_ESP_VIDEO_ENABLE_ISP_PIPELINE_CONTROLLER
+static const char *s_default_ipa_names[] = {
+#if CONFIG_ESP_IPA_AWB_GRAY_WORLD
+    "awb.gray",
+#endif
+#if CONFIG_ESP_IPA_AGC_THRESHOLD
+    "agc.threshold",
+#endif
+#if CONFIG_ESP_IPA_DENOISING_GAIN_FEEDBACK
+    "denoising.gf",
+#endif
+#if CONFIG_ESP_IPA_SHARPEN_FREQUENCY_FEEDBACK
+    "sharpen.ff",
+#endif
+#if CONFIG_ESP_IPA_GAMMA_LUMA
+    "gamma.lf",
+#endif
+#if CONFIG_ESP_IPA_CC_LINEAR
+    "cc.linear",
+#endif
+};
+
+const esp_video_init_isp_config_t s_ipa_config = {
+    .ipa_nums = sizeof(s_default_ipa_names) / sizeof(s_default_ipa_names[0]),
+    .ipa_names = s_default_ipa_names
+};
+#endif
 
 #if CONFIG_ESP_VIDEO_ENABLE_MIPI_CSI_VIDEO_DEVICE || CONFIG_ESP_VIDEO_ENABLE_DVP_VIDEO_DEVICE
 /**
@@ -168,6 +197,17 @@ esp_err_t esp_video_init(const esp_video_init_config_t *config)
         return ESP_ERR_INVALID_ARG;
     }
 
+#if CONFIG_ESP_VIDEO_ENABLE_ISP_PIPELINE_CONTROLLER
+    const esp_video_init_isp_config_t *ipa_config;
+
+    if (config->isp == NULL || !config->isp->ipa_nums || !config->isp->ipa_names) {
+        ESP_LOGW(TAG, "ISP config is null and use default IPA config");
+        ipa_config = &s_ipa_config;
+    } else {
+        ipa_config = config->isp;
+    }
+#endif
+
     for (esp_cam_sensor_detect_fn_t *p = &__esp_cam_sensor_detect_fn_array_start; p < &__esp_cam_sensor_detect_fn_array_end; ++p) {
 #if CONFIG_ESP_VIDEO_ENABLE_MIPI_CSI_VIDEO_DEVICE
         if (p->port == ESP_CAM_SENSOR_MIPI_CSI && config->csi != NULL) {
@@ -257,11 +297,25 @@ esp_err_t esp_video_init(const esp_video_init_config_t *config)
     }
 #endif
 
-
 #if CONFIG_ESP_VIDEO_ENABLE_ISP_VIDEO_DEVICE
     ret = esp_video_create_isp_video_device();
     if (ret != ESP_OK) {
         ESP_LOGE(TAG, "failed to create hardware ISP video device");
+        return ret;
+    }
+#endif
+
+#if CONFIG_ESP_VIDEO_ENABLE_ISP_PIPELINE_CONTROLLER
+    esp_video_isp_config_t isp_config = {
+        .cam_dev = ESP_VIDEO_MIPI_CSI_DEVICE_NAME,
+        .isp_dev = ESP_VIDEO_ISP1_DEVICE_NAME,
+        .ipa_nums = ipa_config->ipa_nums,
+        .ipa_names = ipa_config->ipa_names,
+    };
+
+    ret = esp_video_isp_pipeline_init(&isp_config);
+    if (ret != ESP_OK) {
+        ESP_LOGE(TAG, "failed to create ISP system");
         return ret;
     }
 #endif
