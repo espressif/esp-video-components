@@ -397,6 +397,12 @@ static esp_err_t csi_video_stop(struct esp_video *video, uint32_t type)
         return ret;
     }
 
+    ret = esp_cam_ctlr_disable(csi_video->cam_ctrl_handle);
+    if (ret != ESP_OK) {
+        ESP_LOGE(TAG, "failed to disable CAM ctlr");
+        return ret;
+    }
+
     ret = esp_isp_disable(csi_video->isp_processor);
     if (ret != ESP_OK) {
         ESP_LOGE(TAG, "failed to disable ISP");
