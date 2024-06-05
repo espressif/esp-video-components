@@ -1,6 +1,9 @@
 ## 0.4.0
 
-- - Added support for SC202CS MIPI camera sensor driver
+- Added support for SC202CS MIPI camera sensor driver
+- Added support for SC2336 RAW8 format with 800x800、1280x720、1920x1080 resolution
+- Changed the test/apps/detect demo to use the formal esp_sccb_intr component
+- Changed the SC2336 to use RAW8 format by default
 
 ## 0.3.2
 
