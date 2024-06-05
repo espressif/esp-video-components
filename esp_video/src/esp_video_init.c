@@ -56,10 +56,10 @@ static esp_sccb_io_handle_t create_sccb_device(const esp_video_init_sccb_config_
 
     sccb_config.dev_addr_length = I2C_ADDR_BIT_LEN_7,
     sccb_config.device_address = dev_addr,
-    sccb_config.scl_speed_hz = init_sccb_config->i2c_config.freq,
+    sccb_config.scl_speed_hz = init_sccb_config->freq,
     ret = sccb_new_i2c_io(bus_handle, &sccb_config, &sccb_io);
     if (ret != ESP_OK) {
-        ESP_LOGE(TAG, "failed to initialize SCCB port %d", init_sccb_config->i2c_config.port);
+        ESP_LOGE(TAG, "failed to initialize SCCB");
         return NULL;
     }
 

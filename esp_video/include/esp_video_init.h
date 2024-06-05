@@ -26,11 +26,12 @@ typedef struct esp_video_init_sccb_config {
             uint8_t port;                       /*!< SCCB I2C port */
             uint8_t scl_pin;                    /*!< SCCB I2C SCL pin */
             uint8_t sda_pin;                    /*!< SCCB I2C SDA pin */
-            uint32_t freq;                      /*!< SCCB I2C frequency */
         } i2c_config;
 
         i2c_master_bus_handle_t i2c_handle;     /*!< SCCB I2C handle */
     };
+
+    uint32_t freq;                              /*!< SCCB I2C frequency */
 } esp_video_init_sccb_config_t;
 
 /**
