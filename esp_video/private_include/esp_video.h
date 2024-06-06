@@ -189,13 +189,14 @@ esp_err_t esp_video_set_format(struct esp_video *video, uint32_t type, const str
  *
  * @param video Video object
  * @param type  Video stream type
+ * @param memory_type Video buffer memory type, refer to v4l2_memory in videodev2.h
  * @param count Video buffer count
  *
  * @return
  *      - ESP_OK on success
  *      - Others if failed
  */
-esp_err_t esp_video_setup_buffer(struct esp_video *video, uint32_t type, uint32_t count);
+esp_err_t esp_video_setup_buffer(struct esp_video *video, uint32_t type, uint32_t memory_type, uint32_t count);
 
 /**
  * @brief Get video buffer count.
@@ -315,13 +316,28 @@ esp_err_t esp_video_queue_element(struct esp_video *video, uint32_t type, struct
  *
  * @param video   Video object
  * @param type    Video stream type
- * @param element Video buffer element
+ * @param index   Video buffer element index
  *
  * @return
  *      - ESP_OK on success
  *      - Others if failed
  */
 esp_err_t esp_video_queue_element_index(struct esp_video *video, uint32_t type, int index);
+
+/**
+ * @brief Put buffer element index into queued list.
+ *
+ * @param video   Video object
+ * @param type    Video stream type
+ * @param index   Video buffer element index
+ * @param buffer  Receive buffer pointer from user space
+ * @param size    Receive buffer size
+ *
+ * @return
+ *      - ESP_OK on success
+ *      - Others if failed
+ */
+esp_err_t esp_video_queue_element_index_buffer(struct esp_video *video, uint32_t type, int index, uint8_t *buffer, uint32_t size);
 
 /**
  * @brief Get buffer element payload.

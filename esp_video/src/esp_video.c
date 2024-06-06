@@ -8,6 +8,7 @@
 #include <string.h>
 #include <sys/lock.h>
 #include "esp_log.h"
+#include "esp_memory_utils.h"
 #include "esp_heap_caps.h"
 #include "esp_video.h"
 #include "esp_video_vfs.h"
@@ -808,13 +809,14 @@ esp_err_t esp_video_set_format(struct esp_video *video, uint32_t type, const str
  *
  * @param video Video object
  * @param type  Video stream type
+ * @param memory_type Video buffer memory type, refer to v4l2_memory in videodev2.h
  * @param count Video buffer count
  *
  * @return
  *      - ESP_OK on success
  *      - Others if failed
  */
-esp_err_t esp_video_setup_buffer(struct esp_video *video, uint32_t type, uint32_t count)
+esp_err_t esp_video_setup_buffer(struct esp_video *video, uint32_t type, uint32_t memory_type, uint32_t count)
 {
     struct esp_video_stream *stream;
     struct esp_video_buffer_info *info;
@@ -853,6 +855,7 @@ esp_err_t esp_video_setup_buffer(struct esp_video *video, uint32_t type, uint32_
     }
 
     info->count = count;
+    info->memory_type = memory_type;
 
     if (stream->ready_sem) {
         vSemaphoreDelete(stream->ready_sem);
@@ -895,7 +898,6 @@ esp_err_t esp_video_setup_buffer(struct esp_video *video, uint32_t type, uint32_
 esp_err_t esp_video_get_buffer_info(struct esp_video *video, uint32_t type, struct esp_video_buffer_info *info)
 {
     struct esp_video_stream *stream;
-    struct esp_video_buffer_info *buffer_info;
 
 #if CONFIG_ESP_VIDEO_CHECK_PARAMETERS
     bool found = false;
@@ -920,12 +922,8 @@ esp_err_t esp_video_get_buffer_info(struct esp_video *video, uint32_t type, stru
     if (!stream) {
         return ESP_ERR_INVALID_ARG;
     }
-    buffer_info = &stream->buf_info;
 
-    info->count = buffer_info->count;
-    info->size = buffer_info->size;
-    info->align_size = buffer_info->align_size;
-    info->caps = buffer_info->caps;
+    memcpy(info, &stream->buf_info, sizeof(struct esp_video_buffer_info));
 
     return ESP_OK;
 }
@@ -1138,7 +1136,7 @@ esp_err_t esp_video_queue_element(struct esp_video *video, uint32_t type, struct
  *
  * @param video   Video object
  * @param type    Video stream type
- * @param element Video buffer element
+ * @param index   Video buffer element index
  *
  * @return
  *      - ESP_OK on success
@@ -1156,6 +1154,58 @@ esp_err_t esp_video_queue_element_index(struct esp_video *video, uint32_t type, 
     }
 
     element = ESP_VIDEO_BUFFER_ELEMENT(stream->buffer, index);
+
+    ret = esp_video_queue_element(video, type, element);
+
+    return ret;
+}
+
+/**
+ * @brief Put buffer element index into queued list.
+ *
+ * @param video   Video object
+ * @param type    Video stream type
+ * @param index   Video buffer element index
+ * @param buffer  Receive buffer pointer from user space
+ * @param size    Receive buffer size
+ *
+ * @return
+ *      - ESP_OK on success
+ *      - Others if failed
+ */
+esp_err_t esp_video_queue_element_index_buffer(struct esp_video *video, uint32_t type, int index, uint8_t *buffer, uint32_t size)
+{
+    esp_err_t ret;
+    struct esp_video_stream *stream;
+    struct esp_video_buffer_info *info;
+    struct esp_video_buffer_element *element;
+
+    stream = esp_video_get_stream(video, type);
+    if (!stream) {
+        return ESP_ERR_INVALID_ARG;
+    }
+
+    element = ESP_VIDEO_BUFFER_ELEMENT(stream->buffer, index);
+    info = &stream->buffer->info;
+
+    if ((info->memory_type != V4L2_MEMORY_USERPTR) ||
+            (((uintptr_t)buffer) % info->align_size) ||
+            (size < info->size)) {
+        return ESP_ERR_INVALID_ARG;
+    }
+
+    if (info->caps & MALLOC_CAP_SPIRAM) {
+        if (!esp_ptr_external_ram(buffer)) {
+            return ESP_ERR_INVALID_ARG;
+        }
+    } else if (info->caps & MALLOC_CAP_INTERNAL) {
+        if (!esp_ptr_internal(buffer)) {
+            return ESP_ERR_INVALID_ARG;
+        }
+    }
+
+    element->buffer = buffer;
+    element->valid_size = size;
 
     ret = esp_video_queue_element(video, type, element);
 

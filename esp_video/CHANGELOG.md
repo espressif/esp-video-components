@@ -1,3 +1,9 @@
+## 0.2.0
+
+- Support V4L2 `V4L2_MEMORY_USERPTR`
+- Fix CSI video device stop issue
+- Fix I2C clock frequency can't be used when input I2C handle
+
 ## 0.1.2
 
 - Update the API and macro to support ESP-IDF new version
