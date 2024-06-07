@@ -33,6 +33,7 @@ static const char *TAG = "sc2336";
 static uint8_t s_sc2336_index;
 
 static const esp_cam_sensor_isp_info_t sc2336_isp_info[] = {
+    /* For MIPI */
     {
         .isp_v1_info = {
             .version = SENSOR_ISP_INFO_VERSION_DEFAULT,
@@ -108,6 +109,34 @@ static const esp_cam_sensor_isp_info_t sc2336_isp_info[] = {
     {
         .isp_v1_info = {
             .version = SENSOR_ISP_INFO_VERSION_DEFAULT,
+            .pclk = 84000000,
+            .vts = 1250,
+            .hts = 2240,
+            .bayer_type = ESP_CAM_SENSOR_BAYER_BGGR,
+        }
+    },
+    {
+        .isp_v1_info = {
+            .version = SENSOR_ISP_INFO_VERSION_DEFAULT,
+            .pclk = 84000000,
+            .vts = 1250,
+            .hts = 2240,
+            .bayer_type = ESP_CAM_SENSOR_BAYER_BGGR,
+        }
+    },
+    {
+        .isp_v1_info = {
+            .version = SENSOR_ISP_INFO_VERSION_DEFAULT,
+            .pclk = 84000000,
+            .vts = 1250,
+            .hts = 2240,
+            .bayer_type = ESP_CAM_SENSOR_BAYER_BGGR,
+        }
+    },
+    /* For DVP */
+    {
+        .isp_v1_info = {
+            .version = SENSOR_ISP_INFO_VERSION_DEFAULT,
             .pclk = 42000000,
             .vts = 525,
             .hts = 1600,
@@ -117,6 +146,7 @@ static const esp_cam_sensor_isp_info_t sc2336_isp_info[] = {
 };
 
 static const esp_cam_sensor_format_t sc2336_format_info[] = {
+    /* For MIPI */
     {
         .name = "MIPI_2lane_24Minput_RAW10_1280x720_30fps",
         .format = ESP_CAM_SENSOR_PIXFORMAT_RAW10,
@@ -262,6 +292,61 @@ static const esp_cam_sensor_format_t sc2336_format_info[] = {
         .reserved = NULL,
     },
     {
+        .name = "MIPI_2lane_24Minput_RAW8_1920*1080_30fps",
+        .format = ESP_CAM_SENSOR_PIXFORMAT_RAW8,
+        .port = ESP_CAM_SENSOR_MIPI_CSI,
+        .xclk = 24000000,
+        .width = 1920,
+        .height = 1080,
+        .regs = init_reglist_MIPI_2lane_1080p_raw8_30fps,
+        .regs_size = ARRAY_SIZE(init_reglist_MIPI_2lane_1080p_raw8_30fps),
+        .fps = 30,
+        .isp_info = &sc2336_isp_info[8],
+        .mipi_info = {
+            .mipi_clk = 336000000,
+            .lane_num = 2,
+            .line_sync_en = false,
+        },
+        .reserved = NULL,
+    },
+    {
+        .name = "MIPI_2lane_24Minput_RAW8_1280*720_30fps",
+        .format = ESP_CAM_SENSOR_PIXFORMAT_RAW8,
+        .port = ESP_CAM_SENSOR_MIPI_CSI,
+        .xclk = 24000000,
+        .width = 1280,
+        .height = 720,
+        .regs = init_reglist_MIPI_2lane_720p_raw8_30fps,
+        .regs_size = ARRAY_SIZE(init_reglist_MIPI_2lane_720p_raw8_30fps),
+        .fps = 30,
+        .isp_info = &sc2336_isp_info[9],
+        .mipi_info = {
+            .mipi_clk = 336000000,
+            .lane_num = 2,
+            .line_sync_en = false,
+        },
+        .reserved = NULL,
+    },
+    {
+        .name = "MIPI_2lane_24Minput_RAW8_800*800_30fps",
+        .format = ESP_CAM_SENSOR_PIXFORMAT_RAW8,
+        .port = ESP_CAM_SENSOR_MIPI_CSI,
+        .xclk = 24000000,
+        .width = 800,
+        .height = 800,
+        .regs = init_reglist_MIPI_2lane_800x800_raw8_30fps,
+        .regs_size = ARRAY_SIZE(init_reglist_MIPI_2lane_800x800_raw8_30fps),
+        .fps = 30,
+        .isp_info = &sc2336_isp_info[10],
+        .mipi_info = {
+            .mipi_clk = 336000000,
+            .lane_num = 2,
+            .line_sync_en = false,
+        },
+        .reserved = NULL,
+    },
+    /* For DVP */
+    {
         .name = "DVP_8bits_24Minput_RAW10_1280*720_30fps",
         .format = ESP_CAM_SENSOR_PIXFORMAT_RAW10,
         .port = ESP_CAM_SENSOR_DVP,
@@ -271,7 +356,7 @@ static const esp_cam_sensor_format_t sc2336_format_info[] = {
         .regs = init_reglist_DVP_720p_30fps,
         .regs_size = ARRAY_SIZE(init_reglist_DVP_720p_30fps),
         .fps = 30,
-        .isp_info = &sc2336_isp_info[8],
+        .isp_info = &sc2336_isp_info[11],
         .mipi_info = {0},
         .reserved = NULL,
     },

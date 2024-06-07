@@ -4,5 +4,4 @@ dependencies:
     version: ">=0.2.0"
     override_path: "../../../"
   esp_sccb_intf:
-      version: ">=0.0.2"
-      override_path: "../../../../esp_sccb_intf"
+      version: ">=0.0.3"

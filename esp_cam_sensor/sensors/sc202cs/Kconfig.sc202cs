@@ -1,0 +1,39 @@
+menuconfig CAMERA_SC202CS
+    bool "SC202CS"
+    default n
+    help
+        Enabling this option will add the support for SC202CS.
+
+if CAMERA_SC202CS
+    menuconfig CAMERA_SC202CS_AUTO_DETECT
+        bool "Auto detect SC202CS"
+        default y
+        help
+            When enabled, it provides the ability in application layer to automatically
+            detect camera sensors one by one.
+
+    if CAMERA_SC202CS_AUTO_DETECT
+        config CAMERA_SC202CS_AUTO_DETECT_MIPI_INTERFACE_SENSOR
+            bool "Detect for MIPI interface sensor"
+            default y
+            help
+                When enabled, you don't need to call sc202cs_detect manaually, SC202CS will
+                be automatically detected and connected to the MIPI CSI interface when
+                the application starts.
+    endif
+
+    config CAMERA_SC202CS_MIPI_IF_FORMAT_INDEX_DAFAULT
+        int "Default format index for SC202CS MIPI Interface"
+        default 0
+        range 0 3
+        help
+            Set the configuration loaded by default for the MIPI CSI interface.
+            More information can be obtained by calling the query_support_formats().
+
+    config CAMERA_SC202CS_MAX_SUPPORT
+        int "Support for a maximum number of connected SC202CS"
+        default 1
+        range 1 1
+        help
+            Set the number of connected SC202CS.
+endif

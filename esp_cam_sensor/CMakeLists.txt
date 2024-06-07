@@ -27,6 +27,12 @@ if(CONFIG_CAMERA_SC2336)
     list(APPEND priv_include_dirs "sensors/sc2336/private_include")
 endif()
 
+if(CONFIG_CAMERA_SC202CS)
+    list(APPEND srcs "sensors/sc202cs/sc202cs.c")
+    list(APPEND include_dirs "sensors/sc202cs/include")
+    list(APPEND priv_include_dirs "sensors/sc202cs/private_include")
+endif()
+
 idf_component_register(SRCS ${srcs}
                        INCLUDE_DIRS ${include_dirs}
                        PRIV_INCLUDE_DIRS ${priv_include_dirs}
@@ -47,6 +53,10 @@ endif()
 
 if(CONFIG_CAMERA_SC2336_AUTO_DETECT)
     target_link_libraries(${COMPONENT_LIB} INTERFACE "-u sc2336_detect")
+endif()
+
+if(CONFIG_CAMERA_SC202CS_AUTO_DETECT)
+    target_link_libraries(${COMPONENT_LIB} INTERFACE "-u sc202cs_detect")
 endif()
 
 include(package_manager)
