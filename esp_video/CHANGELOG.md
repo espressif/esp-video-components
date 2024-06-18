@@ -1,3 +1,7 @@
+## 0.3.0
+
+- Support ESP32-P4 LCD_CAM DVP video device
+
 ## 0.2.0
 
 - Support V4L2 `V4L2_MEMORY_USERPTR`

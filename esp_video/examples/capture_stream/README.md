@@ -9,11 +9,47 @@ This example demonstrates the following:
 
 ### Hardware Required
 
+#### 1. MIPI-CSI Development Kit
+
 * A ESP32-P4 development board with MIPI-CSI interface
 * A SC2336 camera sensor
 * A USB Type-C cable for power supply and programming
 
+### 2. DVP Development Kit
+
+* A ESP32-P4 development board with DVP interface
+* A OV2640 camera sensor
+* A USB Type-C cable for power supply and programming
+
 ### Build and Flash
+
+Configure camera hardware data interface based on development kit:
+
+#### MIPI-CSI Development Kit
+
+```
+Example Configuration  --->
+    [*] Enable MIPI CSI Camera Sensor
+    [ ] Enable DVP Camera Sensor
+
+Component config  --->
+    Espressif Camera Sensors Configurations  --->
+        [ ] OV2640  --->
+        [*] SC2336  ----
+```
+
+#### DVP Development Kit
+
+```
+Example Configuration  --->
+    [ ] Enable MIPI CSI Camera Sensor
+    [*] Enable DVP Camera Sensor
+
+Component config  --->
+    Espressif Camera Sensors Configurations  --->
+        [*] OV2640  --->
+        [ ] SC2336  ----
+```
 
 Build the project and flash it to the board, then run monitor tool to view serial output:
 
@@ -28,6 +64,8 @@ See the [ESP-IDF Getting Started Guide](https://docs.espressif.com/projects/esp-
 ## Example Output
 
 Running this example, you will see the following log output on the serial monitor:
+
+### MIPI-CSI Development Kit
 
 ```
 ...
@@ -73,5 +111,34 @@ I (16355) example:      height: 720
 I (16355) example:      size:   1843200
 I (16355) example:      FPS:    30
 I (16355) main_task: Returned from app_main()
+...
+```
+
+### DVP Development Kit
+
+```
+...
+I (867) main_task: Calling app_main()
+I (867) gpio: GPIO[32]| InputEn: 1| OutputEn: 1| OpenDrain: 1| Pullup: 1| Pulldown: 0| Intr:0 
+I (867) gpio: GPIO[33]| InputEn: 1| OutputEn: 1| OpenDrain: 1| Pullup: 1| Pulldown: 0| Intr:0 
+I (877) ov2640: Detected Camera sensor PID=0x26 with index 0
+I (957) example: version: 0.3.0
+I (957) example: driver:  DVP
+I (957) example: card:    DVP
+I (957) example: bus:     esp32p4:DVP
+I (957) example: capabilities:
+I (957) example:        VIDEO_CAPTURE
+I (957) example:        READWRITE
+I (957) example:        STREAMING
+I (957) example: device capabilities:
+I (957) example:        VIDEO_CAPTURE
+I (957) example:        READWRITE
+I (957) example:        STREAMING
+I (957) example: Capture RGB 5-6-5 format frames for 3 seconds:
+I (4367) example:       width:  640
+I (4367) example:       height: 480
+I (4367) example:       size:   614400
+I (4367) example:       FPS:    6
+I (4367) main_task: Returned from app_main()
 ...
 ```

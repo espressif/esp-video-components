@@ -374,7 +374,6 @@ exit_1:
     esp_cam_ctlr_del(csi_video->cam_ctrl_handle);
     csi_video->cam_ctrl_handle = NULL;
 exit_0:
-    esp_isp_disable(csi_video->isp_processor);
     return ret;
 }
 
