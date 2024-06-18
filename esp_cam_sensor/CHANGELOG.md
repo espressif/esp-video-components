@@ -1,6 +1,7 @@
 ## 0.5.0
 
 - Added support for GC0308 DVP camera sensor driver
+- Added support for SC101IOT DVP camera sensor driver
 
 ## 0.4.0
 

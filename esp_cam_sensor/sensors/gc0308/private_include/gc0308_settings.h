@@ -17,7 +17,7 @@ extern "C" {
 #endif
 
 #define GC0308_RGB565_FMT   (0xa6)
-#define GC0308_YUYV422_FMT  (0xa2)
+#define GC0308_YUYV422_FMT  (0xa0) // send in [Cb Y Cr Y] order. The sequence of data stored is [Y Cb Y Cr]
 #define GC0308_ONLY_Y_FMT   (0xb1)
 
 #define gc0308_settings_rgb565 \
