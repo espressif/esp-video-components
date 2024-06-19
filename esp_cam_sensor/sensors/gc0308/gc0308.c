@@ -246,7 +246,7 @@ static esp_err_t gc0308_set_vflip(esp_cam_sensor_device_t *dev, int enable)
     ret = gc0308_select_page(dev, 0x00);
     ret |= gc0308_set_reg_bits(dev->sccb_handle, GC0308_REG_CISCTL_MODE1, 1, 0x01, enable != 0);
     if (ret == 0) {
-        ESP_LOGD(TAG, "Set h-mirror to: %d", enable);
+        ESP_LOGD(TAG, "Set vflip to: %d", enable);
     }
 
     return ret;
