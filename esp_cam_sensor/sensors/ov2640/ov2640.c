@@ -234,7 +234,7 @@ static esp_err_t ov2640_write_array(esp_sccb_io_handle_t sccb_handle, const ov26
 
 static esp_err_t ov2640_set_reg_bits(esp_sccb_io_handle_t sccb_handle, uint8_t bank, uint8_t reg, uint8_t offset, uint8_t mask, uint8_t value)
 {
-    esp_err_t ret = 0;
+    esp_err_t ret = ESP_OK;
     uint8_t c_value, new_value;
 
     ret = ov2640_set_bank(sccb_handle, bank);
@@ -322,7 +322,7 @@ static esp_err_t ov2640_set_hmirror(esp_cam_sensor_device_t *dev, int enable)
 
 static esp_err_t ov2640_set_vflip(esp_cam_sensor_device_t *dev, int enable)
 {
-    esp_err_t ret = 0;
+    esp_err_t ret = ESP_OK;
     ret = ov2640_write_reg_bits(dev->sccb_handle, BANK_SENSOR, REG04, REG04_VREF_EN, enable ? 1 : 0);
     return ret & ov2640_write_reg_bits(dev->sccb_handle, BANK_SENSOR, REG04, REG04_VFLIP_IMG, enable ? 1 : 0);
 }

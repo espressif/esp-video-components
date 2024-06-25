@@ -147,7 +147,7 @@ static esp_err_t gc0308_write_array(esp_sccb_io_handle_t sccb_handle, gc0308_reg
 
 static esp_err_t gc0308_set_reg_bits(esp_sccb_io_handle_t sccb_handle, uint8_t reg, uint8_t offset, uint8_t length, uint8_t value)
 {
-    esp_err_t ret = 0;
+    esp_err_t ret = ESP_OK;
     uint8_t reg_data = 0;
 
     ret = gc0308_read(sccb_handle, reg, &reg_data);
@@ -167,7 +167,7 @@ static esp_err_t gc0308_select_page(esp_cam_sensor_device_t *dev, uint8_t page)
 
 static esp_err_t gc0308_set_test_pattern(esp_cam_sensor_device_t *dev, int enable)
 {
-    esp_err_t ret = 0;
+    esp_err_t ret = ESP_OK;
     ret = gc0308_select_page(dev, 0x00);
     if (enable) {
         ret |= gc0308_set_reg_bits(dev->sccb_handle, GC0308_REG_DEBUG_MODE, 0, 0x01, 0x01);

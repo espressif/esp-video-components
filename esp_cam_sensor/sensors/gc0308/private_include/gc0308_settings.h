@@ -21,17 +21,17 @@ extern "C" {
 #define GC0308_ONLY_Y_FMT   (0xb1)
 
 #define gc0308_settings_rgb565 \
-    {GC0308_REG_OUTPUT_FMT, GC0308_RGB565_FMT}, \
+    {GC0308_REG_OUTPUT_FMT, GC0308_RGB565_FMT}
 
 #define gc0308_settings_yuv422 \
-    {GC0308_REG_OUTPUT_FMT, GC0308_YUYV422_FMT}, \
+    {GC0308_REG_OUTPUT_FMT, GC0308_YUYV422_FMT}
 
 #define gc0308_settings_only_y \
-    {GC0308_REG_OUTPUT_FMT, GC0308_ONLY_Y_FMT}, \
+    {GC0308_REG_OUTPUT_FMT, GC0308_ONLY_Y_FMT}
 
 #define gc0308_select_page0_default \
     {0xfe, 0x80}, \
-    {0xfe, 0x00}, \
+    {0xfe, 0x00}
 
 #define init_reglist_DVP_8bit_640x480_16fps \
     {GC0308_REG_OUTPUT_EN, 0x00}, /* data disable */\
@@ -329,7 +329,7 @@ extern "C" {
     {0xAD, 0xF7}, \
     {0xAE, 0xFD}, \
     {0xAF, 0xFF}, \
-    {0x14, 0x10}, \
+    {0x14, 0x10}
 
 #define init_reglist_DVP_8bit_320x240_20fps_subsample \
     {GC0308_REG_OUTPUT_EN, 0x00}, /* data disable */\
@@ -572,42 +572,42 @@ extern "C" {
     {0xe9, 0xe0}, \
     {0xea, 0x01}, \
     {0xeb, 0xe0}, \
-    {0xfe, 0x00}, \
+    {0xfe, 0x00}
 
 static const gc0308_reginfo_t DVP_8bit_20Minput_640x480_only_y_16fps[] = {
-    gc0308_select_page0_default
-    gc0308_settings_only_y
-    init_reglist_DVP_8bit_640x480_16fps
+    gc0308_select_page0_default,
+    gc0308_settings_only_y,
+    init_reglist_DVP_8bit_640x480_16fps,
 };
 
 static const gc0308_reginfo_t DVP_8bit_20Minput_640x480_rgb565_16fps[] = {
-    gc0308_select_page0_default
-    gc0308_settings_rgb565
-    init_reglist_DVP_8bit_640x480_16fps
+    gc0308_select_page0_default,
+    gc0308_settings_rgb565,
+    init_reglist_DVP_8bit_640x480_16fps,
 };
 
 static const gc0308_reginfo_t DVP_8bit_20Minput_640x480_yuv422_16fps[] = {
-    gc0308_select_page0_default
-    gc0308_settings_yuv422
-    init_reglist_DVP_8bit_640x480_16fps
+    gc0308_select_page0_default,
+    gc0308_settings_yuv422,
+    init_reglist_DVP_8bit_640x480_16fps,
 };
 
 static const gc0308_reginfo_t DVP_8bit_20Minput_320x240_only_y_20fps_subsample[] = {
-    gc0308_select_page0_default
-    gc0308_settings_only_y
-    init_reglist_DVP_8bit_320x240_20fps_subsample
+    gc0308_select_page0_default,
+    gc0308_settings_only_y,
+    init_reglist_DVP_8bit_320x240_20fps_subsample,
 };
 
 static const gc0308_reginfo_t DVP_8bit_20Minput_320x240_rgb565_20fps_subsample[] = {
-    gc0308_select_page0_default
-    gc0308_settings_rgb565
-    init_reglist_DVP_8bit_320x240_20fps_subsample
+    gc0308_select_page0_default,
+    gc0308_settings_rgb565,
+    init_reglist_DVP_8bit_320x240_20fps_subsample,
 };
 
 static const gc0308_reginfo_t DVP_8bit_20Minput_320x240_yuv422_20fps_subsample[] = {
-    gc0308_select_page0_default
-    gc0308_settings_yuv422
-    init_reglist_DVP_8bit_320x240_20fps_subsample
+    gc0308_select_page0_default,
+    gc0308_settings_yuv422,
+    init_reglist_DVP_8bit_320x240_20fps_subsample,
 };
 
 #ifdef __cplusplus

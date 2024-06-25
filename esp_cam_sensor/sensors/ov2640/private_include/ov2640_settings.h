@@ -91,7 +91,7 @@ static const uint8_t ov2640_wb_modes_regs[NUM_WB_MODES + 1][3] = {
     {0x3C, 0x10}, \
     {0xEB, 0x30}, \
     {0xDD, 0x7F}, \
-    {RESET, 0x00}, \
+    {RESET, 0x00}
 
 #define ov2640_settings_yuv422 \
     {BANK_SEL, BANK_DSP}, \
@@ -99,7 +99,7 @@ static const uint8_t ov2640_wb_modes_regs[NUM_WB_MODES + 1][3] = {
     {IMAGE_MODE, IMAGE_MODE_YUV422}, \
     {0xD7, 0x01}, \
     {0xE1, 0x67}, \
-    {RESET, 0x00}, \
+    {RESET, 0x00}
 
 #define ov2640_settings_rgb565 \
     {BANK_SEL, BANK_DSP}, \
@@ -107,7 +107,7 @@ static const uint8_t ov2640_wb_modes_regs[NUM_WB_MODES + 1][3] = {
     {IMAGE_MODE, IMAGE_MODE_RGB565}, \
     {0xD7, 0x03}, \
     {0xE1, 0x77}, \
-    {RESET, 0x00}, \
+    {RESET, 0x00}
 
 #define ov2640_settings_to_cif \
     {BANK_SEL, BANK_SENSOR}, \
@@ -146,7 +146,7 @@ static const uint8_t ov2640_wb_modes_regs[NUM_WB_MODES + 1][3] = {
     {VHYX, 0x00}, \
     {TEST, 0x00}, \
     {CTRL2, CTRL2_DCW_EN | 0x1D}, \
-    {CTRLI, CTRLI_LP_DP | 0x00}, \
+    {CTRLI, CTRLI_LP_DP | 0x00}
 
 #define ov2640_settings_to_svga \
     {BANK_SEL, BANK_SENSOR}, \
@@ -187,7 +187,7 @@ static const uint8_t ov2640_wb_modes_regs[NUM_WB_MODES + 1][3] = {
     {VHYX, 0x00}, \
     {TEST, 0x00}, \
     {CTRL2, CTRL2_DCW_EN | 0x1D}, \
-    {CTRLI, CTRLI_LP_DP | 0x00}, \
+    {CTRLI, CTRLI_LP_DP | 0x00}
 
 #define ov2640_settings_to_uxga \
     {BANK_SEL, BANK_SENSOR}, \
@@ -227,7 +227,7 @@ static const uint8_t ov2640_wb_modes_regs[NUM_WB_MODES + 1][3] = {
     {VHYX, 0x88}, \
     {TEST, 0x00}, \
     {CTRL2, CTRL2_DCW_EN | 0x1d}, \
-    {CTRLI, 0x00}, \
+    {CTRLI, 0x00}
 
 static const ov2640_reginfo_t ov2640_settings_cif[] = {
     {BANK_SEL, BANK_SENSOR},
@@ -396,7 +396,7 @@ static const ov2640_reginfo_t init_reglist_DVP_8bit_RGB565_640x480_XCLK_20_6fps[
     {BANK_SEL, BANK_DSP},
     {R_BYPASS, R_BYPASS_DSP_BYPAS},
     // switch svga mode
-    ov2640_settings_to_svga
+    ov2640_settings_to_svga,
     // set win_regs, zoom from svga
     {BANK_SEL, BANK_DSP},
     {0x51, 0xc8},
@@ -417,14 +417,14 @@ static const ov2640_reginfo_t init_reglist_DVP_8bit_RGB565_640x480_XCLK_20_6fps[
     // DSP output en
     {R_BYPASS, R_BYPASS_DSP_EN},
     {REG_DELAY, 0x05},
-    ov2640_settings_rgb565
+    ov2640_settings_rgb565,
 };
 
 static const ov2640_reginfo_t init_reglist_DVP_8bit_YUV422_640x480_XCLK_20_6fps[] = {
     {BANK_SEL, BANK_DSP},
     {R_BYPASS, R_BYPASS_DSP_BYPAS},
     // switch svga mode
-    ov2640_settings_to_svga
+    ov2640_settings_to_svga,
     // set win_regs, zoom from svga
     {BANK_SEL, BANK_DSP},
     {0x51, 0xc8},
@@ -445,14 +445,14 @@ static const ov2640_reginfo_t init_reglist_DVP_8bit_YUV422_640x480_XCLK_20_6fps[
     // DSP output en
     {R_BYPASS, R_BYPASS_DSP_EN},
     {REG_DELAY, 0x05},
-    ov2640_settings_yuv422
+    ov2640_settings_yuv422,
 };
 
 static const ov2640_reginfo_t init_reglist_DVP_8bit_JPEG_640x480_XCLK_20_25fps[] = {
     {BANK_SEL, BANK_DSP},
     {R_BYPASS, R_BYPASS_DSP_BYPAS},
     // switch svga mode
-    ov2640_settings_to_svga
+    ov2640_settings_to_svga,
     // set win_regs, zoom from svga
     {BANK_SEL, BANK_DSP},
     {0x51, 0xc8},
@@ -475,7 +475,7 @@ static const ov2640_reginfo_t init_reglist_DVP_8bit_JPEG_640x480_XCLK_20_25fps[]
     // DSP output en
     {R_BYPASS, R_BYPASS_DSP_EN},
     {REG_DELAY, 0x05},
-    ov2640_settings_jpeg3
+    ov2640_settings_jpeg3,
     {REG_DELAY, 0x10},
 };
 
@@ -483,7 +483,7 @@ static const ov2640_reginfo_t init_reglist_DVP_8bit_RGB565_240x240_XCLK_20_25fps
     {BANK_SEL, BANK_DSP},
     {R_BYPASS, R_BYPASS_DSP_BYPAS},
     // switch cif mode
-    ov2640_settings_to_cif
+    ov2640_settings_to_cif,
     // set win_regs, zoom from cif
     {BANK_SEL, BANK_DSP},
     {0x51, 0x4b},
@@ -504,14 +504,14 @@ static const ov2640_reginfo_t init_reglist_DVP_8bit_RGB565_240x240_XCLK_20_25fps
     // DSP output en
     {R_BYPASS, R_BYPASS_DSP_EN},
     {REG_DELAY, 0x05},
-    ov2640_settings_rgb565
+    ov2640_settings_rgb565,
 };
 
 static const ov2640_reginfo_t init_reglist_DVP_8bit_YUV422_240x240_XCLK_20_25fps[] = {
     {BANK_SEL, BANK_DSP},
     {R_BYPASS, R_BYPASS_DSP_BYPAS},
     // switch cif mode
-    ov2640_settings_to_cif
+    ov2640_settings_to_cif,
     // set win_regs, zoom from cif
     {BANK_SEL, BANK_DSP},
     {0x51, 0x4b},
@@ -532,14 +532,14 @@ static const ov2640_reginfo_t init_reglist_DVP_8bit_YUV422_240x240_XCLK_20_25fps
     // DSP output en
     {R_BYPASS, R_BYPASS_DSP_EN},
     {REG_DELAY, 0x05},
-    ov2640_settings_yuv422
+    ov2640_settings_yuv422,
 };
 
 static const ov2640_reginfo_t init_reglist_DVP_8bit_JPEG_320x240_XCLK_20_50fps[] = {
     {BANK_SEL, BANK_DSP},
     {R_BYPASS, R_BYPASS_DSP_BYPAS},
     // switch cif mode
-    ov2640_settings_to_cif
+    ov2640_settings_to_cif,
     // set win_regs, zoom from cif
     {BANK_SEL, BANK_DSP},
     {0x51, 0x64},
@@ -562,7 +562,7 @@ static const ov2640_reginfo_t init_reglist_DVP_8bit_JPEG_320x240_XCLK_20_50fps[]
     // DSP output en
     {R_BYPASS, R_BYPASS_DSP_EN},
     {REG_DELAY, 0x05},
-    ov2640_settings_jpeg3
+    ov2640_settings_jpeg3,
     {REG_DELAY, 0x10},
 };
 
@@ -570,7 +570,7 @@ static const ov2640_reginfo_t init_reglist_DVP_8bit_JPEG_1280x720_XCLK_20_12fps[
     {BANK_SEL, BANK_DSP},
     {R_BYPASS, R_BYPASS_DSP_BYPAS},
     // switch uxga mode
-    ov2640_settings_to_uxga
+    ov2640_settings_to_uxga,
     // set win_regs, zoom from uxga
     {BANK_SEL, BANK_DSP},
     {0x51, 0x90},
@@ -593,7 +593,7 @@ static const ov2640_reginfo_t init_reglist_DVP_8bit_JPEG_1280x720_XCLK_20_12fps[
     // DSP output en
     {R_BYPASS, R_BYPASS_DSP_EN},
     {REG_DELAY, 0x05},
-    ov2640_settings_jpeg3
+    ov2640_settings_jpeg3,
     {REG_DELAY, 0x10},
 };
 
@@ -601,7 +601,7 @@ static const ov2640_reginfo_t init_reglist_DVP_8bit_JPEG_1600x1200_XCLK_20_12fps
     {BANK_SEL, BANK_DSP},
     {R_BYPASS, R_BYPASS_DSP_BYPAS},
     // switch uxga mode
-    ov2640_settings_to_uxga
+    ov2640_settings_to_uxga,
     // set win_regs, zoom from uxga
     {BANK_SEL, BANK_DSP},
     {0x51, 0x90},
@@ -624,7 +624,7 @@ static const ov2640_reginfo_t init_reglist_DVP_8bit_JPEG_1600x1200_XCLK_20_12fps
     // DSP output en
     {R_BYPASS, R_BYPASS_DSP_EN},
     {REG_DELAY, 0x05},
-    ov2640_settings_jpeg3
+    ov2640_settings_jpeg3,
     {REG_DELAY, 0x10},
 };
 

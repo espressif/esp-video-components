@@ -172,7 +172,7 @@ static esp_err_t ov5645_write_array(esp_sccb_io_handle_t sccb_handle, const ov56
 
 static esp_err_t ov5645_set_reg_bits(esp_sccb_io_handle_t sccb_handle, uint16_t reg, uint8_t offset, uint8_t length, uint8_t value)
 {
-    esp_err_t ret = 0;
+    esp_err_t ret = ESP_OK;
     uint8_t reg_data = 0;
 
     ret = ov5645_read(sccb_handle, reg, &reg_data);
