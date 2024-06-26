@@ -206,9 +206,11 @@ esp_err_t esp_video_init(const esp_video_init_config_t *config)
                 return ret;
             }
 
-            ret = esp_cam_ctlr_dvp_output_clock(dvp_ctlr_id, CAM_CLK_SRC_DEFAULT, config->dvp->xclk_freq);
-            if (ret != ESP_OK) {
-                return ret;
+            if (config->dvp->dvp_pin.xclk_io >= 0 && config->dvp->xclk_freq > 0) {
+                ret = esp_cam_ctlr_dvp_output_clock(dvp_ctlr_id, CAM_CLK_SRC_DEFAULT, config->dvp->xclk_freq);
+                if (ret != ESP_OK) {
+                    return ret;
+                }
             }
 
             cfg.sccb_handle = create_sccb_device(sccb_mark, ESP_CAM_SENSOR_DVP, &config->dvp->sccb_config, p->sccb_addr);
