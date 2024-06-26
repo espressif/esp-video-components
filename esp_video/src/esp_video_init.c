@@ -15,6 +15,7 @@
 
 #include "esp_video_init.h"
 #include "esp_video_cam_device.h"
+#include "esp_video_codec_device.h"
 #include "esp_private/esp_cam_dvp.h"
 
 #define SCCB_NUM_MAX                I2C_NUM_MAX
@@ -33,6 +34,7 @@ typedef struct sccb_mark {
 
 static const char *TAG = "esp_video_init";
 
+#if CONFIG_ESP_VIDEO_ENABLE_MIPI_CSI_VIDEO_DEVICE && CONFIG_ESP_VIDEO_ENABLE_DVP_VIDEO_DEVICE
 /**
  * @brief Create I2C master handle
  *
@@ -146,6 +148,7 @@ static esp_sccb_io_handle_t create_sccb_device(esp_video_init_sccb_mark_t *mark,
 
     return sccb_io;
 }
+#endif
 
 /**
  * @brief Initialize video hardware and software, including I2C, MIPI CSI and so on.
@@ -230,6 +233,14 @@ esp_err_t esp_video_init(const esp_video_init_config_t *config)
         }
 #endif
     }
+
+#if CONFIG_ESP_VIDEO_ENABLE_HW_H264_VIDEO_DEVICE
+    ret = esp_video_create_h264_video_device(true);
+    if (ret != ESP_OK) {
+        ESP_LOGE(TAG, "failed to create hardware H.264 video device");
+        return ret;
+    }
+#endif
 
     return ESP_OK;
 }
