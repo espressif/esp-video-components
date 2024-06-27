@@ -15,3 +15,4 @@ This component provides drivers for camera sensors that can be used on the ESP32
 | OV2640  | 1600 x 1200    | DVP | 8/10-bit Raw RGB data<br/>JPEG compression<br/>YUV/YCbCr422<br/>RGB565 | 1/4"     |
 | GC0308  | 640 x 480    | DVP | Grayscale<br/>YCbCr422<br/>RGB565 | 1/6.5"     |
 | SC101IOT  | 1280 x 720    | DVP | YCbCr422<br/>8/10-bit Raw RGB data | 1/4.2"     |
+| SC030IOT  | 640 x 480    | DVP | YCbCr422<br/>8bit Raw RGB data | 1/6.5"     |
