@@ -16,7 +16,7 @@
 #include "esp_h264_enc_single.h"
 
 #include "esp_video.h"
-#include "esp_video_codec_device.h"
+#include "esp_video_device.h"
 
 #define H264_NAME                   "H.264"
 
@@ -92,6 +92,31 @@ static esp_err_t h264_get_input_format_from_v4l2(uint32_t v4l2_format, esp_h264_
     }
 
     return ret;
+}
+
+static esp_err_t h264_video_m2m_process(struct esp_video *video, uint8_t *src, uint32_t src_size, uint8_t *dst, uint32_t dst_size, uint32_t *dst_out_size)
+{
+    esp_h264_err_t h264_err;
+    esp_h264_enc_in_frame_t in_frame = {
+        .raw_data = {
+            .buffer = src,
+            .len = src_size,
+        }
+    };
+    esp_h264_enc_out_frame_t out_frame = {
+        .raw_data = {
+            .buffer = dst,
+            .len = dst_size,
+        }
+    };
+    struct h264_video *h264_video = VIDEO_PRIV_DATA(struct h264_video *, video);
+
+    h264_err = esp_h264_enc_process(h264_video->enc_handle, &in_frame, &out_frame);
+    if (h264_err == ESP_H264_ERR_OK) {
+        *dst_out_size = out_frame.length;
+    }
+
+    return errno_h264_to_std(h264_err);
 }
 
 static esp_err_t h264_video_init(struct esp_video *video)
@@ -265,55 +290,18 @@ static esp_err_t h264_video_set_format(struct esp_video *video, uint32_t type, c
 static esp_err_t h264_video_notify(struct esp_video *video, enum esp_video_event event, void *arg)
 {
     esp_err_t ret;
-    esp_h264_err_t h264_err;
-    struct h264_video *h264_video = VIDEO_PRIV_DATA(struct h264_video *, video);
 
     if (event == ESP_VIDEO_M2M_TRIGGER) {
         uint32_t type = *(uint32_t *)arg;
 
         if (type == V4L2_BUF_TYPE_VIDEO_CAPTURE) {
-            esp_h264_enc_in_frame_t in_frame;
-            esp_h264_enc_out_frame_t out_frame;
-            struct esp_video_buffer_element *cap_element;
-            struct esp_video_buffer_element *out_element;
-
-            ret = esp_video_get_m2m_queued_elements(video,
-                                                    V4L2_BUF_TYPE_VIDEO_OUTPUT,
-                                                    &out_element,
-                                                    V4L2_BUF_TYPE_VIDEO_CAPTURE,
-                                                    &cap_element);
+            ret = esp_video_m2m_process(video,
+                                        V4L2_BUF_TYPE_VIDEO_OUTPUT,
+                                        V4L2_BUF_TYPE_VIDEO_CAPTURE,
+                                        h264_video_m2m_process);
             if (ret != ESP_OK) {
-                ESP_LOGE(TAG, "no valid buffer");
+                ESP_LOGE(TAG, "failed to process M2M device data");
                 return ret;
-            }
-
-            in_frame.raw_data.buffer = ELEMENT_BUFFER(out_element);
-            in_frame.raw_data.len = ELEMENT_SIZE(out_element);
-            out_frame.raw_data.buffer = ELEMENT_BUFFER(cap_element);
-            out_frame.raw_data.len = ELEMENT_SIZE(cap_element);
-
-            h264_err = esp_h264_enc_process(h264_video->enc_handle, &in_frame, &out_frame);
-            if (h264_err == ESP_H264_ERR_OK) {
-                cap_element->valid_size = out_frame.length;
-                ret = esp_video_done_m2m_elements(video,
-                                                  V4L2_BUF_TYPE_VIDEO_OUTPUT,
-                                                  out_element,
-                                                  V4L2_BUF_TYPE_VIDEO_CAPTURE,
-                                                  cap_element);
-                if (ret != ESP_OK) {
-                    ESP_LOGE(TAG, "failed to put elements back into done list");
-                    return ret;
-                }
-            } else {
-                ret = esp_video_queue_m2m_elements(video,
-                                                   V4L2_BUF_TYPE_VIDEO_OUTPUT,
-                                                   out_element,
-                                                   V4L2_BUF_TYPE_VIDEO_CAPTURE,
-                                                   cap_element);
-                if (ret != ESP_OK) {
-                    ESP_LOGE(TAG, "failed to put elements back into queue list");
-                }
-                return ESP_FAIL;
             }
         }
     }
@@ -401,8 +389,8 @@ static esp_err_t h264_video_query_ext_ctrl(struct esp_video *video, struct v4l2_
         qctrl->type = V4L2_CTRL_TYPE_MENU;
         qctrl->elem_size = sizeof(uint8_t);
         qctrl->elems = 1;
-        qctrl->nr_of_dims = 1;
-        qctrl->dims[0] = V4L2_MPEG_VIDEO_BITRATE_MODE_VBR;
+        qctrl->nr_of_dims = 0;
+        qctrl->dims[0] = qctrl->elem_size;
         qctrl->default_value = V4L2_MPEG_VIDEO_BITRATE_MODE_VBR;
         break;
     case V4L2_CID_MPEG_VIDEO_BITRATE:

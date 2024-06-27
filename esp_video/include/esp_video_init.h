@@ -11,6 +11,7 @@
 #include "esp_err.h"
 #include "driver/i2c_master.h"
 #include "esp_cam_ctlr_dvp.h"
+#include "driver/jpeg_encode.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -60,11 +61,21 @@ typedef struct esp_video_init_dvp_config {
 } esp_video_init_dvp_config_t;
 
 /**
+ * @brief JPEG initialization configuration
+ */
+typedef struct esp_video_init_jpeg_config {
+    jpeg_encoder_handle_t enc_handle;           /*!< JPEG encoder driver handle:
+                                                     - NULL, JPEG video device will create JPEG encoder driver handle by itself
+                                                     - Not null, JPEG video device will use this handle instead of creating JPEG encoder driver handle */
+} esp_video_init_jpeg_config_t;
+
+/**
  * @brief Video hardware initialization configuration
  */
 typedef struct esp_video_init_config {
     const esp_video_init_csi_config_t *csi;     /*!< MIPI CSI initialization configuration */
     const esp_video_init_dvp_config_t *dvp;     /*!< DVP initialization configuration array */
+    const esp_video_init_jpeg_config_t *jpeg;   /*!< JPEG initialization configuration */
 } esp_video_init_config_t;
 
 /**

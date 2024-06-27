@@ -266,11 +266,9 @@ esp_err_t esp_video_query_ext_ctrls_from_sensor(esp_cam_sensor_device_t *cam_dev
     case ESP_CAM_SENSOR_PARAM_TYPE_ENUMERATION:
         qctrl->type = V4L2_CTRL_TYPE_MENU;
         qctrl->elem_size = sizeof(uint32_t);
-        qctrl->elems = qdesc.enumeration.count;
-        qctrl->nr_of_dims = qdesc.enumeration.count;
-        for (int i = 0; i < MIN(qctrl->nr_of_dims, V4L2_CTRL_MAX_DIMS); i++) {
-            qctrl->dims[i] = qdesc.enumeration.elements[i];
-        }
+        qctrl->elems = 1;
+        qctrl->nr_of_dims = 0;
+        qctrl->dims[0] = qctrl->elem_size;
         qctrl->default_value = qdesc.default_value;
         break;
     case ESP_CAM_SENSOR_PARAM_TYPE_BITMASK:

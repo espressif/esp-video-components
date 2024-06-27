@@ -14,8 +14,7 @@
 #include "esp_cam_sensor_detect.h"
 
 #include "esp_video_init.h"
-#include "esp_video_cam_device.h"
-#include "esp_video_codec_device.h"
+#include "esp_video_device.h"
 #include "esp_private/esp_cam_dvp.h"
 
 #define SCCB_NUM_MAX                I2C_NUM_MAX
@@ -34,7 +33,7 @@ typedef struct sccb_mark {
 
 static const char *TAG = "esp_video_init";
 
-#if CONFIG_ESP_VIDEO_ENABLE_MIPI_CSI_VIDEO_DEVICE && CONFIG_ESP_VIDEO_ENABLE_DVP_VIDEO_DEVICE
+#if CONFIG_ESP_VIDEO_ENABLE_MIPI_CSI_VIDEO_DEVICE || CONFIG_ESP_VIDEO_ENABLE_DVP_VIDEO_DEVICE
 /**
  * @brief Create I2C master handle
  *
@@ -182,7 +181,7 @@ esp_err_t esp_video_init(const esp_video_init_config_t *config)
 
             cfg.reset_pin = config->csi->reset_pin,
             cfg.pwdn_pin = config->csi->pwdn_pin,
-            cam_dev = (*(p->fn))((void *)&cfg);
+            cam_dev = (*(p->detect))((void *)&cfg);
             if (!cam_dev) {
                 ESP_LOGE(TAG, "failed to detect MIPI-CSI camera");
                 return ESP_FAIL;
@@ -219,7 +218,7 @@ esp_err_t esp_video_init(const esp_video_init_config_t *config)
 
             cfg.reset_pin = config->dvp->reset_pin,
             cfg.pwdn_pin = config->dvp->pwdn_pin,
-            cam_dev = (*(p->fn))((void *)&cfg);
+            cam_dev = (*(p->detect))((void *)&cfg);
             if (!cam_dev) {
                 ESP_LOGE(TAG, "failed to detect DVP camera");
                 return ESP_FAIL;
@@ -238,6 +237,20 @@ esp_err_t esp_video_init(const esp_video_init_config_t *config)
     ret = esp_video_create_h264_video_device(true);
     if (ret != ESP_OK) {
         ESP_LOGE(TAG, "failed to create hardware H.264 video device");
+        return ret;
+    }
+#endif
+
+#if CONFIG_ESP_VIDEO_ENABLE_HW_JPEG_VIDEO_DEVICE
+    jpeg_encoder_handle_t handle = NULL;
+
+    if (config->jpeg) {
+        handle = config->jpeg->enc_handle;
+    }
+
+    ret = esp_video_create_jpeg_video_device(handle);
+    if (ret != ESP_OK) {
+        ESP_LOGE(TAG, "failed to create hardware JPEG video device");
         return ret;
     }
 #endif

@@ -213,6 +213,22 @@ struct esp_video;
 struct esp_video_format;
 
 /**
+ * @brief M2M video device process function
+ *
+ * @param video         Video object
+ * @param src           Source data buffer
+ * @param src_size      Source data size in byte
+ * @param dst           Destination buffer
+ * @param dst_size      Destination buffer maximum size
+ * @param dst_out_size  Actual destination data size
+ *
+ * @return
+ *      - ESP_OK on success
+ *      - Others if failed
+ */
+typedef esp_err_t (*esp_video_m2m_process_t)(struct esp_video *video, uint8_t *src, uint32_t src_size, uint8_t *dst, uint32_t dst_size, uint32_t *dst_out_size);
+
+/**
  * @brief Video operations object.
  */
 struct esp_video_ops {

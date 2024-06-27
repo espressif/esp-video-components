@@ -18,6 +18,8 @@
 extern "C" {
 #endif
 
+#define BUF_ALIGN_SIZE(s, a)                (((s) + (a) - 1) & (~((a) - 1)))
+
 #define ESP_VIDEO_BUFFER_ELEMENT(vb, i)     (&(vb)->element[i])
 #define ELEMENT_SIZE(e)                     ((e)->video_buffer->info.size)
 #define ELEMENT_BUFFER(e)                   ((e)->buffer)

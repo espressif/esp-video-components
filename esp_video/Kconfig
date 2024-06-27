@@ -4,6 +4,10 @@ menu "Espressif Video Configuration"
         bool
         default n
 
+    config ESP_VIDEO_ENABLE_JPEG_VIDEO_DEVICE
+        bool
+        default n
+
     config ESP_VIDEO_CHECK_PARAMETERS
         bool "Check Video Function Parameters"
         default y
@@ -45,5 +49,13 @@ menu "Espressif Video Configuration"
         default n
         help
             Select this option, enable hardware H.264 based video device.
+
+    menuconfig ESP_VIDEO_ENABLE_HW_JPEG_VIDEO_DEVICE
+        bool "Enable Hardware JPEG based Video Device"
+        depends on IDF_TARGET_ESP32P4
+        select ESP_VIDEO_ENABLE_JPEG_VIDEO_DEVICE
+        default n
+        help
+            Select this option, enable hardware JPEG based video device.
 
 endmenu

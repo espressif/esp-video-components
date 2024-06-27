@@ -524,6 +524,20 @@ esp_err_t esp_video_get_ext_controls(struct esp_video *video, struct v4l2_ext_co
  */
 esp_err_t esp_video_query_ext_control(struct esp_video *video, struct v4l2_query_ext_ctrl *qctrl);
 
+/**
+ * @brief M2M video device process data
+ *
+ * @param video       Video object
+ * @param src_type    Video resource stream type
+ * @param dst_type    Video destination stream type
+ * @param proc        Video device process callback function
+ *
+ * @return
+ *      - ESP_OK on success
+ *      - Others if failed
+ */
+esp_err_t esp_video_m2m_process(struct esp_video *video, uint32_t src_type, uint32_t dst_type, esp_video_m2m_process_t proc);
+
 #ifdef __cplusplus
 }
 #endif
