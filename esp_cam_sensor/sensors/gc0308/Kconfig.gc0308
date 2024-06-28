@@ -29,11 +29,4 @@ if CAMERA_GC0308
         help
             Set the configuration loaded by default for the DVP interface.
             More information can be obtained by calling the query_support_formats().
-
-    config CAMERA_GC0308_MAX_SUPPORT
-        int "Support for a maximum number of connected GC0308"
-        default 1
-        range 1 1
-        help
-            Set the number of connected GC0308.
 endif

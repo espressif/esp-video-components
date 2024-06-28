@@ -29,11 +29,4 @@ if CAMERA_OV2640
         help
             Set the configuration loaded by default for the DVP interface.
             More information can be obtained by calling the query_formats().
-
-    config CAMERA_OV2640_MAX_SUPPORT
-        int "Support for a maximum number of connected OV2640"
-        default 1
-        range 1 1
-        help
-            Set the number of connected OV2640.
 endif

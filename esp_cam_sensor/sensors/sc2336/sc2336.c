@@ -30,7 +30,6 @@
 #define SC2336_SUPPORT_NUM CONFIG_CAMERA_SC2336_MAX_SUPPORT
 
 static const char *TAG = "sc2336";
-static uint8_t s_sc2336_index;
 
 static const esp_cam_sensor_isp_info_t sc2336_isp_info[] = {
     /* For MIPI */
@@ -670,7 +669,6 @@ static esp_err_t sc2336_delete(esp_cam_sensor_device_t *dev)
     if (dev) {
         free(dev);
         dev = NULL;
-        s_sc2336_index--;
     }
 
     return ESP_OK;
@@ -692,11 +690,6 @@ esp_cam_sensor_device_t *sc2336_detect(esp_cam_sensor_config_t *config)
 {
     esp_cam_sensor_device_t *dev = NULL;
     if (config == NULL) {
-        return NULL;
-    }
-
-    if (s_sc2336_index >= SC2336_SUPPORT_NUM) {
-        ESP_LOGE(TAG, "Only support max %d cameras", SC2336_SUPPORT_NUM);
         return NULL;
     }
 
@@ -732,9 +725,7 @@ esp_cam_sensor_device_t *sc2336_detect(esp_cam_sensor_config_t *config)
         ESP_LOGE(TAG, "Camera sensor is not SC2336, PID=0x%x", dev->id.pid);
         goto err_free_handler;
     }
-    ESP_LOGI(TAG, "Detected Camera sensor PID=0x%x with index %d", dev->id.pid, s_sc2336_index);
-
-    s_sc2336_index++;
+    ESP_LOGI(TAG, "Detected Camera sensor PID=0x%x", dev->id.pid);
 
     return dev;
 

@@ -29,11 +29,4 @@ if CAMERA_SC202CS
         help
             Set the configuration loaded by default for the MIPI CSI interface.
             More information can be obtained by calling the query_support_formats().
-
-    config CAMERA_SC202CS_MAX_SUPPORT
-        int "Support for a maximum number of connected SC202CS"
-        default 1
-        range 1 1
-        help
-            Set the number of connected SC202CS.
 endif

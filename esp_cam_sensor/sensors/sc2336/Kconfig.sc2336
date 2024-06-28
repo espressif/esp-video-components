@@ -45,12 +45,4 @@ if CAMERA_SC2336
         help
             Set the configuration loaded by default for the DVP interface.
             More information can be obtained by calling the query_support_formats().
-
-    config CAMERA_SC2336_MAX_SUPPORT
-        int "Support for a maximum number of connected SC2336"
-        default 1
-        range 1 2 if IDF_TARGET_ESP32P4
-        range 1 1 if !IDF_TARGET_ESP32P4
-        help
-            Set the number of connected SC2336.
 endif

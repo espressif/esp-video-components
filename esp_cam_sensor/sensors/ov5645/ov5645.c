@@ -29,7 +29,6 @@
 #define delay_ms(ms)  vTaskDelay((ms > portTICK_PERIOD_MS ? ms/ portTICK_PERIOD_MS : 1))
 #define OV5645_SUPPORT_NUM CONFIG_CAMERA_OV5645_MAX_SUPPORT
 
-static uint8_t s_ov5645_index;
 static const char *TAG = "ov5645";
 
 static const esp_cam_sensor_format_t ov5645_format_info[] = {
@@ -451,7 +450,6 @@ static esp_err_t ov5645_delete(esp_cam_sensor_device_t *dev)
     if (dev) {
         free(dev);
         dev = NULL;
-        s_ov5645_index--;
     }
 
     return ESP_OK;
@@ -474,11 +472,6 @@ esp_cam_sensor_device_t *ov5645_detect(esp_cam_sensor_config_t *config)
     esp_cam_sensor_device_t *dev = NULL;
 
     if (config == NULL) {
-        return NULL;
-    }
-
-    if (s_ov5645_index >= OV5645_SUPPORT_NUM) {
-        ESP_LOGE(TAG, "Only support max %d cameras", OV5645_SUPPORT_NUM);
         return NULL;
     }
 
@@ -514,9 +507,7 @@ esp_cam_sensor_device_t *ov5645_detect(esp_cam_sensor_config_t *config)
         ESP_LOGE(TAG, "Camera sensor is not OV5645, PID=0x%x", dev->id.pid);
         goto err_free_handler;
     }
-    ESP_LOGI(TAG, "Detected Camera sensor PID=0x%x with index %d", dev->id.pid, s_ov5645_index);
-
-    s_ov5645_index++;
+    ESP_LOGI(TAG, "Detected Camera sensor PID=0x%x", dev->id.pid);
 
     return dev;
 

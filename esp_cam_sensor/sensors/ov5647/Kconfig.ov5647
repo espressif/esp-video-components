@@ -30,14 +30,6 @@ if CAMERA_OV5647
             Set the configuration loaded by default for the MIPI CSI interface.
             More information can be obtained by calling the query_formats().
 
-    config CAMERA_OV5647_MAX_SUPPORT
-        int "Support for a maximum number of connected OV5647"
-        depends on CAMERA_OV5647
-        default 1
-        range 1 1
-        help
-            Set the number of connected OV5647.
-
     config CAMERA_OV5647_CSI_LINESYNC_ENABLE
         bool "CSI Line sync enable"
         default y

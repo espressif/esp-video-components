@@ -38,7 +38,6 @@ struct ov2640_cam {
 #define delay_ms(ms)  vTaskDelay((ms > portTICK_PERIOD_MS ? ms/ portTICK_PERIOD_MS : 1))
 #define OV2640_SUPPORT_NUM CONFIG_CAMERA_OV2640_MAX_SUPPORT
 
-static uint8_t s_ov2640_index;
 static volatile ov2640_bank_t s_reg_bank = BANK_MAX; // ov2640 current bank
 static const char *TAG = "ov2640";
 
@@ -776,7 +775,6 @@ static esp_err_t ov2640_delete(esp_cam_sensor_device_t *dev)
         }
         free(dev);
         dev = NULL;
-        s_ov2640_index--;
     }
 
     return ESP_OK;
@@ -800,11 +798,6 @@ esp_cam_sensor_device_t *ov2640_detect(esp_cam_sensor_config_t *config)
     struct ov2640_cam *cam_ov2640;
 
     if (config == NULL) {
-        return NULL;
-    }
-
-    if (s_ov2640_index >= OV2640_SUPPORT_NUM) {
-        ESP_LOGE(TAG, "Only support max %d cameras", OV2640_SUPPORT_NUM);
         return NULL;
     }
 
@@ -847,9 +840,7 @@ esp_cam_sensor_device_t *ov2640_detect(esp_cam_sensor_config_t *config)
         ESP_LOGE(TAG, "sensor is not OV2640, PID=0x%x", dev->id.pid);
         goto err_free_handler;
     }
-    ESP_LOGI(TAG, "Detected Camera sensor PID=0x%x with index %d", dev->id.pid, s_ov2640_index);
-
-    s_ov2640_index++;
+    ESP_LOGI(TAG, "Detected Camera sensor PID=0x%x", dev->id.pid);
 
     return dev;
 
