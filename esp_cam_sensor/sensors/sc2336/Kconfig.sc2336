@@ -33,15 +33,15 @@ if CAMERA_SC2336
     config CAMERA_SC2336_MIPI_IF_FORMAT_INDEX_DAFAULT
         int "Default format index for SC2336 MIPI Interface"
         default 8
-        range 0 10
+        range 0 11
         help
             Set the configuration loaded by default for the MIPI CSI interface.
             More information can be obtained by calling the query_support_formats().
 
     config CAMERA_SC2336_DVP_IF_FORMAT_INDEX_DAFAULT
         int "Default format index for SC2336 DVP Interface"
-        default 11
-        range 11 11
+        default 12
+        range 12 12
         help
             Set the configuration loaded by default for the DVP interface.
             More information can be obtained by calling the query_support_formats().

@@ -46,6 +46,20 @@ static const esp_cam_sensor_format_t sc101iot_format_info[] = {
         .mipi_info = {},
         .reserved = NULL,
     },
+    {
+        .name = "DVP_8bit_20Minput_YUV422_1280x720_25fps",
+        .format = ESP_CAM_SENSOR_PIXFORMAT_YUV422,
+        .port = ESP_CAM_SENSOR_DVP,
+        .xclk = 20000000,
+        .width = 1280,
+        .height = 720,
+        .regs = DVP_8bit_20Minput_1280x720_yuv422_25fps,
+        .regs_size = ARRAY_SIZE(DVP_8bit_20Minput_1280x720_yuv422_25fps),
+        .fps = 25,
+        .isp_info = NULL,
+        .mipi_info = {},
+        .reserved = NULL,
+    },
 };
 
 /* sc101 use "i2c paging mode", so the high byte of the register needs to be written to the 0xf0 reg.
