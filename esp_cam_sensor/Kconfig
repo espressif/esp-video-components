@@ -1,8 +1,11 @@
 menu "Espressif Camera Sensors Configurations"
 
+    rsource "sensors/gc0308/Kconfig.gc0308"
     rsource "sensors/ov2640/Kconfig.ov2640"
     rsource "sensors/ov5645/Kconfig.ov5645"
     rsource "sensors/ov5647/Kconfig.ov5647"
+    rsource "sensors/sc030iot/Kconfig.sc030iot"
+    rsource "sensors/sc101iot/Kconfig.sc101iot"
     rsource "sensors/sc2336/Kconfig.sc2336"
     rsource "sensors/sc202cs/Kconfig.sc202cs"
 endmenu

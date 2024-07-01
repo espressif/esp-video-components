@@ -1,3 +1,10 @@
+## 0.5.0
+
+- Added support for GC0308 DVP camera sensor driver
+- Added support for SC101IOT DVP camera sensor driver
+- Added support for SC030IOT DVP camera sensor driver
+- Enabled byte swap when OV2640 outputs data in RGB565 or YUV422 format
+
 ## 0.4.0
 
 - Added support for SC202CS MIPI camera sensor driver

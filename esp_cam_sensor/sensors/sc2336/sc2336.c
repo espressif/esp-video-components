@@ -30,7 +30,6 @@
 #define SC2336_SUPPORT_NUM CONFIG_CAMERA_SC2336_MAX_SUPPORT
 
 static const char *TAG = "sc2336";
-static uint8_t s_sc2336_index;
 
 static const esp_cam_sensor_isp_info_t sc2336_isp_info[] = {
     /* For MIPI */
@@ -102,6 +101,15 @@ static const esp_cam_sensor_isp_info_t sc2336_isp_info[] = {
             .version = SENSOR_ISP_INFO_VERSION_DEFAULT,
             .pclk = 67200000,
             .vts = 1000,
+            .hts = 2240,
+            .bayer_type = ESP_CAM_SENSOR_BAYER_BGGR,
+        }
+    },
+    {
+        .isp_v1_info = {
+            .version = SENSOR_ISP_INFO_VERSION_DEFAULT,
+            .pclk = 84000000,
+            .vts = 1250,
             .hts = 2240,
             .bayer_type = ESP_CAM_SENSOR_BAYER_BGGR,
         }
@@ -345,6 +353,24 @@ static const esp_cam_sensor_format_t sc2336_format_info[] = {
         },
         .reserved = NULL,
     },
+    {
+        .name = "MIPI_2lane_24Minput_RAW8_1024*600_30fps",
+        .format = ESP_CAM_SENSOR_PIXFORMAT_RAW8,
+        .port = ESP_CAM_SENSOR_MIPI_CSI,
+        .xclk = 24000000,
+        .width = 1024,
+        .height = 600,
+        .regs = init_reglist_MIPI_2lane_1024x600_raw8_30fps,
+        .regs_size = ARRAY_SIZE(init_reglist_MIPI_2lane_1024x600_raw8_30fps),
+        .fps = 30,
+        .isp_info = &sc2336_isp_info[11],
+        .mipi_info = {
+            .mipi_clk = 288000000,
+            .lane_num = 2,
+            .line_sync_en = false,
+        },
+        .reserved = NULL,
+    },
     /* For DVP */
     {
         .name = "DVP_8bits_24Minput_RAW10_1280*720_30fps",
@@ -356,7 +382,7 @@ static const esp_cam_sensor_format_t sc2336_format_info[] = {
         .regs = init_reglist_DVP_720p_30fps,
         .regs_size = ARRAY_SIZE(init_reglist_DVP_720p_30fps),
         .fps = 30,
-        .isp_info = &sc2336_isp_info[11],
+        .isp_info = &sc2336_isp_info[12],
         .mipi_info = {0},
         .reserved = NULL,
     },
@@ -390,7 +416,7 @@ static esp_err_t sc2336_write_array(esp_sccb_io_handle_t sccb_handle, sc2336_reg
 
 static esp_err_t sc2336_set_reg_bits(esp_sccb_io_handle_t sccb_handle, uint16_t reg, uint8_t offset, uint8_t length, uint8_t value)
 {
-    esp_err_t ret = 0;
+    esp_err_t ret = ESP_OK;
     uint8_t reg_data = 0;
 
     ret = sc2336_read(sccb_handle, reg, &reg_data);
@@ -670,7 +696,6 @@ static esp_err_t sc2336_delete(esp_cam_sensor_device_t *dev)
     if (dev) {
         free(dev);
         dev = NULL;
-        s_sc2336_index--;
     }
 
     return ESP_OK;
@@ -692,11 +717,6 @@ esp_cam_sensor_device_t *sc2336_detect(esp_cam_sensor_config_t *config)
 {
     esp_cam_sensor_device_t *dev = NULL;
     if (config == NULL) {
-        return NULL;
-    }
-
-    if (s_sc2336_index >= SC2336_SUPPORT_NUM) {
-        ESP_LOGE(TAG, "Only support max %d cameras", SC2336_SUPPORT_NUM);
         return NULL;
     }
 
@@ -732,9 +752,7 @@ esp_cam_sensor_device_t *sc2336_detect(esp_cam_sensor_config_t *config)
         ESP_LOGE(TAG, "Camera sensor is not SC2336, PID=0x%x", dev->id.pid);
         goto err_free_handler;
     }
-    ESP_LOGI(TAG, "Detected Camera sensor PID=0x%x with index %d", dev->id.pid, s_sc2336_index);
-
-    s_sc2336_index++;
+    ESP_LOGI(TAG, "Detected Camera sensor PID=0x%x", dev->id.pid);
 
     return dev;
 

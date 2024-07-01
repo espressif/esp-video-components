@@ -33,24 +33,24 @@ extern "C" {
 
 #define ov5645_settings_raw8 \
     {FORMAT_CTRL0, 0x00}, \
-    {FORMAT_MUX_CTRL, 0x03}, \
+    {FORMAT_MUX_CTRL, 0x03}
 
 #define ov5645_settings_rgb565 \
     {FORMAT_CTRL0, 0x6F}, \
-    {FORMAT_MUX_CTRL, 0x01}, \
+    {FORMAT_MUX_CTRL, 0x01}
 
 #define ov5645_settings_yuv422 \
     {FORMAT_CTRL0, 0x30}, \
-    {FORMAT_MUX_CTRL, 0x00}, \
+    {FORMAT_MUX_CTRL, 0x00}
 
 #define ov5645_settings_yuv420 \
     {FORMAT_CTRL0, 0x5F}, \
-    {FORMAT_MUX_CTRL, 0x00}, \
+    {FORMAT_MUX_CTRL, 0x00}
 
 /* Note, YUV444/RGB888 not available for full resolution(2592x1964) */
 #define ov5645_settings_rgb888 \
     {FORMAT_CTRL0, 0x25}, \
-    {FORMAT_MUX_CTRL, 0x00}, \
+    {FORMAT_MUX_CTRL, 0x00}
 
 static const ov5645_reginfo_t ov5645_mipi_reset_regs[] = {
     {0x3103, 0x11},
@@ -78,7 +78,7 @@ static const ov5645_reginfo_t ov5645_mipi_stream_off[] = {
 static const ov5645_reginfo_t ov5645_MIPI_2lane_yuv422_960p_30fps[] = {
     /* MIPI_2lane_SXGA(YUV422&RGB565) 1280x960,30fps */
     /* MIPI data rate is 448 Mbps/lane */
-    ov5645_settings_yuv422
+    ov5645_settings_yuv422,
     {0x5001, 0x83},
     {0x3103, 0x03},
     {0x3503, 0x07},
@@ -382,7 +382,7 @@ static const ov5645_reginfo_t ov5645_MIPI_2lane_yuv422_960p_30fps[] = {
 static const ov5645_reginfo_t ov5645_MIPI_2lane_rgb565_960p_30fps[] = {
     /* MIPI_2lane_SXGA(YUV422&RGB565) 1280x960,30fps */
     /* MIPI data rate is 448 Mbps/lane */
-    ov5645_settings_rgb565
+    ov5645_settings_rgb565,
     {0x5001, 0x23},
     {0x3103, 0x03},
     {0x3503, 0x07},
@@ -686,7 +686,7 @@ static const ov5645_reginfo_t ov5645_MIPI_2lane_rgb565_960p_30fps[] = {
 static const ov5645_reginfo_t ov5645_MIPI_2lane_yuv420_960p_30fps[] = {
     /* MIPI_2lane_SXGA(YUV422&RGB565) 1280x960,30fps */
     /* MIPI data rate is 448 Mbps/lane */
-    ov5645_settings_yuv420
+    ov5645_settings_yuv420,
     {0x5001, 0x23},
     {0x3103, 0x03},
     {0x3503, 0x07},
@@ -988,7 +988,7 @@ static const ov5645_reginfo_t ov5645_MIPI_2lane_yuv420_960p_30fps[] = {
 };
 
 static const ov5645_reginfo_t ov5645_MIPI_2lane_yuv422_1080p_15fps[] = {
-    ov5645_settings_yuv422
+    ov5645_settings_yuv422,
     {0x5001, 0xa3},
     {0x3103, 0x03},
     {0x3503, 0x07},
@@ -1291,7 +1291,7 @@ static const ov5645_reginfo_t ov5645_MIPI_2lane_yuv422_1080p_15fps[] = {
 static const ov5645_reginfo_t ov5645_MIPI_2lane_yuv422_2592x1944_15fps[] = {
     /* MIPI_2lane_5M(YUV), 2592*1944, 15fps */
     /* MIPI data rate is 672 Mbps/lane */
-    ov5645_settings_yuv422
+    ov5645_settings_yuv422,
     {0x5001, 0x83},
     {0x3103, 0x03},
     {0x3503, 0x07},
@@ -1592,7 +1592,7 @@ static const ov5645_reginfo_t ov5645_MIPI_2lane_yuv422_2592x1944_15fps[] = {
 };
 
 static const ov5645_reginfo_t ov5645_MIPI_2lane_yuv422_640x480_24fps[] = {
-    ov5645_settings_yuv422
+    ov5645_settings_yuv422,
     {0x5001, 0xa3},
     {0x3103, 0x03},
     {0x3503, 0x07},
