@@ -135,9 +135,6 @@ typedef enum {
 #define ESP_CAM_SENSOR_IOC_S_REG                    ESP_CAM_SENSOR_IOC(0x07, sizeof(esp_cam_sensor_reg_val_t))
 #define ESP_CAM_SENSOR_IOC_G_REG                    ESP_CAM_SENSOR_IOC(0x08, sizeof(esp_cam_sensor_reg_val_t))
 #define ESP_CAM_SENSOR_IOC_S_GAIN                   ESP_CAM_SENSOR_IOC(0x09, sizeof(uint8_t))
-#define ESP_CAM_SENSOR_IOC_S_DGAIN                  ESP_CAM_SENSOR_IOC(0x0a, sizeof(uint8_t))
-#define ESP_CAM_SENSOR_IOC_S_AGAIN                  ESP_CAM_SENSOR_IOC(0x0b, sizeof(uint8_t))
-#define ESP_CAM_SENSOR_IOC_S_EXPOSURE               ESP_CAM_SENSOR_IOC(0x0c, sizeof(uint32_t))
 
 /*
  * @biref Camera sensor parameter description
