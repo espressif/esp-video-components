@@ -111,6 +111,7 @@ typedef enum {
 #define ESP_CAM_SENSOR_3A_LOCK                      ESP_CAM_SENSOR_CLASS_ID(ESP_CAM_SENSOR_CID_CLASS_3A, 0x14)  /*!< AF&AE&AWB sync lock*/
 #define ESP_CAM_SENSOR_INT_TIME                     ESP_CAM_SENSOR_CLASS_ID(ESP_CAM_SENSOR_CID_CLASS_3A, 0x15)  /*!< Integral time */
 #define ESP_CAM_SENSOR_AE_LEVEL                     ESP_CAM_SENSOR_CLASS_ID(ESP_CAM_SENSOR_CID_CLASS_3A, 0x16)  /*!< Automatic exposure level */
+#define ESP_CAM_SENSOR_GAIN                         ESP_CAM_SENSOR_CLASS_ID(ESP_CAM_SENSOR_CID_CLASS_3A, 0x17)  /*!< Total gain */
 
 /**
  * @brief Camera sensor lens class's control ID
@@ -133,6 +134,10 @@ typedef enum {
 #define ESP_CAM_SENSOR_IOC_G_CHIP_ID                ESP_CAM_SENSOR_IOC(0x06, sizeof(esp_cam_sensor_id_t))
 #define ESP_CAM_SENSOR_IOC_S_REG                    ESP_CAM_SENSOR_IOC(0x07, sizeof(esp_cam_sensor_reg_val_t))
 #define ESP_CAM_SENSOR_IOC_G_REG                    ESP_CAM_SENSOR_IOC(0x08, sizeof(esp_cam_sensor_reg_val_t))
+#define ESP_CAM_SENSOR_IOC_S_GAIN                   ESP_CAM_SENSOR_IOC(0x09, sizeof(uint8_t))
+#define ESP_CAM_SENSOR_IOC_S_DGAIN                  ESP_CAM_SENSOR_IOC(0x0a, sizeof(uint8_t))
+#define ESP_CAM_SENSOR_IOC_S_AGAIN                  ESP_CAM_SENSOR_IOC(0x0b, sizeof(uint8_t))
+#define ESP_CAM_SENSOR_IOC_S_EXPOSURE               ESP_CAM_SENSOR_IOC(0x0c, sizeof(uint32_t))
 
 /*
  * @biref Camera sensor parameter description
@@ -221,6 +226,8 @@ typedef struct {
     int pclk;
     int hts;               /*!< HTS = H_Size + H_Blank, also known as hmax */
     int vts;               /*!< VTS = V_Size + V_Blank, also known as vmax */
+    uint32_t exp_def;      /*!< Exposure default */
+    uint32_t gain_def;     /*!< Gain default */
     esp_cam_sensor_bayer_pattern_t bayer_type;
 } esp_cam_sensor_isp_info_v1_t;
 

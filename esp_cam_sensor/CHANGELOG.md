@@ -1,3 +1,7 @@
+## 0.5.1
+
+- Added support for SC2336 exposure and gain control
+
 ## 0.5.0
 
 - Added support for GC0308 DVP camera sensor driver
