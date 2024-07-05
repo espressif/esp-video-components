@@ -322,7 +322,10 @@ typedef struct {
  * @brief Description of automatically detecting camera devices
  */
 typedef struct {
-    esp_cam_sensor_device_t *(*fn)(void *);   /*!< Pointer to the detect function */
+    union {
+        esp_cam_sensor_device_t *(*detect)(void *);   /*!< Pointer to the detect function */
+        esp_cam_sensor_device_t *(*fn)(void *) __attribute__((deprecated("please use detect instead")));           /*!< Pointer to the detect function */
+    };
     esp_cam_sensor_port_t port;
     uint16_t sccb_addr;
 } esp_cam_sensor_detect_fn_t;

@@ -32,7 +32,7 @@ extern "C" {
 #define ESP_CAM_SENSOR_DETECT_FN(f, i, j, ...) \
     static esp_cam_sensor_device_t * __VA_ARGS__ __esp_cam_sensor_detect_fn_##f(void *config); \
     static __attribute__((used)) _SECTION_ATTR_IMPL(".esp_cam_sensor_detect_fn", __COUNTER__) \
-        esp_cam_sensor_detect_fn_t esp_cam_sensor_detect_fn_##f = { .fn = ( __esp_cam_sensor_detect_fn_##f), .port = (i), .sccb_addr = (j) }; \
+        esp_cam_sensor_detect_fn_t esp_cam_sensor_detect_fn_##f = { .detect = ( __esp_cam_sensor_detect_fn_##f), .port = (i), .sccb_addr = (j) }; \
     static esp_cam_sensor_device_t *__esp_cam_sensor_detect_fn_##f(void *config)
 
 /**
