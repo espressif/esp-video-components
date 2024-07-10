@@ -481,7 +481,7 @@ esp_cam_sensor_device_t *ov5647_detect(esp_cam_sensor_config_t *config)
         return NULL;
     }
 
-    dev = calloc(sizeof(esp_cam_sensor_device_t), 1);
+    dev = calloc(1, sizeof(esp_cam_sensor_device_t));
     if (dev == NULL) {
         ESP_LOGE(TAG, "No memory for camera");
         return NULL;
