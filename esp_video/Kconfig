@@ -18,6 +18,19 @@ menu "Espressif Video Configuration"
         help
             Select this option, enable MIPI-CSI based video device.
 
+    if ESP_VIDEO_ENABLE_MIPI_CSI_VIDEO_DEVICE
+
+        config ESP_VIDEO_DISABLE_MIPI_CSI_DRIVER_BACKUP_BUFFER
+            bool "Disable MIPI-CSI Driver Backup Buffer"
+            default y
+            help
+                Select this option, esp-video disables MIPI-CSI driver backup buffer,
+                and always reserves a block of video buffer for MIPI-CSI driver to
+                receive data.
+
+                In this mode, video buffer number must > 1.
+    endif
+
     menuconfig ESP_VIDEO_ENABLE_DVP_VIDEO_DEVICE
         bool "Enable DVP based Video Device"
         depends on SOC_LCDCAM_CAM_SUPPORTED

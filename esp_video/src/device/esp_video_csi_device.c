@@ -70,6 +70,9 @@ struct csi_video {
     isp_proc_handle_t isp_processor;
 
     esp_cam_sensor_device_t *cam_dev;
+#if CONFIG_ESP_VIDEO_DISABLE_MIPI_CSI_DRIVER_BACKUP_BUFFER
+    struct esp_video_buffer_element *element;
+#endif
 };
 
 static const char *TAG = "csi_video";
@@ -286,7 +289,14 @@ static bool IRAM_ATTR csi_video_on_trans_finished(esp_cam_ctlr_handle_t handle, 
 
     ESP_LOGD(TAG, "size=%zu", trans->received_size);
 
+#if CONFIG_ESP_VIDEO_DISABLE_MIPI_CSI_DRIVER_BACKUP_BUFFER
+    struct csi_video *csi_video = VIDEO_PRIV_DATA(struct csi_video *, video);
+    if (trans->buffer != csi_video->element->buffer) {
+        CAPTURE_VIDEO_DONE_BUF(video, trans->buffer, trans->received_size);
+    }
+#else
     CAPTURE_VIDEO_DONE_BUF(video, trans->buffer, trans->received_size);
+#endif
 
     return true;
 }
@@ -297,9 +307,19 @@ static bool IRAM_ATTR csi_video_on_get_new_trans(esp_cam_ctlr_handle_t handle, e
     struct esp_video *video = (struct esp_video *)user_data;
 
     element = CAPTURE_VIDEO_GET_QUEUED_ELEMENT(video);
+#if CONFIG_ESP_VIDEO_DISABLE_MIPI_CSI_DRIVER_BACKUP_BUFFER
+    struct csi_video *csi_video = VIDEO_PRIV_DATA(struct csi_video *, video);
+
+    if (!element) {
+        element = csi_video->element;
+    } else {
+        csi_video->element = element;
+    }
+#else
     if (!element) {
         return false;
     }
+#endif
 
     trans->buffer = element->buffer;
     trans->buflen = ELEMENT_SIZE(element);
@@ -421,7 +441,10 @@ static esp_err_t csi_video_start(struct esp_video *video, uint32_t type)
         .data_lane_num = csi_video->csi_data_lane_num,
         .input_data_color_type = csi_video->csi_in_color,
         .output_data_color_type = csi_video->csi_out_color,
-        .lane_bit_rate_mbps = csi_video->lane_bit_rate_mbps
+        .lane_bit_rate_mbps = csi_video->lane_bit_rate_mbps,
+#if CONFIG_ESP_VIDEO_DISABLE_MIPI_CSI_DRIVER_BACKUP_BUFFER
+        .bk_buffer_dis = true,
+#endif
     };
     ret = esp_cam_new_csi_ctlr(&csi_config, &csi_video->cam_ctrl_handle);
     if (ret != ESP_OK) {
