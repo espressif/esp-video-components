@@ -16,10 +16,45 @@
 #include "sc2336_settings.h"
 #include "sc2336.h"
 
+/*
+ * SC2336 camera sensor gain control.
+ * Note1: The analog gain only has coarse gain, and no fine gain, so in the adjustment of analog gain.
+ * Digital gain needs to replace analog fine gain for smooth transition, so as to avoid AGC oscillation.
+ * Note2: the analog gain of sc2336 will be affected by temperature, it is recommended to increase Dgain first and then Again.
+ */
+typedef struct {
+    uint8_t dgain_fine; // digital gain fine
+    uint8_t dgain_coarse; // digital gain coarse
+    uint8_t analog_gain;
+} sc2336_gain_t;
+
+typedef struct {
+    uint32_t exposure_val;
+    uint32_t gain_index;
+
+    uint32_t vflip_en : 1;
+    uint32_t hmirror_en : 1;
+} sc2336_para_t;
+
+struct sc2336_cam {
+    sc2336_para_t sc2336_para;
+};
+
 #define SC2336_IO_MUX_LOCK(mux)
 #define SC2336_IO_MUX_UNLOCK(mux)
 #define SC2336_ENABLE_OUT_XCLK(pin,clk)
 #define SC2336_DISABLE_OUT_XCLK(pin)
+
+#define SC2336_EXPOSURE_MIN     1
+#define SC2336_EXPOSURE_STEP        1
+#define SC2336_VTS_MAX          0x7fff // Max exposure is VTS-6
+
+#define SC2336_FETCH_EXP_H(val)     (((val) >> 12) & 0xF)
+#define SC2336_FETCH_EXP_M(val)     (((val) >> 4) & 0xFF)
+#define SC2336_FETCH_EXP_L(val)     (((val) & 0xF) << 4)
+
+#define SC2336_FETCH_DGAIN_COARSE(val)  (((val) >> 8) & 0x03)
+#define SC2336_FETCH_DGAIN_FINE(val)    ((val) & 0xFF)
 
 #define SC2336_PID         0xcb3a
 #define SC2336_SENSOR_NAME "SC2336"
@@ -31,6 +66,473 @@
 
 static const char *TAG = "sc2336";
 
+// total gain = analog_gain x digital_gain x 1000(To avoid decimal points, the final total_gain is multiplied by 1000.)
+static const uint32_t sc2336_total_gain_val_map[] = {
+    1000,
+    1031,
+    1063,
+    1094,
+    1125,
+    1156,
+    1188,
+    1219,
+    1250,
+    1281,
+    1313,
+    1344,
+    1375,
+    1406,
+    1438,
+    1469,
+    1500,
+    1531,
+    1563,
+    1594,
+    1625,
+    1656,
+    1688,
+    1719,
+    1750,
+    1781,
+    1813,
+    1844,
+    1875,
+    1906,
+    1938,
+    1969,
+    // 2X
+    2000,
+    2063,
+    2125,
+    2188,
+    2250,
+    2313,
+    2375,
+    2438,
+    2500,
+    2563,
+    2625,
+    2688,
+    2750,
+    2813,
+    2875,
+    2938,
+    3000,
+    3063,
+    3125,
+    3188,
+    3250,
+    3313,
+    3375,
+    3438,
+    3500,
+    3563,
+    3625,
+    3688,
+    3750,
+    3813,
+    3875,
+    3938,
+    // 4X
+    4000,
+    4126,
+    4250,
+    4376,
+    4500,
+    4626,
+    4750,
+    4876,
+    5000,
+    5126,
+    5250,
+    5376,
+    5500,
+    5626,
+    5750,
+    5876,
+    6000,
+    6126,
+    6250,
+    6376,
+    6500,
+    6626,
+    6750,
+    6876,
+    7000,
+    7126,
+    7250,
+    7376,
+    7500,
+    7626,
+    7750,
+    7876,
+    // 8X
+    8000,
+    8252,
+    8500,
+    8752,
+    9000,
+    9252,
+    9500,
+    9752,
+    10000,
+    10252,
+    10500,
+    10752,
+    11000,
+    11252,
+    11500,
+    11752,
+    12000,
+    12252,
+    12500,
+    12752,
+    13000,
+    13252,
+    13500,
+    13752,
+    14000,
+    14252,
+    14500,
+    14752,
+    15000,
+    15252,
+    15500,
+    15752,
+    16000,
+    16504,
+    17000,
+    17504,
+    18000,
+    18504,
+    19000,
+    19504,
+    20000,
+    20504,
+    21000,
+    21504,
+    22000,
+    22504,
+    23000,
+    23504,
+    24000,
+    24504,
+    25000,
+    25504,
+    26000,
+    26504,
+    27000,
+    27504,
+    28000,
+    28504,
+    29000,
+    29504,
+    30000,
+    30504,
+    31000,
+    31504,
+    // 32X
+    32000,
+    33008,
+    34000,
+    35008,
+    36000,
+    37008,
+    38000,
+    39008,
+    40000,
+    41008,
+    42000,
+    43008,
+    44000,
+    45008,
+    46000,
+    47008,
+    48000,
+    49008,
+    50000,
+    51008,
+    52000,
+    53008,
+    54000,
+    55008,
+    56000,
+    57008,
+    58000,
+    59008,
+    60000,
+    61008,
+    62000,
+    63008,
+    // 64X
+    64000,
+    66016,
+    68000,
+    70016,
+    72000,
+    74016,
+    76000,
+    78016,
+    80000,
+    82016,
+    84000,
+    86016,
+    88000,
+    90016,
+    92000,
+    94016,
+    96000,
+    98016,
+    100000,
+    102016,
+    104000,
+    106016,
+    108000,
+    110016,
+    112000,
+    114016,
+    116000,
+    118016,
+    120000,
+    122016,
+    124000,
+    126016,
+};
+
+// SC2336 Gain map format: [DIG_FINE, DIG_COARSE, ANG]
+static const sc2336_gain_t sc2336_gain_map[] = {
+    {0x80, 0x00, 0x00},
+    {0x84, 0x00, 0x00},
+    {0x88, 0x00, 0x00},
+    {0x8c, 0x00, 0x00},
+    {0x90, 0x00, 0x00},
+    {0x94, 0x00, 0x00},
+    {0x98, 0x00, 0x00},
+    {0x9c, 0x00, 0x00},
+    {0xa0, 0x00, 0x00},
+    {0xa4, 0x00, 0x00},
+    {0xa8, 0x00, 0x00},
+    {0xac, 0x00, 0x00},
+    {0xb0, 0x00, 0x00},
+    {0xb4, 0x00, 0x00},
+    {0xb8, 0x00, 0x00},
+    {0xbc, 0x00, 0x00},
+    {0xc0, 0x00, 0x00},
+    {0xc4, 0x00, 0x00},
+    {0xc8, 0x00, 0x00},
+    {0xcc, 0x00, 0x00},
+    {0xd0, 0x00, 0x00},
+    {0xd4, 0x00, 0x00},
+    {0xd8, 0x00, 0x00},
+    {0xdc, 0x00, 0x00},
+    {0xe0, 0x00, 0x00},
+    {0xe4, 0x00, 0x00},
+    {0xe8, 0x00, 0x00},
+    {0xec, 0x00, 0x00},
+    {0xf0, 0x00, 0x00},
+    {0xf4, 0x00, 0x00},
+    {0xf8, 0x00, 0x00},
+    {0xfc, 0x00, 0x00},
+    // 2X
+    {0x80, 0x01, 0x00},
+    {0x84, 0x01, 0x00},
+    {0x88, 0x01, 0x00},
+    {0x8c, 0x01, 0x00},
+    {0x90, 0x01, 0x00},
+    {0x94, 0x01, 0x00},
+    {0x98, 0x01, 0x00},
+    {0x9c, 0x01, 0x00},
+    {0xa0, 0x01, 0x00},
+    {0xa4, 0x01, 0x00},
+    {0xa8, 0x01, 0x00},
+    {0xac, 0x01, 0x00},
+    {0xb0, 0x01, 0x00},
+    {0xb4, 0x01, 0x00},
+    {0xb8, 0x01, 0x00},
+    {0xbc, 0x01, 0x00},
+    {0xc0, 0x01, 0x00},
+    {0xc4, 0x01, 0x00},
+    {0xc8, 0x01, 0x00},
+    {0xcc, 0x01, 0x00},
+    {0xd0, 0x01, 0x00},
+    {0xd4, 0x01, 0x00},
+    {0xd8, 0x01, 0x00},
+    {0xdc, 0x01, 0x00},
+    {0xe0, 0x01, 0x00},
+    {0xe4, 0x01, 0x00},
+    {0xe8, 0x01, 0x00},
+    {0xec, 0x01, 0x00},
+    {0xf0, 0x01, 0x00},
+    {0xf4, 0x01, 0x00},
+    {0xf8, 0x01, 0x00},
+    {0xfc, 0x01, 0x00},
+    // 4X
+    {0x80, 0x01, 0x08},
+    {0x84, 0x01, 0x08},
+    {0x88, 0x01, 0x08},
+    {0x8c, 0x01, 0x08},
+    {0x90, 0x01, 0x08},
+    {0x94, 0x01, 0x08},
+    {0x98, 0x01, 0x08},
+    {0x9c, 0x01, 0x08},
+    {0xa0, 0x01, 0x08},
+    {0xa4, 0x01, 0x08},
+    {0xa8, 0x01, 0x08},
+    {0xac, 0x01, 0x08},
+    {0xb0, 0x01, 0x08},
+    {0xb4, 0x01, 0x08},
+    {0xb8, 0x01, 0x08},
+    {0xbc, 0x01, 0x08},
+    {0xc0, 0x01, 0x08},
+    {0xc4, 0x01, 0x08},
+    {0xc8, 0x01, 0x08},
+    {0xcc, 0x01, 0x08},
+    {0xd0, 0x01, 0x08},
+    {0xd4, 0x01, 0x08},
+    {0xd8, 0x01, 0x08},
+    {0xdc, 0x01, 0x08},
+    {0xe0, 0x01, 0x08},
+    {0xe4, 0x01, 0x08},
+    {0xe8, 0x01, 0x08},
+    {0xec, 0x01, 0x08},
+    {0xf0, 0x01, 0x08},
+    {0xf4, 0x01, 0x08},
+    {0xf8, 0x01, 0x08},
+    {0xfc, 0x01, 0x08},
+    // 8X
+    {0x80, 0x01, 0x09},
+    {0x84, 0x01, 0x09},
+    {0x88, 0x01, 0x09},
+    {0x8c, 0x01, 0x09},
+    {0x90, 0x01, 0x09},
+    {0x94, 0x01, 0x09},
+    {0x98, 0x01, 0x09},
+    {0x9c, 0x01, 0x09},
+    {0xa0, 0x01, 0x09},
+    {0xa4, 0x01, 0x09},
+    {0xa8, 0x01, 0x09},
+    {0xac, 0x01, 0x09},
+    {0xb0, 0x01, 0x09},
+    {0xb4, 0x01, 0x09},
+    {0xb8, 0x01, 0x09},
+    {0xbc, 0x01, 0x09},
+    {0xc0, 0x01, 0x09},
+    {0xc4, 0x01, 0x09},
+    {0xc8, 0x01, 0x09},
+    {0xcc, 0x01, 0x09},
+    {0xd0, 0x01, 0x09},
+    {0xd4, 0x01, 0x09},
+    {0xd8, 0x01, 0x09},
+    {0xdc, 0x01, 0x09},
+    {0xe0, 0x01, 0x09},
+    {0xe4, 0x01, 0x09},
+    {0xe8, 0x01, 0x09},
+    {0xec, 0x01, 0x09},
+    {0xf0, 0x01, 0x09},
+    {0xf4, 0x01, 0x09},
+    {0xf8, 0x01, 0x09},
+    {0xfc, 0x01, 0x09},
+    // 16X
+    {0x80, 0x01, 0x0b},
+    {0x84, 0x01, 0x0b},
+    {0x88, 0x01, 0x0b},
+    {0x8c, 0x01, 0x0b},
+    {0x90, 0x01, 0x0b},
+    {0x94, 0x01, 0x0b},
+    {0x98, 0x01, 0x0b},
+    {0x9c, 0x01, 0x0b},
+    {0xa0, 0x01, 0x0b},
+    {0xa4, 0x01, 0x0b},
+    {0xa8, 0x01, 0x0b},
+    {0xac, 0x01, 0x0b},
+    {0xb0, 0x01, 0x0b},
+    {0xb4, 0x01, 0x0b},
+    {0xb8, 0x01, 0x0b},
+    {0xbc, 0x01, 0x0b},
+    {0xc0, 0x01, 0x0b},
+    {0xc4, 0x01, 0x0b},
+    {0xc8, 0x01, 0x0b},
+    {0xcc, 0x01, 0x0b},
+    {0xd0, 0x01, 0x0b},
+    {0xd4, 0x01, 0x0b},
+    {0xd8, 0x01, 0x0b},
+    {0xdc, 0x01, 0x0b},
+    {0xe0, 0x01, 0x0b},
+    {0xe4, 0x01, 0x0b},
+    {0xe8, 0x01, 0x0b},
+    {0xec, 0x01, 0x0b},
+    {0xf0, 0x01, 0x0b},
+    {0xf4, 0x01, 0x0b},
+    {0xf8, 0x01, 0x0b},
+    {0xfc, 0x01, 0x0b},
+    //32x
+    {0x80, 0x01, 0x0f},
+    {0x84, 0x01, 0x0f},
+    {0x88, 0x01, 0x0f},
+    {0x8c, 0x01, 0x0f},
+    {0x90, 0x01, 0x0f},
+    {0x94, 0x01, 0x0f},
+    {0x98, 0x01, 0x0f},
+    {0x9c, 0x01, 0x0f},
+    {0xa0, 0x01, 0x0f},
+    {0xa4, 0x01, 0x0f},
+    {0xa8, 0x01, 0x0f},
+    {0xac, 0x01, 0x0f},
+    {0xb0, 0x01, 0x0f},
+    {0xb4, 0x01, 0x0f},
+    {0xb8, 0x01, 0x0f},
+    {0xbc, 0x01, 0x0f},
+    {0xc0, 0x01, 0x0f},
+    {0xc4, 0x01, 0x0f},
+    {0xc8, 0x01, 0x0f},
+    {0xcc, 0x01, 0x0f},
+    {0xd0, 0x01, 0x0f},
+    {0xd4, 0x01, 0x0f},
+    {0xd8, 0x01, 0x0f},
+    {0xdc, 0x01, 0x0f},
+    {0xe0, 0x01, 0x0f},
+    {0xe4, 0x01, 0x0f},
+    {0xe8, 0x01, 0x0f},
+    {0xec, 0x01, 0x0f},
+    {0xf0, 0x01, 0x0f},
+    {0xf4, 0x01, 0x0f},
+    {0xf8, 0x01, 0x0f},
+    {0xfc, 0x01, 0x0f},
+    //64x
+    {0x80, 0x01, 0x1f},
+    {0x84, 0x01, 0x1f},
+    {0x88, 0x01, 0x1f},
+    {0x8c, 0x01, 0x1f},
+    {0x90, 0x01, 0x1f},
+    {0x94, 0x01, 0x1f},
+    {0x98, 0x01, 0x1f},
+    {0x9c, 0x01, 0x1f},
+    {0xa0, 0x01, 0x1f},
+    {0xa4, 0x01, 0x1f},
+    {0xa8, 0x01, 0x1f},
+    {0xac, 0x01, 0x1f},
+    {0xb0, 0x01, 0x1f},
+    {0xb4, 0x01, 0x1f},
+    {0xb8, 0x01, 0x1f},
+    {0xbc, 0x01, 0x1f},
+    {0xc0, 0x01, 0x1f},
+    {0xc4, 0x01, 0x1f},
+    {0xc8, 0x01, 0x1f},
+    {0xcc, 0x01, 0x1f},
+    {0xd0, 0x01, 0x1f},
+    {0xd4, 0x01, 0x1f},
+    {0xd8, 0x01, 0x1f},
+    {0xdc, 0x01, 0x1f},
+    {0xe0, 0x01, 0x1f},
+    {0xe4, 0x01, 0x1f},
+    {0xe8, 0x01, 0x1f},
+    {0xec, 0x01, 0x1f},
+    {0xf0, 0x01, 0x1f},
+    {0xf4, 0x01, 0x1f},
+    {0xf8, 0x01, 0x1f},
+    {0xfc, 0x01, 0x1f},
+};
+
 static const esp_cam_sensor_isp_info_t sc2336_isp_info[] = {
     /* For MIPI */
     {
@@ -39,6 +541,8 @@ static const esp_cam_sensor_isp_info_t sc2336_isp_info[] = {
             .pclk = 81000000,
             .vts = 1500,
             .hts = 1800,
+            .gain_def = 0, // gain index, depend on {0x3e06, 0x3e07, 0x3e09}, since these registers are not set in format reg_list, the default values ​​are used here.
+            .exp_def = 0x5d6, // depend on {0x3e00, 0x3e01, 0x3e02}, see format_reg_list to get the default value.
             .bayer_type = ESP_CAM_SENSOR_BAYER_BGGR,
         }
     },
@@ -48,6 +552,8 @@ static const esp_cam_sensor_isp_info_t sc2336_isp_info[] = {
             .pclk = 81000000,
             .vts = 1800,
             .hts = 900,
+            .gain_def = 0,
+            .exp_def = 0x37e,
             .bayer_type = ESP_CAM_SENSOR_BAYER_BGGR,
         },
     },
@@ -57,6 +563,8 @@ static const esp_cam_sensor_isp_info_t sc2336_isp_info[] = {
             .pclk = 81000000,
             .vts = 1800,
             .hts = 750,
+            .gain_def = 0,
+            .exp_def = 0x2e8,
             .bayer_type = ESP_CAM_SENSOR_BAYER_BGGR,
         },
     },
@@ -66,6 +574,8 @@ static const esp_cam_sensor_isp_info_t sc2336_isp_info[] = {
             .pclk = 81000000,
             .vts = 1125,
             .hts = 1200,
+            .gain_def = 0,
+            .exp_def = 0x4af,
             .bayer_type = ESP_CAM_SENSOR_BAYER_BGGR,
         },
     },
@@ -75,6 +585,8 @@ static const esp_cam_sensor_isp_info_t sc2336_isp_info[] = {
             .pclk = 66000000,
             .vts = 2250,
             .hts = 1200,
+            .gain_def = 0,
+            .exp_def = 0x4af,
             .bayer_type = ESP_CAM_SENSOR_BAYER_BGGR,
         },
     },
@@ -84,6 +596,8 @@ static const esp_cam_sensor_isp_info_t sc2336_isp_info[] = {
             .pclk = 81000000,
             .vts = 2250,
             .hts = 1200,
+            .gain_def = 0,
+            .exp_def = 0x4aa,
             .bayer_type = ESP_CAM_SENSOR_BAYER_BGGR,
         },
     },
@@ -93,6 +607,8 @@ static const esp_cam_sensor_isp_info_t sc2336_isp_info[] = {
             .pclk = 49500000,
             .vts = 2200,
             .hts = 750,
+            .gain_def = 0,
+            .exp_def = 0x3e2,
             .bayer_type = ESP_CAM_SENSOR_BAYER_BGGR,
         }
     },
@@ -102,6 +618,8 @@ static const esp_cam_sensor_isp_info_t sc2336_isp_info[] = {
             .pclk = 67200000,
             .vts = 1000,
             .hts = 2240,
+            .gain_def = 0,
+            .exp_def = 0x207,
             .bayer_type = ESP_CAM_SENSOR_BAYER_BGGR,
         }
     },
@@ -111,6 +629,8 @@ static const esp_cam_sensor_isp_info_t sc2336_isp_info[] = {
             .pclk = 84000000,
             .vts = 1250,
             .hts = 2240,
+            .gain_def = 0,
+            .exp_def = 0x4dc,
             .bayer_type = ESP_CAM_SENSOR_BAYER_BGGR,
         }
     },
@@ -120,6 +640,8 @@ static const esp_cam_sensor_isp_info_t sc2336_isp_info[] = {
             .pclk = 84000000,
             .vts = 1250,
             .hts = 2240,
+            .gain_def = 0,
+            .exp_def = 0x4dc,
             .bayer_type = ESP_CAM_SENSOR_BAYER_BGGR,
         }
     },
@@ -129,6 +651,8 @@ static const esp_cam_sensor_isp_info_t sc2336_isp_info[] = {
             .pclk = 84000000,
             .vts = 1250,
             .hts = 2240,
+            .gain_def = 0,
+            .exp_def = 0x4dc,
             .bayer_type = ESP_CAM_SENSOR_BAYER_BGGR,
         }
     },
@@ -136,8 +660,10 @@ static const esp_cam_sensor_isp_info_t sc2336_isp_info[] = {
         .isp_v1_info = {
             .version = SENSOR_ISP_INFO_VERSION_DEFAULT,
             .pclk = 84000000,
-            .vts = 1250,
-            .hts = 2240,
+            .vts = 1000,
+            .hts = 2400,
+            .gain_def = 0,
+            .exp_def = 0x3e2,
             .bayer_type = ESP_CAM_SENSOR_BAYER_BGGR,
         }
     },
@@ -148,6 +674,8 @@ static const esp_cam_sensor_isp_info_t sc2336_isp_info[] = {
             .pclk = 42000000,
             .vts = 525,
             .hts = 1600,
+            .gain_def = 0,
+            .exp_def = 0x219,
             .bayer_type = ESP_CAM_SENSOR_BAYER_BGGR,
         }
     },
@@ -492,28 +1020,98 @@ static esp_err_t sc2336_set_vflip(esp_cam_sensor_device_t *dev, int enable)
 
 static esp_err_t sc2336_query_para_desc(esp_cam_sensor_device_t *dev, esp_cam_sensor_param_desc_t *qdesc)
 {
-    return ESP_ERR_NOT_SUPPORTED;
+    esp_err_t ret = ESP_OK;
+    switch (qdesc->id) {
+    case ESP_CAM_SENSOR_EXPOSURE_VAL:
+        qdesc->type = ESP_CAM_SENSOR_PARAM_TYPE_NUMBER;
+        qdesc->number.minimum = 0xff;
+        qdesc->number.maximum = dev->cur_format->isp_info->isp_v1_info.vts - 6; // max = VTS-6 = height+vblank-6, so when update vblank, exposure_max must be updated
+        qdesc->number.step = 1;
+        qdesc->default_value = dev->cur_format->isp_info->isp_v1_info.exp_def;
+        break;
+    case ESP_CAM_SENSOR_GAIN:
+        qdesc->type = ESP_CAM_SENSOR_PARAM_TYPE_ENUMERATION;
+        qdesc->enumeration.count = ARRAY_SIZE(sc2336_total_gain_val_map);
+        qdesc->enumeration.elements = sc2336_total_gain_val_map;
+        qdesc->default_value = dev->cur_format->isp_info->isp_v1_info.gain_def; // gain index
+        break;
+    default: {
+        ESP_LOGE(TAG, "id=%"PRIx32" is not supported", qdesc->id);
+        ret = ESP_ERR_INVALID_ARG;
+        break;
+    }
+    }
+    return ret;
 }
 
 static esp_err_t sc2336_get_para_value(esp_cam_sensor_device_t *dev, uint32_t id, void *arg, size_t size)
 {
-    return ESP_ERR_NOT_SUPPORTED;
+    esp_err_t ret = ESP_OK;
+    struct sc2336_cam *cam_sc2336 = (struct sc2336_cam *)dev->priv;
+    switch (id) {
+    case ESP_CAM_SENSOR_EXPOSURE_VAL: {
+        *(uint32_t *)arg = cam_sc2336->sc2336_para.exposure_val;
+        break;
+    }
+    case ESP_CAM_SENSOR_GAIN: {
+        *(uint32_t *)arg = cam_sc2336->sc2336_para.gain_index;
+        break;
+    }
+    default: {
+        ret = ESP_ERR_NOT_SUPPORTED;
+        break;
+    }
+    }
+    return ret;
 }
 
 static esp_err_t sc2336_set_para_value(esp_cam_sensor_device_t *dev, uint32_t id, const void *arg, size_t size)
 {
     esp_err_t ret = ESP_OK;
+    uint32_t u32_val = *(uint32_t *)arg;
+    struct sc2336_cam *cam_sc2336 = (struct sc2336_cam *)dev->priv;
 
     switch (id) {
+    case ESP_CAM_SENSOR_EXPOSURE_VAL: {
+        ESP_LOGD(TAG, "set exposure 0x%" PRIx32, u32_val);
+        /* 4 least significant bits of expsoure are fractional part */
+        ret = sc2336_write(dev->sccb_handle,
+                           SC2336_REG_SHUTTER_TIME_H,
+                           SC2336_FETCH_EXP_H(u32_val));
+        ret |= sc2336_write(dev->sccb_handle,
+                            SC2336_REG_SHUTTER_TIME_M,
+                            SC2336_FETCH_EXP_M(u32_val));
+        ret |= sc2336_write(dev->sccb_handle,
+                            SC2336_REG_SHUTTER_TIME_L,
+                            SC2336_FETCH_EXP_L(u32_val));
+        if (ret == ESP_OK) {
+            cam_sc2336->sc2336_para.exposure_val = u32_val;
+        }
+        break;
+    }
+    case ESP_CAM_SENSOR_GAIN: {
+        ESP_LOGD(TAG, "dgain_fine %" PRIx8 ", dgain_coarse %" PRIx8 ", again_coarse %" PRIx8, sc2336_gain_map[u32_val].dgain_fine, sc2336_gain_map[u32_val].dgain_coarse, sc2336_gain_map[u32_val].analog_gain);
+        ret = sc2336_write(dev->sccb_handle,
+                           SC2336_REG_DIG_FINE_GAIN,
+                           sc2336_gain_map[u32_val].dgain_fine);
+        ret |= sc2336_write(dev->sccb_handle,
+                            SC2336_REG_DIG_COARSE_GAIN,
+                            sc2336_gain_map[u32_val].dgain_coarse);
+        ret |= sc2336_write(dev->sccb_handle,
+                            SC2336_REG_ANG_GAIN,
+                            sc2336_gain_map[u32_val].analog_gain);
+        if (ret == ESP_OK) {
+            cam_sc2336->sc2336_para.gain_index = u32_val;
+        }
+        break;
+    }
     case ESP_CAM_SENSOR_VFLIP: {
         int *value = (int *)arg;
-
         ret = sc2336_set_vflip(dev, *value);
         break;
     }
     case ESP_CAM_SENSOR_HMIRROR: {
         int *value = (int *)arg;
-
         ret = sc2336_set_mirror(dev, *value);
         break;
     }
@@ -549,7 +1147,7 @@ static esp_err_t sc2336_query_support_capability(esp_cam_sensor_device_t *dev, e
 static esp_err_t sc2336_set_format(esp_cam_sensor_device_t *dev, const esp_cam_sensor_format_t *format)
 {
     ESP_CAM_SENSOR_NULL_POINTER_CHECK(TAG, dev);
-
+    struct sc2336_cam *cam_sc2336 = (struct sc2336_cam *)dev->priv;
     esp_err_t ret = ESP_OK;
     /* Depending on the interface type, an available configuration is automatically loaded.
     You can set the output format of the sensor without using query_format().*/
@@ -569,6 +1167,9 @@ static esp_err_t sc2336_set_format(esp_cam_sensor_device_t *dev, const esp_cam_s
     }
 
     dev->cur_format = format;
+    // init para
+    cam_sc2336->sc2336_para.exposure_val = dev->cur_format->isp_info->isp_v1_info.exp_def;
+    cam_sc2336->sc2336_para.gain_index = dev->cur_format->isp_info->isp_v1_info.gain_def;
 
     return ret;
 }
@@ -694,6 +1295,10 @@ static esp_err_t sc2336_delete(esp_cam_sensor_device_t *dev)
 {
     ESP_LOGD(TAG, "del sc2336 (%p)", dev);
     if (dev) {
+        if (dev->priv) {
+            free(dev->priv);
+            dev->priv = NULL;
+        }
         free(dev);
         dev = NULL;
     }
@@ -716,6 +1321,7 @@ static const esp_cam_sensor_ops_t sc2336_ops = {
 esp_cam_sensor_device_t *sc2336_detect(esp_cam_sensor_config_t *config)
 {
     esp_cam_sensor_device_t *dev = NULL;
+    struct sc2336_cam *cam_sc2336;
     if (config == NULL) {
         return NULL;
     }
@@ -726,6 +1332,13 @@ esp_cam_sensor_device_t *sc2336_detect(esp_cam_sensor_config_t *config)
         return NULL;
     }
 
+    cam_sc2336 = heap_caps_calloc(1, sizeof(struct sc2336_cam), MALLOC_CAP_DEFAULT);
+    if (!cam_sc2336) {
+        ESP_LOGE(TAG, "failed to calloc cam");
+        free(dev);
+        return NULL;
+    }
+
     dev->name = (char *)SC2336_SENSOR_NAME;
     dev->sccb_handle = config->sccb_handle;
     dev->xclk_pin = config->xclk_pin;
@@ -733,6 +1346,7 @@ esp_cam_sensor_device_t *sc2336_detect(esp_cam_sensor_config_t *config)
     dev->pwdn_pin = config->pwdn_pin;
     dev->sensor_port = config->sensor_port;
     dev->ops = &sc2336_ops;
+    dev->priv = cam_sc2336;
     if (config->sensor_port != ESP_CAM_SENSOR_DVP) {
         dev->cur_format = &sc2336_format_info[CONFIG_CAMERA_SC2336_MIPI_IF_FORMAT_INDEX_DAFAULT];
     } else {
@@ -758,6 +1372,7 @@ esp_cam_sensor_device_t *sc2336_detect(esp_cam_sensor_config_t *config)
 
 err_free_handler:
     sc2336_power_off(dev);
+    free(dev->priv);
     free(dev);
 
     return NULL;

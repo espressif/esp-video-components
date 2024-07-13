@@ -1,3 +1,10 @@
+## 0.5.1
+
+- Added support for SC2336 exposure and gain control
+- Enabled byte swap when SC030IOT outputs data in YUV422 format
+- Fix calloc arguments order warning
+- Changed member `fn` in structure `esp_cam_sensor_detect_fn_t` to `detect`
+
 ## 0.5.0
 
 - Added support for GC0308 DVP camera sensor driver
