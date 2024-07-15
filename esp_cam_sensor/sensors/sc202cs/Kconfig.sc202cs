@@ -22,11 +22,30 @@ if CAMERA_SC202CS
                 the application starts.
     endif
 
-    config CAMERA_SC202CS_MIPI_IF_FORMAT_INDEX_DAFAULT
-        int "Default format index for SC202CS MIPI Interface"
-        default 0
-        range 0 3
+    choice CAMERA_SC202CS_MIPI_DEFAULT_FMT
+        prompt "Default format select"
+        default CAMERA_SC202CS_MIPI_RAW8_1280x720_30FPS
         help
-            Set the configuration loaded by default for the MIPI CSI interface.
+            Select the default format to load when the sensor is detected.
+            When the sensor is in stream off state, the format can be changed.
+    
+        config CAMERA_SC202CS_MIPI_RAW8_1280x720_30FPS
+            bool "RAW8 1280x720 30fps, MIPI 1lane 24M input"
+        config CAMERA_SC202CS_MIPI_RAW8_1600x1200_30FPS
+            bool "RAW8 1600x1200 30fps, MIPI 1lane 24M input"
+        config CAMERA_SC202CS_MIPI_RAW10_1600x1200_30FPS
+            bool "RAW10 1600x1200 30fps, MIPI 1lane 24M input"
+        config CAMERA_SC202CS_MIPI_RAW10_1600x900_30FPS
+            bool "RAW10 1600x900 30fps, MIPI 1lane 24M input"
+    endchoice # CAMERA_SC202CS_MIPI_DEFAULT_FMT
+
+    config CAMERA_SC202CS_MIPI_IF_FORMAT_INDEX_DAFAULT
+        int
+        default 0 if CAMERA_SC202CS_MIPI_RAW8_1280x720_30FPS
+        default 1 if CAMERA_SC202CS_MIPI_RAW8_1600x1200_30FPS
+        default 2 if CAMERA_SC202CS_MIPI_RAW10_1600x1200_30FPS
+        default 3 if CAMERA_SC202CS_MIPI_RAW10_1600x900_30FPS
+        help
+            Set the configuration loaded by default for the MIPI interface.
             More information can be obtained by calling the query_support_formats().
 endif

@@ -87,7 +87,7 @@ static const esp_cam_sensor_format_t ov5645_format_info[] = {
         .reserved = NULL,
     },
     {
-        .name = "MIPI_24Minput_2lane_YUV422_2592x1944_15fps",
+        .name = "MIPI_2lane_24Minput_YUV422_2592x1944_15fps",
         .format = ESP_CAM_SENSOR_PIXFORMAT_YUV422,
         .port = ESP_CAM_SENSOR_MIPI_CSI,
         .xclk = 24000000,
@@ -105,7 +105,7 @@ static const esp_cam_sensor_format_t ov5645_format_info[] = {
         .reserved = NULL,
     },
     {
-        .name = "MIPI_24Minput_2lane_YUV422_1920x1080_15fps",
+        .name = "MIPI_2lane_24Minput_YUV422_1920x1080_15fps",
         .format = ESP_CAM_SENSOR_PIXFORMAT_YUV422,
         .port = ESP_CAM_SENSOR_MIPI_CSI,
         .xclk = 24000000,
@@ -123,7 +123,7 @@ static const esp_cam_sensor_format_t ov5645_format_info[] = {
         .reserved = NULL,
     },
     {
-        .name = "MIPI_24Minput_2lane_YUV422_640x480_24fps",
+        .name = "MIPI_2lane_24Minput_YUV422_640x480_24fps",
         .format = ESP_CAM_SENSOR_PIXFORMAT_YUV422,
         .port = ESP_CAM_SENSOR_MIPI_CSI,
         .xclk = 24000000,

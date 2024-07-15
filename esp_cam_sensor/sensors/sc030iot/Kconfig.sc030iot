@@ -22,10 +22,23 @@ if CAMERA_SC030IOT
                 application starts.
     endif
 
+    choice CAMERA_SC030IOT_DVP_DEFAULT_FMT
+        prompt "Default format select"
+        default CAMERA_SC030IOT_DVP_YUV422_640x480_26FPS
+        help
+            Select the default format to load when the sensor is detected.
+            When the sensor is in stream off state, the format can be changed.
+    
+        config CAMERA_SC030IOT_DVP_YUV422_640x480_26FPS
+            bool "YUV422 640x480 26fps, DVP 8bit 20M input"
+        config CAMERA_SC030IOT_DVP_RAW8_640x480_26FPS
+            bool "RAW8 640x480 26fps, DVP 8bit 20M input"
+    endchoice # CAMERA_SC030IOT_DVP_DEFAULT_FMT
+
     config CAMERA_SC030IOT_DVP_IF_FORMAT_INDEX_DAFAULT
-        int "Default format index for SC030IOT DVP Interface"
-        default 0
-        range 0 1
+        int
+        default 0 if CAMERA_SC030IOT_DVP_YUV422_640x480_26FPS
+        default 1 if CAMERA_SC030IOT_DVP_RAW8_640x480_26FPS
         help
             Set the configuration loaded by default for the DVP interface.
             More information can be obtained by calling the query_support_formats().

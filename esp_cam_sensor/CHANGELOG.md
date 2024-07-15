@@ -1,3 +1,7 @@
+## 0.5.2
+
+- Added format description in camera sensor driver's Kconfig
+
 ## 0.5.1
 
 - Added support for SC2336 exposure and gain control
