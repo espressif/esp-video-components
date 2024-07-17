@@ -1,3 +1,7 @@
+## 0.9.0
+
+- Added APIs to generate XCLK needed by camera sensor.
+
 ## 0.8.1
 
 - Added group hold feature in the SC2336 camera driver.
