@@ -14,7 +14,7 @@
 
 #include "esp_video.h"
 #include "esp_video_sensor.h"
-#include "esp_video_cam_device.h"
+#include "esp_video_device.h"
 
 #define DVP_NAME                    "DVP"
 

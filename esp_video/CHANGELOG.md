@@ -1,3 +1,10 @@
+## 0.4.0
+
+- Support H.264 hardware encode video device
+- Support JPEG hardware encode video device
+- CSI video device supports to receive data directly from sensor, such RGB, YUV and so on
+- Add option ESP_VIDEO_DISABLE_MIPI_CSI_DRIVER_BACKUP_BUFFER to disable MIPI-CSI driver backup buffer
+
 ## 0.3.0
 
 - Support ESP32-P4 LCD_CAM DVP video device

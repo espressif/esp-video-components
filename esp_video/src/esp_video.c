@@ -1673,3 +1673,60 @@ esp_err_t esp_video_query_ext_control(struct esp_video *video, struct v4l2_query
 
     return ESP_OK;
 }
+
+/**
+ * @brief M2M video device process data
+ *
+ * @param video       Video object
+ * @param src_type    Video resource stream type
+ * @param dst_type    Video destination stream type
+ * @param proc        Video device process callback function
+ *
+ * @return
+ *      - ESP_OK on success
+ *      - Others if failed
+ */
+esp_err_t esp_video_m2m_process(struct esp_video *video, uint32_t src_type, uint32_t dst_type, esp_video_m2m_process_t proc)
+{
+    esp_err_t ret;
+    uint32_t dst_out_size;
+    struct esp_video_buffer_element *dst_element;
+    struct esp_video_buffer_element *src_element;
+
+    ret = esp_video_get_m2m_queued_elements(video,
+                                            src_type,
+                                            &src_element,
+                                            dst_type,
+                                            &dst_element);
+    if (ret != ESP_OK) {
+        ESP_LOGE(TAG, "no valid buffer");
+        return ret;
+    }
+
+    ret = proc(video, ELEMENT_BUFFER(src_element), ELEMENT_SIZE(src_element),
+               ELEMENT_BUFFER(dst_element), ELEMENT_SIZE(dst_element), &dst_out_size);
+    if (ret == ESP_OK) {
+        dst_element->valid_size = dst_out_size;
+        ret = esp_video_done_m2m_elements(video,
+                                          src_type,
+                                          src_element,
+                                          dst_type,
+                                          dst_element);
+        if (ret != ESP_OK) {
+            ESP_LOGE(TAG, "failed to put elements back into done list");
+            return ret;
+        }
+    } else {
+        ret = esp_video_queue_m2m_elements(video,
+                                           src_type,
+                                           src_element,
+                                           dst_type,
+                                           dst_element);
+        if (ret != ESP_OK) {
+            ESP_LOGE(TAG, "failed to put elements back into queue list");
+        }
+        return ESP_FAIL;
+    }
+
+    return ESP_OK;
+}
