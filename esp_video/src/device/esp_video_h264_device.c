@@ -455,8 +455,7 @@ esp_err_t esp_video_create_h264_video_device(bool hw_codec)
 {
     struct esp_video *video;
     struct h264_video *h264_video;
-    uint32_t device_caps = V4L2_CAP_VIDEO_M2M | V4L2_CAP_READWRITE |
-                           V4L2_CAP_EXT_PIX_FORMAT | V4L2_CAP_STREAMING;
+    uint32_t device_caps = V4L2_CAP_VIDEO_M2M | V4L2_CAP_EXT_PIX_FORMAT | V4L2_CAP_STREAMING;
     uint32_t caps = device_caps | V4L2_CAP_DEVICE_CAPS;
 
     if (hw_codec == false) {

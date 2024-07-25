@@ -335,8 +335,7 @@ esp_err_t esp_video_create_dvp_video_device(esp_cam_sensor_device_t *cam_dev)
 {
     struct esp_video *video;
     struct dvp_video *dvp_video;
-    uint32_t device_caps = V4L2_CAP_VIDEO_CAPTURE | V4L2_CAP_READWRITE | V4L2_CAP_EXT_PIX_FORMAT |
-                           V4L2_CAP_STREAMING;
+    uint32_t device_caps = V4L2_CAP_VIDEO_CAPTURE | V4L2_CAP_EXT_PIX_FORMAT | V4L2_CAP_STREAMING;
     uint32_t caps = device_caps | V4L2_CAP_DEVICE_CAPS;
 
     dvp_video = heap_caps_calloc(1, sizeof(struct dvp_video), MALLOC_CAP_8BIT | MALLOC_CAP_INTERNAL);

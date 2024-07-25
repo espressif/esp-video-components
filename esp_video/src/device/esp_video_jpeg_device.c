@@ -387,8 +387,7 @@ esp_err_t esp_video_create_jpeg_video_device(jpeg_encoder_handle_t enc_handle)
 {
     struct esp_video *video;
     struct jpeg_video *jpeg_video;
-    uint32_t device_caps = V4L2_CAP_VIDEO_M2M | V4L2_CAP_READWRITE |
-                           V4L2_CAP_EXT_PIX_FORMAT | V4L2_CAP_STREAMING;
+    uint32_t device_caps = V4L2_CAP_VIDEO_M2M | V4L2_CAP_EXT_PIX_FORMAT | V4L2_CAP_STREAMING;
     uint32_t caps = device_caps | V4L2_CAP_DEVICE_CAPS;
 
     jpeg_video = heap_caps_calloc(1, sizeof(struct jpeg_video), MALLOC_CAP_8BIT | MALLOC_CAP_INTERNAL);

@@ -20,8 +20,6 @@
 #include "esp_video_vfs.h"
 #include "esp_video_ioctl.h"
 
-static const char *TAG = "esp_video_vfs";
-
 static int esp_err_to_errno(esp_err_t err)
 {
     switch (err) {
@@ -82,27 +80,14 @@ static ssize_t esp_video_vfs_write(void *ctx, int fd, const void *data, size_t s
 
 static ssize_t esp_video_vfs_read(void *ctx, int fd, void *data, size_t size)
 {
-    size_t n;
-    struct esp_video_buffer_element *element;
-    uint32_t ticks = portMAX_DELAY;
     struct esp_video *video = (struct esp_video *)ctx;
 
-    if (!ctx || fd < 0 || !data || !size) {
-        errno = EINVAL;
-        return -1;
-    }
+    assert(fd >= 0 && data && size);
+    assert(video);
 
-    element = esp_video_recv_element(video, V4L2_BUF_TYPE_VIDEO_CAPTURE, ticks);
-    if (!element) {
-        return 0;
-    }
+    errno = EPERM;
 
-    n = MIN(size, element->valid_size);
-    ESP_LOGD(TAG, "actually read n=%d", n);
-
-    memcpy(data, element->buffer, n);
-
-    return (ssize_t)n;
+    return -1;
 }
 
 static int esp_video_vfs_fstat(void *ctx, int fd, struct stat *st)
@@ -126,12 +111,8 @@ static int esp_video_vfs_close(void *ctx, int fd)
     assert(video);
 
     ret = esp_video_close(video);
-    if (ret != ESP_OK) {
-        errno = EIO;
-        return -1;
-    }
 
-    return 0;
+    return esp_err_to_errno(ret);
 }
 
 static int esp_video_vfs_fcntl(void *ctx, int fd, int cmd, int arg)

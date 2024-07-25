@@ -134,3 +134,19 @@ struct esp_video_buffer_element *IRAM_ATTR esp_video_buffer_get_element_by_buffe
 
     return NULL;
 }
+
+
+/**
+ * @brief Reset video buffer
+ *
+ * @param buffer Video buffer object
+ *
+ * @return None
+ */
+void esp_video_buffer_reset(struct esp_video_buffer *buffer)
+{
+    for (int i = 0; i < buffer->info.count; i++) {
+        ELEMENT_SET_FREE(&buffer->element[i]);
+        buffer->element[i].valid_size = 0;
+    }
+}

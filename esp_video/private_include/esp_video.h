@@ -69,6 +69,9 @@ struct esp_video {
 
     portMUX_TYPE stream_lock;               /*!< Stream list lock */
     struct esp_video_stream *stream;        /*!< Video device stream, capture-only or output-only device has 1 stream, M2M device has 2 streams */
+
+    SemaphoreHandle_t mutex;                /*!< Video device mutex lock */
+    uint8_t reference;                      /*!< video device open reference count */
 };
 
 /**
