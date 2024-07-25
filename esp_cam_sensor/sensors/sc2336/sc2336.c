@@ -792,7 +792,7 @@ static const esp_cam_sensor_format_t sc2336_format_info[] = {
         .reserved = NULL,
     },
     {
-        .name = "MIPI_2lane_24Minput_RAW10_800*800_30fps",
+        .name = "MIPI_2lane_24Minput_RAW10_800x800_30fps",
         .format = ESP_CAM_SENSOR_PIXFORMAT_RAW10,
         .port = ESP_CAM_SENSOR_MIPI_CSI,
         .xclk = 24000000,
@@ -810,7 +810,7 @@ static const esp_cam_sensor_format_t sc2336_format_info[] = {
         .reserved = NULL,
     },
     {
-        .name = "MIPI_2lane_24Minput_RAW10_640*480_50fps",
+        .name = "MIPI_2lane_24Minput_RAW10_640x480_50fps",
         .format = ESP_CAM_SENSOR_PIXFORMAT_RAW10,
         .port = ESP_CAM_SENSOR_MIPI_CSI,
         .xclk = 24000000,
@@ -828,7 +828,7 @@ static const esp_cam_sensor_format_t sc2336_format_info[] = {
         .reserved = NULL,
     },
     {
-        .name = "MIPI_2lane_24Minput_RAW8_1920*1080_30fps",
+        .name = "MIPI_2lane_24Minput_RAW8_1920x1080_30fps",
         .format = ESP_CAM_SENSOR_PIXFORMAT_RAW8,
         .port = ESP_CAM_SENSOR_MIPI_CSI,
         .xclk = 24000000,
@@ -846,7 +846,7 @@ static const esp_cam_sensor_format_t sc2336_format_info[] = {
         .reserved = NULL,
     },
     {
-        .name = "MIPI_2lane_24Minput_RAW8_1280*720_30fps",
+        .name = "MIPI_2lane_24Minput_RAW8_1280x720_30fps",
         .format = ESP_CAM_SENSOR_PIXFORMAT_RAW8,
         .port = ESP_CAM_SENSOR_MIPI_CSI,
         .xclk = 24000000,
@@ -864,7 +864,7 @@ static const esp_cam_sensor_format_t sc2336_format_info[] = {
         .reserved = NULL,
     },
     {
-        .name = "MIPI_2lane_24Minput_RAW8_800*800_30fps",
+        .name = "MIPI_2lane_24Minput_RAW8_800x800_30fps",
         .format = ESP_CAM_SENSOR_PIXFORMAT_RAW8,
         .port = ESP_CAM_SENSOR_MIPI_CSI,
         .xclk = 24000000,
@@ -882,7 +882,7 @@ static const esp_cam_sensor_format_t sc2336_format_info[] = {
         .reserved = NULL,
     },
     {
-        .name = "MIPI_2lane_24Minput_RAW8_1024*600_30fps",
+        .name = "MIPI_2lane_24Minput_RAW8_1024x600_30fps",
         .format = ESP_CAM_SENSOR_PIXFORMAT_RAW8,
         .port = ESP_CAM_SENSOR_MIPI_CSI,
         .xclk = 24000000,
@@ -901,7 +901,7 @@ static const esp_cam_sensor_format_t sc2336_format_info[] = {
     },
     /* For DVP */
     {
-        .name = "DVP_8bits_24Minput_RAW10_1280*720_30fps",
+        .name = "DVP_8bit_24Minput_RAW10_1280x720_30fps",
         .format = ESP_CAM_SENSOR_PIXFORMAT_RAW10,
         .port = ESP_CAM_SENSOR_DVP,
         .xclk = 24000000,

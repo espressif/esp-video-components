@@ -61,7 +61,7 @@ static const esp_cam_sensor_format_t gc0308_format_info[] = {
         .reserved = NULL,
     },
     {
-        .name = "DVP_8bit_20Minput_Only_Y_640x480_16fps",
+        .name = "DVP_8bit_20Minput_grayscale_640x480_16fps",
         .format = ESP_CAM_SENSOR_PIXFORMAT_GRAYSCALE,
         .port = ESP_CAM_SENSOR_DVP,
         .xclk = 20000000,
@@ -89,7 +89,7 @@ static const esp_cam_sensor_format_t gc0308_format_info[] = {
         .reserved = NULL,
     },
     {
-        .name = "DVP_8bit_20Minput_only_y_320x240_20fps_subsample",
+        .name = "DVP_8bit_20Minput_grayscale_320x240_20fps_subsample",
         .format = ESP_CAM_SENSOR_PIXFORMAT_GRAYSCALE,
         .port = ESP_CAM_SENSOR_DVP,
         .xclk = 20000000,
