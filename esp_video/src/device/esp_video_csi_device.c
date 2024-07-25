@@ -23,7 +23,7 @@
 
 #include "esp_video.h"
 #include "esp_video_sensor.h"
-#include "esp_video_device.h"
+#include "esp_video_device_internal.h"
 
 #define CSI_NAME                    "MIPI-CSI"
 
@@ -729,7 +729,7 @@ esp_err_t esp_video_create_csi_video_device(esp_cam_sensor_device_t *cam_dev)
 
     csi_video->cam_dev = cam_dev;
 
-    video = esp_video_create(CSI_NAME, &s_csi_video_ops, csi_video, caps, device_caps);
+    video = esp_video_create(CSI_NAME, ESP_VIDEO_MIPI_CSI_DEVICE_ID, &s_csi_video_ops, csi_video, caps, device_caps);
     if (!video) {
         heap_caps_free(csi_video);
         return ESP_FAIL;

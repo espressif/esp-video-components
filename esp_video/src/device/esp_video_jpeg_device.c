@@ -14,7 +14,7 @@
 #include "driver/jpeg_encode.h"
 
 #include "esp_video.h"
-#include "esp_video_device.h"
+#include "esp_video_device_internal.h"
 
 #define JPEG_NAME                       "JPEG"
 
@@ -403,7 +403,7 @@ esp_err_t esp_video_create_jpeg_video_device(jpeg_encoder_handle_t enc_handle)
     jpeg_video->sub_sample = JPEG_VIDEO_CHROMA_SUBSAMPLING;
     jpeg_video->image_quality = JPEG_VIDEO_COMP_QUALITY;
 
-    video = esp_video_create(JPEG_NAME, &s_jpeg_video_ops, jpeg_video, caps, device_caps);
+    video = esp_video_create(JPEG_NAME, ESP_VIDEO_JPEG_DEVICE_ID, &s_jpeg_video_ops, jpeg_video, caps, device_caps);
     if (!video) {
         heap_caps_free(jpeg_video);
         return ESP_FAIL;

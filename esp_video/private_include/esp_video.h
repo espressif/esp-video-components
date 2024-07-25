@@ -59,7 +59,7 @@ struct esp_video_stream {
 struct esp_video {
     SLIST_ENTRY(esp_video) node;            /*!< List node */
 
-    int id;                                 /*!< Video device ID */
+    uint8_t id;                             /*!< Video device ID */
     const struct esp_video_ops *ops;        /*!< Video operations */
     char *dev_name;                         /*!< Video device port name */
     uint32_t caps;                          /*!< video physical device capabilities */
@@ -75,6 +75,7 @@ struct esp_video {
  * @brief Create video object.
  *
  * @param name         video driver name
+ * @param id           video device ID, if id=0, VFS name is /dev/video0
  * @param ops          video operations
  * @param priv         video private data
  * @param caps         video physical device capabilities
@@ -84,8 +85,8 @@ struct esp_video {
  *      - Video object pointer on success
  *      - NULL if failed
  */
-struct esp_video *esp_video_create(const char *name, const struct esp_video_ops *ops, void *priv,
-                                   uint32_t caps, uint32_t device_caps);
+struct esp_video *esp_video_create(const char *name, uint8_t id, const struct esp_video_ops *ops,
+                                   void *priv, uint32_t caps, uint32_t device_caps);
 
 /**
  * @brief Destroy video object.

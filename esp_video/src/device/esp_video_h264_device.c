@@ -16,7 +16,7 @@
 #include "esp_h264_enc_single.h"
 
 #include "esp_video.h"
-#include "esp_video_device.h"
+#include "esp_video_device_internal.h"
 
 #define H264_NAME                   "H.264"
 
@@ -474,7 +474,7 @@ esp_err_t esp_video_create_h264_video_device(bool hw_codec)
     h264_video->max_qp = H264_VIDEO_DEVICE_MAX_QP;
     h264_video->bitrate = H264_VIDEO_DEVICE_BITRATE;
 
-    video = esp_video_create(H264_NAME, &s_h264_video_ops, h264_video, caps, device_caps);
+    video = esp_video_create(H264_NAME, ESP_VIDEO_H264_DEVICE_ID, &s_h264_video_ops, h264_video, caps, device_caps);
     if (!video) {
         heap_caps_free(h264_video);
         return ESP_FAIL;
