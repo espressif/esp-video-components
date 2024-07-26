@@ -77,6 +77,11 @@ static esp_err_t dvp_get_input_frame_type(esp_cam_sensor_output_format_t sensor_
         *v4l2_format = V4L2_PIX_FMT_SBGGR12;
         *bpp = 12;
         break;
+    case ESP_CAM_SENSOR_PIXFORMAT_GRAYSCALE:
+        *in_color = CAM_CTLR_COLOR_GRAY8;
+        *v4l2_format = V4L2_PIX_FMT_GREY;
+        *bpp = 8;
+        break;
     default:
         ret = ESP_ERR_NOT_SUPPORTED;
         break;
