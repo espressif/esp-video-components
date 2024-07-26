@@ -14,7 +14,7 @@
 
 #include "esp_video.h"
 #include "esp_video_sensor.h"
-#include "esp_video_device.h"
+#include "esp_video_device_internal.h"
 
 #define DVP_NAME                    "DVP"
 
@@ -346,7 +346,7 @@ esp_err_t esp_video_create_dvp_video_device(esp_cam_sensor_device_t *cam_dev)
 
     dvp_video->cam_dev = cam_dev;
 
-    video = esp_video_create(DVP_NAME, &s_dvp_video_ops, dvp_video, caps, device_caps);
+    video = esp_video_create(DVP_NAME, ESP_VIDEO_DVP_DEVICE_ID, &s_dvp_video_ops, dvp_video, caps, device_caps);
     if (!video) {
         heap_caps_free(dvp_video);
         return ESP_FAIL;

@@ -14,7 +14,7 @@
 #include "esp_cam_sensor_detect.h"
 
 #include "esp_video_init.h"
-#include "esp_video_device.h"
+#include "esp_video_device_internal.h"
 #include "esp_private/esp_cam_dvp.h"
 
 #define SCCB_NUM_MAX                I2C_NUM_MAX
