@@ -542,6 +542,30 @@ esp_err_t esp_video_query_ext_control(struct esp_video *video, struct v4l2_query
  */
 esp_err_t esp_video_m2m_process(struct esp_video *video, uint32_t src_type, uint32_t dst_type, esp_video_m2m_process_t proc);
 
+/**
+ * @brief Set format to sensor
+ *
+ * @param video  Video object
+ * @param format Sensor format pointer
+ *
+ * @return
+ *      - ESP_OK on success
+ *      - Others if failed
+ */
+esp_err_t esp_video_set_sensor_format(struct esp_video *video, const esp_cam_sensor_format_t *format);
+
+/**
+ * @brief Get format from sensor
+ *
+ * @param video  Video object
+ * @param format Sensor format pointer
+ *
+ * @return
+ *      - ESP_OK on success
+ *      - Others if failed
+ */
+esp_err_t esp_video_get_sensor_format(struct esp_video *video, esp_cam_sensor_format_t *format);
+
 #ifdef __cplusplus
 }
 #endif

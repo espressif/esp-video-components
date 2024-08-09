@@ -117,7 +117,7 @@ static bool IRAM_ATTR dvp_video_on_get_new_trans(esp_cam_ctlr_handle_t handle, e
     return true;
 }
 
-static esp_err_t dvp_video_init(struct esp_video *video)
+static esp_err_t init_config(struct esp_video *video)
 {
     esp_err_t ret;
     uint32_t in_bpp;
@@ -125,11 +125,6 @@ static esp_err_t dvp_video_init(struct esp_video *video)
     esp_cam_sensor_format_t sensor_format;
     struct dvp_video *dvp_video = VIDEO_PRIV_DATA(struct dvp_video *, video);
     esp_cam_sensor_device_t *cam_dev = dvp_video->cam_dev;
-
-    ret = esp_cam_sensor_set_format(cam_dev, NULL);
-    if (ret != ESP_OK) {
-        return ret;
-    }
 
     ret = esp_cam_sensor_get_format(cam_dev, &sensor_format);
     if (ret != ESP_OK) {
@@ -154,6 +149,11 @@ static esp_err_t dvp_video_init(struct esp_video *video)
     CAPTURE_VIDEO_SET_BUF_INFO(video, buf_size, DVP_DMA_ALIGN_BYTES, DVP_MEM_CAPS);
 
     return ESP_OK;
+}
+
+static esp_err_t dvp_video_init(struct esp_video *video)
+{
+    return init_config(video);
 }
 
 static esp_err_t dvp_video_start(struct esp_video *video, uint32_t type)
@@ -309,6 +309,26 @@ static esp_err_t dvp_video_query_ext_ctrl(struct esp_video *video, struct v4l2_q
     return esp_video_query_ext_ctrls_from_sensor(dvp_video->cam_dev, qctrl);
 }
 
+static esp_err_t dvp_video_set_sensor_format(struct esp_video *video, const esp_cam_sensor_format_t *format)
+{
+    esp_err_t ret;
+    struct dvp_video *dvp_video = VIDEO_PRIV_DATA(struct dvp_video *, video);
+
+    ret = esp_cam_sensor_set_format(dvp_video->cam_dev, format);
+    if (ret == ESP_OK) {
+        ret = init_config(video);
+    }
+
+    return ret;
+}
+
+static esp_err_t dvp_video_get_sensor_format(struct esp_video *video, esp_cam_sensor_format_t *format)
+{
+    struct dvp_video *dvp_video = VIDEO_PRIV_DATA(struct dvp_video *, video);
+
+    return esp_cam_sensor_get_format(dvp_video->cam_dev, format);
+}
+
 static const struct esp_video_ops s_dvp_video_ops = {
     .init          = dvp_video_init,
     .deinit        = dvp_video_deinit,
@@ -320,6 +340,8 @@ static const struct esp_video_ops s_dvp_video_ops = {
     .set_ext_ctrl  = dvp_video_set_ext_ctrl,
     .get_ext_ctrl  = dvp_video_get_ext_ctrl,
     .query_ext_ctrl = dvp_video_query_ext_ctrl,
+    .set_sensor_format = dvp_video_set_sensor_format,
+    .get_sensor_format = dvp_video_get_sensor_format,
 };
 
 /**

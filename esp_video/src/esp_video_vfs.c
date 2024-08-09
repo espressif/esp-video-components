@@ -18,7 +18,7 @@
 #include "esp_vfs.h"
 #include "esp_vfs_dev.h"
 #include "esp_video_vfs.h"
-#include "esp_video_ioctl.h"
+#include "esp_video_ioctl_internal.h"
 
 static int esp_err_to_errno(esp_err_t err)
 {

@@ -10,7 +10,7 @@
 #include "esp_heap_caps.h"
 #include "esp_video.h"
 #include "esp_video_vfs.h"
-#include "esp_video_ioctl.h"
+#include "esp_video_ioctl_internal.h"
 
 #define BUF_OFF(type, element_index)        (((uint32_t)type << 24) + element_index)
 #define BUF_OFF_2_INDEX(buf_off)            ((buf_off) & 0x00ffffff)
@@ -249,6 +249,16 @@ static inline esp_err_t esp_video_ioctl_query_ext_ctrls(struct esp_video *video,
     return esp_video_query_ext_control(video, qctrl);
 }
 
+static inline esp_err_t esp_video_ioctl_set_sensor_format(struct esp_video *video, const esp_cam_sensor_format_t *format)
+{
+    return esp_video_set_sensor_format(video, format);
+}
+
+static inline esp_err_t esp_video_ioctl_get_sensor_format(struct esp_video *video, esp_cam_sensor_format_t *format)
+{
+    return esp_video_get_sensor_format(video, format);
+}
+
 esp_err_t esp_video_ioctl(struct esp_video *video, int cmd, va_list args)
 {
     esp_err_t ret = ESP_OK;
@@ -303,6 +313,12 @@ esp_err_t esp_video_ioctl(struct esp_video *video, int cmd, va_list args)
         break;
     case VIDIOC_QUERY_EXT_CTRL:
         ret = esp_video_ioctl_query_ext_ctrls(video, (struct v4l2_query_ext_ctrl *)arg_ptr);
+        break;
+    case VIDIOC_S_SENSOR_FMT:
+        ret = esp_video_ioctl_set_sensor_format(video, (const esp_cam_sensor_format_t *)arg_ptr);
+        break;
+    case VIDIOC_G_SENSOR_FMT:
+        ret = esp_video_ioctl_get_sensor_format(video, (esp_cam_sensor_format_t *)arg_ptr);
         break;
     default:
         ret = ESP_ERR_INVALID_ARG;
