@@ -325,6 +325,12 @@ struct esp_video *esp_video_create(const char *name, uint8_t id, const struct es
         goto exit_1;
     }
 
+    video->mutex = xSemaphoreCreateMutex();
+    if (!video->mutex) {
+        ESP_LOGE(TAG, "Failed to create mutex");
+        goto exit_2;
+    }
+
     video->dev_name = (char *)&video[1];
     strcpy(video->dev_name, name);
     video->ops = ops;
@@ -337,20 +343,22 @@ struct esp_video *esp_video_create(const char *name, uint8_t id, const struct es
     ret = snprintf(vfs_name, sizeof(vfs_name), "video%d", id);
     if (ret <= 0) {
         ESP_LOGE(TAG, "Failed to register video VFS dev");
-        goto exit_2;
+        goto exit_3;
     }
 
     ret = esp_video_vfs_dev_register(vfs_name, video);
     if (ret != ESP_OK) {
         ESP_LOGE(TAG, "Failed to register video VFS dev name=%s", vfs_name);
-        goto exit_2;
+        goto exit_3;
     }
 
     _lock_release(&s_video_lock);
     return video;
 
-exit_2:
+exit_3:
     SLIST_REMOVE(&s_video_list, video, esp_video, node);
+    vSemaphoreDelete(video->mutex);
+exit_2:
     heap_caps_free(video->stream);
 exit_1:
     heap_caps_free(video);
@@ -375,10 +383,6 @@ esp_err_t esp_video_destroy(struct esp_video *video)
 
     CHECK_VIDEO_OBJ(video);
 
-    _lock_acquire(&s_video_lock);
-    SLIST_REMOVE(&s_video_list, video, esp_video, node);
-    _lock_release(&s_video_lock);
-
     ret = snprintf(vfs_name, sizeof(vfs_name), "video%d", video->id);
     if (ret <= 0) {
         return ESP_ERR_NO_MEM;
@@ -390,6 +394,12 @@ esp_err_t esp_video_destroy(struct esp_video *video)
         return ESP_ERR_NO_MEM;
     }
 
+    _lock_acquire(&s_video_lock);
+    SLIST_REMOVE(&s_video_list, video, esp_video, node);
+    _lock_release(&s_video_lock);
+
+    vSemaphoreDelete(video->mutex);
+    heap_caps_free(video->stream);
     heap_caps_free(video);
 
     return ESP_OK;
@@ -424,13 +434,21 @@ struct esp_video *esp_video_open(const char *name)
         return NULL;
     }
 
+    xSemaphoreTake(video->mutex, portMAX_DELAY);
+
+    assert(video->reference <= UINT8_MAX);
+    video->reference++;
+    if (video->reference > 1) {
+        goto exit_0;
+    }
+
     if (video->ops->init) {
         /* video device operation "init" sets buffer information and video format */
 
         ret = video->ops->init(video);
         if (ret != ESP_OK) {
             ESP_LOGE(TAG, "video->ops->init=%x", ret);
-            return NULL;
+            video = NULL;
         } else {
             int stream_count = video->caps & V4L2_CAP_VIDEO_M2M ? 2 : 1;
 
@@ -447,6 +465,8 @@ struct esp_video *esp_video_open(const char *name)
         ESP_LOGD(TAG, "video->ops->init=NULL");
     }
 
+exit_0:
+    xSemaphoreGive(video->mutex);
     return video;
 }
 
@@ -461,15 +481,22 @@ struct esp_video *esp_video_open(const char *name)
  */
 esp_err_t esp_video_close(struct esp_video *video)
 {
-    esp_err_t ret;
+    esp_err_t ret = ESP_OK;
 
     CHECK_VIDEO_OBJ(video);
+
+    xSemaphoreTake(video->mutex, portMAX_DELAY);
+
+    assert(video->reference > 0);
+    video->reference--;
+    if (video->reference > 0) {
+        goto exit_0;
+    }
 
     if (video->ops->deinit) {
         ret = video->ops->deinit(video);
         if (ret != ESP_OK) {
             ESP_LOGE(TAG, "video->ops->deinit=%x", ret);
-            return ret;
         } else {
             int stream_count = video->caps & V4L2_CAP_VIDEO_M2M ? 2 : 1;
 
@@ -491,7 +518,9 @@ esp_err_t esp_video_close(struct esp_video *video)
         ESP_LOGD(TAG, "video->ops->deinit=NULL");
     }
 
-    return ESP_OK;
+exit_0:
+    xSemaphoreGive(video->mutex);
+    return ret;
 }
 
 /**
@@ -567,6 +596,21 @@ esp_err_t esp_video_stop_capture(struct esp_video *video, uint32_t type)
         if (ret != ESP_OK) {
             ESP_LOGE(TAG, "video->ops->stop=%x", ret);
             return ret;
+        } else {
+            int stream_count = video->caps & V4L2_CAP_VIDEO_M2M ? 2 : 1;
+
+            for (int i = 0; i < stream_count; i++) {
+                struct esp_video_stream *stream = &video->stream[i];
+
+                do {
+                    ret = xSemaphoreTake(stream->ready_sem, 0);
+                } while (ret == pdTRUE);
+
+                SLIST_INIT(&stream->queued_list);
+                SLIST_INIT(&stream->done_list);
+
+                esp_video_buffer_reset(stream->buffer);
+            }
         }
     } else {
         ESP_LOGD(TAG, "video->ops->stop=NULL");
@@ -1379,7 +1423,9 @@ esp_err_t esp_video_set_ext_controls(struct esp_video *video, const struct v4l2_
     CHECK_VIDEO_OBJ(video);
 
     if (video->ops->set_ext_ctrl) {
+        xSemaphoreTake(video->mutex, portMAX_DELAY);
         ret = video->ops->set_ext_ctrl(video, ctrls);
+        xSemaphoreGive(video->mutex);
         if (ret != ESP_OK) {
             ESP_LOGE(TAG, "video->ops->set_ext_ctrl=%x", ret);
             return ret;
@@ -1409,7 +1455,9 @@ esp_err_t esp_video_get_ext_controls(struct esp_video *video, struct v4l2_ext_co
     CHECK_VIDEO_OBJ(video);
 
     if (video->ops->get_ext_ctrl) {
+        xSemaphoreTake(video->mutex, portMAX_DELAY);
         ret = video->ops->get_ext_ctrl(video, ctrls);
+        xSemaphoreGive(video->mutex);
         if (ret != ESP_OK) {
             ESP_LOGE(TAG, "video->ops->get_ext_ctrl=%x", ret);
             return ret;
@@ -1483,27 +1531,15 @@ esp_err_t esp_video_m2m_process(struct esp_video *video, uint32_t src_type, uint
 
     ret = proc(video, ELEMENT_BUFFER(src_element), ELEMENT_SIZE(src_element),
                ELEMENT_BUFFER(dst_element), ELEMENT_SIZE(dst_element), &dst_out_size);
-    if (ret == ESP_OK) {
-        dst_element->valid_size = dst_out_size;
-        ret = esp_video_done_m2m_elements(video,
-                                          src_type,
-                                          src_element,
-                                          dst_type,
-                                          dst_element);
-        if (ret != ESP_OK) {
-            ESP_LOGE(TAG, "failed to put elements back into done list");
-            return ret;
-        }
+    if (ret != ESP_OK) {
+        dst_element->valid_size = 0;
     } else {
-        ret = esp_video_queue_m2m_elements(video,
-                                           src_type,
-                                           src_element,
-                                           dst_type,
-                                           dst_element);
-        if (ret != ESP_OK) {
-            ESP_LOGE(TAG, "failed to put elements back into queue list");
-        }
-        return ESP_FAIL;
+        dst_element->valid_size = dst_out_size;
+    }
+    ret = esp_video_done_m2m_elements(video, src_type, src_element, dst_type, dst_element);
+    if (ret != ESP_OK) {
+        ESP_LOGE(TAG, "failed to put elements back into done list");
+        return ret;
     }
 
     return ESP_OK;

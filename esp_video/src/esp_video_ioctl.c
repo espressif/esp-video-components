@@ -218,10 +218,17 @@ static esp_err_t esp_video_ioctl_dqbuf(struct esp_video *video, struct v4l2_buff
         return ESP_FAIL;
     }
 
+    vbuf->flags     = 0;
     vbuf->index     = element->index;
     vbuf->bytesused = element->valid_size;
+    if (!vbuf->bytesused) {
+        vbuf->flags |= V4L2_BUF_FLAG_ERROR;
+    } else {
+        vbuf->flags |= V4L2_BUF_FLAG_DONE;
+    }
     if (vbuf->memory != V4L2_MEMORY_USERPTR) {
         vbuf->m.userptr = (unsigned long)element->buffer;
+        vbuf->flags |= V4L2_BUF_FLAG_MAPPED;
     }
 
     return ESP_OK;

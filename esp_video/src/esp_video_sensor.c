@@ -156,23 +156,31 @@ esp_err_t esp_video_set_ext_ctrls_to_sensor(esp_cam_sensor_device_t *cam_dev, co
             break;
         }
 
+        if (ctrl->id == V4L2_CID_EXPOSURE_ABSOLUTE) {
+            value_buf = EXPOSURE_V4L2_TO_SENSOR(ctrl->value, cam_dev->cur_format);
+            value_ptr = &value_buf;
+            value_size = sizeof(value_buf);
+        } else {
+            value_buf = ctrl->value;
+        }
+
         switch (qdesc.type) {
         case ESP_CAM_SENSOR_PARAM_TYPE_NUMBER:
-            if ((ctrl->value > qdesc.number.maximum) || (ctrl->value < qdesc.number.minimum) ||
-                    (ctrl->value % qdesc.number.step)) {
+            if ((value_buf > qdesc.number.maximum) || (value_buf < qdesc.number.minimum) ||
+                    (value_buf % qdesc.number.step)) {
                 ESP_LOGE(TAG, "ctrl id=%" PRIx32 " value is out of range", ctrl->id);
                 return ESP_ERR_INVALID_ARG;
             }
             break;
         case ESP_CAM_SENSOR_PARAM_TYPE_ENUMERATION: {
-            if (ctrl->value < 0 || ctrl->value >= qdesc.enumeration.count) {
+            if (value_buf < 0 || value_buf >= qdesc.enumeration.count) {
                 ESP_LOGE(TAG, "ctrl id=%" PRIx32 " value is out of range", ctrl->id);
                 return ESP_ERR_INVALID_ARG;
             }
             break;
         }
         case ESP_CAM_SENSOR_PARAM_TYPE_BITMASK:
-            if (ctrl->value & (~qdesc.bitmask.value)) {
+            if (value_buf & (~qdesc.bitmask.value)) {
                 ESP_LOGE(TAG, "ctrl id=%" PRIx32 " value is out of range", ctrl->id);
                 return ESP_ERR_INVALID_ARG;
             }
@@ -183,12 +191,6 @@ esp_err_t esp_video_set_ext_ctrls_to_sensor(esp_cam_sensor_device_t *cam_dev, co
         default:
             ESP_LOGE(TAG, "sensor description type=%" PRIx32 " is not supported", qdesc.type);
             return ESP_ERR_NOT_SUPPORTED;
-        }
-
-        if (ctrl->id == V4L2_CID_EXPOSURE_ABSOLUTE) {
-            value_buf = EXPOSURE_V4L2_TO_SENSOR(ctrl->value, cam_dev->cur_format);
-            value_ptr = &value_buf;
-            value_size = sizeof(value_buf);
         }
 
         ret = esp_cam_sensor_set_para_value(cam_dev, qdesc.id, value_ptr, value_size);

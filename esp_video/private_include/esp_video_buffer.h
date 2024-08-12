@@ -208,6 +208,15 @@ static inline struct esp_video_buffer_element *esp_video_buffer_get_element_by_o
     return &buffer->element[offset];
 }
 
+/**
+ * @brief Reset video buffer
+ *
+ * @param buffer Video buffer object
+ *
+ * @return None
+ */
+void esp_video_buffer_reset(struct esp_video_buffer *buffer);
+
 #ifdef __cplusplus
 }
 #endif
