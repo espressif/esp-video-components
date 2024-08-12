@@ -1,3 +1,30 @@
+## 0.5.0
+
+- Support multiple opening and controlling video device
+- DVP video device supports gray format and using external XTAL
+- Add more V4L2 control IDs
+- Add video buffer flag V4L2_BUF_FLAG_ERROR when the video process has an error
+- Add extended command to set or get sensor format
+- Bind video device to specific index name, for more details refer to README.md
+- Video device drops all buffer after calling the command VIDIOC_STREAMOFF
+- Fix V4L2 control value checking error
+- Optimize video core API parameters checking
+
+### Enhancements
+
+- Added V4L2 control IDs:
+    ```
+    V4L2_CID_GAIN
+    V4L2_CID_EXPOSURE_ABSOLUTE
+    V4L2_CID_EXPOSURE
+    V4L2_CID_TEST_PATTERN
+    ```
+- Added extended commands:
+    ```
+    VIDIOC_S_SENSOR_FMT
+    VIDIOC_G_SENSOR_FMT
+    ```
+
 ## 0.4.0
 
 - Support H.264 hardware encode video device
