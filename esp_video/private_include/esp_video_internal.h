@@ -7,6 +7,7 @@
 #pragma once
 
 #include "esp_err.h"
+#include "esp_cam_sensor.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -272,6 +273,14 @@ struct esp_video_ops {
     /*!< Query external control description */
 
     esp_err_t (*query_ext_ctrl)(struct esp_video *video, struct v4l2_query_ext_ctrl *qctrl);
+
+    /*!< Set format to sensor */
+
+    esp_err_t (*set_sensor_format)(struct esp_video *video, const esp_cam_sensor_format_t *format);
+
+    /*!< Get format from sensor */
+
+    esp_err_t (*get_sensor_format)(struct esp_video *video, esp_cam_sensor_format_t *format);
 };
 
 #ifdef __cplusplus

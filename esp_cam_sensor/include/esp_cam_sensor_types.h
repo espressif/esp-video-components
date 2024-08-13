@@ -147,9 +147,9 @@ typedef struct esp_cam_sensor_param_desc {
 
     union {
         struct {
-            int64_t minimum;                        /*!< Camera sensor number type parameter supported minimum value */
-            int64_t maximum;                        /*!< Camera sensor number type parameter supported maximum value */
-            uint64_t step;                          /*!< Camera sensor number type parameter supported step value */
+            int32_t minimum;                        /*!< Camera sensor number type parameter supported minimum value */
+            int32_t maximum;                        /*!< Camera sensor number type parameter supported maximum value */
+            uint32_t step;                          /*!< Camera sensor number type parameter supported step value */
         } number;
 
         struct {
@@ -162,7 +162,7 @@ typedef struct esp_cam_sensor_param_desc {
         } enumeration;
     };
 
-    int64_t default_value;                          /*!< Camera sensor parameter default value */
+    int32_t default_value;                          /*!< Camera sensor parameter default value */
 } esp_cam_sensor_param_desc_t;
 
 /**

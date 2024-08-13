@@ -1544,3 +1544,63 @@ esp_err_t esp_video_m2m_process(struct esp_video *video, uint32_t src_type, uint
 
     return ESP_OK;
 }
+
+/**
+ * @brief Set format to sensor
+ *
+ * @param video  Video object
+ * @param format Sensor format pointer
+ *
+ * @return
+ *      - ESP_OK on success
+ *      - Others if failed
+ */
+esp_err_t esp_video_set_sensor_format(struct esp_video *video, const esp_cam_sensor_format_t *format)
+{
+    esp_err_t ret;
+
+    CHECK_VIDEO_OBJ(video);
+
+    if (video->ops->set_sensor_format) {
+        ret = video->ops->set_sensor_format(video, format);
+        if (ret != ESP_OK) {
+            ESP_LOGE(TAG, "video->ops->set_sensor_format=%x", ret);
+            return ret;
+        }
+    } else {
+        ESP_LOGD(TAG, "video->ops->set_sensor_format=NULL");
+        return ESP_ERR_NOT_SUPPORTED;
+    }
+
+    return ESP_OK;
+}
+
+/**
+ * @brief Get format from sensor
+ *
+ * @param video  Video object
+ * @param format Sensor format pointer
+ *
+ * @return
+ *      - ESP_OK on success
+ *      - Others if failed
+ */
+esp_err_t esp_video_get_sensor_format(struct esp_video *video, esp_cam_sensor_format_t *format)
+{
+    esp_err_t ret;
+
+    CHECK_VIDEO_OBJ(video);
+
+    if (video->ops->get_sensor_format) {
+        ret = video->ops->get_sensor_format(video, format);
+        if (ret != ESP_OK) {
+            ESP_LOGE(TAG, "video->ops->get_sensor_format=%x", ret);
+            return ret;
+        }
+    } else {
+        ESP_LOGD(TAG, "video->ops->get_sensor_format=NULL");
+        return ESP_ERR_NOT_SUPPORTED;
+    }
+
+    return ESP_OK;
+}

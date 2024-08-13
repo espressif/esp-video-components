@@ -327,7 +327,7 @@ static bool IRAM_ATTR csi_video_on_get_new_trans(esp_cam_ctlr_handle_t handle, e
     return true;
 }
 
-static esp_err_t csi_video_init(struct esp_video *video)
+static esp_err_t init_config(struct esp_video *video)
 {
     esp_err_t ret;
     uint8_t csi_in_bpp;
@@ -335,11 +335,6 @@ static esp_err_t csi_video_init(struct esp_video *video)
     esp_cam_sensor_format_t sensor_format;
     struct csi_video *csi_video = VIDEO_PRIV_DATA(struct csi_video *, video);
     esp_cam_sensor_device_t *cam_dev = csi_video->cam_dev;
-
-    ret = esp_cam_sensor_set_format(cam_dev, NULL);
-    if (ret != ESP_OK) {
-        return ret;
-    }
 
     ret = esp_cam_sensor_get_format(cam_dev, &sensor_format);
     if (ret != ESP_OK) {
@@ -399,16 +394,6 @@ static esp_err_t csi_video_init(struct esp_video *video)
         csi_video->csi_out_bpp = csi_in_bpp;
     }
 
-    esp_ldo_channel_config_t ldo_cfg = {
-        .chan_id = CSI_LDO_UNIT_ID,
-        .voltage_mv = CSI_LDO_CFG_VOL_MV,
-    };
-    ret = esp_ldo_acquire_channel(&ldo_cfg, &csi_video->ldo_handle);
-    if (ret != ESP_OK) {
-        ESP_LOGE(TAG, "failed to init LDO");
-        return ret;
-    }
-
     csi_video->csi_line_sync = sensor_format.mipi_info.line_sync_en;
 
     CAPTURE_VIDEO_SET_FORMAT(video,
@@ -423,6 +408,26 @@ static esp_err_t csi_video_init(struct esp_video *video)
     CAPTURE_VIDEO_SET_BUF_INFO(video, buf_size, CSI_DMA_ALIGN_BYTES, CSI_MEM_CAPS);
 
     return ESP_OK;
+}
+
+static esp_err_t csi_video_init(struct esp_video *video)
+{
+    esp_err_t ret;
+    esp_ldo_channel_config_t ldo_cfg = {
+        .chan_id = CSI_LDO_UNIT_ID,
+        .voltage_mv = CSI_LDO_CFG_VOL_MV,
+    };
+    struct csi_video *csi_video = VIDEO_PRIV_DATA(struct csi_video *, video);
+
+    ret = esp_ldo_acquire_channel(&ldo_cfg, &csi_video->ldo_handle);
+    if (ret != ESP_OK) {
+        ESP_LOGE(TAG, "failed to init LDO");
+        return ret;
+    }
+
+    ret = init_config(video);
+
+    return ret;
 }
 
 static esp_err_t csi_video_start(struct esp_video *video, uint32_t type)
@@ -692,6 +697,26 @@ static esp_err_t csi_video_query_ext_ctrl(struct esp_video *video, struct v4l2_q
     return esp_video_query_ext_ctrls_from_sensor(csi_video->cam_dev, qctrl);
 }
 
+static esp_err_t csi_video_set_sensor_format(struct esp_video *video, const esp_cam_sensor_format_t *format)
+{
+    esp_err_t ret;
+    struct csi_video *csi_video = VIDEO_PRIV_DATA(struct csi_video *, video);
+
+    ret = esp_cam_sensor_set_format(csi_video->cam_dev, format);
+    if (ret == ESP_OK) {
+        ret = init_config(video);
+    }
+
+    return ret;
+}
+
+static esp_err_t csi_video_get_sensor_format(struct esp_video *video, esp_cam_sensor_format_t *format)
+{
+    struct csi_video *csi_video = VIDEO_PRIV_DATA(struct csi_video *, video);
+
+    return esp_cam_sensor_get_format(csi_video->cam_dev, format);
+}
+
 static const struct esp_video_ops s_csi_video_ops = {
     .init          = csi_video_init,
     .deinit        = csi_video_deinit,
@@ -703,6 +728,8 @@ static const struct esp_video_ops s_csi_video_ops = {
     .set_ext_ctrl  = csi_video_set_ext_ctrl,
     .get_ext_ctrl  = csi_video_get_ext_ctrl,
     .query_ext_ctrl = csi_video_query_ext_ctrl,
+    .set_sensor_format = csi_video_set_sensor_format,
+    .get_sensor_format = csi_video_get_sensor_format,
 };
 
 /**
