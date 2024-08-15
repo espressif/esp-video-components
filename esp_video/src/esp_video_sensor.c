@@ -210,14 +210,14 @@ esp_err_t esp_video_set_ext_ctrls_to_sensor(esp_cam_sensor_device_t *cam_dev, co
             case ESP_CAM_SENSOR_PARAM_TYPE_NUMBER:
                 if ((value_buf > qdesc.number.maximum) || (value_buf < qdesc.number.minimum) ||
                         (value_buf % qdesc.number.step)) {
-                    ESP_LOGE(TAG, "number: ctrl id=%" PRIx32 " value=%" PRIu32 " is out of range(max=%" PRIx32 ", min=%" PRIx32 ", step=%"PRIx32")",
-                             ctrl->id, value_buf, qdesc.number.maximum, qdesc.number.minimum, qdesc.number.step);
+                    ESP_LOGE(TAG, "number: ctrl id=%" PRIx32 " value=%" PRIi32 " is out of range(max=%" PRIi32 ", min=%" PRIi32 ", step=%"PRIu32")",
+                             ctrl->id, value_buf, (int32_t)qdesc.number.maximum, (int32_t)qdesc.number.minimum, (uint32_t)qdesc.number.step);
                     return ESP_ERR_INVALID_ARG;
                 }
                 break;
             case ESP_CAM_SENSOR_PARAM_TYPE_ENUMERATION: {
                 if (value_buf < 0 || value_buf >= qdesc.enumeration.count) {
-                    ESP_LOGE(TAG, "enum: ctrl id=%" PRIx32 " value=%" PRIu32 " is out of range(from 0 to %" PRIx32 ")",
+                    ESP_LOGE(TAG, "enum: ctrl id=%" PRIx32 " value=%" PRIu32 " is out of range(from 0 to %" PRIu32 ")",
                              ctrl->id, value_buf, qdesc.enumeration.count);
                     return ESP_ERR_INVALID_ARG;
                 }

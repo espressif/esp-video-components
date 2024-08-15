@@ -19,7 +19,7 @@
 #define JPEG_NAME                       "JPEG"
 
 #define JPEG_DMA_ALIGN_BYTES            64
-#define JPEG_MEM_CAPS                   (MALLOC_CAP_8BIT | MALLOC_CAP_SPIRAM)
+#define JPEG_MEM_CAPS                   (MALLOC_CAP_8BIT | MALLOC_CAP_SPIRAM | MALLOC_CAP_CACHE_ALIGNED)
 
 #define JPEG_MAX_COMP_RATE              0.75
 

@@ -22,7 +22,7 @@
 #define DVP_DMA_BURST_SIZE          128
 
 #define DVP_DMA_ALIGN_BYTES         64
-#define DVP_MEM_CAPS                (MALLOC_CAP_8BIT | MALLOC_CAP_SPIRAM)
+#define DVP_MEM_CAPS                (MALLOC_CAP_8BIT | MALLOC_CAP_SPIRAM | MALLOC_CAP_CACHE_ALIGNED)
 
 struct dvp_video {
     cam_ctlr_color_t in_color;
@@ -153,7 +153,12 @@ static esp_err_t init_config(struct esp_video *video)
 
 static esp_err_t dvp_video_init(struct esp_video *video)
 {
-    return init_config(video);
+    struct dvp_video *dvp_video = VIDEO_PRIV_DATA(struct dvp_video *, video);
+
+    ESP_RETURN_ON_ERROR(esp_cam_sensor_set_format(dvp_video->cam_dev, NULL), TAG, "failed to set basic format");
+    ESP_RETURN_ON_ERROR(init_config(video), TAG, "failed to initialize config");
+
+    return ESP_OK;
 }
 
 static esp_err_t dvp_video_start(struct esp_video *video, uint32_t type)
@@ -311,15 +316,12 @@ static esp_err_t dvp_video_query_ext_ctrl(struct esp_video *video, struct v4l2_q
 
 static esp_err_t dvp_video_set_sensor_format(struct esp_video *video, const esp_cam_sensor_format_t *format)
 {
-    esp_err_t ret;
     struct dvp_video *dvp_video = VIDEO_PRIV_DATA(struct dvp_video *, video);
 
-    ret = esp_cam_sensor_set_format(dvp_video->cam_dev, format);
-    if (ret == ESP_OK) {
-        ret = init_config(video);
-    }
+    ESP_RETURN_ON_ERROR(esp_cam_sensor_set_format(dvp_video->cam_dev, format), TAG, "failed to set customer format");
+    ESP_RETURN_ON_ERROR(init_config(video), TAG, "failed to initialize config");
 
-    return ret;
+    return ESP_OK;
 }
 
 static esp_err_t dvp_video_get_sensor_format(struct esp_video *video, esp_cam_sensor_format_t *format)

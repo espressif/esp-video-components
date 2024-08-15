@@ -1,3 +1,9 @@
+## 0.5.1
+
+- Fix sensor initialization failed when bring up power
+- Fix abnormal crash when setting CPU cache line size to be 128 bytes
+- Fix other compiling error
+
 ## 0.5.0
 
 - Support multiple opening and controlling video device
