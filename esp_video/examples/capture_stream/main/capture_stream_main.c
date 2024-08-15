@@ -244,7 +244,7 @@ static esp_err_t camera_capture_stream(void)
             }
 
 #if CONFIG_EXAMPLE_VIDEO_BUFFER_TYPE_USER
-            buffer[i] = heap_caps_aligned_alloc(MEMORY_ALIGN, buf.length, MALLOC_CAP_SPIRAM);
+            buffer[i] = heap_caps_aligned_alloc(MEMORY_ALIGN, buf.length, MALLOC_CAP_SPIRAM | MALLOC_CAP_CACHE_ALIGNED);
 #else
             buffer[i] = (uint8_t *)mmap(NULL, buf.length, PROT_READ | PROT_WRITE,
                                         MAP_SHARED, fd, buf.m.offset);

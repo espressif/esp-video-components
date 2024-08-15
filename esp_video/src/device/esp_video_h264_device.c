@@ -21,7 +21,7 @@
 #define H264_NAME                   "H.264"
 
 #define H264_DMA_ALIGN_BYTES        64
-#define H264_MEM_CAPS               (MALLOC_CAP_8BIT | MALLOC_CAP_SPIRAM)
+#define H264_MEM_CAPS               (MALLOC_CAP_8BIT | MALLOC_CAP_SPIRAM | MALLOC_CAP_CACHE_ALIGNED)
 
 #define H264_VIDEO_DEVICE_GOP       30
 #define H264_VIDEO_DEVICE_MIN_QP    25

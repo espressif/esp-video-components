@@ -31,7 +31,7 @@
 #define CSI_LDO_CFG_VOL_MV          2500
 
 #define CSI_DMA_ALIGN_BYTES         64
-#define CSI_MEM_CAPS                (MALLOC_CAP_8BIT | MALLOC_CAP_SPIRAM)
+#define CSI_MEM_CAPS                (MALLOC_CAP_8BIT | MALLOC_CAP_SPIRAM | MALLOC_CAP_CACHE_ALIGNED)
 
 #define CSI_CTRL_ID                 0
 #define CSI_CLK_SRC                 MIPI_CSI_PHY_CLK_SRC_DEFAULT
@@ -419,14 +419,16 @@ static esp_err_t csi_video_init(struct esp_video *video)
     };
     struct csi_video *csi_video = VIDEO_PRIV_DATA(struct csi_video *, video);
 
-    ret = esp_ldo_acquire_channel(&ldo_cfg, &csi_video->ldo_handle);
-    if (ret != ESP_OK) {
-        ESP_LOGE(TAG, "failed to init LDO");
-        return ret;
-    }
+    ESP_RETURN_ON_ERROR(esp_ldo_acquire_channel(&ldo_cfg, &csi_video->ldo_handle), TAG, "failed to init LDO");
 
-    ret = init_config(video);
+    ESP_GOTO_ON_ERROR(esp_cam_sensor_set_format(csi_video->cam_dev, NULL), fail_0, TAG, "failed to set basic format");
+    ESP_GOTO_ON_ERROR(init_config(video), fail_0, TAG, "failed to initialize config");
 
+    return ESP_OK;
+
+fail_0:
+    esp_ldo_release_channel(csi_video->ldo_handle);
+    csi_video->ldo_handle = NULL;
     return ret;
 }
 
@@ -699,15 +701,12 @@ static esp_err_t csi_video_query_ext_ctrl(struct esp_video *video, struct v4l2_q
 
 static esp_err_t csi_video_set_sensor_format(struct esp_video *video, const esp_cam_sensor_format_t *format)
 {
-    esp_err_t ret;
     struct csi_video *csi_video = VIDEO_PRIV_DATA(struct csi_video *, video);
 
-    ret = esp_cam_sensor_set_format(csi_video->cam_dev, format);
-    if (ret == ESP_OK) {
-        ret = init_config(video);
-    }
+    ESP_RETURN_ON_ERROR(esp_cam_sensor_set_format(csi_video->cam_dev, format), TAG, "failed to set customer format");
+    ESP_RETURN_ON_ERROR(init_config(video), TAG, "failed to initialize config");
 
-    return ret;
+    return ESP_OK;
 }
 
 static esp_err_t csi_video_get_sensor_format(struct esp_video *video, esp_cam_sensor_format_t *format)

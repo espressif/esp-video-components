@@ -49,7 +49,7 @@ struct esp_video_buffer;
 struct esp_video_buffer_info {
     uint32_t count;                                   /*!< Buffer count */
     uint32_t size;                                    /*!< Buffer maximum size */
-    uint32_t align_size;                              /*!< Buffer align size in byte */
+    uint32_t align_size;                              /*!< Buffer align size in byte, if buffer capability contains of MALLOC_CAP_CACHE_ALIGNED, this value will be unused */
     uint32_t caps;                                    /*!< Buffer capability: refer to esp_heap_caps.h MALLOC_CAP_XXX */
     uint32_t memory_type;                             /*!< Buffer memory type: refer to v4l2_memory in videodev2.h. */
 };
