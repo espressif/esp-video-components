@@ -9,7 +9,7 @@ from idf_build_apps.constants import SUPPORTED_TARGETS
 def get_mr_files(modified_files: str) -> str:
     if modified_files is None:
         return ''
-    return modified_files.replace(' ', ';')
+    return modified_files.split(' ')
 
 def get_mr_components(modified_files: str) -> str:
     if modified_files is None:
@@ -25,7 +25,7 @@ def get_mr_components(modified_files: str) -> str:
         ):
             components.add(file.parts[0])
 
-    return ';'.join(components)
+    return list(components)
 
 if __name__ == '__main__':
     modified_files = get_mr_files(os.getenv('MODIFIED_FILES'))
@@ -57,12 +57,11 @@ if __name__ == '__main__':
         '--config',
         'sdkconfig.ci.*=',
         '=default',
-        '-v',
-        '--modified-components',
-        f'{modified_components}',
-        '--modified-files',
-        f'{modified_files}',
+        '-v'
     ]
+
+    args += ['--modified-components'] + modified_components
+    args += ['--modified-files'] + modified_files
 
     args += ['--default-build-targets'] + SUPPORTED_TARGETS + preview_targets
 
