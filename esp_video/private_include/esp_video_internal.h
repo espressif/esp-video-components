@@ -281,6 +281,10 @@ struct esp_video_ops {
     /*!< Get format from sensor */
 
     esp_err_t (*get_sensor_format)(struct esp_video *video, esp_cam_sensor_format_t *format);
+
+    /*!< Query menu value */
+
+    esp_err_t (*query_menu)(struct esp_video *video, struct v4l2_querymenu *qmenu);
 };
 
 #ifdef __cplusplus

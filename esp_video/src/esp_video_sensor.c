@@ -374,3 +374,53 @@ esp_err_t esp_video_query_ext_ctrls_from_sensor(esp_cam_sensor_device_t *cam_dev
 
     return ESP_OK;
 }
+
+/**
+ * @brief Query menu value from camera sensor device
+ *
+ * @param cam_dev  Camera sensor device pointer
+ * @param qmenu    Menu value buffer pointer
+ *
+ * @return
+ *      - ESP_OK on success
+ *      - Others if failed
+ */
+esp_err_t esp_video_query_menu_from_sensor(esp_cam_sensor_device_t *cam_dev, struct v4l2_querymenu *qmenu)
+{
+    bool ioctl;
+    esp_err_t ret;
+    const struct control_map *control_map;
+    esp_cam_sensor_param_desc_t qdesc;
+
+    control_map = get_v4l2_ext_control_map(qmenu->id, &ioctl);
+    if (!control_map) {
+        ESP_LOGE(TAG, "ctrl id=%" PRIx32 " is not supported", qmenu->id);
+        return ESP_ERR_NOT_SUPPORTED;
+    }
+
+    if (ioctl) {
+        ESP_LOGE(TAG, "ctrl id=%" PRIx32 " is ioctl type", qmenu->id);
+        return ESP_ERR_NOT_SUPPORTED;
+    }
+
+    qdesc.id = control_map->esp_cam_sensor_id;
+    ret = esp_cam_sensor_query_para_desc(cam_dev, &qdesc);
+    if (ret != ESP_OK) {
+        ESP_LOGE(TAG, "failed to query sensor id=%" PRIx32, qdesc.id);
+        return ret;
+    }
+
+    if (qdesc.type != ESP_CAM_SENSOR_PARAM_TYPE_ENUMERATION) {
+        ESP_LOGE(TAG, "ctrl id=%" PRIx32 " is not menu type", qmenu->id);
+        return ESP_ERR_INVALID_ARG;
+    }
+
+    if (qmenu->index >= qdesc.enumeration.count) {
+        ESP_LOGE(TAG, "ctrl id=%" PRIx32 " is out of range(max=" PRIx32 ")", qdesc.enumeration.count - 1);
+        return ESP_ERR_INVALID_ARG;
+    }
+
+    qmenu->value = qdesc.enumeration.elements[qmenu->index];
+
+    return ESP_OK;
+}

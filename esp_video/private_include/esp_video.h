@@ -566,6 +566,18 @@ esp_err_t esp_video_set_sensor_format(struct esp_video *video, const esp_cam_sen
  */
 esp_err_t esp_video_get_sensor_format(struct esp_video *video, esp_cam_sensor_format_t *format);
 
+/**
+ * @brief Query menu value
+ *
+ * @param video  Video object
+ * @param qmenu  Menu value buffer pointer
+ *
+ * @return
+ *      - ESP_OK on success
+ *      - Others if failed
+ */
+esp_err_t esp_video_query_menu(struct esp_video *video, struct v4l2_querymenu *qmenu);
+
 #ifdef __cplusplus
 }
 #endif

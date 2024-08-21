@@ -49,6 +49,18 @@ esp_err_t esp_video_get_ext_ctrls_from_sensor(esp_cam_sensor_device_t *cam_dev, 
  */
 esp_err_t esp_video_query_ext_ctrls_from_sensor(esp_cam_sensor_device_t *cam_dev, struct v4l2_query_ext_ctrl *qctrl);
 
+/**
+ * @brief Query menu value from camera sensor device
+ *
+ * @param cam_dev  Camera sensor device pointer
+ * @param qmenu    Menu value buffer pointer
+ *
+ * @return
+ *      - ESP_OK on success
+ *      - Others if failed
+ */
+esp_err_t esp_video_query_menu_from_sensor(esp_cam_sensor_device_t *cam_dev, struct v4l2_querymenu *qmenu);
+
 #ifdef __cplusplus
 }
 #endif
