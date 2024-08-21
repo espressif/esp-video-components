@@ -334,7 +334,7 @@ static esp_err_t jpeg_video_query_ext_ctrl(struct esp_video *video, struct v4l2_
 
     switch (qctrl->id) {
     case V4L2_CID_JPEG_CHROMA_SUBSAMPLING:
-        qctrl->type = V4L2_CTRL_TYPE_MENU;
+        qctrl->type = V4L2_CTRL_TYPE_INTEGER_MENU;
         qctrl->elem_size = sizeof(uint8_t);
         qctrl->elems = 1;
         qctrl->nr_of_dims = 0;

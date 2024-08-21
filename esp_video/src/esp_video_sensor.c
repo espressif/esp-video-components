@@ -200,6 +200,8 @@ esp_err_t esp_video_set_ext_ctrls_to_sensor(esp_cam_sensor_device_t *cam_dev, co
         } else {
             if (ctrl->id == V4L2_CID_EXPOSURE_ABSOLUTE) {
                 value_buf = EXPOSURE_V4L2_TO_SENSOR(ctrl->value, cam_dev->cur_format);
+                value_buf = MIN(value_buf, qdesc.number.maximum);
+                value_buf = MAX(value_buf, qdesc.number.minimum);
                 value_ptr = &value_buf;
                 value_size = sizeof(value_buf);
             } else {
@@ -341,7 +343,7 @@ esp_err_t esp_video_query_ext_ctrls_from_sensor(esp_cam_sensor_device_t *cam_dev
         qctrl->default_value = qdesc.default_value;
         break;
     case ESP_CAM_SENSOR_PARAM_TYPE_ENUMERATION:
-        qctrl->type = V4L2_CTRL_TYPE_MENU;
+        qctrl->type = V4L2_CTRL_TYPE_INTEGER_MENU;
         qctrl->maximum = qdesc.enumeration.count - 1;
         qctrl->minimum = 0;
         qctrl->step = 1;
