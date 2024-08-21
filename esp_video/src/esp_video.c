@@ -135,7 +135,7 @@ esp_err_t esp_video_set_stream_buffer(struct esp_video *video, enum v4l2_buf_typ
                 video->stream->buffer = buffer;
             }
         }
-    }  else if (video->caps & V4L2_CAP_VIDEO_M2M) {
+    } else if (video->caps & V4L2_CAP_VIDEO_M2M) {
         if (type == V4L2_BUF_TYPE_VIDEO_CAPTURE) {
             if (video->stream) {
                 video->stream[0].buffer = buffer;
@@ -143,6 +143,12 @@ esp_err_t esp_video_set_stream_buffer(struct esp_video *video, enum v4l2_buf_typ
         } else if (type == V4L2_BUF_TYPE_VIDEO_OUTPUT) {
             if (video->stream) {
                 video->stream[1].buffer = buffer;
+            }
+        }
+    } else if (video->caps & V4L2_CAP_META_CAPTURE) {
+        if (type == V4L2_BUF_TYPE_META_CAPTURE) {
+            if (video->stream) {
+                video->stream[0].buffer = buffer;
             }
         }
     }
@@ -195,6 +201,10 @@ struct esp_video_stream *IRAM_ATTR esp_video_get_stream(struct esp_video *video,
             stream = &video->stream[0];
         } else if (type == V4L2_BUF_TYPE_VIDEO_OUTPUT) {
             stream = &video->stream[1];
+        }
+    } else if (video->caps & V4L2_CAP_META_CAPTURE) {
+        if (type == V4L2_BUF_TYPE_META_CAPTURE) {
+            stream = &video->stream[0];
         }
     }
 
@@ -1488,7 +1498,9 @@ esp_err_t esp_video_query_ext_control(struct esp_video *video, struct v4l2_query
 
     if (video->ops->query_ext_ctrl) {
         ret = video->ops->query_ext_ctrl(video, qctrl);
-        if (ret != ESP_OK) {
+        if (ret == ESP_ERR_NOT_SUPPORTED) {
+            return ret;
+        } else if (ret != ESP_OK) {
             ESP_LOGE(TAG, "video->ops->query_ext_ctrl=%x", ret);
             return ret;
         }

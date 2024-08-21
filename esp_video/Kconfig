@@ -8,6 +8,10 @@ menu "Espressif Video Configuration"
         bool
         default n
 
+    config ESP_VIDEO_ENABLE_ISP
+        bool
+        default n
+
     config ESP_VIDEO_CHECK_PARAMETERS
         bool "Check Video Function Parameters"
         default y
@@ -57,5 +61,14 @@ menu "Espressif Video Configuration"
         default n
         help
             Select this option, enable hardware JPEG based video device.
+
+    menuconfig ESP_VIDEO_ENABLE_ISP_VIDEO_DEVICE
+        bool "Enable ISP based Video Device"
+        depends on SOC_ISP_SUPPORTED
+        default y
+        select ESP_VIDEO_ENABLE_ISP
+        help
+            Select this option, enable ISP based video device. When using
+            camera sensor's internal ISP, this option can be disable.
 
 endmenu

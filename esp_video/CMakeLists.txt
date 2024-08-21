@@ -27,6 +27,10 @@ if(CONFIG_ESP_VIDEO_ENABLE_JPEG_VIDEO_DEVICE)
     list(APPEND srcs "src/device/esp_video_jpeg_device.c")
 endif()
 
+if(CONFIG_ESP_VIDEO_ENABLE_ISP)
+    list(APPEND srcs "src/device/esp_video_isp_device.c")
+endif()
+
 idf_component_register(SRCS ${srcs}
                        INCLUDE_DIRS ${include_dirs}
                        PRIV_INCLUDE_DIRS ${priv_include_dirs}
