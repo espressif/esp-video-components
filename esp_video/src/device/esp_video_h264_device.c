@@ -386,7 +386,7 @@ static esp_err_t h264_video_query_ext_ctrl(struct esp_video *video, struct v4l2_
         qctrl->default_value = H264_VIDEO_DEVICE_GOP;
         break;
     case V4L2_CID_MPEG_VIDEO_BITRATE_MODE:
-        qctrl->type = V4L2_CTRL_TYPE_MENU;
+        qctrl->type = V4L2_CTRL_TYPE_INTEGER_MENU;
         qctrl->elem_size = sizeof(uint8_t);
         qctrl->elems = 1;
         qctrl->nr_of_dims = 0;
