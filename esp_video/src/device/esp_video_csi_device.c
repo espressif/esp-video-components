@@ -716,6 +716,13 @@ static esp_err_t csi_video_get_sensor_format(struct esp_video *video, esp_cam_se
     return esp_cam_sensor_get_format(csi_video->cam_dev, format);
 }
 
+static esp_err_t csi_video_query_menu(struct esp_video *video, struct v4l2_querymenu *qmenu)
+{
+    struct csi_video *csi_video = VIDEO_PRIV_DATA(struct csi_video *, video);
+
+    return esp_video_query_menu_from_sensor(csi_video->cam_dev, qmenu);
+}
+
 static const struct esp_video_ops s_csi_video_ops = {
     .init          = csi_video_init,
     .deinit        = csi_video_deinit,
@@ -729,6 +736,7 @@ static const struct esp_video_ops s_csi_video_ops = {
     .query_ext_ctrl = csi_video_query_ext_ctrl,
     .set_sensor_format = csi_video_set_sensor_format,
     .get_sensor_format = csi_video_get_sensor_format,
+    .query_menu    = csi_video_query_menu,
 };
 
 /**

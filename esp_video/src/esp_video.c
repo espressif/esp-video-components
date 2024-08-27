@@ -1604,3 +1604,33 @@ esp_err_t esp_video_get_sensor_format(struct esp_video *video, esp_cam_sensor_fo
 
     return ESP_OK;
 }
+
+/**
+ * @brief Query menu value
+ *
+ * @param video  Video object
+ * @param qmenu  Menu value buffer pointer
+ *
+ * @return
+ *      - ESP_OK on success
+ *      - Others if failed
+ */
+esp_err_t esp_video_query_menu(struct esp_video *video, struct v4l2_querymenu *qmenu)
+{
+    esp_err_t ret;
+
+    CHECK_VIDEO_OBJ(video);
+
+    if (video->ops->query_menu) {
+        ret = video->ops->query_menu(video, qmenu);
+        if (ret != ESP_OK) {
+            ESP_LOGE(TAG, "video->ops->query_menu=%x", ret);
+            return ret;
+        }
+    } else {
+        ESP_LOGD(TAG, "video->ops->query_menu=NULL");
+        return ESP_ERR_NOT_SUPPORTED;
+    }
+
+    return ESP_OK;
+}

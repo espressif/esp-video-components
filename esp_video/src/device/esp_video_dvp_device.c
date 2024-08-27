@@ -331,6 +331,13 @@ static esp_err_t dvp_video_get_sensor_format(struct esp_video *video, esp_cam_se
     return esp_cam_sensor_get_format(dvp_video->cam_dev, format);
 }
 
+static esp_err_t dvp_video_query_menu(struct esp_video *video, struct v4l2_querymenu *qmenu)
+{
+    struct dvp_video *dvp_video = VIDEO_PRIV_DATA(struct dvp_video *, video);
+
+    return esp_video_query_menu_from_sensor(dvp_video->cam_dev, qmenu);
+}
+
 static const struct esp_video_ops s_dvp_video_ops = {
     .init          = dvp_video_init,
     .deinit        = dvp_video_deinit,
@@ -344,6 +351,7 @@ static const struct esp_video_ops s_dvp_video_ops = {
     .query_ext_ctrl = dvp_video_query_ext_ctrl,
     .set_sensor_format = dvp_video_set_sensor_format,
     .get_sensor_format = dvp_video_get_sensor_format,
+    .query_menu    = dvp_video_query_menu,
 };
 
 /**
