@@ -257,5 +257,14 @@ esp_err_t esp_video_init(const esp_video_init_config_t *config)
     }
 #endif
 
+
+#if CONFIG_ESP_VIDEO_ENABLE_ISP_VIDEO_DEVICE
+    ret = esp_video_create_isp_video_device();
+    if (ret != ESP_OK) {
+        ESP_LOGE(TAG, "failed to create hardware ISP video device");
+        return ret;
+    }
+#endif
+
     return ESP_OK;
 }

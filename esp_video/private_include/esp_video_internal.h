@@ -202,6 +202,45 @@ extern "C" {
 #define M2M_VIDEO_GET_OUTPUT_QUEUED_ELEMENT(v)                          \
     esp_video_get_queued_element(v, V4L2_BUF_TYPE_VIDEO_OUTPUT)
 
+/* video meta operations */
+
+#define META_VIDEO_STREAM(v)                ((v)->stream)
+#define META_VIDEO_BUF_SIZE(v)              STREAM_BUFFER_SIZE(CAPTURE_VIDEO_STREAM(v))
+
+#define META_VIDEO_GET_FORMAT_WIDTH(v)                                  \
+    GET_STREAM_FORMAT_WIDTH(META_VIDEO_STREAM(v))
+
+#define META_VIDEO_GET_FORMAT_HEIGHT(v)                                 \
+    GET_STREAM_FORMAT_HEIGHT(META_VIDEO_STREAM(v))
+
+#define META_VIDEO_GET_FORMAT_PIXEL_FORMAT(v)                           \
+    GET_STREAM_FORMAT_PIXEL_FORMAT(META_VIDEO_STREAM(v))
+
+#define META_VIDEO_SET_FORMAT_WIDTH(v, w)                               \
+    SET_STREAM_FORMAT_WIDTH(META_VIDEO_STREAM(v), w)
+
+#define META_VIDEO_SET_FORMAT_HEIGHT(v, h)                              \
+    SET_STREAM_FORMAT_HEIGHT(META_VIDEO_STREAM(v), h)
+
+#define META_VIDEO_SET_FORMAT_PIXEL_FORMAT(v, f)                        \
+    SET_STREAM_FORMAT_PIXEL_FORMAT(META_VIDEO_STREAM(v), f)
+
+#define META_VIDEO_SET_FORMAT(v, w, h, f)                               \
+{                                                                       \
+    META_VIDEO_SET_FORMAT_WIDTH(v, w);                                  \
+    META_VIDEO_SET_FORMAT_HEIGHT(v, h);                                 \
+    META_VIDEO_SET_FORMAT_PIXEL_FORMAT(v, f);                           \
+}
+
+#define META_VIDEO_SET_BUF_INFO(v, s, a, c)                             \
+    SET_STREAM_BUF_INFO(META_VIDEO_STREAM(v), s, a, c)
+
+#define META_VIDEO_GET_QUEUED_ELEMENT(v)                                \
+    esp_video_get_queued_element(v, V4L2_BUF_TYPE_META_CAPTURE)
+
+#define META_VIDEO_DONE_BUF(v, b, n)                                    \
+    esp_video_done_buffer(v, V4L2_BUF_TYPE_META_CAPTURE, (uint8_t *)b, n)
+
 /**
  * @brief Video event.
  */
