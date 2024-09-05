@@ -23,6 +23,7 @@ menu "Espressif Video Configuration"
         bool "Enable MIPI-CSI based Video Device"
         depends on SOC_MIPI_CSI_SUPPORTED
         default y
+        select ESP_VIDEO_ENABLE_ISP
         help
             Select this option, enable MIPI-CSI based video device.
 
