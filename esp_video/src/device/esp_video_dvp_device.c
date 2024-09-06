@@ -276,11 +276,13 @@ static esp_err_t dvp_video_enum_format(struct esp_video *video, uint32_t type, u
     return ESP_OK;
 }
 
-static esp_err_t dvp_video_set_format(struct esp_video *video, uint32_t type, const struct esp_video_format *format)
+static esp_err_t dvp_video_set_format(struct esp_video *video, const struct v4l2_format *format)
 {
-    if (format->width != CAPTURE_VIDEO_GET_FORMAT_WIDTH(video) ||
-            format->height != CAPTURE_VIDEO_GET_FORMAT_HEIGHT(video) ||
-            format->pixel_format != CAPTURE_VIDEO_GET_FORMAT_PIXEL_FORMAT(video)) {
+    const struct v4l2_pix_format *pix = &format->fmt.pix;
+
+    if (pix->width != CAPTURE_VIDEO_GET_FORMAT_WIDTH(video) ||
+            pix->height != CAPTURE_VIDEO_GET_FORMAT_HEIGHT(video) ||
+            pix->pixelformat != CAPTURE_VIDEO_GET_FORMAT_PIXEL_FORMAT(video)) {
         ESP_LOGE(TAG, "format is not supported");
         return ESP_ERR_INVALID_ARG;
     }

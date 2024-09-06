@@ -27,29 +27,29 @@ extern "C" {
     (bi)->caps = (c);                       \
 }
 
-#define SET_FORMAT_WIDTH(fmt, _width)                                   \
+#define SET_FORMAT_WIDTH(_fmt, _width)                                  \
 {                                                                       \
-    (fmt)->width = (_width);                                            \
+    (_fmt)->fmt.pix.width = (_width);                                   \
 }
 
-#define SET_FORMAT_HEIGHT(fmt, _height)                                 \
+#define SET_FORMAT_HEIGHT(_fmt, _height)                                \
 {                                                                       \
-    (fmt)->height = (_height);                                          \
+    (_fmt)->fmt.pix.height = (_height);                                 \
 }
 
-#define SET_FORMAT_PIXEL_FORMAT(fmt, _pixel_format)                     \
+#define SET_FORMAT_PIXEL_FORMAT(_fmt, _pixel_format)                    \
 {                                                                       \
-    (fmt)->pixel_format = (_pixel_format);                              \
+    (_fmt)->fmt.pix.pixelformat = (_pixel_format);                      \
 }
 
-#define GET_FORMAT_WIDTH(fmt)                                           \
-    ((fmt)->width)
+#define GET_FORMAT_WIDTH(_fmt)                                          \
+    ((_fmt)->fmt.pix.width)
 
-#define GET_FORMAT_HEIGHT(fmt)                                          \
-    ((fmt)->height)
+#define GET_FORMAT_HEIGHT(_fmt)                                         \
+    ((_fmt)->fmt.pix.height)
 
-#define GET_FORMAT_PIXEL_FORMAT(fmt)                                    \
-    ((fmt)->pixel_format)
+#define GET_FORMAT_PIXEL_FORMAT(_fmt)                                   \
+    ((_fmt)->fmt.pix.pixelformat)
 
 #define SET_STREAM_BUF_INFO(st, s, a, c)                                \
     SET_BUF_INFO(STREAM_BUF_INFO(st), s, a, c)
@@ -250,7 +250,6 @@ enum esp_video_event {
 };
 
 struct esp_video;
-struct esp_video_format;
 
 /**
  * @brief M2M video device process function
@@ -295,7 +294,7 @@ struct esp_video_ops {
 
     /*!< Set video format configuration */
 
-    esp_err_t (*set_format)(struct esp_video *video, uint32_t type, const struct esp_video_format *format);
+    esp_err_t (*set_format)(struct esp_video *video, const struct v4l2_format *format);
 
     /*!< Notify driver event triggers */
 

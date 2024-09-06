@@ -34,20 +34,7 @@ static esp_err_t esp_video_ioctl_querycap(struct esp_video *video, struct v4l2_c
 
 static esp_err_t esp_video_ioctl_g_fmt(struct esp_video *video, struct v4l2_format *fmt)
 {
-    esp_err_t ret;
-    struct esp_video_format format;
-
-    ret = esp_video_get_format(video, fmt->type, &format);
-    if (ret != ESP_OK) {
-        return ret;
-    }
-
-    memset(&fmt->fmt, 0, sizeof(fmt->fmt));
-    fmt->fmt.pix.width       = format.width;
-    fmt->fmt.pix.height      = format.height;
-    fmt->fmt.pix.pixelformat = format.pixel_format;
-
-    return ret;
+    return esp_video_get_format(video, fmt);
 }
 
 static esp_err_t esp_video_ioctl_enum_fmt(struct esp_video *video, struct v4l2_fmtdesc *fmt)
@@ -68,19 +55,7 @@ static esp_err_t esp_video_ioctl_enum_fmt(struct esp_video *video, struct v4l2_f
 
 static esp_err_t esp_video_ioctl_s_fmt(struct esp_video *video, struct v4l2_format *fmt)
 {
-    esp_err_t ret;
-    struct esp_video_format format;
-
-    memset(&format, 0, sizeof(struct esp_video_format));
-    format.width        = fmt->fmt.pix.width;
-    format.height       = fmt->fmt.pix.height;
-    format.pixel_format = fmt->fmt.pix.pixelformat;
-    ret = esp_video_set_format(video, fmt->type, &format);
-    if (ret != ESP_OK) {
-        return ret;
-    }
-
-    return ret;
+    return esp_video_set_format(video, fmt);
 }
 
 static esp_err_t esp_video_ioctl_streamon(struct esp_video *video, int *arg)

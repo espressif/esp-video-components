@@ -235,51 +235,52 @@ static esp_err_t h264_video_enum_format(struct esp_video *video, uint32_t type, 
     return ESP_OK;
 }
 
-static esp_err_t h264_video_set_format(struct esp_video *video, uint32_t type, const struct esp_video_format *format)
+static esp_err_t h264_video_set_format(struct esp_video *video, const struct v4l2_format *format)
 {
     esp_err_t ret;
+    const struct v4l2_pix_format *pix = &format->fmt.pix;
     struct h264_video *h264_video = VIDEO_PRIV_DATA(struct h264_video *, video);
 
-    if (type == V4L2_BUF_TYPE_VIDEO_CAPTURE) {
+    if (format->type == V4L2_BUF_TYPE_VIDEO_CAPTURE) {
         uint32_t width = M2M_VIDEO_GET_OUTPUT_FORMAT_WIDTH(video);
         uint32_t height = M2M_VIDEO_GET_OUTPUT_FORMAT_HEIGHT(video);
 
-        if ((format->pixel_format != V4L2_PIX_FMT_H264) ||
-                (width && (format->width != width)) ||
-                (height && (format->height != height))) {
+        if ((pix->pixelformat != V4L2_PIX_FMT_H264) ||
+                (width && (pix->width != width)) ||
+                (height && (pix->height != height))) {
             ESP_LOGE(TAG, "pixel format or width or height is invalid");
             return ESP_ERR_INVALID_ARG;
         }
 
-        uint32_t buf_size = format->width * format->height * 8 / 2;
+        uint32_t buf_size = pix->width * pix->height * 8 / 2;
 
         ESP_LOGD(TAG, "capture buffer size=%" PRIu32, buf_size);
 
         M2M_VIDEO_SET_CAPTURE_BUF_INFO(video, buf_size, H264_DMA_ALIGN_BYTES, H264_MEM_CAPS);
-        M2M_VIDEO_SET_CAPTURE_FORMAT(video, width, height, format->pixel_format);
-    } else if (type == V4L2_BUF_TYPE_VIDEO_OUTPUT) {
+        M2M_VIDEO_SET_CAPTURE_FORMAT(video, width, height, pix->pixelformat);
+    } else if (format->type == V4L2_BUF_TYPE_VIDEO_OUTPUT) {
         uint8_t input_bpp;
         uint32_t width = M2M_VIDEO_GET_CAPTURE_FORMAT_WIDTH(video);
         uint32_t height = M2M_VIDEO_GET_CAPTURE_FORMAT_HEIGHT(video);
 
-        if ((width && (format->width != width)) ||
-                (height && (format->height != height))) {
+        if ((width && (pix->width != width)) ||
+                (height && (pix->height != height))) {
             ESP_LOGE(TAG, "width or height is invalid");
             return ESP_ERR_INVALID_ARG;
         }
 
-        ret = h264_get_input_format_from_v4l2(format->pixel_format, &h264_video->input_format, &input_bpp);
+        ret = h264_get_input_format_from_v4l2(pix->pixelformat, &h264_video->input_format, &input_bpp);
         if (ret != ESP_OK) {
             ESP_LOGE(TAG, "pixel format is invalid");
             return ret;
         }
 
-        uint32_t buf_size = format->width * format->height * input_bpp / 8;
+        uint32_t buf_size = pix->width * pix->height * input_bpp / 8;
 
         ESP_LOGD(TAG, "output buffer size=%" PRIu32, buf_size);
 
         M2M_VIDEO_SET_OUTPUT_BUF_INFO(video, buf_size, H264_DMA_ALIGN_BYTES, H264_MEM_CAPS);
-        M2M_VIDEO_SET_OUTPUT_FORMAT(video, width, height, format->pixel_format);
+        M2M_VIDEO_SET_OUTPUT_FORMAT(video, width, height, pix->pixelformat);
     } else {
         return ESP_ERR_NOT_SUPPORTED;
     }

@@ -259,6 +259,15 @@ static const struct v4l2_query_ext_ctrl s_isp_qctrl[] = {
 };
 static const char *TAG = "isp_video";
 
+static const uint32_t s_isp_isp_format[] = {
+    V4L2_PIX_FMT_SBGGR8,
+    V4L2_PIX_FMT_RGB565,
+    V4L2_PIX_FMT_RGB24,
+    V4L2_PIX_FMT_YUV420,
+    V4L2_PIX_FMT_YUV422P,
+};
+static const int s_isp_isp_format_nums = ARRAY_SIZE(s_isp_isp_format);
+
 static struct isp_video s_isp_video;
 
 static esp_err_t isp_get_input_frame_type(cam_ctlr_color_t ctlr_color, isp_color_t *isp_color)
@@ -903,11 +912,13 @@ static esp_err_t isp_video_enum_format(struct esp_video *video, uint32_t type, u
     return ret;
 }
 
-static esp_err_t isp_video_set_format(struct esp_video *video, uint32_t type, const struct esp_video_format *format)
+static esp_err_t isp_video_set_format(struct esp_video *video, const struct v4l2_format *format)
 {
-    if (format->width != META_VIDEO_GET_FORMAT_WIDTH(video) ||
-            format->height != META_VIDEO_GET_FORMAT_HEIGHT(video) ||
-            format->pixel_format != META_VIDEO_GET_FORMAT_PIXEL_FORMAT(video)) {
+    const struct v4l2_pix_format *pix = &format->fmt.pix;
+
+    if (pix->width != META_VIDEO_GET_FORMAT_WIDTH(video) ||
+            pix->height != META_VIDEO_GET_FORMAT_HEIGHT(video) ||
+            pix->pixelformat != META_VIDEO_GET_FORMAT_PIXEL_FORMAT(video)) {
         ESP_LOGE(TAG, "width or height or format is not supported");
         return ESP_ERR_INVALID_ARG;
     }
@@ -1242,42 +1253,70 @@ esp_err_t esp_video_create_isp_video_device(void)
 #endif
 
 /**
- * @brief Start ISP process
+ * @brief Start ISP process based on MIPI-CSI state
  *
- * @param bypass    true: bypass ISP and MIPI-CSI output sensor original data, false: ISP process image
- * @param in_color  ISP input image color type
- * @param out_color ISP putput image color type
- * @param line_sync true: sensor data has no sync signal, false: sensor data has no sync signal
- * @param width     Image width
- * @param height    Image height
+ * @param state MIPI-CSI state object
+ * @param state MIPI-CSI V4L2 capture format
  *
  * @return
  *      - ESP_OK on success
  *      - Others if failed
  */
-esp_err_t esp_video_isp_start(bool bypass, cam_ctlr_color_t in_color, cam_ctlr_color_t out_color,
-                              bool line_sync, uint32_t width, uint32_t height)
+esp_err_t esp_video_isp_start_by_csi(const esp_video_csi_state_t *state, const struct v4l2_format *format)
 {
     esp_err_t ret;
     isp_color_t isp_in_color;
     isp_color_t isp_out_color;
+    isp_color_range_t yuv_range;
+    isp_yuv_conv_std_t yuv_std;
     struct isp_video *isp_video = &s_isp_video;
+    uint32_t width = format->fmt.pix.width;
+    uint32_t height = format->fmt.pix.height;
 
-    if (bypass) {
+    if (state->bypass_isp) {
         isp_in_color = ISP_COLOR_RAW8;
         isp_out_color = ISP_COLOR_RGB565;
     } else {
-        ESP_RETURN_ON_ERROR(isp_get_input_frame_type(in_color, &isp_in_color), TAG, "invalid ISP in format");
-        ESP_RETURN_ON_ERROR(isp_get_output_frame_type(out_color, &isp_out_color), TAG, "invalid ISP out format");
+        ESP_RETURN_ON_ERROR(isp_get_input_frame_type(state->in_color, &isp_in_color), TAG, "invalid ISP in format");
+        ESP_RETURN_ON_ERROR(isp_get_output_frame_type(state->out_color, &isp_out_color), TAG, "invalid ISP out format");
+    }
+
+    if ((format->fmt.pix.quantization == V4L2_QUANTIZATION_DEFAULT) ||
+            (format->fmt.pix.quantization == V4L2_QUANTIZATION_FULL_RANGE)) {
+        yuv_range = COLOR_RANGE_FULL;
+    } else if (format->fmt.pix.quantization == V4L2_QUANTIZATION_LIM_RANGE) {
+        yuv_range = ISP_COLOR_RANGE_LIMIT;
+    } else {
+        return ESP_ERR_NOT_SUPPORTED;
+    }
+
+    if ((format->fmt.pix.ycbcr_enc == V4L2_YCBCR_ENC_DEFAULT) ||
+            (format->fmt.pix.ycbcr_enc == V4L2_YCBCR_ENC_601)) {
+        yuv_std = ISP_YUV_CONV_STD_BT601;
+    } else if (format->fmt.pix.ycbcr_enc == V4L2_YCBCR_ENC_709) {
+        yuv_std = ISP_YUV_CONV_STD_BT709;
+    } else {
+        return ESP_ERR_NOT_SUPPORTED;
+    }
+
+    if ((format->fmt.pix.quantization == V4L2_QUANTIZATION_DEFAULT) ||
+            (format->fmt.pix.quantization == V4L2_QUANTIZATION_FULL_RANGE)) {
+        yuv_range = COLOR_RANGE_FULL;
+    } else if (format->fmt.pix.quantization == V4L2_QUANTIZATION_LIM_RANGE) {
+        yuv_range = ISP_COLOR_RANGE_LIMIT;
+    } else {
+        return ESP_ERR_INVALID_ARG;
     }
 
     esp_isp_processor_cfg_t isp_config = {
         .clk_src = ISP_CLK_SRC,
         .input_data_source = ISP_INPUT_DATA_SRC,
-        .has_line_start_packet = line_sync,
-        .has_line_end_packet = line_sync,
+        .has_line_start_packet = state->line_sync,
+        .has_line_end_packet = state->line_sync,
         .h_res = width,
         .v_res = height,
+        .yuv_range = yuv_range,
+        .yuv_std = yuv_std,
         .clk_hz = ISP_CLK_FREQ_HZ,
         .input_data_color_type = isp_in_color,
         .output_data_color_type = isp_out_color,
@@ -1287,7 +1326,7 @@ esp_err_t esp_video_isp_start(bool bypass, cam_ctlr_color_t in_color, cam_ctlr_c
 
     ESP_GOTO_ON_ERROR(esp_isp_new_processor(&isp_config, &isp_video->isp_proc), fail_0, TAG, "failed to new ISP");
 
-    if (bypass) {
+    if (state->bypass_isp) {
         /**
          * IDF-9706
          */
@@ -1301,7 +1340,7 @@ esp_err_t esp_video_isp_start(bool bypass, cam_ctlr_color_t in_color, cam_ctlr_c
 
     META_VIDEO_SET_FORMAT(isp_video->video, width, height, V4L2_META_FMT_ESP_ISP_STATS);
 
-    if (!bypass) {
+    if (!state->bypass_isp) {
         ESP_GOTO_ON_ERROR(isp_start_pipeline(isp_video), fail_2, TAG, "failed to start ISP pipeline");
     }
 
@@ -1359,19 +1398,53 @@ exit:
  */
 esp_err_t esp_video_isp_enum_format(uint32_t index, uint32_t *pixel_format)
 {
-    static const uint32_t isp_isp_format[] = {
-        V4L2_PIX_FMT_SBGGR8,
-        V4L2_PIX_FMT_RGB565,
-        V4L2_PIX_FMT_RGB24,
-        V4L2_PIX_FMT_YUV420,
-        V4L2_PIX_FMT_YUV422P,
-    };
-
-    if (index >= ARRAY_SIZE(isp_isp_format)) {
+    if (index >= s_isp_isp_format_nums) {
         return ESP_ERR_INVALID_ARG;
     }
 
-    *pixel_format = isp_isp_format[index];
+    *pixel_format = s_isp_isp_format[index];
+
+    return ESP_OK;
+}
+
+/**
+ * @brief Check if input format is valid
+ *
+ * @param format V4L2 format object
+ *
+ * @return
+ *      - ESP_OK on success
+ *      - Others if failed
+ */
+esp_err_t esp_video_isp_check_format(const struct v4l2_format *format)
+{
+    bool found = false;
+
+    for (int i = 0; i < s_isp_isp_format_nums; i++) {
+        if (format->fmt.pix.pixelformat == s_isp_isp_format[i]) {
+            found = true;
+            break;
+        }
+    }
+
+    if (!found) {
+        return ESP_ERR_NOT_SUPPORTED;
+    }
+
+    if ((format->fmt.pix.pixelformat == V4L2_PIX_FMT_YUV420) ||
+            (format->fmt.pix.pixelformat == V4L2_PIX_FMT_YUV422P)) {
+        if ((format->fmt.pix.ycbcr_enc != V4L2_YCBCR_ENC_DEFAULT) ||
+                (format->fmt.pix.ycbcr_enc != V4L2_YCBCR_ENC_601) ||
+                (format->fmt.pix.ycbcr_enc != V4L2_YCBCR_ENC_709)) {
+            return ESP_ERR_NOT_SUPPORTED;
+        }
+
+        if ((format->fmt.pix.quantization != V4L2_QUANTIZATION_DEFAULT) ||
+                (format->fmt.pix.quantization != V4L2_QUANTIZATION_FULL_RANGE) ||
+                (format->fmt.pix.quantization != V4L2_QUANTIZATION_LIM_RANGE)) {
+            return ESP_ERR_NOT_SUPPORTED;
+        }
+    }
 
     return ESP_OK;
 }
