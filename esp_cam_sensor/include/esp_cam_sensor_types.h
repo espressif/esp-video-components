@@ -111,7 +111,7 @@ typedef enum {
 #define ESP_CAM_SENSOR_3A_LOCK                      ESP_CAM_SENSOR_CLASS_ID(ESP_CAM_SENSOR_CID_CLASS_3A, 0x14)  /*!< AF&AE&AWB sync lock*/
 #define ESP_CAM_SENSOR_INT_TIME                     ESP_CAM_SENSOR_CLASS_ID(ESP_CAM_SENSOR_CID_CLASS_3A, 0x15)  /*!< Integral time */
 #define ESP_CAM_SENSOR_AE_LEVEL                     ESP_CAM_SENSOR_CLASS_ID(ESP_CAM_SENSOR_CID_CLASS_3A, 0x16)  /*!< Automatic exposure level */
-#define ESP_CAM_SENSOR_GAIN                         ESP_CAM_SENSOR_CLASS_ID(ESP_CAM_SENSOR_CID_CLASS_3A, 0x17)  /*!< Total gain */
+#define ESP_CAM_SENSOR_GAIN                         ESP_CAM_SENSOR_CLASS_ID(ESP_CAM_SENSOR_CID_CLASS_3A, 0x17)  /*!< Absolute gain (analog gain + digital gain) */
 
 /**
  * @brief Camera sensor lens class's control ID
