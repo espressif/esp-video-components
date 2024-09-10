@@ -13,11 +13,14 @@
 #include "esp_log.h"
 #include "esp_attr.h"
 #include "esp_check.h"
+#include "hal/isp_ll.h"
 #include "driver/isp_ccm.h"
 #include "driver/isp_bf.h"
 #include "driver/isp_gamma.h"
 #include "driver/isp_ae.h"
 #include "driver/isp_hist.h"
+#include "driver/isp_demosaic.h"
+#include "driver/isp_color.h"
 #include "driver/isp.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
@@ -43,6 +46,11 @@
 /* AEG-1489 */
 #define ISP_CLK_SRC                 ISP_CLK_SRC_DEFAULT
 #define ISP_CLK_FREQ_HZ             (80 * 1000 * 1000)
+
+#define ISP_BRIGHTNESS_DEFAULT      0
+#define ISP_CONTRAST_DEFAULT        128
+#define ISP_SATURATION_DEFAULT      128
+#define ISP_HUE_DEFAULT             0
 
 #if CONFIG_ESP_VIDEO_ENABLE_ISP_VIDEO_DEVICE
 #define ISP_LOCK(i)                 xSemaphoreTake((i)->mutex, portMAX_DELAY)
@@ -160,6 +168,14 @@ struct isp_video {
 
     esp_video_isp_gamma_point_t gamma_points[ISP_GAMMA_CURVE_POINTS_NUM];
 
+    /* Demosaic Configuration */
+
+    float gradient_ratio;
+
+    /* Color Configuration */
+
+    esp_isp_color_config_t color_config;
+
     /* Application command target */
 
     uint8_t red_balance_enable      : 1;
@@ -168,6 +184,7 @@ struct isp_video {
     uint8_t ccm_enable              : 1;
     uint8_t sharpen_enable          : 1;
     uint8_t gamma_enable            : 1;
+    uint8_t demosaic_enable         : 1;
 
     /* ISP pipeline state */
 
@@ -175,6 +192,7 @@ struct isp_video {
     uint8_t ccm_started             : 1;
     uint8_t sharpen_started         : 1;
     uint8_t gamma_started           : 1;
+    uint8_t demosaic_started        : 1;
 
 #if ISP_STATS_FLAGS
     /* Meta capture state */
@@ -193,7 +211,7 @@ static const struct v4l2_query_ext_ctrl s_isp_qctrl[] = {
     {
         .id = V4L2_CID_RED_BALANCE,
         .type = V4L2_CTRL_TYPE_INTEGER,
-        .maximum = 7999,
+        .maximum = V4L2_CID_RED_BALANCE_DEN * 3.999,
         .minimum = 1,
         .step = 1,
         .elems = sizeof(uint32_t),
@@ -204,7 +222,7 @@ static const struct v4l2_query_ext_ctrl s_isp_qctrl[] = {
     {
         .id = V4L2_CID_BLUE_BALANCE,
         .type = V4L2_CTRL_TYPE_INTEGER,
-        .maximum = 7999,
+        .maximum = V4L2_CID_BLUE_BALANCE_DEN * 3.999,
         .minimum = 1,
         .step = 1,
         .elems = sizeof(uint32_t),
@@ -246,7 +264,7 @@ static const struct v4l2_query_ext_ctrl s_isp_qctrl[] = {
         .name = "sharpen",
     },
     {
-        .id = V4L2_CID_USER_ESP_ISP_SHARPEN,
+        .id = V4L2_CID_USER_ESP_ISP_GAMMA,
         .type = V4L2_CTRL_TYPE_U8,
         .maximum = UINT8_MAX,
         .minimum = 0,
@@ -255,6 +273,61 @@ static const struct v4l2_query_ext_ctrl s_isp_qctrl[] = {
         .nr_of_dims = 1,
         .default_value = 0,
         .name = "gamma",
+    },
+    {
+        .id = V4L2_CID_USER_ESP_ISP_DEMOSAIC,
+        .type = V4L2_CTRL_TYPE_U8,
+        .maximum = UINT8_MAX,
+        .minimum = 0,
+        .step = 1,
+        .elems = sizeof(esp_video_isp_demosaic_t),
+        .nr_of_dims = 1,
+        .default_value = 0,
+        .name = "demosaic",
+    },
+    {
+        .id = V4L2_CID_BRIGHTNESS,
+        .type = V4L2_CTRL_TYPE_INTEGER,
+        .maximum = ISP_LL_COLOR_BRIGNTNESS_MAX,
+        .minimum = ISP_LL_COLOR_BRIGNTNESS_MIN,
+        .step = 1,
+        .elems = sizeof(int32_t),
+        .nr_of_dims = 1,
+        .default_value = ISP_BRIGHTNESS_DEFAULT,
+        .name = "brightness",
+    },
+    {
+        .id = V4L2_CID_CONTRAST,
+        .type = V4L2_CTRL_TYPE_INTEGER,
+        .maximum = ISP_LL_COLOR_CONTRAST_MAX,
+        .minimum = 0,
+        .step = 1,
+        .elems = sizeof(uint32_t),
+        .nr_of_dims = 1,
+        .default_value = ISP_CONTRAST_DEFAULT,
+        .name = "contrast",
+    },
+    {
+        .id = V4L2_CID_SATURATION,
+        .type = V4L2_CTRL_TYPE_INTEGER,
+        .maximum = ISP_LL_COLOR_SATURATION_MAX,
+        .minimum = 0,
+        .step = 1,
+        .elems = sizeof(uint32_t),
+        .nr_of_dims = 1,
+        .default_value = ISP_SATURATION_DEFAULT,
+        .name = "saturation",
+    },
+    {
+        .id = V4L2_CID_HUE,
+        .type = V4L2_CTRL_TYPE_INTEGER,
+        .maximum = ISP_LL_COLOR_HUE_MAX,
+        .minimum = 0,
+        .step = 1,
+        .elems = sizeof(uint32_t),
+        .nr_of_dims = 1,
+        .default_value = ISP_HUE_DEFAULT,
+        .name = "hue",
     },
 };
 static const char *TAG = "isp_video";
@@ -756,6 +829,56 @@ static esp_err_t isp_stop_gamma(struct isp_video *isp_video)
     return ESP_OK;
 }
 
+static esp_err_t isp_start_demosaic(struct isp_video *isp_video)
+{
+    if (isp_video->demosaic_started) {
+        return ESP_OK;
+    }
+
+    uint32_t gradient_ratio_amount = 1 << ISP_DEMOSAIC_GRAD_RATIO_DEC_BITS;
+    uint32_t gradient_ratio_val = (uint32_t)(isp_video->gradient_ratio * gradient_ratio_amount);
+
+    esp_isp_demosaic_config_t demosaic_config = {
+        .grad_ratio = {
+            .integer = gradient_ratio_val / gradient_ratio_amount,
+            .decimal = gradient_ratio_val % gradient_ratio_amount,
+        }
+    };
+
+    ESP_RETURN_ON_ERROR(esp_isp_demosaic_configure(isp_video->isp_proc, &demosaic_config), TAG, "failed to configure demosaic");
+    ESP_RETURN_ON_ERROR(esp_isp_demosaic_enable(isp_video->isp_proc), TAG, "failed to enable demosaic");
+    isp_video->demosaic_started = true;
+
+    return ESP_OK;
+}
+
+static esp_err_t isp_stop_demosaic(struct isp_video *isp_video)
+{
+    if (!isp_video->demosaic_started) {
+        return ESP_OK;
+    }
+
+    ESP_RETURN_ON_ERROR(esp_isp_demosaic_disable(isp_video->isp_proc), TAG, "failed to disable demosaic");
+    isp_video->demosaic_started = false;
+
+    return ESP_OK;
+}
+
+static esp_err_t isp_start_color(struct isp_video *isp_video)
+{
+    ESP_RETURN_ON_ERROR(esp_isp_color_configure(isp_video->isp_proc, &isp_video->color_config), TAG, "failed to configure color");
+    ESP_RETURN_ON_ERROR(esp_isp_color_enable(isp_video->isp_proc), TAG, "failed to enable color");
+
+    return ESP_OK;
+}
+
+static esp_err_t isp_stop_color(struct isp_video *isp_video)
+{
+    ESP_RETURN_ON_ERROR(esp_isp_color_disable(isp_video->isp_proc), TAG, "failed to disable color");
+
+    return ESP_OK;
+}
+
 static esp_err_t isp_start_pipeline(struct isp_video *isp_video)
 {
     esp_err_t ret;
@@ -788,8 +911,18 @@ static esp_err_t isp_start_pipeline(struct isp_video *isp_video)
         ESP_GOTO_ON_ERROR(isp_start_gamma(isp_video), fail_5, TAG, "failed to start GAMMA");
     }
 
+    if (isp_video->demosaic_enable) {
+        ESP_GOTO_ON_ERROR(isp_start_demosaic(isp_video), fail_6, TAG, "failed to start demosaic");
+    }
+
+    ESP_GOTO_ON_ERROR(isp_start_color(isp_video), fail_7, TAG, "failed to start color");
+
     return ESP_OK;
 
+fail_7:
+    isp_stop_demosaic(isp_video);
+fail_6:
+    isp_stop_gamma(isp_video);
 fail_5:
     isp_stop_sharpen(isp_video);
 fail_4:
@@ -813,6 +946,10 @@ fail_0:
 
 static esp_err_t isp_stop_pipeline(struct isp_video *isp_video)
 {
+    ESP_RETURN_ON_ERROR(isp_stop_color(isp_video), TAG, "failed to stop demosaic");
+
+    ESP_RETURN_ON_ERROR(isp_stop_demosaic(isp_video), TAG, "failed to stop demosaic");
+
     ESP_RETURN_ON_ERROR(isp_stop_gamma(isp_video), TAG, "failed to stop GAMMA");
 
     ESP_RETURN_ON_ERROR(isp_stop_sharpen(isp_video), TAG, "failed to stop sharpen");
@@ -978,7 +1115,7 @@ static esp_err_t isp_video_set_ext_ctrl(struct esp_video *video, const struct v4
         }
         case V4L2_CID_RED_BALANCE:
             if (ctrl->value > 0) {
-                isp_video->red_balance_gain = *(float *)ctrl->ptr;
+                isp_video->red_balance_gain = (float)ctrl->value / V4L2_CID_RED_BALANCE_DEN;
                 isp_video->red_balance_enable = true;
             } else {
                 isp_video->red_balance_enable = false;
@@ -991,7 +1128,7 @@ static esp_err_t isp_video_set_ext_ctrl(struct esp_video *video, const struct v4
             break;
         case V4L2_CID_BLUE_BALANCE:
             if (ctrl->value > 0) {
-                isp_video->blue_balance_gain = *(float *)ctrl->ptr;
+                isp_video->blue_balance_gain = (float )ctrl->value / V4L2_CID_BLUE_BALANCE_DEN;
                 isp_video->blue_balance_enable = true;
             } else {
                 isp_video->blue_balance_enable = false;
@@ -1049,6 +1186,56 @@ static esp_err_t isp_video_set_ext_ctrl(struct esp_video *video, const struct v4
             }
             break;
         }
+        case V4L2_CID_USER_ESP_ISP_DEMOSAIC: {
+            const esp_video_isp_demosaic_t *demosaic = (const esp_video_isp_demosaic_t *)ctrl->p_u8;
+
+            isp_video->demosaic_enable = demosaic->enable;
+            if (demosaic->enable) {
+                isp_video->gradient_ratio = demosaic->gradient_ratio;
+
+                if (ISP_STARTED(isp_video)) {
+                    ESP_GOTO_ON_ERROR(isp_stop_demosaic(isp_video), exit, TAG, "failed to stop demosaic");
+                    ESP_GOTO_ON_ERROR(isp_start_demosaic(isp_video), exit, TAG, "failed to start demosaic");
+                }
+            } else {
+                if (ISP_STARTED(isp_video)) {
+                    ESP_GOTO_ON_ERROR(isp_stop_demosaic(isp_video), exit, TAG, "failed to stop demosaic");
+                }
+            }
+            break;
+        }
+        case V4L2_CID_BRIGHTNESS: {
+            isp_video->color_config.color_brightness = ctrl->value;
+            if (ISP_STARTED(isp_video)) {
+                ESP_GOTO_ON_ERROR(isp_stop_color(isp_video), exit, TAG, "failed to stop color");
+                ESP_GOTO_ON_ERROR(isp_start_color(isp_video), exit, TAG, "failed to start color");
+            }
+            break;
+        }
+        case V4L2_CID_CONTRAST: {
+            isp_video->color_config.color_contrast.val = ctrl->value;
+            if (ISP_STARTED(isp_video)) {
+                ESP_GOTO_ON_ERROR(isp_stop_color(isp_video), exit, TAG, "failed to stop color");
+                ESP_GOTO_ON_ERROR(isp_start_color(isp_video), exit, TAG, "failed to start color");
+            }
+            break;
+        }
+        case V4L2_CID_SATURATION: {
+            isp_video->color_config.color_saturation.val = ctrl->value;
+            if (ISP_STARTED(isp_video)) {
+                ESP_GOTO_ON_ERROR(isp_stop_color(isp_video), exit, TAG, "failed to stop color");
+                ESP_GOTO_ON_ERROR(isp_start_color(isp_video), exit, TAG, "failed to start color");
+            }
+            break;
+        }
+        case V4L2_CID_HUE: {
+            isp_video->color_config.color_hue = ctrl->value;
+            if (ISP_STARTED(isp_video)) {
+                ESP_GOTO_ON_ERROR(isp_stop_color(isp_video), exit, TAG, "failed to stop color");
+                ESP_GOTO_ON_ERROR(isp_start_color(isp_video), exit, TAG, "failed to start color");
+            }
+            break;
+        }
         default:
             ret = ESP_ERR_NOT_SUPPORTED;
             break;
@@ -1099,10 +1286,10 @@ static esp_err_t isp_video_get_ext_ctrl(struct esp_video *video, struct v4l2_ext
             break;
         }
         case V4L2_CID_RED_BALANCE:
-            *((float *)ctrl->ptr) = isp_video->red_balance_gain;
+            ctrl->value = isp_video->red_balance_gain * V4L2_CID_RED_BALANCE_DEN;
             break;
         case V4L2_CID_BLUE_BALANCE:
-            *((float *)ctrl->ptr) = isp_video->blue_balance_gain;
+            ctrl->value = isp_video->blue_balance_gain * V4L2_CID_BLUE_BALANCE_DEN;
             break;
         case V4L2_CID_USER_ESP_ISP_SHARPEN: {
             esp_video_isp_sharpen_t *sharpen = (esp_video_isp_sharpen_t *)ctrl->p_u8;
@@ -1127,6 +1314,29 @@ static esp_err_t isp_video_get_ext_ctrl(struct esp_video *video, struct v4l2_ext
                 gamma->points[i].x = isp_video->gamma_points[i].x;
                 gamma->points[i].y = isp_video->gamma_points[i].y;
             }
+            break;
+        }
+        case V4L2_CID_USER_ESP_ISP_DEMOSAIC: {
+            esp_video_isp_demosaic_t *demosaic = (esp_video_isp_demosaic_t *)ctrl->p_u8;
+
+            demosaic->enable = isp_video->demosaic_enable;
+            demosaic->gradient_ratio = isp_video->gradient_ratio;
+            break;
+        }
+        case V4L2_CID_BRIGHTNESS: {
+            ctrl->value = isp_video->color_config.color_brightness;
+            break;
+        }
+        case V4L2_CID_CONTRAST: {
+            ctrl->value = isp_video->color_config.color_contrast.val;
+            break;
+        }
+        case V4L2_CID_SATURATION: {
+            ctrl->value = isp_video->color_config.color_saturation.val;
+            break;
+        }
+        case V4L2_CID_HUE: {
+            ctrl->value = isp_video->color_config.color_hue;
             break;
         }
         default:
@@ -1236,6 +1446,11 @@ esp_err_t esp_video_create_isp_video_device(void)
     s_isp_video.ccm_matrix[0][0] = 1.0;
     s_isp_video.ccm_matrix[1][1] = 1.0;
     s_isp_video.ccm_matrix[2][2] = 1.0;
+
+    s_isp_video.color_config.color_contrast.val = ISP_CONTRAST_DEFAULT;
+    s_isp_video.color_config.color_saturation.val = ISP_SATURATION_DEFAULT;
+    s_isp_video.color_config.color_hue = ISP_HUE_DEFAULT;
+    s_isp_video.color_config.color_brightness = ISP_BRIGHTNESS_DEFAULT;
 
     return ESP_OK;
 }

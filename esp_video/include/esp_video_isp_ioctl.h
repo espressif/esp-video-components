@@ -25,11 +25,19 @@ extern "C" {
 #define V4L2_CID_USER_ESP_ISP_GAMMA         (V4L2_CID_USER_ESP_ISP_BASE + 0x0001)   /*!< GAMMA V4L2 controller ID */
 #define V4L2_CID_USER_ESP_ISP_BF            (V4L2_CID_USER_ESP_ISP_BASE + 0x0002)   /*!< BF V4L2 controller ID */
 #define V4L2_CID_USER_ESP_ISP_SHARPEN       (V4L2_CID_USER_ESP_ISP_BASE + 0x0003)   /*!< Sharpen V4L2 controller ID */
+#define V4L2_CID_USER_ESP_ISP_DEMOSAIC      (V4L2_CID_USER_ESP_ISP_BASE + 0x0004)   /*!< Demosaic V4L2 controller ID */
 
 /**
  * @brief ESP32XXX ISP image statistics output, data type is "esp_ipa_stats_t"
  */
 #define V4L2_META_FMT_ESP_ISP_STATS         v4l2_fourcc('E', 'S', 'T', 'A')
+
+/**
+ * @brief ESP32XXX ISP data precision
+ */
+
+#define V4L2_CID_RED_BALANCE_DEN            1000    /*!< Red balance denominator */
+#define V4L2_CID_BLUE_BALANCE_DEN           1000    /*!< Blue balance denominator */
 
 /**
  * @brief GAMMA point coordinate.
@@ -111,6 +119,15 @@ typedef struct esp_video_isp_sharpen {
      */
     uint8_t matrix[ISP_SHARPEN_TEMPLATE_X_NUMS][ISP_SHARPEN_TEMPLATE_Y_NUMS];
 } esp_video_isp_sharpen_t;
+
+/**
+ * @brief Demosaic configuration.
+ */
+typedef struct esp_video_isp_demosaic {
+    bool enable;        /*!< true: enable demosaic, false: disable demosaic */
+
+    float gradient_ratio;   /*!< Demosaic gradient ratio */
+} esp_video_isp_demosaic_t;
 
 #ifdef __cplusplus
 }
