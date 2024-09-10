@@ -29,21 +29,12 @@ struct esp_video_format_desc {
 };
 
 /**
- * @brief Video format object.
- */
-struct esp_video_format {
-    uint32_t width;                         /*!< Video frame width */
-    uint32_t height;                        /*!< Video frame height */
-    uint32_t pixel_format;                  /*!< Video frame pixel format */
-};
-
-/**
  * @brief Video stream object.
  */
 struct esp_video_stream {
     bool started;                           /*!< Video stream is started */
 
-    struct esp_video_format format;         /*!< Video stream format */
+    struct v4l2_format format;              /*!< Video stream format */
     struct esp_video_buffer_info buf_info;  /*!< Video stream buffer information */
 
     esp_video_buffer_list_t queued_list;    /*!< Workqueue buffer elements list */
@@ -166,27 +157,25 @@ esp_err_t esp_video_enum_format(struct esp_video *video, uint32_t type, uint32_t
  * @brief Get video format information.
  *
  * @param video     Video object
- * @param type      Video stream type
- * @param format    Video stream format object
+ * @param format    V4L2 format object
  *
  * @return
  *      - ESP_OK on success
  *      - Others if failed
  */
-esp_err_t esp_video_get_format(struct esp_video *video, uint32_t type, struct esp_video_format *format);
+esp_err_t esp_video_get_format(struct esp_video *video, struct v4l2_format *format);
 
 /**
  * @brief Set video format information.
  *
  * @param video  Video object
- * @param type   Video stream type
- * @param format Video stream format object
+ * @param format V4L2 format object
  *
  * @return
  *      - ESP_OK on success
  *      - Others if failed
  */
-esp_err_t esp_video_set_format(struct esp_video *video, uint32_t type, const struct esp_video_format *format);
+esp_err_t esp_video_set_format(struct esp_video *video, const struct v4l2_format *format);
 
 /**
  * @brief Setup video buffer.

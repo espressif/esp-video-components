@@ -680,26 +680,25 @@ esp_err_t esp_video_enum_format(struct esp_video *video, uint32_t type, uint32_t
  * @brief Get video format information.
  *
  * @param video  Video object
- * @param type   Video stream type
- * @param format Video stream format object
+ * @param format V4L2 format object
  *
  * @return
  *      - ESP_OK on success
  *      - Others if failed
  */
-esp_err_t esp_video_get_format(struct esp_video *video, uint32_t type, struct esp_video_format *format)
+esp_err_t esp_video_get_format(struct esp_video *video, struct v4l2_format *format)
 {
     struct esp_video_stream *stream;
 
     CHECK_VIDEO_OBJ(video);
     CHECK_PARAM(format, ESP_ERR_INVALID_ARG, TAG, "format=NULL");
 
-    stream = esp_video_get_stream(video, type);
+    stream = esp_video_get_stream(video, format->type);
     if (!stream) {
         return ESP_ERR_INVALID_ARG;
     }
 
-    memcpy(format, &stream->format, sizeof(struct esp_video_format));
+    memcpy(format, &stream->format, sizeof(struct v4l2_format));
 
     return ESP_OK;
 }
@@ -708,14 +707,13 @@ esp_err_t esp_video_get_format(struct esp_video *video, uint32_t type, struct es
  * @brief Set video format information.
  *
  * @param video  Video object
- * @param type   Video stream type
- * @param format Video stream format object
+ * @param format V4L2 format object
  *
  * @return
  *      - ESP_OK on success
  *      - Others if failed
  */
-esp_err_t esp_video_set_format(struct esp_video *video, uint32_t type, const struct esp_video_format *format)
+esp_err_t esp_video_set_format(struct esp_video *video, const struct v4l2_format *format)
 {
     esp_err_t ret;
     struct esp_video_stream *stream;
@@ -723,17 +721,17 @@ esp_err_t esp_video_set_format(struct esp_video *video, uint32_t type, const str
     CHECK_VIDEO_OBJ(video);
     CHECK_PARAM(format, ESP_ERR_INVALID_ARG, TAG, "format=NULL");
 
-    stream = esp_video_get_stream(video, type);
+    stream = esp_video_get_stream(video, format->type);
     if (!stream) {
         return ESP_ERR_INVALID_ARG;
     }
 
-    ret = video->ops->set_format(video, type, format);
+    ret = video->ops->set_format(video, format);
     if (ret != ESP_OK) {
         ESP_LOGE(TAG, "video->ops->set_format=%x", ret);
         return ret;
     } else {
-        memcpy(&stream->format, format, sizeof(struct esp_video_format));
+        memcpy(&stream->format, format, sizeof(struct v4l2_format));
     }
 
     return ESP_OK;
