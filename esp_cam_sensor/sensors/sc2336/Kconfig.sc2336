@@ -101,4 +101,13 @@ if CAMERA_SC2336
         help
             Set the configuration loaded by default for the DVP interface.
             More information can be obtained by calling the query_support_formats().
+    
+    config CAMERA_SC2336_ABSOLUTE_GAIN_LIMIT
+            int "Maximum absolute gain limit"
+            default 66016
+            range 4000 126016
+            help
+                Use this value to limit the maximum gain that upper level applications can use.
+                To avoid using float type, the size of this value is gain x 1000.
+                Excessive gain can lead to a worse signal-to-noise ratio and may cause the device to overheat, affecting its functionality. 
 endif

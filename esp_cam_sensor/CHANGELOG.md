@@ -1,3 +1,7 @@
+## 0.5.3
+
+- Added the configuration item for maximum absolute gain for SC2336
+
 ## 0.5.2
 
 - Added format description in camera sensor driver's Kconfig

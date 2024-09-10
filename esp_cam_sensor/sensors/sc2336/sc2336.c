@@ -30,7 +30,7 @@ typedef struct {
 
 typedef struct {
     uint32_t exposure_val;
-    uint32_t gain_index;
+    uint32_t gain_index; // current gain index
 
     uint32_t vflip_en : 1;
     uint32_t hmirror_en : 1;
@@ -64,6 +64,8 @@ struct sc2336_cam {
 #define delay_ms(ms)  vTaskDelay((ms > portTICK_PERIOD_MS ? ms/ portTICK_PERIOD_MS : 1))
 #define SC2336_SUPPORT_NUM CONFIG_CAMERA_SC2336_MAX_SUPPORT
 
+static const uint32_t s_limited_gain = CONFIG_CAMERA_SC2336_ABSOLUTE_GAIN_LIMIT;
+static size_t s_limited_gain_index;
 static const char *TAG = "sc2336";
 
 // total gain = analog_gain x digital_gain x 1000(To avoid decimal points, the final total_gain is multiplied by 1000.)
@@ -1031,7 +1033,7 @@ static esp_err_t sc2336_query_para_desc(esp_cam_sensor_device_t *dev, esp_cam_se
         break;
     case ESP_CAM_SENSOR_GAIN:
         qdesc->type = ESP_CAM_SENSOR_PARAM_TYPE_ENUMERATION;
-        qdesc->enumeration.count = ARRAY_SIZE(sc2336_total_gain_val_map);
+        qdesc->enumeration.count = s_limited_gain_index;
         qdesc->enumeration.elements = sc2336_total_gain_val_map;
         qdesc->default_value = dev->cur_format->isp_info->isp_v1_info.gain_def; // gain index
         break;
@@ -1322,6 +1324,7 @@ esp_cam_sensor_device_t *sc2336_detect(esp_cam_sensor_config_t *config)
 {
     esp_cam_sensor_device_t *dev = NULL;
     struct sc2336_cam *cam_sc2336;
+    s_limited_gain_index = ARRAY_SIZE(sc2336_total_gain_val_map);
     if (config == NULL) {
         return NULL;
     }
@@ -1347,6 +1350,12 @@ esp_cam_sensor_device_t *sc2336_detect(esp_cam_sensor_config_t *config)
     dev->sensor_port = config->sensor_port;
     dev->ops = &sc2336_ops;
     dev->priv = cam_sc2336;
+    for (size_t i = 0; i < ARRAY_SIZE(sc2336_total_gain_val_map); i++) {
+        if (sc2336_total_gain_val_map[i] > s_limited_gain) {
+            s_limited_gain_index = i - 1;
+            break;
+        }
+    }
     if (config->sensor_port != ESP_CAM_SENSOR_DVP) {
         dev->cur_format = &sc2336_format_info[CONFIG_CAMERA_SC2336_MIPI_IF_FORMAT_INDEX_DAFAULT];
     } else {
