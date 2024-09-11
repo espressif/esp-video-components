@@ -16,8 +16,10 @@ Now we have implementations based on:
 | DVP | /dev/video2 | Capture  | / | camera output pixel format |
 | JPEG encode | /dev/video10 | M2M | RGB565: V4L2_PIX_FMT_RGB565<br> RGB888: V4L2_PIX_FMT_RGB24<br> YUV422: V4L2_PIX_FMT_YUV422P<br> Gray8: V4L2_PIX_FMT_GREY | JPEG: V4L2_PIX_FMT_JPEG |
 | H.264 encode | /dev/video11 | M2M | YUV420: V4L2_PIX_FMT_YUV420 | H.264: V4L2_PIX_FMT_H264 |
+| ISP | /dev/video20 | Meta | camera output pixel format  | Metadata: V4L2_META_FMT_ESP_ISP_STATS |
 
 - (1): if camera output pixel format is RAW8, ISP can transform it to other pixel format: RGB565, RGB888, YUV420 and YUV422
+- (2): ISP supports reading and writing pipeline modules, but has not supported capturing the metadata
 
 ## V4L2 Control IDs
 
@@ -35,3 +37,14 @@ Now we have implementations based on:
 | V4L2_CID_MPEG_VIDEO_BITRATE | V4L2_CID_CODEC_CLASS | Integer | Read/Write | Video bitrate in bits per second. |
 | V4L2_CID_MPEG_VIDEO_H264_MIN_QP | V4L2_CID_CODEC_CLASS | Integer | Read/Write | Minimum quantization parameter for H264. |
 | V4L2_CID_MPEG_VIDEO_H264_MAX_QP | V4L2_CID_CODEC_CLASS | Integer | Read/Write | Maximum quantization parameter for H264. |
+| V4L2_CID_RED_BALANCE | V4L2_CID_USER_CLASS | Integer | Read/Write | Red chroma balance. |
+| V4L2_CID_BLUE_BALANCE | V4L2_CID_USER_CLASS | Integer | Read/Write | Blue chroma balance. |
+| V4L2_CID_USER_ESP_ISP_BF | V4L2_CID_USER_CLASS | Array of uint8_t | Read/Write | ISP bayer filter parameters. |
+| V4L2_CID_USER_ESP_ISP_CCM | V4L2_CID_USER_CLASS | Array of uint8_t | Read/Write | ISP color correction matrix parameters. |
+| V4L2_CID_USER_ESP_ISP_SHARPEN | V4L2_CID_USER_CLASS | Array of uint8_t | Read/Write | ISP sharpen parameters. |
+| V4L2_CID_USER_ESP_ISP_GAMMA | V4L2_CID_USER_CLASS | Array of uint8_t | Read/Write | ISP GAMMA parameters. |
+| V4L2_CID_USER_ESP_ISP_DEMOSAIC | V4L2_CID_USER_CLASS | Array of uint8_t | Read/Write | ISP demosaic parameters. |
+| V4L2_CID_BRIGHTNESS | V4L2_CID_USER_CLASS | Array of uint8_t | Read/Write | Picture brightness. |
+| V4L2_CID_CONTRAST | V4L2_CID_USER_CLASS | Array of uint8_t | Read/Write | Picture contrast. |
+| V4L2_CID_SATURATION | V4L2_CID_USER_CLASS | Array of uint8_t | Read/Write | Picture color saturation. |
+| V4L2_CID_HUE | V4L2_CID_USER_CLASS | Array of uint8_t | Read/Write | Picture hue. |

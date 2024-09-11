@@ -1,4 +1,4 @@
-version: "0.5.1"
+version: "0.6.0"
 description: A framework designed to support Linux V4L2, multiple cameras and video streaming.
 targets:
   - esp32p4
