@@ -1,6 +1,7 @@
 ## 0.5.4
 
 - Added support for SC202CS gain control
+- Added gain map select for SC202CS and SC2336
 
 ## 0.5.3
 
