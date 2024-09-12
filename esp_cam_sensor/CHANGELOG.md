@@ -1,3 +1,7 @@
+## 0.5.4
+
+- Added support for SC202CS gain control
+
 ## 0.5.3
 
 - Added the configuration item for maximum absolute gain for SC2336
