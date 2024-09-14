@@ -207,6 +207,7 @@ struct isp_video {
 #endif
 };
 
+#if CONFIG_ESP_VIDEO_ENABLE_ISP_VIDEO_DEVICE
 static const struct v4l2_query_ext_ctrl s_isp_qctrl[] = {
     {
         .id = V4L2_CID_RED_BALANCE,
@@ -330,6 +331,7 @@ static const struct v4l2_query_ext_ctrl s_isp_qctrl[] = {
         .name = "hue",
     },
 };
+#endif
 static const char *TAG = "isp_video";
 
 static const uint32_t s_isp_isp_format[] = {
@@ -1553,17 +1555,21 @@ esp_err_t esp_video_isp_start_by_csi(const esp_video_csi_state_t *state, const s
         ESP_GOTO_ON_ERROR(esp_isp_enable(isp_video->isp_proc), fail_1, TAG, "failed to enable ISP");
     }
 
+#if CONFIG_ESP_VIDEO_ENABLE_ISP_VIDEO_DEVICE
     META_VIDEO_SET_FORMAT(isp_video->video, width, height, V4L2_META_FMT_ESP_ISP_STATS);
 
     if (!state->bypass_isp) {
         ESP_GOTO_ON_ERROR(isp_start_pipeline(isp_video), fail_2, TAG, "failed to start ISP pipeline");
     }
+#endif
 
     ISP_UNLOCK(isp_video);
     return ESP_OK;
 
+#if CONFIG_ESP_VIDEO_ENABLE_ISP_VIDEO_DEVICE
 fail_2:
     esp_isp_disable(isp_video->isp_proc);
+#endif
 fail_1:
     esp_isp_del_processor(isp_video->isp_proc);
     isp_video->isp_proc = NULL;
@@ -1588,9 +1594,11 @@ esp_err_t esp_video_isp_stop(bool bypass)
 
     ISP_LOCK(isp_video);
 
+#if CONFIG_ESP_VIDEO_ENABLE_ISP_VIDEO_DEVICE
     if (!bypass) {
         ESP_GOTO_ON_ERROR(isp_stop_pipeline(isp_video), exit, TAG, "failed to stop ISP pipeline");
     }
+#endif
 
     ESP_GOTO_ON_ERROR(esp_isp_disable(isp_video->isp_proc), exit, TAG, "failed to disable ISP");
     ESP_GOTO_ON_ERROR(esp_isp_del_processor(isp_video->isp_proc), exit, TAG, "failed to delete ISP");
