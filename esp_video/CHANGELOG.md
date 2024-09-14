@@ -1,3 +1,33 @@
+## 0.6.0
+
+- Add ISP video device
+- Add V4L2 command VIDIOC_QUERYMENU to query the enumeration item
+- Add setting/getting RGB2YUV standard
+- Fix read/write control ID issues
+
+### Enhancements
+
+- ISP video device supports following features:
+    - Red balance(red channel gain)
+    - Blue balance(blue channel gain)
+    - BF(bayer filter)
+    - CCM(color correction matrix)
+    - Sharpen
+    - GAMMA
+    - Demosaic
+    - Brightness
+    - Contrast
+    - Saturation
+    - Hue
+
+- RGB2YUV encode items are as follows:
+    - V4L2_YCBCR_ENC_601(V4L2_YCBCR_ENC_DEFAULT)
+    - V4L2_YCBCR_ENC_709
+
+- RGB2YUV quantization items are as follows
+    - V4L2_QUANTIZATION_LIM_RANGE
+    - V4L2_QUANTIZATION_FULL_RANGE(V4L2_QUANTIZATION_DEFAULT)
+
 ## 0.5.1
 
 - Fix sensor initialization failed when bring up power
