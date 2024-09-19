@@ -1,0 +1,13 @@
+[sections:ipa_detect]
+entries:
+    .esp_ipa_detect+
+
+[scheme:ipa_detect_default]
+entries:
+    ipa_detect -> flash_rodata
+
+[mapping:ipa_detect]
+archive: *
+entries:
+    * (ipa_detect_default);
+        ipa_detect -> flash_rodata KEEP() SURROUND(_esp_ipa_detect_array)

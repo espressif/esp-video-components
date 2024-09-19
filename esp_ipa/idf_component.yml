@@ -1,0 +1,10 @@
+version: "0.1.0"
+description: Image process algorithms pipeline system for ISP.
+targets:
+  - esp32p4
+url: https://github.com/espressif/esp-video-components/tree/master/esp_ipa
+repository: https://github.com/espressif/esp-video-components.git
+issues: https://github.com/espressif/esp-video-components/issues
+dependencies:
+  idf: ">=5.3"
+  cmake_utilities: "0.*"

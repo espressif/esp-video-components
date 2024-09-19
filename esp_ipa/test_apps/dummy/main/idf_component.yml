@@ -1,0 +1,5 @@
+## IDF Component Manager Manifest File
+dependencies:
+  idf: ">=5.3"
+  esp_ipa:
+    override_path: ../../../

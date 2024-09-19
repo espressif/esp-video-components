@@ -1,0 +1,62 @@
+menu "Espressif Image Process Algorithm Configuration"
+
+    menuconfig ESP_IPA_AWB_ALGORITHM
+        bool "Auto Balance Algorithm Configuration"
+        default y
+
+    if ESP_IPA_AWB_ALGORITHM
+        config ESP_IPA_AWB_GRAY_WORLD
+            bool "Gray world"
+            default y
+    endif
+
+    menuconfig ESP_IPA_AGC_ALGORITHM
+        bool "Auto Gain Control Algorithm Configuration"
+        default y
+
+    if ESP_IPA_AGC_ALGORITHM
+        config ESP_IPA_AGC_THRESHOLD
+            bool "Threshold"
+            default y
+    endif
+
+    menuconfig ESP_IPA_DENOISING_ALGORITHM
+        bool "Denoising Algorithm Configuration"
+        default y
+
+    if ESP_IPA_DENOISING_ALGORITHM
+        config ESP_IPA_DENOISING_GAIN_FEEDBACK
+            bool "Gain Feedback"
+            default y
+    endif
+
+    menuconfig ESP_IPA_SHARPEN_ALGORITHM
+        bool "Sharpen Algorithm Configuration"
+        default y
+
+    if ESP_IPA_SHARPEN_ALGORITHM
+        config ESP_IPA_SHARPEN_FREQUENCY_FEEDBACK
+            bool "Frequency Feedback"
+            default y
+    endif
+
+    menuconfig ESP_IPA_GAMMA_ALGORITHM
+        bool "GAMMA Algorithm Configuration"
+        default y
+
+    if ESP_IPA_GAMMA_ALGORITHM
+        config ESP_IPA_GAMMA_LUMA
+            bool "Luma"
+            default y
+    endif
+
+    menuconfig ESP_IPA_CC_ALGORITHM
+        bool "Color Correction Algorithm Configuration"
+        default y
+
+    if ESP_IPA_CC_ALGORITHM
+        config ESP_IPA_CC_LINEAR
+            bool "Linear"
+            default y
+    endif
+endmenu
