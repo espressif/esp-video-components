@@ -244,9 +244,45 @@ static esp_err_t video_start_cb(uvc_format_t uvc_format, int width, int height, 
     struct v4l2_format format;
     struct v4l2_requestbuffers req;
     uvc_t *uvc = (uvc_t *)cb_ctx;
-    uint32_t capture_fmt = uvc->format == V4L2_PIX_FMT_JPEG ? V4L2_PIX_FMT_RGB565 : V4L2_PIX_FMT_YUV420;
+    uint32_t capture_fmt = 0;
 
     ESP_LOGD(TAG, "UVC start");
+
+    if (uvc->format == V4L2_PIX_FMT_JPEG) {
+        int fmt_index = 0;
+        const uint32_t jpeg_input_formats[] = {
+            V4L2_PIX_FMT_RGB565,
+            V4L2_PIX_FMT_YUV422P,
+            V4L2_PIX_FMT_RGB24,
+            V4L2_PIX_FMT_GREY
+        };
+        int jpeg_input_formats_num = sizeof(jpeg_input_formats) / sizeof(jpeg_input_formats[0]);
+
+        while (!capture_fmt) {
+            struct v4l2_fmtdesc fmtdesc = {
+                .index = fmt_index++,
+                .type = V4L2_BUF_TYPE_VIDEO_CAPTURE,
+            };
+
+            if (ioctl(uvc->cap_fd, VIDIOC_ENUM_FMT, &fmtdesc) != 0) {
+                break;
+            }
+
+            for (int i = 0; i < jpeg_input_formats_num; i++) {
+                if (jpeg_input_formats[i] == fmtdesc.pixelformat) {
+                    capture_fmt = jpeg_input_formats[i];
+                    break;
+                }
+            }
+        }
+
+        if (!capture_fmt) {
+            ESP_LOGI(TAG, "The camera sensor output pixel format is not supported by JPEG");
+            return ESP_ERR_NOT_SUPPORTED;
+        }
+    } else {
+        capture_fmt = V4L2_PIX_FMT_YUV420;
+    }
 
     if (!uvc->setup_buffer) {
         /* Configure camera interface capture stream */
