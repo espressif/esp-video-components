@@ -1,9 +1,19 @@
 menu "Example Configuration"
 
-    config EXAMPLE_ENABLE_MIPI_CSI_CAM_SENSOR
-        bool "Enable MIPI CSI Camera Sensor"
-        default y
-        depends on ESP_VIDEO_ENABLE_MIPI_CSI_VIDEO_DEVICE
+    choice EXAMPLE_CAM_SENSOR_INTERFACE
+        prompt "Camera sensor interface"
+        default EXAMPLE_ENABLE_MIPI_CSI_CAM_SENSOR
+        help
+            Select camera sensor interface based on development board.
+
+        config EXAMPLE_ENABLE_MIPI_CSI_CAM_SENSOR
+            bool "MIPI-CSI"
+            depends on ESP_VIDEO_ENABLE_MIPI_CSI_VIDEO_DEVICE
+
+        config EXAMPLE_ENABLE_DVP_CAM_SENSOR
+            bool "DVP"
+            depends on ESP_VIDEO_ENABLE_DVP_VIDEO_DEVICE
+    endchoice
 
     if EXAMPLE_ENABLE_MIPI_CSI_CAM_SENSOR
         config EXAMPLE_MIPI_CSI_SCCB_I2C_PORT
@@ -39,11 +49,6 @@ menu "Example Configuration"
             default -1
             range -1 56
     endif
-
-    config EXAMPLE_ENABLE_DVP_CAM_SENSOR
-        bool "Enable DVP Camera Sensor"
-        default y
-        depends on ESP_VIDEO_ENABLE_DVP_VIDEO_DEVICE
 
     if EXAMPLE_ENABLE_DVP_CAM_SENSOR
         config EXAMPLE_DVP_SCCB_I2C_PORT

@@ -14,6 +14,7 @@
 #include "esp_log.h"
 #include "esp_timer.h"
 #include "linux/videodev2.h"
+#include "esp_video_device.h"
 #include "esp_video_init.h"
 
 #if CONFIG_EXAMPLE_VIDEO_BUFFER_TYPE_USER
@@ -23,6 +24,12 @@
 #define MEMORY_ALIGN 64
 #else
 #define MEMORY_TYPE V4L2_MEMORY_MMAP
+#endif
+
+#if CONFIG_EXAMPLE_ENABLE_MIPI_CSI_CAM_SENSOR
+#define CAM_DEV_PATH ESP_VIDEO_MIPI_CSI_DEVICE_NAME
+#elif CONFIG_EXAMPLE_ENABLE_DVP_CAM_SENSOR
+#define CAM_DEV_PATH ESP_VIDEO_DVP_DEVICE_NAME
 #endif
 
 #define BUFFER_COUNT 2
@@ -108,7 +115,7 @@ static esp_err_t camera_capture_stream(void)
 #endif
     const int type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
 
-    fd = open("/dev/video0", O_RDONLY);
+    fd = open(CAM_DEV_PATH, O_RDONLY);
     if (fd < 0) {
         ESP_LOGE(TAG, "failed to open device");
         return ESP_FAIL;
