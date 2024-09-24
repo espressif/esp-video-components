@@ -152,7 +152,7 @@ menu "Example Configuration"
     if FORMAT_MJPEG_CAM1
         config EXAMPLE_JPEG_COMPRESSION_QUALITY
             int "JPEG Compression Quality"
-            default 100
+            default 90
             range 1 100
             help
                 JPEG compression quality, higher value means higher output
