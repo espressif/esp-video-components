@@ -40,7 +40,7 @@ extern "C" {
     {FORMAT_MUX_CTRL, 0x01}
 
 #define ov5645_settings_yuv422 \
-    {FORMAT_CTRL0, 0x30}, \
+    {FORMAT_CTRL0, 0x31}, \
     {FORMAT_MUX_CTRL, 0x00}
 
 #define ov5645_settings_yuv420 \
