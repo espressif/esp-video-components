@@ -1,3 +1,15 @@
+## 0.6.0~1
+
+- Add USB video class(UVC) example
+- Add video HTTP web server example
+- Add setting customized camera sensor configuration example
+- Fix capture stream example device path error
+
+### Enhancements
+
+- UVC supports output JPEG or H.264 format stream
+- Video HTTP web server supports output JPEG format stream
+
 ## 0.6.0
 
 - Add ISP video device
