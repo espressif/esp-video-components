@@ -16,10 +16,38 @@
 #include "sc202cs_settings.h"
 #include "sc202cs.h"
 
+/*
+ * SC202CS camera sensor gain control.
+ * Note1: The analog gain only has coarse gain, and no fine gain, so in the adjustment of analog gain.
+ * Digital gain needs to replace analog fine gain for smooth transition, so as to avoid AGC oscillation.
+ * Note2: the analog gain of SC202CS will be affected by temperature, it is recommended to increase Dgain first and then Again.
+ */
+typedef struct {
+    uint8_t dgain_fine; // digital gain fine
+    uint8_t dgain_coarse; // digital gain coarse
+    uint8_t analog_gain;
+} sc202cs_gain_t;
+
+typedef struct {
+    uint32_t exposure_val;
+    uint32_t gain_index; // current gain index
+
+    uint32_t vflip_en : 1;
+    uint32_t hmirror_en : 1;
+} sc202cs_para_t;
+
+struct sc202cs_cam {
+    sc202cs_para_t sc202cs_para;
+};
+
 #define SC202CS_IO_MUX_LOCK(mux)
 #define SC202CS_IO_MUX_UNLOCK(mux)
 #define SC202CS_ENABLE_OUT_XCLK(pin,clk)
 #define SC202CS_DISABLE_OUT_XCLK(pin)
+
+#define SC202CS_FETCH_EXP_H(val)     (((val) >> 12) & 0xF)
+#define SC202CS_FETCH_EXP_M(val)     (((val) >> 4) & 0xFF)
+#define SC202CS_FETCH_EXP_L(val)     (((val) & 0xF) << 4)
 
 #define SC202CS_PID         0xeb52
 #define SC202CS_SENSOR_NAME "SC202CS"
@@ -29,7 +57,815 @@
 #define delay_ms(ms)  vTaskDelay((ms > portTICK_PERIOD_MS ? ms/ portTICK_PERIOD_MS : 1))
 #define SC202CS_SUPPORT_NUM CONFIG_CAMERA_SC202CS_MAX_SUPPORT
 
+static const uint32_t s_limited_abs_gain = CONFIG_CAMERA_SC202CS_ABSOLUTE_GAIN_LIMIT;
+static size_t s_limited_abs_gain_index;
 static const char *TAG = "sc202cs";
+
+#if CONFIG_CAMERA_SC202CS_ANA_GAIN_PRIORITY
+// total gain = analog_gain x digital_gain x 1000(To avoid decimal points, the final abs_gain is multiplied by 1000.)
+static const uint32_t sc202cs_abs_gain_val_map[] = {
+    1000,
+    1031,
+    1063,
+    1094,
+    1125,
+    1156,
+    1188,
+    1219,
+    1250,
+    1281,
+    1313,
+    1344,
+    1375,
+    1406,
+    1438,
+    1469,
+    1500,
+    1531,
+    1563,
+    1594,
+    1625,
+    1656,
+    1688,
+    1719,
+    1750,
+    1781,
+    1813,
+    1844,
+    1875,
+    1906,
+    1938,
+    1969,
+    // 2X
+    2000,
+    2062,
+    2126,
+    2188,
+    2250,
+    2312,
+    2376,
+    2438,
+    2500,
+    2562,
+    2626,
+    2688,
+    2750,
+    2812,
+    2876,
+    2938,
+    3000,
+    3062,
+    3126,
+    3188,
+    3250,
+    3312,
+    3376,
+    3438,
+    3500,
+    3562,
+    3626,
+    3688,
+    3750,
+    3812,
+    3876,
+    3938,
+    // 4X
+    4000,
+    4124,
+    4252,
+    4376,
+    4500,
+    4624,
+    4752,
+    4876,
+    5000,
+    5124,
+    5252,
+    5376,
+    5500,
+    5624,
+    5752,
+    5876,
+    6000,
+    6124,
+    6252,
+    6376,
+    6500,
+    6624,
+    6752,
+    6876,
+    7000,
+    7124,
+    7252,
+    7376,
+    7500,
+    7624,
+    7752,
+    7876,
+    // 8X
+    8000,
+    8248,
+    8504,
+    8752,
+    9000,
+    9248,
+    9504,
+    9752,
+    10000,
+    10248,
+    10504,
+    10752,
+    11000,
+    11248,
+    11504,
+    11752,
+    12000,
+    12248,
+    12504,
+    12752,
+    13000,
+    13248,
+    13504,
+    13752,
+    14000,
+    14248,
+    14504,
+    14752,
+    15000,
+    15248,
+    15504,
+    15752,
+    // 16X
+    16000,
+    16496,
+    17008,
+    17504,
+    18000,
+    18496,
+    19008,
+    19504,
+    20000,
+    20496,
+    21008,
+    21504,
+    22000,
+    22496,
+    23008,
+    23504,
+    24000,
+    24496,
+    25008,
+    25504,
+    26000,
+    26496,
+    27008,
+    27504,
+    28000,
+    28496,
+    29008,
+    29504,
+    30000,
+    30496,
+    31008,
+    31504,
+    // 32X
+    32000,
+    33008,
+    34000,
+    35008,
+    36000,
+    37008,
+    38000,
+    39008,
+    40000,
+    41008,
+    42000,
+    43008,
+    44000,
+    45008,
+    46000,
+    47008,
+    48000,
+    49008,
+    50000,
+    51008,
+    52000,
+    53008,
+    54000,
+    55008,
+    56000,
+    57008,
+    58000,
+    59008,
+    60000,
+    61008,
+    62000,
+    63008,
+};
+
+// SC202CS Gain map format: [DIG_FINE, DIG_COARSE, ANG]
+static const sc202cs_gain_t sc202cs_gain_map[] = {
+    {0x80, 0x00, 0x00},
+    {0x84, 0x00, 0x00},
+    {0x88, 0x00, 0x00},
+    {0x8c, 0x00, 0x00},
+    {0x90, 0x00, 0x00},
+    {0x94, 0x00, 0x00},
+    {0x98, 0x00, 0x00},
+    {0x9c, 0x00, 0x00},
+    {0xa0, 0x00, 0x00},
+    {0xa4, 0x00, 0x00},
+    {0xa8, 0x00, 0x00},
+    {0xac, 0x00, 0x00},
+    {0xb0, 0x00, 0x00},
+    {0xb4, 0x00, 0x00},
+    {0xb8, 0x00, 0x00},
+    {0xbc, 0x00, 0x00},
+    {0xc0, 0x00, 0x00},
+    {0xc4, 0x00, 0x00},
+    {0xc8, 0x00, 0x00},
+    {0xcc, 0x00, 0x00},
+    {0xd0, 0x00, 0x00},
+    {0xd4, 0x00, 0x00},
+    {0xd8, 0x00, 0x00},
+    {0xdc, 0x00, 0x00},
+    {0xe0, 0x00, 0x00},
+    {0xe4, 0x00, 0x00},
+    {0xe8, 0x00, 0x00},
+    {0xec, 0x00, 0x00},
+    {0xf0, 0x00, 0x00},
+    {0xf4, 0x00, 0x00},
+    {0xf8, 0x00, 0x00},
+    {0xfc, 0x00, 0x00},
+    // 2X
+    {0x80, 0x00, 0x01},
+    {0x84, 0x00, 0x01},
+    {0x88, 0x00, 0x01},
+    {0x8c, 0x00, 0x01},
+    {0x90, 0x00, 0x01},
+    {0x94, 0x00, 0x01},
+    {0x98, 0x00, 0x01},
+    {0x9c, 0x00, 0x01},
+    {0xa0, 0x00, 0x01},
+    {0xa4, 0x00, 0x01},
+    {0xa8, 0x00, 0x01},
+    {0xac, 0x00, 0x01},
+    {0xb0, 0x00, 0x01},
+    {0xb4, 0x00, 0x01},
+    {0xb8, 0x00, 0x01},
+    {0xbc, 0x00, 0x01},
+    {0xc0, 0x00, 0x01},
+    {0xc4, 0x00, 0x01},
+    {0xc8, 0x00, 0x01},
+    {0xcc, 0x00, 0x01},
+    {0xd0, 0x00, 0x01},
+    {0xd4, 0x00, 0x01},
+    {0xd8, 0x00, 0x01},
+    {0xdc, 0x00, 0x01},
+    {0xe0, 0x00, 0x01},
+    {0xe4, 0x00, 0x01},
+    {0xe8, 0x00, 0x01},
+    {0xec, 0x00, 0x01},
+    {0xf0, 0x00, 0x01},
+    {0xf4, 0x00, 0x01},
+    {0xf8, 0x00, 0x01},
+    {0xfc, 0x00, 0x01},
+    // 4X
+    {0x80, 0x00, 0x03},
+    {0x84, 0x00, 0x03},
+    {0x88, 0x00, 0x03},
+    {0x8c, 0x00, 0x03},
+    {0x90, 0x00, 0x03},
+    {0x94, 0x00, 0x03},
+    {0x98, 0x00, 0x03},
+    {0x9c, 0x00, 0x03},
+    {0xa0, 0x00, 0x03},
+    {0xa4, 0x00, 0x03},
+    {0xa8, 0x00, 0x03},
+    {0xac, 0x00, 0x03},
+    {0xb0, 0x00, 0x03},
+    {0xb4, 0x00, 0x03},
+    {0xb8, 0x00, 0x03},
+    {0xbc, 0x00, 0x03},
+    {0xc0, 0x00, 0x03},
+    {0xc4, 0x00, 0x03},
+    {0xc8, 0x00, 0x03},
+    {0xcc, 0x00, 0x03},
+    {0xd0, 0x00, 0x03},
+    {0xd4, 0x00, 0x03},
+    {0xd8, 0x00, 0x03},
+    {0xdc, 0x00, 0x03},
+    {0xe0, 0x00, 0x03},
+    {0xe4, 0x00, 0x03},
+    {0xe8, 0x00, 0x03},
+    {0xec, 0x00, 0x03},
+    {0xf0, 0x00, 0x03},
+    {0xf4, 0x00, 0x03},
+    {0xf8, 0x00, 0x03},
+    {0xfc, 0x00, 0x03},
+    // 8X
+    {0x80, 0x00, 0x07},
+    {0x84, 0x00, 0x07},
+    {0x88, 0x00, 0x07},
+    {0x8c, 0x00, 0x07},
+    {0x90, 0x00, 0x07},
+    {0x94, 0x00, 0x07},
+    {0x98, 0x00, 0x07},
+    {0x9c, 0x00, 0x07},
+    {0xa0, 0x00, 0x07},
+    {0xa4, 0x00, 0x07},
+    {0xa8, 0x00, 0x07},
+    {0xac, 0x00, 0x07},
+    {0xb0, 0x00, 0x07},
+    {0xb4, 0x00, 0x07},
+    {0xb8, 0x00, 0x07},
+    {0xbc, 0x00, 0x07},
+    {0xc0, 0x00, 0x07},
+    {0xc4, 0x00, 0x07},
+    {0xc8, 0x00, 0x07},
+    {0xcc, 0x00, 0x07},
+    {0xd0, 0x00, 0x07},
+    {0xd4, 0x00, 0x07},
+    {0xd8, 0x00, 0x07},
+    {0xdc, 0x00, 0x07},
+    {0xe0, 0x00, 0x07},
+    {0xe4, 0x00, 0x07},
+    {0xe8, 0x00, 0x07},
+    {0xec, 0x00, 0x07},
+    {0xf0, 0x00, 0x07},
+    {0xf4, 0x00, 0x07},
+    {0xf8, 0x00, 0x07},
+    {0xfc, 0x00, 0x07},
+    // 16X
+    {0x80, 0x00, 0x0f},
+    {0x84, 0x00, 0x0f},
+    {0x88, 0x00, 0x0f},
+    {0x8c, 0x00, 0x0f},
+    {0x90, 0x00, 0x0f},
+    {0x94, 0x00, 0x0f},
+    {0x98, 0x00, 0x0f},
+    {0x9c, 0x00, 0x0f},
+    {0xa0, 0x00, 0x0f},
+    {0xa4, 0x00, 0x0f},
+    {0xa8, 0x00, 0x0f},
+    {0xac, 0x00, 0x0f},
+    {0xb0, 0x00, 0x0f},
+    {0xb4, 0x00, 0x0f},
+    {0xb8, 0x00, 0x0f},
+    {0xbc, 0x00, 0x0f},
+    {0xc0, 0x00, 0x0f},
+    {0xc4, 0x00, 0x0f},
+    {0xc8, 0x00, 0x0f},
+    {0xcc, 0x00, 0x0f},
+    {0xd0, 0x00, 0x0f},
+    {0xd4, 0x00, 0x0f},
+    {0xd8, 0x00, 0x0f},
+    {0xdc, 0x00, 0x0f},
+    {0xe0, 0x00, 0x0f},
+    {0xe4, 0x00, 0x0f},
+    {0xe8, 0x00, 0x0f},
+    {0xec, 0x00, 0x0f},
+    {0xf0, 0x00, 0x0f},
+    {0xf4, 0x00, 0x0f},
+    {0xf8, 0x00, 0x0f},
+    {0xfc, 0x00, 0x0f},
+    //32x
+    {0x80, 0x01, 0x0f},
+    {0x84, 0x01, 0x0f},
+    {0x88, 0x01, 0x0f},
+    {0x8c, 0x01, 0x0f},
+    {0x90, 0x01, 0x0f},
+    {0x94, 0x01, 0x0f},
+    {0x98, 0x01, 0x0f},
+    {0x9c, 0x01, 0x0f},
+    {0xa0, 0x01, 0x0f},
+    {0xa4, 0x01, 0x0f},
+    {0xa8, 0x01, 0x0f},
+    {0xac, 0x01, 0x0f},
+    {0xb0, 0x01, 0x0f},
+    {0xb4, 0x01, 0x0f},
+    {0xb8, 0x01, 0x0f},
+    {0xbc, 0x01, 0x0f},
+    {0xc0, 0x01, 0x0f},
+    {0xc4, 0x01, 0x0f},
+    {0xc8, 0x01, 0x0f},
+    {0xcc, 0x01, 0x0f},
+    {0xd0, 0x01, 0x0f},
+    {0xd4, 0x01, 0x0f},
+    {0xd8, 0x01, 0x0f},
+    {0xdc, 0x01, 0x0f},
+    {0xe0, 0x01, 0x0f},
+    {0xe4, 0x01, 0x0f},
+    {0xe8, 0x01, 0x0f},
+    {0xec, 0x01, 0x0f},
+    {0xf0, 0x01, 0x0f},
+    {0xf4, 0x01, 0x0f},
+    {0xf8, 0x01, 0x0f},
+    {0xfc, 0x01, 0x0f},
+};
+#elif CONFIG_CAMERA_SC202CS_DIG_GAIN_PRIORITY
+// total gain = analog_gain x digital_gain x 1000(To avoid decimal points, the final abs_gain is multiplied by 1000.)
+static const uint32_t sc202cs_abs_gain_val_map[] = {
+    1000,
+    1031,
+    1063,
+    1094,
+    1125,
+    1156,
+    1188,
+    1219,
+    1250,
+    1281,
+    1313,
+    1344,
+    1375,
+    1406,
+    1438,
+    1469,
+    1500,
+    1531,
+    1563,
+    1594,
+    1625,
+    1656,
+    1688,
+    1719,
+    1750,
+    1781,
+    1813,
+    1844,
+    1875,
+    1906,
+    1938,
+    1969,
+    // 2X
+    2000,
+    2063,
+    2125,
+    2188,
+    2250,
+    2313,
+    2375,
+    2438,
+    2500,
+    2563,
+    2625,
+    2688,
+    2750,
+    2813,
+    2875,
+    2938,
+    3000,
+    3063,
+    3125,
+    3188,
+    3250,
+    3313,
+    3375,
+    3438,
+    3500,
+    3563,
+    3625,
+    3688,
+    3750,
+    3813,
+    3875,
+    3938,
+    // 4X
+    4000,
+    4126,
+    4250,
+    4376,
+    4500,
+    4626,
+    4750,
+    4876,
+    5000,
+    5126,
+    5250,
+    5376,
+    5500,
+    5626,
+    5750,
+    5876,
+    6000,
+    6126,
+    6250,
+    6376,
+    6500,
+    6626,
+    6750,
+    6876,
+    7000,
+    7126,
+    7250,
+    7376,
+    7500,
+    7626,
+    7750,
+    7876,
+    // 8X
+    8000,
+    8252,
+    8500,
+    8752,
+    9000,
+    9252,
+    9500,
+    9752,
+    10000,
+    10252,
+    10500,
+    10752,
+    11000,
+    11252,
+    11500,
+    11752,
+    12000,
+    12252,
+    12500,
+    12752,
+    13000,
+    13252,
+    13500,
+    13752,
+    14000,
+    14252,
+    14500,
+    14752,
+    15000,
+    15252,
+    15500,
+    15752,
+    // 16X
+    16000,
+    16504,
+    17000,
+    17504,
+    18000,
+    18504,
+    19000,
+    19504,
+    20000,
+    20504,
+    21000,
+    21504,
+    22000,
+    22504,
+    23000,
+    23504,
+    24000,
+    24504,
+    25000,
+    25504,
+    26000,
+    26504,
+    27000,
+    27504,
+    28000,
+    28504,
+    29000,
+    29504,
+    30000,
+    30504,
+    31000,
+    31504,
+    // 32X
+    32000,
+    33008,
+    34000,
+    35008,
+    36000,
+    37008,
+    38000,
+    39008,
+    40000,
+    41008,
+    42000,
+    43008,
+    44000,
+    45008,
+    46000,
+    47008,
+    48000,
+    49008,
+    50000,
+    51008,
+    52000,
+    53008,
+    54000,
+    55008,
+    56000,
+    57008,
+    58000,
+    59008,
+    60000,
+    61008,
+    62000,
+    63008,
+};
+
+// SC202CS Gain map format: [DIG_FINE, DIG_COARSE, ANG]
+static const sc202cs_gain_t sc202cs_gain_map[] = {
+    {0x80, 0x00, 0x00},
+    {0x84, 0x00, 0x00},
+    {0x88, 0x00, 0x00},
+    {0x8c, 0x00, 0x00},
+    {0x90, 0x00, 0x00},
+    {0x94, 0x00, 0x00},
+    {0x98, 0x00, 0x00},
+    {0x9c, 0x00, 0x00},
+    {0xa0, 0x00, 0x00},
+    {0xa4, 0x00, 0x00},
+    {0xa8, 0x00, 0x00},
+    {0xac, 0x00, 0x00},
+    {0xb0, 0x00, 0x00},
+    {0xb4, 0x00, 0x00},
+    {0xb8, 0x00, 0x00},
+    {0xbc, 0x00, 0x00},
+    {0xc0, 0x00, 0x00},
+    {0xc4, 0x00, 0x00},
+    {0xc8, 0x00, 0x00},
+    {0xcc, 0x00, 0x00},
+    {0xd0, 0x00, 0x00},
+    {0xd4, 0x00, 0x00},
+    {0xd8, 0x00, 0x00},
+    {0xdc, 0x00, 0x00},
+    {0xe0, 0x00, 0x00},
+    {0xe4, 0x00, 0x00},
+    {0xe8, 0x00, 0x00},
+    {0xec, 0x00, 0x00},
+    {0xf0, 0x00, 0x00},
+    {0xf4, 0x00, 0x00},
+    {0xf8, 0x00, 0x00},
+    {0xfc, 0x00, 0x00},
+    // 2X
+    {0x80, 0x01, 0x00},
+    {0x84, 0x01, 0x00},
+    {0x88, 0x01, 0x00},
+    {0x8c, 0x01, 0x00},
+    {0x90, 0x01, 0x00},
+    {0x94, 0x01, 0x00},
+    {0x98, 0x01, 0x00},
+    {0x9c, 0x01, 0x00},
+    {0xa0, 0x01, 0x00},
+    {0xa4, 0x01, 0x00},
+    {0xa8, 0x01, 0x00},
+    {0xac, 0x01, 0x00},
+    {0xb0, 0x01, 0x00},
+    {0xb4, 0x01, 0x00},
+    {0xb8, 0x01, 0x00},
+    {0xbc, 0x01, 0x00},
+    {0xc0, 0x01, 0x00},
+    {0xc4, 0x01, 0x00},
+    {0xc8, 0x01, 0x00},
+    {0xcc, 0x01, 0x00},
+    {0xd0, 0x01, 0x00},
+    {0xd4, 0x01, 0x00},
+    {0xd8, 0x01, 0x00},
+    {0xdc, 0x01, 0x00},
+    {0xe0, 0x01, 0x00},
+    {0xe4, 0x01, 0x00},
+    {0xe8, 0x01, 0x00},
+    {0xec, 0x01, 0x00},
+    {0xf0, 0x01, 0x00},
+    {0xf4, 0x01, 0x00},
+    {0xf8, 0x01, 0x00},
+    {0xfc, 0x01, 0x00},
+    // 4X
+    {0x80, 0x01, 0x01},
+    {0x84, 0x01, 0x01},
+    {0x88, 0x01, 0x01},
+    {0x8c, 0x01, 0x01},
+    {0x90, 0x01, 0x01},
+    {0x94, 0x01, 0x01},
+    {0x98, 0x01, 0x01},
+    {0x9c, 0x01, 0x01},
+    {0xa0, 0x01, 0x01},
+    {0xa4, 0x01, 0x01},
+    {0xa8, 0x01, 0x01},
+    {0xac, 0x01, 0x01},
+    {0xb0, 0x01, 0x01},
+    {0xb4, 0x01, 0x01},
+    {0xb8, 0x01, 0x01},
+    {0xbc, 0x01, 0x01},
+    {0xc0, 0x01, 0x01},
+    {0xc4, 0x01, 0x01},
+    {0xc8, 0x01, 0x01},
+    {0xcc, 0x01, 0x01},
+    {0xd0, 0x01, 0x01},
+    {0xd4, 0x01, 0x01},
+    {0xd8, 0x01, 0x01},
+    {0xdc, 0x01, 0x01},
+    {0xe0, 0x01, 0x01},
+    {0xe4, 0x01, 0x01},
+    {0xe8, 0x01, 0x01},
+    {0xec, 0x01, 0x01},
+    {0xf0, 0x01, 0x01},
+    {0xf4, 0x01, 0x01},
+    {0xf8, 0x01, 0x01},
+    {0xfc, 0x01, 0x01},
+    // 8X
+    {0x80, 0x01, 0x03},
+    {0x84, 0x01, 0x03},
+    {0x88, 0x01, 0x03},
+    {0x8c, 0x01, 0x03},
+    {0x90, 0x01, 0x03},
+    {0x94, 0x01, 0x03},
+    {0x98, 0x01, 0x03},
+    {0x9c, 0x01, 0x03},
+    {0xa0, 0x01, 0x03},
+    {0xa4, 0x01, 0x03},
+    {0xa8, 0x01, 0x03},
+    {0xac, 0x01, 0x03},
+    {0xb0, 0x01, 0x03},
+    {0xb4, 0x01, 0x03},
+    {0xb8, 0x01, 0x03},
+    {0xbc, 0x01, 0x03},
+    {0xc0, 0x01, 0x03},
+    {0xc4, 0x01, 0x03},
+    {0xc8, 0x01, 0x03},
+    {0xcc, 0x01, 0x03},
+    {0xd0, 0x01, 0x03},
+    {0xd4, 0x01, 0x03},
+    {0xd8, 0x01, 0x03},
+    {0xdc, 0x01, 0x03},
+    {0xe0, 0x01, 0x03},
+    {0xe4, 0x01, 0x03},
+    {0xe8, 0x01, 0x03},
+    {0xec, 0x01, 0x03},
+    {0xf0, 0x01, 0x03},
+    {0xf4, 0x01, 0x03},
+    {0xf8, 0x01, 0x03},
+    {0xfc, 0x01, 0x03},
+    // 16X
+    {0x80, 0x01, 0x07},
+    {0x84, 0x01, 0x07},
+    {0x88, 0x01, 0x07},
+    {0x8c, 0x01, 0x07},
+    {0x90, 0x01, 0x07},
+    {0x94, 0x01, 0x07},
+    {0x98, 0x01, 0x07},
+    {0x9c, 0x01, 0x07},
+    {0xa0, 0x01, 0x07},
+    {0xa4, 0x01, 0x07},
+    {0xa8, 0x01, 0x07},
+    {0xac, 0x01, 0x07},
+    {0xb0, 0x01, 0x07},
+    {0xb4, 0x01, 0x07},
+    {0xb8, 0x01, 0x07},
+    {0xbc, 0x01, 0x07},
+    {0xc0, 0x01, 0x07},
+    {0xc4, 0x01, 0x07},
+    {0xc8, 0x01, 0x07},
+    {0xcc, 0x01, 0x07},
+    {0xd0, 0x01, 0x07},
+    {0xd4, 0x01, 0x07},
+    {0xd8, 0x01, 0x07},
+    {0xdc, 0x01, 0x07},
+    {0xe0, 0x01, 0x07},
+    {0xe4, 0x01, 0x07},
+    {0xe8, 0x01, 0x07},
+    {0xec, 0x01, 0x07},
+    {0xf0, 0x01, 0x07},
+    {0xf4, 0x01, 0x07},
+    {0xf8, 0x01, 0x07},
+    {0xfc, 0x01, 0x07},
+    //32x
+    {0x80, 0x01, 0x0f},
+    {0x84, 0x01, 0x0f},
+    {0x88, 0x01, 0x0f},
+    {0x8c, 0x01, 0x0f},
+    {0x90, 0x01, 0x0f},
+    {0x94, 0x01, 0x0f},
+    {0x98, 0x01, 0x0f},
+    {0x9c, 0x01, 0x0f},
+    {0xa0, 0x01, 0x0f},
+    {0xa4, 0x01, 0x0f},
+    {0xa8, 0x01, 0x0f},
+    {0xac, 0x01, 0x0f},
+    {0xb0, 0x01, 0x0f},
+    {0xb4, 0x01, 0x0f},
+    {0xb8, 0x01, 0x0f},
+    {0xbc, 0x01, 0x0f},
+    {0xc0, 0x01, 0x0f},
+    {0xc4, 0x01, 0x0f},
+    {0xc8, 0x01, 0x0f},
+    {0xcc, 0x01, 0x0f},
+    {0xd0, 0x01, 0x0f},
+    {0xd4, 0x01, 0x0f},
+    {0xd8, 0x01, 0x0f},
+    {0xdc, 0x01, 0x0f},
+    {0xe0, 0x01, 0x0f},
+    {0xe4, 0x01, 0x0f},
+    {0xe8, 0x01, 0x0f},
+    {0xec, 0x01, 0x0f},
+    {0xf0, 0x01, 0x0f},
+    {0xf4, 0x01, 0x0f},
+    {0xf8, 0x01, 0x0f},
+    {0xfc, 0x01, 0x0f},
+};
+#endif // end CONFIG_ANA_GAIN_PRIORITY
 
 static const esp_cam_sensor_isp_info_t sc202cs_isp_info[] = {
     {
@@ -38,6 +874,8 @@ static const esp_cam_sensor_isp_info_t sc202cs_isp_info[] = {
             .pclk = 72000000,
             .vts = 1250,
             .hts = 1920,
+            .gain_def = 0, // gain index, depend on {0x3e06, 0x3e07, 0x3e09}, since these registers are not set in format reg_list, the default values ​​are used here.
+            .exp_def = 0x4dc, // depend on {0x3e00, 0x3e01, 0x3e02}, see format_reg_list to get the default value.
             .bayer_type = ESP_CAM_SENSOR_BAYER_BGGR,
         }
     },
@@ -47,6 +885,8 @@ static const esp_cam_sensor_isp_info_t sc202cs_isp_info[] = {
             .pclk = 72000000,
             .vts = 1250,
             .hts = 1920,
+            .gain_def = 0, // gain index, depend on {0x3e06, 0x3e07, 0x3e09}, since these registers are not set in format reg_list, the default values ​​are used here.
+            .exp_def = 0x4dc, // depend on {0x3e00, 0x3e01, 0x3e02}, see format_reg_list to get the default value.
             .bayer_type = ESP_CAM_SENSOR_BAYER_BGGR,
         }
     },
@@ -56,6 +896,8 @@ static const esp_cam_sensor_isp_info_t sc202cs_isp_info[] = {
             .pclk = 72000000,
             .vts = 1250,
             .hts = 1920,
+            .gain_def = 0, // gain index, depend on {0x3e06, 0x3e07, 0x3e09}, since these registers are not set in format reg_list, the default values ​​are used here.
+            .exp_def = 0x4dc, // depend on {0x3e00, 0x3e01, 0x3e02}, see format_reg_list to get the default value.
             .bayer_type = ESP_CAM_SENSOR_BAYER_BGGR,
         }
     },
@@ -65,6 +907,8 @@ static const esp_cam_sensor_isp_info_t sc202cs_isp_info[] = {
             .pclk = 72000000,
             .vts = 1250,
             .hts = 1920,
+            .gain_def = 0, // gain index, depend on {0x3e06, 0x3e07, 0x3e09}, since these registers are not set in format reg_list, the default values ​​are used here.
+            .exp_def = 0x4dc, // depend on {0x3e00, 0x3e01, 0x3e02}, see format_reg_list to get the default value.
             .bayer_type = ESP_CAM_SENSOR_BAYER_BGGR,
         }
     },
@@ -249,28 +1093,98 @@ static esp_err_t sc202cs_set_vflip(esp_cam_sensor_device_t *dev, int enable)
 
 static esp_err_t sc202cs_query_para_desc(esp_cam_sensor_device_t *dev, esp_cam_sensor_param_desc_t *qdesc)
 {
-    return ESP_ERR_NOT_SUPPORTED;
+    esp_err_t ret = ESP_OK;
+    switch (qdesc->id) {
+    case ESP_CAM_SENSOR_EXPOSURE_VAL:
+        qdesc->type = ESP_CAM_SENSOR_PARAM_TYPE_NUMBER;
+        qdesc->number.minimum = 0xff;
+        qdesc->number.maximum = dev->cur_format->isp_info->isp_v1_info.vts - 6; // max = VTS-6 = height+vblank-6, so when update vblank, exposure_max must be updated
+        qdesc->number.step = 1;
+        qdesc->default_value = dev->cur_format->isp_info->isp_v1_info.exp_def;
+        break;
+    case ESP_CAM_SENSOR_GAIN:
+        qdesc->type = ESP_CAM_SENSOR_PARAM_TYPE_ENUMERATION;
+        qdesc->enumeration.count = s_limited_abs_gain_index;
+        qdesc->enumeration.elements = sc202cs_abs_gain_val_map;
+        qdesc->default_value = dev->cur_format->isp_info->isp_v1_info.gain_def; // default gain index
+        break;
+    default: {
+        ESP_LOGE(TAG, "id=%"PRIx32" is not supported", qdesc->id);
+        ret = ESP_ERR_INVALID_ARG;
+        break;
+    }
+    }
+    return ret;
 }
 
 static esp_err_t sc202cs_get_para_value(esp_cam_sensor_device_t *dev, uint32_t id, void *arg, size_t size)
 {
-    return ESP_ERR_NOT_SUPPORTED;
+    esp_err_t ret = ESP_OK;
+    struct sc202cs_cam *cam_sc202cs = (struct sc202cs_cam *)dev->priv;
+    switch (id) {
+    case ESP_CAM_SENSOR_EXPOSURE_VAL: {
+        *(uint32_t *)arg = cam_sc202cs->sc202cs_para.exposure_val;
+        break;
+    }
+    case ESP_CAM_SENSOR_GAIN: {
+        *(uint32_t *)arg = cam_sc202cs->sc202cs_para.gain_index;
+        break;
+    }
+    default: {
+        ret = ESP_ERR_NOT_SUPPORTED;
+        break;
+    }
+    }
+    return ret;
 }
 
 static esp_err_t sc202cs_set_para_value(esp_cam_sensor_device_t *dev, uint32_t id, const void *arg, size_t size)
 {
     esp_err_t ret = ESP_OK;
+    uint32_t u32_val = *(uint32_t *)arg;
+    struct sc202cs_cam *cam_sc202cs = (struct sc202cs_cam *)dev->priv;
 
     switch (id) {
+    case ESP_CAM_SENSOR_EXPOSURE_VAL: {
+        ESP_LOGD(TAG, "set exposure 0x%" PRIx32, u32_val);
+        /* 4 least significant bits of expsoure are fractional part */
+        ret = sc202cs_write(dev->sccb_handle,
+                            SC202CS_REG_SHUTTER_TIME_H,
+                            SC202CS_FETCH_EXP_H(u32_val));
+        ret |= sc202cs_write(dev->sccb_handle,
+                             SC202CS_REG_SHUTTER_TIME_M,
+                             SC202CS_FETCH_EXP_M(u32_val));
+        ret |= sc202cs_write(dev->sccb_handle,
+                             SC202CS_REG_SHUTTER_TIME_L,
+                             SC202CS_FETCH_EXP_L(u32_val));
+        if (ret == ESP_OK) {
+            cam_sc202cs->sc202cs_para.exposure_val = u32_val;
+        }
+        break;
+    }
+    case ESP_CAM_SENSOR_GAIN: {
+        ESP_LOGD(TAG, "dgain_fine %" PRIx8 ", dgain_coarse %" PRIx8 ", again_coarse %" PRIx8, sc202cs_gain_map[u32_val].dgain_fine, sc202cs_gain_map[u32_val].dgain_coarse, sc202cs_gain_map[u32_val].analog_gain);
+        ret = sc202cs_write(dev->sccb_handle,
+                            SC202CS_REG_DIG_FINE_GAIN,
+                            sc202cs_gain_map[u32_val].dgain_fine);
+        ret |= sc202cs_write(dev->sccb_handle,
+                             SC202CS_REG_DIG_COARSE_GAIN,
+                             sc202cs_gain_map[u32_val].dgain_coarse);
+        ret |= sc202cs_write(dev->sccb_handle,
+                             SC202CS_REG_ANG_GAIN,
+                             sc202cs_gain_map[u32_val].analog_gain);
+        if (ret == ESP_OK) {
+            cam_sc202cs->sc202cs_para.gain_index = u32_val;
+        }
+        break;
+    }
     case ESP_CAM_SENSOR_VFLIP: {
         int *value = (int *)arg;
-
         ret = sc202cs_set_vflip(dev, *value);
         break;
     }
     case ESP_CAM_SENSOR_HMIRROR: {
         int *value = (int *)arg;
-
         ret = sc202cs_set_mirror(dev, *value);
         break;
     }
@@ -306,7 +1220,7 @@ static esp_err_t sc202cs_query_support_capability(esp_cam_sensor_device_t *dev, 
 static esp_err_t sc202cs_set_format(esp_cam_sensor_device_t *dev, const esp_cam_sensor_format_t *format)
 {
     ESP_CAM_SENSOR_NULL_POINTER_CHECK(TAG, dev);
-
+    struct sc202cs_cam *cam_sc202cs = (struct sc202cs_cam *)dev->priv;
     esp_err_t ret = ESP_OK;
     /* Depending on the interface type, an available configuration is automatically loaded.
     You can set the output format of the sensor without using query_format().*/
@@ -322,6 +1236,9 @@ static esp_err_t sc202cs_set_format(esp_cam_sensor_device_t *dev, const esp_cam_
     }
 
     dev->cur_format = format;
+    // init para
+    cam_sc202cs->sc202cs_para.exposure_val = dev->cur_format->isp_info->isp_v1_info.exp_def;
+    cam_sc202cs->sc202cs_para.gain_index = dev->cur_format->isp_info->isp_v1_info.gain_def;
 
     return ret;
 }
@@ -447,6 +1364,10 @@ static esp_err_t sc202cs_delete(esp_cam_sensor_device_t *dev)
 {
     ESP_LOGD(TAG, "del sc202cs (%p)", dev);
     if (dev) {
+        if (dev->priv) {
+            free(dev->priv);
+            dev->priv = NULL;
+        }
         free(dev);
         dev = NULL;
     }
@@ -469,6 +1390,8 @@ static const esp_cam_sensor_ops_t sc202cs_ops = {
 esp_cam_sensor_device_t *sc202cs_detect(esp_cam_sensor_config_t *config)
 {
     esp_cam_sensor_device_t *dev = NULL;
+    struct sc202cs_cam *cam_sc202cs;
+    s_limited_abs_gain_index = ARRAY_SIZE(sc202cs_abs_gain_val_map);
     if (config == NULL) {
         return NULL;
     }
@@ -479,6 +1402,13 @@ esp_cam_sensor_device_t *sc202cs_detect(esp_cam_sensor_config_t *config)
         return NULL;
     }
 
+    cam_sc202cs = heap_caps_calloc(1, sizeof(struct sc202cs_cam), MALLOC_CAP_DEFAULT);
+    if (!cam_sc202cs) {
+        ESP_LOGE(TAG, "failed to calloc cam");
+        free(dev);
+        return NULL;
+    }
+
     dev->name = (char *)SC202CS_SENSOR_NAME;
     dev->sccb_handle = config->sccb_handle;
     dev->xclk_pin = config->xclk_pin;
@@ -486,7 +1416,14 @@ esp_cam_sensor_device_t *sc202cs_detect(esp_cam_sensor_config_t *config)
     dev->pwdn_pin = config->pwdn_pin;
     dev->sensor_port = config->sensor_port;
     dev->ops = &sc202cs_ops;
+    dev->priv = cam_sc202cs;
     dev->cur_format = &sc202cs_format_info[CONFIG_CAMERA_SC202CS_MIPI_IF_FORMAT_INDEX_DAFAULT];
+    for (size_t i = 0; i < ARRAY_SIZE(sc202cs_abs_gain_val_map); i++) {
+        if (sc202cs_abs_gain_val_map[i] > s_limited_abs_gain) {
+            s_limited_abs_gain_index = i - 1;
+            break;
+        }
+    }
 
     // Configure sensor power, clock, and SCCB port
     if (sc202cs_power_on(dev) != ESP_OK) {
@@ -507,6 +1444,7 @@ esp_cam_sensor_device_t *sc202cs_detect(esp_cam_sensor_config_t *config)
 
 err_free_handler:
     sc202cs_power_off(dev);
+    free(dev->priv);
     free(dev);
 
     return NULL;

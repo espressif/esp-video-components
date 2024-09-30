@@ -1,3 +1,9 @@
+## 0.5.4
+
+- Added support for SC202CS gain control
+- Added gain map select for SC202CS and SC2336
+- Changed ov5645 output sequence to YVYU in YUV422 format
+
 ## 0.5.3
 
 - Added the configuration item for maximum absolute gain for SC2336
