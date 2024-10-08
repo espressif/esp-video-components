@@ -91,6 +91,9 @@ if (video_cam_fd < 0) {
 
 ESP_ERROR_CHECK(start_cam_web_server(index, video_cam_fd));
 ```
+For devices that do not support native WiFi, [esp_wifi_remote](https://github.com/espressif/esp-protocols/tree/master/components/esp_wifi_remote) is used to provide an additional wifi interface by default. In the `Wi-Fi Remote` menu:
+
+* Choose the slave target connect to the MCU.
 
 ### Build and Flash
 
