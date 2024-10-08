@@ -244,9 +244,25 @@ static esp_err_t ov5647_set_vflip(esp_cam_sensor_device_t *dev, int enable)
     return ov5647_set_reg_bits(dev->sccb_handle, 0x3820, 1, 1, enable ? 0x01 : 0x00);
 }
 
-static esp_err_t ov5647_query_para_desc(esp_cam_sensor_device_t *dev, esp_cam_sensor_param_desc_t *qctrl)
+static esp_err_t ov5647_query_para_desc(esp_cam_sensor_device_t *dev, esp_cam_sensor_param_desc_t *qdesc)
 {
-    return ESP_ERR_NOT_SUPPORTED;
+    esp_err_t ret = ESP_OK;
+    switch (qdesc->id) {
+    case ESP_CAM_SENSOR_VFLIP:
+    case ESP_CAM_SENSOR_HMIRROR:
+        qdesc->type = ESP_CAM_SENSOR_PARAM_TYPE_NUMBER;
+        qdesc->number.minimum = 0;
+        qdesc->number.maximum = 1;
+        qdesc->number.step = 1;
+        qdesc->default_value = 0;
+        break;
+    default: {
+        ESP_LOGE(TAG, "id=%"PRIx32" is not supported", qdesc->id);
+        ret = ESP_ERR_INVALID_ARG;
+        break;
+    }
+    }
+    return ret;
 }
 
 static esp_err_t ov5647_get_para_value(esp_cam_sensor_device_t *dev, uint32_t id, void *arg, size_t size)

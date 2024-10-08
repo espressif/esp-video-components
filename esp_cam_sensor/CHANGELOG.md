@@ -1,3 +1,7 @@
+## 0.5.5
+
+- Added support for querying flip and mirror parameters 
+
 ## 0.5.4
 
 - Added support for SC202CS gain control

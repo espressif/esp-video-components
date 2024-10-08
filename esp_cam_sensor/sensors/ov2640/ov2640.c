@@ -488,6 +488,14 @@ static esp_err_t ov2640_query_para_desc(esp_cam_sensor_device_t *dev, esp_cam_se
         qdesc->number.step = 1;
         qdesc->default_value = 0;
         break;
+    case ESP_CAM_SENSOR_VFLIP:
+    case ESP_CAM_SENSOR_HMIRROR:
+        qdesc->type = ESP_CAM_SENSOR_PARAM_TYPE_NUMBER;
+        qdesc->number.minimum = 0;
+        qdesc->number.maximum = 1;
+        qdesc->number.step = 1;
+        qdesc->default_value = 0;
+        break;
     default: {
         ESP_LOGE(TAG, "id=%"PRIx32" is not supported", qdesc->id);
         ret = ESP_ERR_INVALID_ARG;
