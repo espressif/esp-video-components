@@ -19,7 +19,7 @@ def get_mr_components(modified_files: str) -> str:
     for f in modified_files:
         file = Path(f)
         if (
-            file.parts[0] == 'esp_cam_sensor' or file.parts[0] == 'esp_sccb_intf' or file.parts[0] == 'esp_video'
+            file.parts[0] == 'esp_cam_sensor' or file.parts[0] == 'esp_sccb_intf' or file.parts[0] == 'esp_video' or file.parts[0] == 'esp_ipa'
             and 'test_apps' not in file.parts
             and file.parts[-1] != '.build-test-rules.yml'
         ):
