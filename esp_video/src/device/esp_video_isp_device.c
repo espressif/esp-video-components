@@ -1690,14 +1690,14 @@ esp_err_t esp_video_isp_check_format(const struct v4l2_format *format)
 
     if ((format->fmt.pix.pixelformat == V4L2_PIX_FMT_YUV420) ||
             (format->fmt.pix.pixelformat == V4L2_PIX_FMT_YUV422P)) {
-        if ((format->fmt.pix.ycbcr_enc != V4L2_YCBCR_ENC_DEFAULT) ||
-                (format->fmt.pix.ycbcr_enc != V4L2_YCBCR_ENC_601) ||
+        if ((format->fmt.pix.ycbcr_enc != V4L2_YCBCR_ENC_DEFAULT) &&
+                (format->fmt.pix.ycbcr_enc != V4L2_YCBCR_ENC_601) &&
                 (format->fmt.pix.ycbcr_enc != V4L2_YCBCR_ENC_709)) {
             return ESP_ERR_NOT_SUPPORTED;
         }
 
-        if ((format->fmt.pix.quantization != V4L2_QUANTIZATION_DEFAULT) ||
-                (format->fmt.pix.quantization != V4L2_QUANTIZATION_FULL_RANGE) ||
+        if ((format->fmt.pix.quantization != V4L2_QUANTIZATION_DEFAULT) &&
+                (format->fmt.pix.quantization != V4L2_QUANTIZATION_FULL_RANGE) &&
                 (format->fmt.pix.quantization != V4L2_QUANTIZATION_LIM_RANGE)) {
             return ESP_ERR_NOT_SUPPORTED;
         }
