@@ -29,6 +29,10 @@ endif()
 
 if(CONFIG_ESP_VIDEO_ENABLE_ISP)
     list(APPEND srcs "src/device/esp_video_isp_device.c")
+
+    if(CONFIG_ESP_VIDEO_ENABLE_ISP_PIPELINE_CONTROLLER)
+        list(APPEND srcs "src/esp_video_isp_pipeline.c")
+    endif()
 endif()
 
 idf_component_register(SRCS ${srcs}
@@ -39,3 +43,7 @@ idf_component_register(SRCS ${srcs}
 
 include(package_manager)
 cu_pkg_define_version(${CMAKE_CURRENT_LIST_DIR})
+
+if(CONFIG_ESP_VIDEO_ENABLE_ISP_PIPELINE_CONTROLLER)
+    idf_component_optional_requires(PRIVATE "esp_ipa")
+endif()
