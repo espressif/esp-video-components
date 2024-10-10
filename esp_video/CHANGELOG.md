@@ -1,3 +1,20 @@
+## 0.7.0
+
+- Add ISP pipeline controller
+- ISP video device supports capturing statistics of sensor's outputting picture
+- Apply image process algorithms(esp_ipa) for ISP
+- Fix YUV encode and quantization error
+
+### Enhancements
+
+ISP pipeline controller and esp_ipa integrate and apply the following algorithms:
+
+- Auto white balance
+- Auto gain control
+- Auto denoising control
+- Auto enhancement control
+- Color correction matrix
+
 ## 0.6.0~1
 
 - Add USB video class(UVC) example
