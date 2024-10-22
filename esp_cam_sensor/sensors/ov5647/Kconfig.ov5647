@@ -35,6 +35,10 @@ if CAMERA_OV5647
             bool "RAW8 800x640 50fps, MIPI 2lane 24M input"
         config CAMERA_OV5647_MIPI_RAW8_800x800_50FPS
             bool "RAW8 800x800 50fps, MIPI 2lane 24M input"
+        config CAMERA_OV5647_MIPI_RAW10_1920x1080_30FPS
+            bool "RAW10 1920x1080 30fps, MIPI 2lane 24M input"
+        config CAMERA_OV5647_MIPI_RAW10_1280x960_BINNING_45FPS
+            bool "RAW10 1280x960 Binning 45fps, MIPI 2lane 24M input"
     endchoice # CAMERA_OV5647_MIPI_DEFAULT_FMT
 
     config CAMERA_OV5647_MIPI_IF_FORMAT_INDEX_DAFAULT
@@ -42,6 +46,8 @@ if CAMERA_OV5647
         default 0 if CAMERA_OV5647_MIPI_RAW8_800x1280_50FPS
         default 1 if CAMERA_OV5647_MIPI_RAW8_800x640_50FPS
         default 2 if CAMERA_OV5647_MIPI_RAW8_800x800_50FPS
+        default 3 if CAMERA_OV5647_MIPI_RAW10_1920x1080_30FPS
+        default 4 if CAMERA_OV5647_MIPI_RAW10_1280x960_BINNING_45FPS
         help
             Set the configuration loaded by default for the MIPI interface.
             More information can be obtained by calling the query_support_formats().

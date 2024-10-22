@@ -1,3 +1,7 @@
+## 0.5.6
+
+- Added support for OV5647 RAW10 format with 1920x1080、1280x960 resolution
+
 ## 0.5.5
 
 - Added support for querying flip and mirror parameters 
