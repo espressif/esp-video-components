@@ -737,11 +737,10 @@ esp_err_t esp_video_isp_pipeline_init(const esp_video_isp_config_t *config)
 
 #if LOG_LOCAL_LEVEL >= ESP_LOG_DEBUG
     esp_log_level_set(TAG, ESP_LOG_DEBUG);
-    esp_ipa_pipeline_set_log(true);
 #endif
 
     if (!config || !config->isp_dev || !config->cam_dev ||
-            !config->ipa_nums || !config->ipa_names) {
+            !config->ipa_config) {
         ESP_LOGE(TAG, "failed to check ISP configuration");
         return ESP_ERR_INVALID_ARG;
     }
@@ -749,7 +748,7 @@ esp_err_t esp_video_isp_pipeline_init(const esp_video_isp_config_t *config)
     isp = malloc(sizeof(esp_video_isp_t));
     ESP_RETURN_ON_FALSE(isp, ESP_ERR_NO_MEM, TAG, "failed to malloc isp");
 
-    ESP_GOTO_ON_ERROR(esp_ipa_pipeline_create(config->ipa_nums, config->ipa_names, &isp->ipa_pipeline),
+    ESP_GOTO_ON_ERROR(esp_ipa_pipeline_create(config->ipa_config, &isp->ipa_pipeline),
                       fail_0, TAG, "failed to create IPA pipeline");
 
     ESP_GOTO_ON_ERROR(init_cam_dev(config, isp), fail_1, TAG, "failed to initialize camera device");

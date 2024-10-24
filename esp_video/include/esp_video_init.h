@@ -70,21 +70,12 @@ typedef struct esp_video_init_jpeg_config {
 } esp_video_init_jpeg_config_t;
 
 /**
- * @brief ISP initialization configuration
- */
-typedef struct esp_video_init_isp_config {
-    int ipa_nums;                               /*!< Image process algorithm numbers */
-    const char **ipa_names;                     /*!< Image process algorithm name array */
-} esp_video_init_isp_config_t;
-
-/**
  * @brief Video hardware initialization configuration
  */
 typedef struct esp_video_init_config {
     const esp_video_init_csi_config_t *csi;     /*!< MIPI CSI initialization configuration */
     const esp_video_init_dvp_config_t *dvp;     /*!< DVP initialization configuration array */
     const esp_video_init_jpeg_config_t *jpeg;   /*!< JPEG initialization configuration */
-    const esp_video_init_isp_config_t *isp;     /*!< ISP initialization configuration, using default config if setting NULL */
 } esp_video_init_config_t;
 
 /**

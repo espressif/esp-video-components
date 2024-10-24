@@ -2,5 +2,4 @@ dependencies:
   idf: ">=5.3"
   esp_video:
     version: "0.*"
-  esp_cam_sensor:
-    version: "0.*"
+    override_path: "../../../"
