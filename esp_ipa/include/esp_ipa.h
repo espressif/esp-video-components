@@ -20,15 +20,6 @@ extern "C" {
 typedef esp_ipa_pipeline_t *esp_ipa_pipeline_handle_t;
 
 /**
- * @brief Enable or disable image process algorithm pipeline debug log.
- *
- * @param enable    true: enable debug log, false: disable debug log
- *
- * @return None
- */
-void esp_ipa_pipeline_set_log(bool enable);
-
-/**
  * @brief Print image process algorithm pipeline information.
  *
  * @param handle    Image process algorithm pipeline object handle
@@ -42,13 +33,14 @@ esp_err_t esp_ipa_pipeline_print(esp_ipa_pipeline_handle_t handle);
 /**
  * @brief Create image process algorithm pipeline.
  *
+ * @param config    Image process algorithm configuration
  * @param handle    Image process algorithm pipeline object handle
  *
  * @return
  *      - ESP_OK on success
  *      - Others if failed
  */
-esp_err_t esp_ipa_pipeline_create(uint8_t ipa_nums, const char **ipa_names, esp_ipa_pipeline_handle_t *handle);
+esp_err_t esp_ipa_pipeline_create(const esp_ipa_config_t *config, esp_ipa_pipeline_handle_t *handle);
 
 /**
  * @brief Initialize image process algorithm pipeline and get initialization ISP/Camera parameters,
@@ -62,7 +54,7 @@ esp_err_t esp_ipa_pipeline_create(uint8_t ipa_nums, const char **ipa_names, esp_
  *      - ESP_OK on success
  *      - Others if failed
  */
-esp_err_t esp_ipa_pipeline_init(esp_ipa_pipeline_handle_t handle, esp_ipa_sensor_t *sensor, esp_ipa_metadata_t *metadata);
+esp_err_t esp_ipa_pipeline_init(esp_ipa_pipeline_handle_t handle, const esp_ipa_sensor_t *sensor, esp_ipa_metadata_t *metadata);
 
 /**
  * @brief Put image statistics and sensor information into the image process algorithm
@@ -91,6 +83,67 @@ esp_err_t esp_ipa_pipeline_process(esp_ipa_pipeline_handle_t handle, const esp_i
  *      - Others if failed
  */
 esp_err_t esp_ipa_pipeline_destroy(esp_ipa_pipeline_handle_t handle);
+
+/**
+ * @brief Check if IPA contains of this variable.
+ *
+ * @param ipa   Image process algorithm object
+ * @param name  Variable name
+ *
+ * @return true if IPA has global variable of this name; false true if IPA has no global variable of this name
+ */
+bool esp_ipa_has_var(esp_ipa_t *ipa, const char *name);
+
+/**
+ * @brief Set int32_t type global variable.
+ *
+ * @param ipa   Image process algorithm object
+ * @param name  Variable name
+ * @param val   int32_t type global variable
+ *
+ * @return None
+ */
+void esp_ipa_set_int32(esp_ipa_t *ipa, const char *name, int32_t val);
+
+/**
+ * @brief Get int32_t type global variable.
+ *
+ * @param ipa   Image process algorithm object
+ * @param name  Variable name
+ *
+ * @return int32_t type global variable
+ */
+int32_t esp_ipa_get_int32(esp_ipa_t *ipa, const char *name);
+
+/**
+ * @brief Set float type global variable.
+ *
+ * @param ipa   Image process algorithm object
+ * @param name  Variable name
+ * @param val   Float type global variable
+ *
+ * @return None
+ */
+void esp_ipa_set_float(esp_ipa_t *ipa, const char *name, float val);
+
+/**
+ * @brief Get float type global variable.
+ *
+ * @param ipa   Image process algorithm object
+ * @param name  Variable name
+ *
+ * @return Float type global variable
+ */
+float esp_ipa_get_float(esp_ipa_t *ipa, const char *name);
+
+/**
+ * @brief Get IPA configuration pointer by target name
+ *
+ * @param name Target name
+ *
+ * @return Target IPA configuration pointer if sensor is supported or null if target is not supported.
+ */
+const esp_ipa_config_t *esp_ipa_pipeline_get_config(const char *name);
 
 #ifdef __cplusplus
 }

@@ -1,0 +1,353 @@
+{
+    "version": 1,
+    "test_apps_dummy_2":
+    {
+        "awb":
+        {
+            "min_counted": 1000,
+            "min_red_gain_step": 0.5,
+            "min_blue_gain_step": 0.5
+        },
+        "acc":
+        {
+            "saturation":
+            [
+                {
+                    "color_temp": 1000,
+                    "value": 1
+                },
+                {
+                    "color_temp": 2000,
+                    "value": 2
+                },
+                {
+                    "color_temp": 3000,
+                    "value": 3
+                },
+                {
+                    "color_temp": 4000,
+                    "value": 4
+                },
+                {
+                    "color_temp": 5000,
+                    "value": 5
+                }
+            ],
+            "ccm":
+            [
+                {
+                    "color_temp": 1000,
+                    "matrix":
+                    [
+                        1.1, 1.1, 1.1,
+                        1.1, 1.1, 1.1,
+                        1.1, 1.1, 1.1
+                    ]
+                },
+                {
+                    "color_temp": 2000,
+                    "matrix":
+                    [
+                        1.2, 1.2, 1.2,
+                        1.2, 1.2, 1.2,
+                        1.2, 1.2, 1.2
+                    ]
+                },
+                {
+                    "color_temp": 3000,
+                    "matrix":
+                    [
+                        1.3, 1.3, 1.3,
+                        1.3, 1.3, 1.3,
+                        1.3, 1.3, 1.3
+                    ]
+                },
+                {
+                    "color_temp": 4000,
+                    "matrix":
+                    [
+                        1.4, 1.4, 1.4,
+                        1.4, 1.4, 1.4,
+                        1.4, 1.4, 1.4
+                    ]
+                },
+                {
+                    "color_temp": 5000,
+                    "matrix":
+                    [
+                        1.5, 1.5, 1.5,
+                        1.5, 1.5, 1.5,
+                        1.5, 1.5, 1.5
+                    ]
+                }
+            ]
+        },
+        "adn": {
+            "bf":
+            [
+                {
+                    "gain": 1,
+                    "param": {
+                        "level": 1,
+                        "matrix":
+                        [
+                            1, 1, 1,
+                            1, 1, 1,
+                            1, 1, 1
+                        ]
+                    }
+                },
+                {
+                    "gain": 2,
+                    "param": {
+                        "level": 2,
+                        "matrix":
+                        [
+                            2, 2, 2,
+                            2, 2, 2,
+                            2, 2, 2
+                        ]
+                    }
+                },
+                {
+                    "gain": 3,
+                    "param": {
+                        "level": 3,
+                        "matrix":
+                        [
+                            3, 3, 3,
+                            3, 3, 3,
+                            3, 3, 3
+                        ]
+                    }
+                },
+                {
+                    "gain": 4,
+                    "param": {
+                        "level": 4,
+                        "matrix":
+                        [
+                            4, 4, 4,
+                            4, 4, 4,
+                            4, 4, 4
+                        ]
+                    }
+                },
+                {
+                    "gain": 5,
+                    "param": {
+                        "level": 5,
+                        "matrix":
+                        [
+                            5, 5, 5,
+                            5, 5, 5,
+                            5, 5, 5
+                        ]
+                    }
+                }
+            ],
+            "demosaic":
+            [
+                {
+                    "gain": 1,
+                    "gradient_ratio": 1
+                },
+                {
+                    "gain": 2,
+                    "gradient_ratio": 2
+                },
+                {
+                    "gain": 3,
+                    "gradient_ratio": 3
+                },
+                {
+                    "gain": 4,
+                    "gradient_ratio": 4
+                },
+                {
+                    "gain": 5,
+                    "gradient_ratio": 5
+                }
+            ]
+        },
+        "aen":
+        {
+            "gamma":
+            {
+                "param": 0.75
+            },
+            "sharpen":
+            [
+                {
+                    "gain": 1,
+                    "param": {
+                        "h_thresh": 1,
+                        "l_thresh": 1,
+                        "h_coeff": 1,
+                        "m_coeff": 1,
+                        "matrix":
+                        [
+                            1, 1, 1,
+                            1, 1, 1,
+                            1, 1, 1
+                        ]
+                    }
+                },
+                {
+                    "gain": 2,
+                    "param": {
+                        "h_thresh": 2,
+                        "l_thresh": 2,
+                        "h_coeff": 2,
+                        "m_coeff": 2,
+                        "matrix":
+                        [
+                            2, 2, 2,
+                            2, 2, 2,
+                            2, 2, 2
+                        ]
+                    }
+                },
+                {
+                    "gain": 3,
+                    "param": {
+                        "h_thresh": 3,
+                        "l_thresh": 3,
+                        "h_coeff": 3,
+                        "m_coeff": 3,
+                        "matrix":
+                        [
+                            3, 3, 3,
+                            3, 3, 3,
+                            3, 3, 3
+                        ]
+                    }
+                },
+                {
+                    "gain": 4,
+                    "param": {
+                        "h_thresh": 4,
+                        "l_thresh": 4,
+                        "h_coeff": 4,
+                        "m_coeff": 4,
+                        "matrix":
+                        [
+                            4, 4, 4,
+                            4, 4, 4,
+                            4, 4, 4
+                        ]
+                    }
+                },
+                {
+                    "gain": 5,
+                    "param": {
+                        "h_thresh": 5,
+                        "l_thresh": 5,
+                        "h_coeff": 5,
+                        "m_coeff": 5,
+                        "matrix":
+                        [
+                            5, 5, 5,
+                            5, 5, 5,
+                            5, 5, 5
+                        ]
+                    }
+                }
+            ],
+            "contrast":
+            [
+                {
+                    "gain": 1,
+                    "value": 1
+                },
+                {
+                    "gain": 2,
+                    "value": 2
+                },
+                {
+                    "gain": 3,
+                    "value": 3
+                },
+                {
+                    "gain": 4,
+                    "value": 4
+                },
+                {
+                    "gain": 5,
+                    "value": 5
+                }
+            ]
+        },
+        "agc":
+        {
+            "exposure":
+            {
+                "frame_delay": 2,
+                "adjust_delay": 0,
+                "ac_freq": 50
+            },
+            "gain":
+            {
+                "min_step": 0.0001,
+                "frame_delay": 2
+            },
+            "speed": 1,
+            "luma_adjust":
+            {
+                "target_low": 50,
+                "target_high": 150,
+                "target": 100,
+                "low_threshold": 30,
+                "low_regions": 10,
+                "high_threshold": 220,
+                "high_regions": 10,
+                "weight":
+                [
+                    1, 1, 1, 1, 1,
+                    1, 1, 1, 1, 1,
+                    1, 1, 1, 1, 1,
+                    1, 1, 1, 1, 1,
+                    1, 1, 1, 1, 1
+                ]
+            },
+            "mode": "high_light_priority",
+            "high_light_priority":
+            {
+                "low_threshold": 120,
+                "high_threshold": 180,
+                "weight_offset": 5,
+                "luma_offset": 5
+            },
+            "low_light_priority":
+            {
+                "low_threshold": 40,
+                "high_threshold": 80,
+                "weight_offset": 10,
+                "luma_offset": 10
+            },
+            "light_threshold_priority":
+            [
+                {
+                    "luma_threshold": 60,
+                    "weight_offset": 5
+                },
+                {
+                    "luma_threshold": 80,
+                    "weight_offset": 10
+                },
+                {
+                    "luma_threshold": 100,
+                    "weight_offset": 15
+                },
+                {
+                    "luma_threshold": 120,
+                    "weight_offset": 20
+                },
+                {
+                    "luma_threshold": 140,
+                    "weight_offset": 25
+                }
+            ]
+        }
+    }
+}

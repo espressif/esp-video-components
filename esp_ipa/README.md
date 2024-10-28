@@ -13,16 +13,25 @@ Espressif image process algorithm component provides a suit of image process alg
 
     ```c
         esp_ipa_pipeline_handle_t handle;
-        static const char *ipa_names[] = {
-            "awb.gray",
-            "agc.threshold"
+        static const char *s_ipa_names[] = {
+            "esp_ipa_adn",
+            "esp_ipa_awb",
+            "esp_ipa_acc",
+            "esp_ipa_agc",
+            "esp_ipa_aen",
         };
-        static const int ipa_nums = sizeof(ipa_names) / sizeof(ipa_names);
 
         ...
 
-        ret = esp_ipa_pipeline_create(ipa_nums, ipa_names, &handle);
+        static const esp_ipa_config_t s_ipa_config = {
+            .names = s_ipa_names,
+            .nums = ARRAY_SIZE(s_ipa_names),
+            ...
+        }
+
+        ...
+
+        ret = esp_ipa_pipeline_create(&s_ipa_config, &handle);
 
         ...
     ```
-
