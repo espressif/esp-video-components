@@ -77,6 +77,8 @@
 
 #define ISP_STATS_FLAGS             (ISP_STATS_AE_FLAG | ISP_STATS_AWB_FLAG | ISP_STATS_HIST_FLAG)
 
+#define ISP_LSC_GET_GRIDS(res)      (((res) - 1) / 2 / ISP_LL_LSC_GRID_HEIGHT + 2)
+
 struct isp_video {
     isp_proc_handle_t isp_proc;
 
@@ -126,6 +128,13 @@ struct isp_video {
 
     esp_isp_color_config_t color_config;
 
+#if ESP_VIDEO_ISP_DEVICE_LSC
+    /* LSC Configuration */
+
+    size_t lsc_gain_size;
+    esp_isp_lsc_gain_array_t lsc_gain_array;
+#endif
+
     /* Application command target */
 
     uint8_t red_balance_enable      : 1;
@@ -136,6 +145,10 @@ struct isp_video {
     uint8_t gamma_enable            : 1;
     uint8_t demosaic_enable         : 1;
 
+#if ESP_VIDEO_ISP_DEVICE_LSC
+    uint8_t lsc_enable              : 1;
+#endif
+
     /* ISP pipeline state */
 
     uint8_t bf_started              : 1;
@@ -143,6 +156,10 @@ struct isp_video {
     uint8_t sharpen_started         : 1;
     uint8_t gamma_started           : 1;
     uint8_t demosaic_started        : 1;
+
+#if ESP_VIDEO_ISP_DEVICE_LSC
+    uint8_t lsc_started             : 1;
+#endif
 
     /* Meta capture state */
 
@@ -289,6 +306,19 @@ static const struct v4l2_query_ext_ctrl s_isp_qctrl[] = {
         .default_value = ISP_HUE_DEFAULT,
         .name = "hue",
     },
+#if ESP_VIDEO_ISP_DEVICE_LSC
+    {
+        .id = V4L2_CID_USER_ESP_ISP_LSC,
+        .type = V4L2_CTRL_TYPE_U8,
+        .maximum = UINT8_MAX,
+        .minimum = 0,
+        .step = 1,
+        .elems = sizeof(esp_video_isp_lsc_t),
+        .nr_of_dims = 1,
+        .default_value = 0,
+        .name = "LSC",
+    },
+#endif
 };
 #endif
 static const char *TAG = "isp_video";
@@ -920,6 +950,60 @@ static esp_err_t isp_stop_color(struct isp_video *isp_video)
     return ESP_OK;
 }
 
+#if ESP_VIDEO_ISP_DEVICE_LSC
+static esp_err_t isp_start_lsc(struct isp_video *isp_video)
+{
+    uint32_t h = ISP_LSC_GET_GRIDS(META_VIDEO_GET_FORMAT_HEIGHT(isp_video->video));
+    uint32_t w = ISP_LSC_GET_GRIDS(META_VIDEO_GET_FORMAT_WIDTH(isp_video->video));
+    esp_isp_lsc_config_t lsc_config = {
+        .gain_array = &isp_video->lsc_gain_array
+    };
+
+    if (isp_video->lsc_started) {
+        return ESP_OK;
+    }
+
+    ESP_RETURN_ON_FALSE(isp_video->lsc_gain_size = (w * h), ESP_ERR_INVALID_ARG, TAG, "LSC configuration is invalid");
+
+    ESP_RETURN_ON_ERROR(esp_isp_lsc_configure(isp_video->isp_proc, &lsc_config), TAG, "failed to configure LSC");
+    ESP_RETURN_ON_ERROR(esp_isp_lsc_enable(isp_video->isp_proc), TAG, "failed to enable LSC");
+    isp_video->lsc_started = true;
+
+    return ESP_OK;
+}
+
+static esp_err_t isp_reconfigure_lsc(struct isp_video *isp_video)
+{
+    uint32_t h = ISP_LSC_GET_GRIDS(META_VIDEO_GET_FORMAT_HEIGHT(isp_video->video));
+    uint32_t w = ISP_LSC_GET_GRIDS(META_VIDEO_GET_FORMAT_WIDTH(isp_video->video));
+    esp_isp_lsc_config_t lsc_config = {
+        .gain_array = &isp_video->lsc_gain_array
+    };
+
+    ESP_RETURN_ON_FALSE(isp_video->lsc_gain_size = (w * h), ESP_ERR_INVALID_ARG, TAG, "LSC configuration is invalid");
+
+    ESP_RETURN_ON_ERROR(esp_isp_lsc_configure(isp_video->isp_proc, &lsc_config), TAG, "failed to configure LSC");
+    if (!isp_video->lsc_started) {
+        ESP_RETURN_ON_ERROR(esp_isp_lsc_enable(isp_video->isp_proc), TAG, "failed to enable LSC");
+        isp_video->lsc_started = true;
+    }
+
+    return ESP_OK;
+}
+
+static esp_err_t isp_stop_lsc(struct isp_video *isp_video)
+{
+    if (!isp_video->lsc_started) {
+        return ESP_OK;
+    }
+
+    ESP_RETURN_ON_ERROR(esp_isp_lsc_disable(isp_video->isp_proc), TAG, "failed to disable LSC");
+    isp_video->lsc_started = false;
+
+    return ESP_OK;
+}
+#endif
+
 static esp_err_t isp_start_pipeline(struct isp_video *isp_video)
 {
     esp_err_t ret;
@@ -939,7 +1023,6 @@ static esp_err_t isp_start_pipeline(struct isp_video *isp_video)
         ESP_GOTO_ON_ERROR(isp_start_sharpen(isp_video), fail_4, TAG, "failed to start sharpen");
     }
 
-
     if (isp_video->gamma_enable) {
         ESP_GOTO_ON_ERROR(isp_start_gamma(isp_video), fail_5, TAG, "failed to start GAMMA");
     }
@@ -950,8 +1033,18 @@ static esp_err_t isp_start_pipeline(struct isp_video *isp_video)
 
     ESP_GOTO_ON_ERROR(isp_start_color(isp_video), fail_7, TAG, "failed to start color");
 
+#if ESP_VIDEO_ISP_DEVICE_LSC
+    if (isp_video->lsc_enable) {
+        ESP_GOTO_ON_ERROR(isp_start_lsc(isp_video), fail_8, TAG, "failed to start LSC");
+    }
+#endif
+
     return ESP_OK;
 
+#if ESP_VIDEO_ISP_DEVICE_LSC
+fail_8:
+    isp_stop_color(isp_video);
+#endif
 fail_7:
     isp_stop_demosaic(isp_video);
 fail_6:
@@ -973,7 +1066,11 @@ fail_0:
 
 static esp_err_t isp_stop_pipeline(struct isp_video *isp_video)
 {
-    ESP_RETURN_ON_ERROR(isp_stop_color(isp_video), TAG, "failed to stop demosaic");
+#if ESP_VIDEO_ISP_DEVICE_LSC
+    ESP_RETURN_ON_ERROR(isp_stop_lsc(isp_video), TAG, "failed to stop LSC");
+#endif
+
+    ESP_RETURN_ON_ERROR(isp_stop_color(isp_video), TAG, "failed to stop color");
 
     ESP_RETURN_ON_ERROR(isp_stop_demosaic(isp_video), TAG, "failed to stop demosaic");
 
@@ -1258,6 +1355,30 @@ static esp_err_t isp_video_set_ext_ctrl(struct esp_video *video, const struct v4
             }
             break;
         }
+#if ESP_VIDEO_ISP_DEVICE_LSC
+        case V4L2_CID_USER_ESP_ISP_LSC: {
+            const esp_video_isp_lsc_t *lsc = (const esp_video_isp_lsc_t *)ctrl->p_u8;
+
+            isp_video->lsc_enable = lsc->enable;
+            if (lsc->enable) {
+                isp_video->lsc_gain_size = lsc->lsc_gain_size;
+                isp_video->lsc_gain_array.gain_r = (isp_lsc_gain_t *)lsc->gain_r;
+                isp_video->lsc_gain_array.gain_gr = (isp_lsc_gain_t *)lsc->gain_gr;
+                isp_video->lsc_gain_array.gain_gb = (isp_lsc_gain_t *)lsc->gain_gb;
+                isp_video->lsc_gain_array.gain_b = (isp_lsc_gain_t *)lsc->gain_b;
+
+                if (ISP_STARTED(isp_video)) {
+                    ESP_GOTO_ON_ERROR(isp_reconfigure_lsc(isp_video), exit, TAG, "failed to reconfigure LSC");
+                }
+            } else {
+                if (ISP_STARTED(isp_video)) {
+                    ESP_GOTO_ON_ERROR(isp_stop_lsc(isp_video), exit, TAG, "failed to stop LSC");
+                }
+            }
+
+            break;
+        }
+#endif
         default:
             ret = ESP_ERR_NOT_SUPPORTED;
             break;
@@ -1369,6 +1490,19 @@ static esp_err_t isp_video_get_ext_ctrl(struct esp_video *video, struct v4l2_ext
             ctrl->value = isp_video->color_config.color_hue;
             break;
         }
+#if ESP_VIDEO_ISP_DEVICE_LSC
+        case V4L2_CID_USER_ESP_ISP_LSC: {
+            esp_video_isp_lsc_t *lsc = (esp_video_isp_lsc_t *)ctrl->p_u8;
+
+            lsc->enable = isp_video->lsc_enable;
+            lsc->lsc_gain_size = isp_video->lsc_gain_size;
+            lsc->gain_r = isp_video->lsc_gain_array.gain_r;
+            lsc->gain_gr = isp_video->lsc_gain_array.gain_gr;
+            lsc->gain_gb = isp_video->lsc_gain_array.gain_gb;
+            lsc->gain_b = isp_video->lsc_gain_array.gain_b;
+            break;
+        }
+#endif
         default:
             ret = ESP_ERR_NOT_SUPPORTED;
             break;

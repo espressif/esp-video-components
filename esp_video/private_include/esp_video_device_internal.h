@@ -18,6 +18,13 @@ extern "C" {
 #endif
 
 /**
+ * @brief ISP video device configuration
+ */
+#if CONFIG_SOC_ISP_LSC_SUPPORTED && (CONFIG_ESP32P4_REV_MIN_FULL >= 100)
+#define ESP_VIDEO_ISP_DEVICE_LSC    1       /*!< ISP video device enable LSC */
+#endif
+
+/**
  * @brief MIPI-CSI state
  */
 typedef struct esp_video_csi_state {
