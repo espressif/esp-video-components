@@ -24,6 +24,7 @@
 #define OV5647_PID         0x5647
 #define OV5647_SENSOR_NAME "OV5647"
 #define OV5647_AE_TARGET_DEFAULT (0x40)
+
 #ifndef portTICK_RATE_MS
 #define portTICK_RATE_MS portTICK_PERIOD_MS
 #endif
@@ -417,11 +418,11 @@ static int ov5647_get_sysclk(esp_cam_sensor_device_t *dev)
     int sysclk = 0;
     uint8_t temp1, temp2;
     int pre_div02x, div_cnt7b, sdiv0, pll_rdiv, bit_div2x, sclk_div, VCO;
-    int pre_div02x_map[] = {2, 2, 4, 6, 8, 3, 12, 5, 16, 2, 2, 2, 2, 2, 2, 2};
-    int sdiv0_map[] = {16, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15};
-    int pll_rdiv_map[] = {1, 2};
-    int bit_div2x_map[] = {2, 2, 2, 2, 2, 2, 2, 2, 4, 2, 5, 2, 2, 2, 2, 2};
-    int sclk_div_map[] = {1, 2, 4, 1};
+    const int pre_div02x_map[] = {2, 2, 4, 6, 8, 3, 12, 5, 16, 2, 2, 2, 2, 2, 2, 2};
+    const int sdiv0_map[] = {16, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15};
+    const int pll_rdiv_map[] = {1, 2};
+    const int bit_div2x_map[] = {2, 2, 2, 2, 2, 2, 2, 2, 4, 2, 5, 2, 2, 2, 2, 2};
+    const int sclk_div_map[] = {1, 2, 4, 1};
 
     ov5647_read(dev->sccb_handle, 0x3037, &temp1);
     temp2 = temp1 & 0x0f;

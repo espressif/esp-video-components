@@ -51,6 +51,12 @@ if(CONFIG_CAMERA_SC030IOT)
     list(APPEND priv_include_dirs "sensors/sc030iot/private_include")
 endif()
 
+if(CONFIG_CAMERA_OV2710)
+    list(APPEND srcs "sensors/ov2710/ov2710.c")
+    list(APPEND include_dirs "sensors/ov2710/include")
+    list(APPEND priv_include_dirs "sensors/ov2710/private_include")
+endif()
+
 idf_component_register(SRCS ${srcs}
                        INCLUDE_DIRS ${include_dirs}
                        PRIV_INCLUDE_DIRS ${priv_include_dirs}
@@ -87,6 +93,10 @@ endif()
 
 if(CONFIG_CAMERA_SC030IOT_AUTO_DETECT)
     target_link_libraries(${COMPONENT_LIB} INTERFACE "-u sc030iot_detect")
+endif()
+
+if(CONFIG_CAMERA_OV2710_AUTO_DETECT)
+    target_link_libraries(${COMPONENT_LIB} INTERFACE "-u ov2710_detect")
 endif()
 
 include(package_manager)
