@@ -181,6 +181,35 @@ static esp_err_t v4l2_get_input_frame_type_from_sensor(uint32_t sensor_fmt, uint
     return ret;
 }
 
+static esp_err_t csi_get_input_bayer_order(const esp_cam_sensor_isp_info_t *isp_info, color_raw_element_order_t *bayer_order)
+{
+    esp_err_t ret = ESP_OK;
+
+    if (!isp_info) {
+        *bayer_order = COLOR_RAW_ELEMENT_ORDER_BGGR;
+    } else {
+        switch (isp_info->isp_v1_info.bayer_type) {
+        case ESP_CAM_SENSOR_BAYER_RGGB:
+            *bayer_order = COLOR_RAW_ELEMENT_ORDER_BGGR;
+            break;
+        case ESP_CAM_SENSOR_BAYER_GRBG:
+            *bayer_order = COLOR_RAW_ELEMENT_ORDER_GRBG;
+            break;
+        case ESP_CAM_SENSOR_BAYER_GBRG:
+            *bayer_order = COLOR_RAW_ELEMENT_ORDER_GBRG;
+            break;
+        case ESP_CAM_SENSOR_BAYER_BGGR:
+            *bayer_order = COLOR_RAW_ELEMENT_ORDER_BGGR;
+            break;
+        default:
+            ret = ESP_ERR_NOT_SUPPORTED;
+            break;
+        }
+    }
+
+    return ret;
+}
+
 static bool IRAM_ATTR csi_video_on_trans_finished(esp_cam_ctlr_handle_t handle, esp_cam_ctlr_trans_t *trans, void *user_data)
 {
     struct esp_video *video = (struct esp_video *)user_data;
@@ -237,6 +266,7 @@ static esp_err_t init_config(struct esp_video *video)
     ESP_RETURN_ON_FALSE(sensor_format.mipi_info.mipi_clk, ESP_ERR_NOT_SUPPORTED, TAG, "camera sensor mipi_clk is 0");
     ESP_RETURN_ON_ERROR(csi_get_data_lane(sensor_format.mipi_info.lane_num, &csi_video->state.lane_num), TAG, "failed to get CSI data lane number");
     ESP_RETURN_ON_ERROR(csi_get_input_frame_type(sensor_format.format, &csi_video->state.in_color, &csi_in_bpp), TAG, "failed to get CSI input frame format");
+    ESP_RETURN_ON_ERROR(csi_get_input_bayer_order(sensor_format.isp_info, &csi_video->state.bayer_order), TAG, "failed to get bayer order");
 
     csi_video->state.lane_bitrate_mbps = sensor_format.mipi_info.mipi_clk / (1000 * 1000);
 
