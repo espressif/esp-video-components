@@ -1,3 +1,7 @@
+## 0.7.0
+
+- Added support for GC2145 MIPI & DVP camera sensor driver
+
 ## 0.6.1
 
 - Added support for OV2640 RAW8 format with 800x800, 1024x600 resolution
@@ -5,7 +9,7 @@
 ## 0.6.0
 
 - Added support for OV5647 RAW10 format with 1920x1080、1280x960 resolution
-- Added support for OV2710 mipi driver
+- Added support for OV2710 mipi driver 
 
 ## 0.5.5
 

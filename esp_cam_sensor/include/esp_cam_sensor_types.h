@@ -95,6 +95,7 @@ typedef enum {
 #define ESP_CAM_SENSOR_BLC                          ESP_CAM_SENSOR_CLASS_ID(ESP_CAM_SENSOR_CID_CLASS_DEFAULT, 0x10)    /*!< Black level Correction from the sensor */
 #define ESP_CAM_SENSOR_SPECIAL_EFFECT               ESP_CAM_SENSOR_CLASS_ID(ESP_CAM_SENSOR_CID_CLASS_DEFAULT, 0x11)
 #define ESP_CAM_SENSOR_LENC                         ESP_CAM_SENSOR_CLASS_ID(ESP_CAM_SENSOR_CID_CLASS_DEFAULT, 0x12)    /*!< Len Shading Correction from the sensor */
+#define ESP_CAM_SENSOR_SCENE                        ESP_CAM_SENSOR_CLASS_ID(ESP_CAM_SENSOR_CID_CLASS_DEFAULT, 0x13)
 
 /**
  * @brief Camera sensor 3A class's control ID
@@ -117,6 +118,8 @@ typedef enum {
 #define ESP_CAM_SENSOR_AE_LEVEL                     ESP_CAM_SENSOR_CLASS_ID(ESP_CAM_SENSOR_CID_CLASS_3A, 0x16)  /*!< Automatic exposure level */
 #define ESP_CAM_SENSOR_GAIN                         ESP_CAM_SENSOR_CLASS_ID(ESP_CAM_SENSOR_CID_CLASS_3A, 0x17)  /*!< Absolute gain (analog gain + digital gain) */
 #define ESP_CAM_SENSOR_STATS                        ESP_CAM_SENSOR_CLASS_ID(ESP_CAM_SENSOR_CID_CLASS_3A, 0x18)  /*!< Camera sensor gain & wb statistical data */
+#define ESP_CAM_SENSOR_AE_FLICKER                   ESP_CAM_SENSOR_CLASS_ID(ESP_CAM_SENSOR_CID_CLASS_3A, 0x19)  /*!< Anti banding flicker */
+#define ESP_CAM_SENSOR_AUTO_N_PRESET_WB             ESP_CAM_SENSOR_CLASS_ID(ESP_CAM_SENSOR_CID_CLASS_3A, 0x20)  /*!< Pre set white balance mode when automatic white balance is not enabled */
 
 /**
  * @brief Camera sensor lens class's control ID

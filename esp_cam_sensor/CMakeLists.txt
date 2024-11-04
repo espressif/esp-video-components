@@ -39,6 +39,12 @@ if(CONFIG_CAMERA_GC0308)
     list(APPEND priv_include_dirs "sensors/gc0308/private_include")
 endif()
 
+if(CONFIG_CAMERA_GC2145)
+    list(APPEND srcs "sensors/gc2145/gc2145.c")
+    list(APPEND include_dirs "sensors/gc2145/include")
+    list(APPEND priv_include_dirs "sensors/gc2145/private_include")
+endif()
+
 if(CONFIG_CAMERA_SC101IOT)
     list(APPEND srcs "sensors/sc101iot/sc101iot.c")
     list(APPEND include_dirs "sensors/sc101iot/include")
@@ -85,6 +91,10 @@ endif()
 
 if(CONFIG_CAMERA_GC0308_AUTO_DETECT)
     target_link_libraries(${COMPONENT_LIB} INTERFACE "-u gc0308_detect")
+endif()
+
+if(CONFIG_CAMERA_GC2145_AUTO_DETECT)
+    target_link_libraries(${COMPONENT_LIB} INTERFACE "-u gc2145_detect")
 endif()
 
 if(CONFIG_CAMERA_SC101IOT_AUTO_DETECT)

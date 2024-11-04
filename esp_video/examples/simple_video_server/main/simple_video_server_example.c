@@ -601,7 +601,7 @@ void app_main(void)
 
     ESP_ERROR_CHECK(esp_video_init(&cam_config));
 
-    int video_cam_fd = app_video_open(CAM_DEV_PATH, EXAMPLE_VIDEO_FMT_RGB565);
+    int video_cam_fd = app_video_open(CAM_DEV_PATH, EXAMPLE_VIDEO_FMT_YUV422);
     if (video_cam_fd < 0) {
         ESP_LOGE(TAG, "video cam open failed");
         return;
