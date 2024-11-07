@@ -27,6 +27,7 @@ extern "C" {
 #define V4L2_CID_USER_ESP_ISP_SHARPEN       (V4L2_CID_USER_ESP_ISP_BASE + 0x0003)   /*!< Sharpen V4L2 controller ID */
 #define V4L2_CID_USER_ESP_ISP_DEMOSAIC      (V4L2_CID_USER_ESP_ISP_BASE + 0x0004)   /*!< Demosaic V4L2 controller ID */
 #define V4L2_CID_USER_ESP_ISP_WB            (V4L2_CID_USER_ESP_ISP_BASE + 0x0005)   /*!< White balance V4L2 controller ID */
+#define V4L2_CID_USER_ESP_ISP_LSC           (V4L2_CID_USER_ESP_ISP_BASE + 0x0006)   /*!< LSC V4L2 controller ID */
 
 /**
  * @brief ESP32XXX ISP image statistics output, data type is "esp_ipa_stats_t"
@@ -148,6 +149,25 @@ typedef struct esp_video_isp_wb {
     float red_gain;     /*!< Red channel gain */
     float blue_gain;    /*!< Blue channel gain */
 } esp_video_isp_wb_t;
+
+/**
+ * @brief LSC(lens shading correction) configuration.
+ */
+typedef struct esp_video_isp_lsc {
+    bool enable;                    /*!< true: enable LSC, false: disable LSC */
+
+    /**
+     * Calling "ioctl" to set/get channel gain will only set gain table pointer
+     * instead of copying gain table value.
+     */
+
+    const isp_lsc_gain_t *gain_r;   /*!< Gain table pointer for R channel */
+    const isp_lsc_gain_t *gain_gr;  /*!< Gain table pointer for GR channel */
+    const isp_lsc_gain_t *gain_gb;  /*!< Gain table pointer for GB channel */
+    const isp_lsc_gain_t *gain_b;   /*!< Gain table pointer for B channel */
+
+    size_t lsc_gain_size;           /*!< Gain table size */
+} esp_video_isp_lsc_t;
 
 /**
  * @brief ISP statistics.
