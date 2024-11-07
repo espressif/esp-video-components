@@ -28,6 +28,7 @@ typedef struct esp_video_csi_state {
     uint8_t out_bpp;                        /*!< MIPI-CSI output data color format bit per pixel */
     bool line_sync;                         /*!< true: line has start and end packet; false. line has no start and end packet */
     bool bypass_isp;                        /*!< true: ISP directly output data from input port with processing. false: ISP output processed data by pipeline  */
+    color_raw_element_order_t bayer_order;  /*!< Bayer order of raw data */
 } esp_video_csi_state_t;
 
 /**
