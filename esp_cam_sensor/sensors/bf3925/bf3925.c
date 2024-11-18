@@ -396,7 +396,7 @@ static esp_err_t bf3925_query_para_desc(esp_cam_sensor_device_t *dev, esp_cam_se
         qdesc->default_value = BF3925_WB_AUTO;
         break;
     default: {
-        ESP_LOGE(TAG, "id=%"PRIx32" is not supported", qdesc->id);
+        ESP_LOGD(TAG, "id=%"PRIx32" is not supported", qdesc->id);
         ret = ESP_ERR_INVALID_ARG;
         break;
     }

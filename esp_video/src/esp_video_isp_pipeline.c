@@ -23,8 +23,10 @@
 
 #include "linux/videodev2.h"
 #include "esp_video_pipeline_isp.h"
+#include "esp_video_ioctl.h"
 #include "esp_video_isp_ioctl.h"
 #include "esp_ipa.h"
+#include "esp_cam_sensor.h"
 
 #define ISP_METADATA_BUFFER_COUNT   2
 #define ISP_TASK_PRIORITY           11
@@ -39,7 +41,15 @@ typedef struct esp_video_isp {
     int cam_fd;
 
     esp_ipa_pipeline_handle_t ipa_pipeline;
+
     esp_ipa_sensor_t sensor;
+    uint32_t sensor_stats_seq;
+    struct {
+        uint8_t gain        : 1;
+        uint8_t exposure    : 1;
+        uint8_t stats       : 1;
+        uint8_t awb         : 1;
+    } sensor_attr;
 } esp_video_isp_t;
 
 static const char *TAG = "ISP";
@@ -488,15 +498,23 @@ static void config_color(esp_video_isp_t *isp, esp_ipa_metadata_t *metadata)
 
 static void config_isp_and_camera(esp_video_isp_t *isp, esp_ipa_metadata_t *metadata)
 {
-    config_white_balance(isp, metadata);
-    config_exposure_time(isp, metadata);
-    config_pixel_gain(isp, metadata);
+    if (!isp->sensor_attr.awb) {
+        config_white_balance(isp, metadata);
+    }
+
     config_bayer_filter(isp, metadata);
     config_demosaic(isp, metadata);
     config_sharpen(isp, metadata);
     config_gamma(isp, metadata);
     config_ccm(isp, metadata);
     config_color(isp, metadata);
+
+    if (isp->sensor_attr.exposure) {
+        config_exposure_time(isp, metadata);
+    }
+    if (isp->sensor_attr.gain) {
+        config_pixel_gain(isp, metadata);
+    }
 }
 
 static void isp_stats_to_ipa_stats(esp_video_isp_stats_t *isp_stat, esp_ipa_stats_t *ipa_stats)
@@ -546,6 +564,57 @@ static void isp_stats_to_ipa_stats(esp_video_isp_stats_t *isp_stat, esp_ipa_stat
     }
 }
 
+static void get_sensor_state(esp_video_isp_t *isp, int index)
+{
+    int ret;
+    struct v4l2_format format;
+
+    if (isp->sensor_attr.awb) {
+        isp->isp_stats[index]->flags &= ~ESP_VIDEO_ISP_STATS_FLAG_AWB;
+    }
+
+    memset(&format, 0, sizeof(struct v4l2_format));
+    format.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
+    ret = ioctl(isp->cam_fd, VIDIOC_G_FMT, &format);
+    if (ret == 0) {
+        isp->sensor.width = format.fmt.pix.width;
+        isp->sensor.height = format.fmt.pix.width;
+    }
+
+    if (isp->sensor_attr.stats) {
+        struct v4l2_ext_controls controls;
+        struct v4l2_ext_control control[1];
+        esp_cam_sensor_stats_t sensor_stats;
+
+        controls.ctrl_class = V4L2_CID_CAMERA_CLASS;
+        controls.count      = 1;
+        controls.controls   = control;
+        control[0].id       = V4L2_CID_CAMERA_STATS;
+        control[0].p_u8     = (uint8_t *)&sensor_stats;
+        control[0].size     = sizeof(sensor_stats);
+        ret = ioctl(isp->cam_fd, VIDIOC_G_EXT_CTRLS, &controls);
+        if (ret == 0) {
+            if (isp->sensor_stats_seq != sensor_stats.seq) {
+                if (sensor_stats.flags & ESP_CAM_SENSOR_STATS_FLAG_AGC_GAIN) {
+                    isp->sensor.cur_gain = sensor_stats.agc_gain;
+                }
+
+                if (sensor_stats.flags & ESP_CAM_SENSOR_STATS_FLAG_WB_GAIN) {
+                    isp_awb_stat_result_t *awb = &isp->isp_stats[index]->awb.awb_result;
+
+                    isp->isp_stats[index]->flags |= ESP_VIDEO_ISP_STATS_FLAG_AWB;
+                    awb->white_patch_num = 1;
+                    awb->sum_r = sensor_stats.wb_avg.red_avg;
+                    awb->sum_g = sensor_stats.wb_avg.green_avg;
+                    awb->sum_b = sensor_stats.wb_avg.blue_avg;
+                }
+
+                isp->sensor_stats_seq = sensor_stats.seq;
+            }
+        }
+    }
+}
+
 static void isp_task(void *p)
 {
     esp_err_t ret;
@@ -562,6 +631,8 @@ static void isp_task(void *p)
             ESP_LOGE(TAG, "failed to receive video frame");
             continue;
         }
+
+        get_sensor_state(isp, buf.index);
 
         isp_stats_to_ipa_stats(isp->isp_stats[buf.index], &ipa_stats);
         if (ioctl(isp->isp_fd, VIDIOC_QBUF, &buf) != 0) {
@@ -596,72 +667,103 @@ static esp_err_t init_cam_dev(const esp_video_isp_config_t *config, esp_video_is
 
     qctrl.id = V4L2_CID_GAIN;
     ret = ioctl(fd, VIDIOC_QUERY_EXT_CTRL, &qctrl);
-    ESP_GOTO_ON_FALSE(ret == 0, ESP_ERR_NOT_SUPPORTED, fail_0, TAG, "failed to query gain description");
+    if (ret == 0) {
+        controls.ctrl_class = V4L2_CID_USER_CLASS;
+        controls.count      = 1;
+        controls.controls   = control;
+        control[0].id       = V4L2_CID_GAIN;
+        control[0].value    = qctrl.default_value;
+        ret = ioctl(fd, VIDIOC_S_EXT_CTRLS, &controls);
+        ESP_GOTO_ON_FALSE(ret == 0, ESP_ERR_NOT_SUPPORTED, fail_0, TAG, "failed to set gain");
 
-    controls.ctrl_class = V4L2_CID_USER_CLASS;
-    controls.count      = 1;
-    controls.controls   = control;
-    control[0].id       = V4L2_CID_GAIN;
-    control[0].value    = qctrl.default_value;
-    ret = ioctl(fd, VIDIOC_S_EXT_CTRLS, &controls);
-    ESP_GOTO_ON_FALSE(ret == 0, ESP_ERR_NOT_SUPPORTED, fail_0, TAG, "failed to set gain");
+        isp->sensor.min_gain = 1.0;
+        if (qctrl.type == V4L2_CTRL_TYPE_INTEGER) {
+            isp->sensor.max_gain  = (float)qctrl.maximum / qctrl.minimum;
+            isp->sensor.cur_gain  = (float)control[0].value / qctrl.minimum;
+            isp->sensor.step_gain = (float)qctrl.step / qctrl.minimum;
+        } else if (qctrl.type == V4L2_CTRL_TYPE_INTEGER_MENU) {
+            int64_t min;
+            struct v4l2_querymenu qmenu;
 
-    isp->sensor.min_gain = 1.0;
-    if (qctrl.type == V4L2_CTRL_TYPE_INTEGER) {
-        isp->sensor.max_gain  = (float)qctrl.maximum / qctrl.minimum;
-        isp->sensor.cur_gain  = (float)control[0].value / qctrl.minimum;
-        isp->sensor.step_gain = (float)qctrl.step / qctrl.minimum;
-    } else if (qctrl.type == V4L2_CTRL_TYPE_INTEGER_MENU) {
-        int64_t min;
-        struct v4l2_querymenu qmenu;
+            qmenu.id = V4L2_CID_GAIN;
+            qmenu.index = qctrl.minimum;
+            ret = ioctl(fd, VIDIOC_QUERYMENU, &qmenu);
+            ESP_GOTO_ON_FALSE(ret == 0, ESP_ERR_NOT_SUPPORTED, fail_0, TAG, "failed to query gain min menu");
+            min = qmenu.value;
 
-        qmenu.id = V4L2_CID_GAIN;
-        qmenu.index = qctrl.minimum;
-        ret = ioctl(fd, VIDIOC_QUERYMENU, &qmenu);
-        ESP_GOTO_ON_FALSE(ret == 0, ESP_ERR_NOT_SUPPORTED, fail_0, TAG, "failed to query gain min menu");
-        min = qmenu.value;
+            qmenu.index = qctrl.maximum;
+            ret = ioctl(fd, VIDIOC_QUERYMENU, &qmenu);
+            ESP_GOTO_ON_FALSE(ret == 0, ESP_ERR_NOT_SUPPORTED, fail_0, TAG, "failed to query gain max menu");
+            isp->sensor.max_gain = (float)qmenu.value / min;
 
-        qmenu.index = qctrl.maximum;
-        ret = ioctl(fd, VIDIOC_QUERYMENU, &qmenu);
-        ESP_GOTO_ON_FALSE(ret == 0, ESP_ERR_NOT_SUPPORTED, fail_0, TAG, "failed to query gain max menu");
-        isp->sensor.max_gain = (float)qmenu.value / min;
+            qmenu.index = control[0].value;
+            ret = ioctl(fd, VIDIOC_QUERYMENU, &qmenu);
+            ESP_GOTO_ON_FALSE(ret == 0, ESP_ERR_NOT_SUPPORTED, fail_0, TAG, "failed to query gain current menu");
+            isp->sensor.cur_gain = (float)qmenu.value / min;
 
-        qmenu.index = control[0].value;
-        ret = ioctl(fd, VIDIOC_QUERYMENU, &qmenu);
-        ESP_GOTO_ON_FALSE(ret == 0, ESP_ERR_NOT_SUPPORTED, fail_0, TAG, "failed to query gain current menu");
-        isp->sensor.cur_gain = (float)qmenu.value / min;
+            isp->sensor.step_gain = 0.0;
+        }
 
-        isp->sensor.step_gain = 0.0;
+        isp->sensor_attr.gain = 1;
+
+        ESP_LOGD(TAG, "Sensor gain:");
+        ESP_LOGD(TAG, "  min:     %0.4f", isp->sensor.min_gain);
+        ESP_LOGD(TAG, "  max:     %0.4f", isp->sensor.max_gain);
+        ESP_LOGD(TAG, "  step:    %0.4f", isp->sensor.step_gain);
+        ESP_LOGD(TAG, "  current: %0.4f", isp->sensor.cur_gain);
+    } else {
+        ESP_LOGD(TAG, "V4L2_CID_GAIN is not supported");
     }
-
-    ESP_LOGD(TAG, "Sensor gain:");
-    ESP_LOGD(TAG, "  min:     %0.4f", isp->sensor.min_gain);
-    ESP_LOGD(TAG, "  max:     %0.4f", isp->sensor.max_gain);
-    ESP_LOGD(TAG, "  step:    %0.4f", isp->sensor.step_gain);
-    ESP_LOGD(TAG, "  current: %0.4f", isp->sensor.cur_gain);
 
     qctrl.id = V4L2_CID_EXPOSURE_ABSOLUTE;
     ret = ioctl(fd, VIDIOC_QUERY_EXT_CTRL, &qctrl);
-    ESP_GOTO_ON_FALSE(ret == 0, ESP_ERR_NOT_SUPPORTED, fail_0, TAG, "failed to query exposure time description");
+    if (ret == 0) {
+        controls.ctrl_class = V4L2_CID_CAMERA_CLASS;
+        controls.count      = 1;
+        controls.controls   = control;
+        control[0].id       = V4L2_CID_EXPOSURE_ABSOLUTE;
+        control[0].value    = qctrl.default_value;
+        ret = ioctl(fd, VIDIOC_S_EXT_CTRLS, &controls);
+        ESP_GOTO_ON_FALSE(ret == 0, ESP_ERR_NOT_SUPPORTED, fail_0, TAG, "failed to set exposure time");
 
-    controls.ctrl_class = V4L2_CID_CAMERA_CLASS;
-    controls.count      = 1;
-    controls.controls   = control;
-    control[0].id       = V4L2_CID_EXPOSURE_ABSOLUTE;
-    control[0].value    = qctrl.default_value;
-    ret = ioctl(fd, VIDIOC_S_EXT_CTRLS, &controls);
-    ESP_GOTO_ON_FALSE(ret == 0, ESP_ERR_NOT_SUPPORTED, fail_0, TAG, "failed to set exposure time");
+        isp->sensor.min_exposure = qctrl.minimum * 100;
+        isp->sensor.max_exposure = qctrl.maximum * 100;
+        isp->sensor.step_exposure = qctrl.step * 100;
+        isp->sensor.cur_exposure = control[0].value * 100;
 
-    isp->sensor.min_exposure = qctrl.minimum * 100;
-    isp->sensor.max_exposure = qctrl.maximum * 100;
-    isp->sensor.step_exposure = qctrl.step * 100;
-    isp->sensor.cur_exposure = control[0].value * 100;
+        isp->sensor_attr.exposure = 1;
 
-    ESP_LOGD(TAG, "Exposure time:");
-    ESP_LOGD(TAG, "  min:     %"PRIi64, qctrl.minimum);
-    ESP_LOGD(TAG, "  max:     %"PRIi64, qctrl.maximum);
-    ESP_LOGD(TAG, "  step:    %"PRIu64, qctrl.step);
-    ESP_LOGD(TAG, "  current: %"PRIi32, control[0].value);
+        ESP_LOGD(TAG, "Exposure time:");
+        ESP_LOGD(TAG, "  min:     %"PRIi64, qctrl.minimum);
+        ESP_LOGD(TAG, "  max:     %"PRIi64, qctrl.maximum);
+        ESP_LOGD(TAG, "  step:    %"PRIu64, qctrl.step);
+        ESP_LOGD(TAG, "  current: %"PRIi32, control[0].value);
+    } else {
+        ESP_LOGD(TAG, "V4L2_CID_EXPOSURE_ABSOLUTE is not supported");
+    }
+
+    qctrl.id = V4L2_CID_CAMERA_STATS;
+    ret = ioctl(fd, VIDIOC_QUERY_EXT_CTRL, &qctrl);
+    if (ret == 0) {
+        esp_cam_sensor_stats_t sensor_stats;
+
+        controls.ctrl_class = V4L2_CID_CAMERA_CLASS;
+        controls.count      = 1;
+        controls.controls   = control;
+        control[0].id       = V4L2_CID_CAMERA_STATS;
+        control[0].p_u8     = (uint8_t *)&sensor_stats;
+        control[0].size     = sizeof(sensor_stats);
+        ret = ioctl(fd, VIDIOC_G_EXT_CTRLS, &controls);
+        ESP_GOTO_ON_FALSE(ret == 0, ESP_ERR_NOT_SUPPORTED, fail_0, TAG, "failed to get sensor statistics");
+
+        if (sensor_stats.flags & ESP_CAM_SENSOR_STATS_FLAG_WB_GAIN) {
+            isp->sensor_attr.awb = 1;
+        }
+
+        isp->sensor_attr.stats = 1;
+    } else {
+        ESP_LOGD(TAG, "V4L2_CID_CAMERA_STATS is not supported");
+    }
 
     isp->cam_fd = fd;
 
@@ -745,7 +847,7 @@ esp_err_t esp_video_isp_pipeline_init(const esp_video_isp_config_t *config)
         return ESP_ERR_INVALID_ARG;
     }
 
-    isp = malloc(sizeof(esp_video_isp_t));
+    isp = calloc(1, sizeof(esp_video_isp_t));
     ESP_RETURN_ON_FALSE(isp, ESP_ERR_NO_MEM, TAG, "failed to malloc isp");
 
     ESP_GOTO_ON_ERROR(esp_ipa_pipeline_create(config->ipa_config, &isp->ipa_pipeline),

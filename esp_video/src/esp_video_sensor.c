@@ -57,6 +57,14 @@ static const struct control_map s_control_map_table[] = {
         .esp_cam_sensor_id = ESP_CAM_SENSOR_EXPOSURE_VAL,
         .v4l2_id = V4L2_CID_EXPOSURE,
     },
+    {
+        .esp_cam_sensor_id = ESP_CAM_SENSOR_STATS,
+        .v4l2_id = V4L2_CID_CAMERA_STATS
+    },
+    {
+        .esp_cam_sensor_id = ESP_CAM_SENSOR_AE_LEVEL,
+        .v4l2_id = V4L2_CID_CAMERA_AE_LEVEL
+    }
 };
 
 static const struct control_map s_control_ioctl_table[] = {
@@ -138,6 +146,10 @@ static esp_err_t get_opt_value_desc(esp_cam_sensor_device_t *cam_dev, struct v4l
             case ESP_CAM_SENSOR_PARAM_TYPE_BITMASK:
                 *buf_ptr = &ctrl->value;
                 *buf_size = sizeof(ctrl->value);
+                break;
+            case ESP_CAM_SENSOR_PARAM_TYPE_U8:
+                *buf_ptr = ctrl->p_u8;
+                *buf_size = ctrl->size;
                 break;
             default:
                 ESP_LOGE(TAG, "sensor description type=%" PRIu32 " is not supported", qdesc->type);
@@ -229,6 +241,13 @@ esp_err_t esp_video_set_ext_ctrls_to_sensor(esp_cam_sensor_device_t *cam_dev, co
                 if (value_buf & (~qdesc.bitmask.value)) {
                     ESP_LOGE(TAG, "mask: ctrl id=%" PRIx32 " value=%" PRIx32 " is out of range(%" PRIx32 ")",
                              ctrl->id, value_buf, qdesc.bitmask.value);
+                    return ESP_ERR_INVALID_ARG;
+                }
+                break;
+            case ESP_CAM_SENSOR_PARAM_TYPE_U8:
+                if (value_size != qdesc.u8.size) {
+                    ESP_LOGE(TAG, "mask: ctrl id=%" PRIx32 " size=%zu is not equal to sensor data size(%" PRIu32 ")",
+                             ctrl->id, value_size, qdesc.u8.size);
                     return ESP_ERR_INVALID_ARG;
                 }
                 break;
@@ -325,7 +344,7 @@ esp_err_t esp_video_query_ext_ctrls_from_sensor(esp_cam_sensor_device_t *cam_dev
     qdesc.id = control_map->esp_cam_sensor_id;
     ret = esp_cam_sensor_query_para_desc(cam_dev, &qdesc);
     if (ret != ESP_OK) {
-        ESP_LOGE(TAG, "failed to query sensor id=%" PRIx32, qdesc.id);
+        ESP_LOGD(TAG, "failed to query sensor id=%" PRIx32, qdesc.id);
         return ret;
     }
 
@@ -362,8 +381,19 @@ esp_err_t esp_video_query_ext_ctrls_from_sensor(esp_cam_sensor_device_t *cam_dev
         qctrl->nr_of_dims = 0;
         qctrl->default_value = qdesc.default_value;
         break;
+    case ESP_CAM_SENSOR_PARAM_TYPE_U8:
+        qctrl->type = V4L2_CTRL_TYPE_U8;
+        qctrl->minimum = 0;
+        qctrl->maximum = UINT8_MAX;
+        qctrl->step = 1;
+        qctrl->elem_size = qdesc.u8.size;
+        qctrl->elems = 1;
+        qctrl->nr_of_dims = 0;
+        qctrl->dims[0] = 1;
+        qctrl->default_value = 0;
+        break;
     default:
-        ESP_LOGE(TAG, "sensor type=%" PRIu32 " is not supported", qdesc.type);
+        ESP_LOGD(TAG, "sensor type=%" PRIu32 " is not supported", qdesc.type);
         return ESP_ERR_NOT_SUPPORTED;
     }
 

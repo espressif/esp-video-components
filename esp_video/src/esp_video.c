@@ -1499,7 +1499,7 @@ esp_err_t esp_video_query_ext_control(struct esp_video *video, struct v4l2_query
         if (ret == ESP_ERR_NOT_SUPPORTED) {
             return ret;
         } else if (ret != ESP_OK) {
-            ESP_LOGE(TAG, "video->ops->query_ext_ctrl=%x", ret);
+            ESP_LOGD(TAG, "video->ops->query_ext_ctrl=%x", ret);
             return ret;
         }
     } else {
