@@ -32,10 +32,14 @@ typedef enum {
     ESP_CAM_SENSOR_PIXFORMAT_JPEG
 } esp_cam_sensor_output_format_t;
 
+#define ESP_CAM_SENSOR_STATS_FLAG_WB_GAIN           (1 <<  0)
+#define ESP_CAM_SENSOR_STATS_FLAG_AGC_GAIN          (1 <<  1)
+
 #define ESP_CAM_SENSOR_PARAM_TYPE_NUMBER            1
 #define ESP_CAM_SENSOR_PARAM_TYPE_BITMASK           2
 #define ESP_CAM_SENSOR_PARAM_TYPE_ENUMERATION       3
-#define ESP_CAM_SENSOR_PARAM_TYPE_STRIGN            4
+#define ESP_CAM_SENSOR_PARAM_TYPE_STRING            4
+#define ESP_CAM_SENSOR_PARAM_TYPE_U8                5
 
 #define ESP_CAM_SENSOR_PARAM_FLAG_READ_ONLY         (1 <<  0)
 #define ESP_CAM_SENSOR_PARAM_FLAG_WRITE_ONLY        (1 <<  1)
@@ -112,6 +116,7 @@ typedef enum {
 #define ESP_CAM_SENSOR_INT_TIME                     ESP_CAM_SENSOR_CLASS_ID(ESP_CAM_SENSOR_CID_CLASS_3A, 0x15)  /*!< Integral time */
 #define ESP_CAM_SENSOR_AE_LEVEL                     ESP_CAM_SENSOR_CLASS_ID(ESP_CAM_SENSOR_CID_CLASS_3A, 0x16)  /*!< Automatic exposure level */
 #define ESP_CAM_SENSOR_GAIN                         ESP_CAM_SENSOR_CLASS_ID(ESP_CAM_SENSOR_CID_CLASS_3A, 0x17)  /*!< Absolute gain (analog gain + digital gain) */
+#define ESP_CAM_SENSOR_STATS                        ESP_CAM_SENSOR_CLASS_ID(ESP_CAM_SENSOR_CID_CLASS_3A, 0x18)  /*!< Camera sensor gain & wb statistical data */
 
 /**
  * @brief Camera sensor lens class's control ID
@@ -160,6 +165,10 @@ typedef struct esp_cam_sensor_param_desc {
             uint32_t count;                         /*!< Camera sensor enumeration type parameter supported elements count */
             const uint32_t *elements;               /*!< Camera sensor enumeration type parameter supported elements buffer pointer */
         } enumeration;
+
+        struct {
+            uint32_t size;                          /*!< size of the data type */
+        } u8;
     };
 
     int32_t default_value;                          /*!< Camera sensor parameter default value */
@@ -333,6 +342,22 @@ typedef struct {
     esp_cam_sensor_port_t port;
     uint16_t sccb_addr;
 } esp_cam_sensor_detect_fn_t;
+
+/**
+ * @brief Description of cam sensor statistical data
+ */
+typedef struct {
+    uint32_t flags;
+    uint32_t seq;
+    uint16_t agc_gain; /*!< AGC gain output to sensor */
+    union {
+        struct {
+            uint8_t red_avg;
+            uint8_t blue_avg;
+            uint8_t green_avg;
+        } wb_avg;
+    };
+} esp_cam_sensor_stats_t;
 
 #ifdef __cplusplus
 }

@@ -1,3 +1,8 @@
+## 0.6.0
+
+- Added support for OV5647 RAW10 format with 1920x1080、1280x960 resolution
+- Added support for OV2710 mipi driver
+
 ## 0.5.5
 
 - Added support for querying flip and mirror parameters 

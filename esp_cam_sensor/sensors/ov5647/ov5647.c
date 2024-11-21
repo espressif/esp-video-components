@@ -23,6 +23,8 @@
 
 #define OV5647_PID         0x5647
 #define OV5647_SENSOR_NAME "OV5647"
+#define OV5647_AE_TARGET_DEFAULT (0x40)
+
 #ifndef portTICK_RATE_MS
 #define portTICK_RATE_MS portTICK_PERIOD_MS
 #endif
@@ -56,6 +58,24 @@ static const esp_cam_sensor_isp_info_t ov5647_isp_info[] = {
             .pclk = 81666700,
             .vts = 1896,
             .hts = 984,
+            .bayer_type = ESP_CAM_SENSOR_BAYER_BGGR,
+        }
+    },
+    {
+        .isp_v1_info = {
+            .version = SENSOR_ISP_INFO_VERSION_DEFAULT,
+            .pclk = 81666700,
+            .vts = 1104,
+            .hts = 2416,
+            .bayer_type = ESP_CAM_SENSOR_BAYER_BGGR,
+        }
+    },
+    {
+        .isp_v1_info = {
+            .version = SENSOR_ISP_INFO_VERSION_DEFAULT,
+            .pclk = 88333333,
+            .vts = 1796,
+            .hts = 1093,
             .bayer_type = ESP_CAM_SENSOR_BAYER_BGGR,
         }
     },
@@ -111,6 +131,42 @@ static const esp_cam_sensor_format_t ov5647_format_info[] = {
         .isp_info = &ov5647_isp_info[2],
         .mipi_info = {
             .mipi_clk = OV5647_MIPI_CSI_LINE_RATE_800x800_50FPS,
+            .lane_num = 2,
+            .line_sync_en = CONFIG_CAMERA_OV5647_CSI_LINESYNC_ENABLE ? true : false,
+        },
+        .reserved = NULL,
+    },
+    {
+        .name = "MIPI_2lane_24Minput_RAW10_1920x1080_30fps",
+        .format = ESP_CAM_SENSOR_PIXFORMAT_RAW10,
+        .port = ESP_CAM_SENSOR_MIPI_CSI,
+        .xclk = 24000000,
+        .width = 1920,
+        .height = 1080,
+        .regs = ov5647_input_24M_MIPI_2lane_raw10_1920x1080_30fps,
+        .regs_size = ARRAY_SIZE(ov5647_input_24M_MIPI_2lane_raw10_1920x1080_30fps),
+        .fps = 30,
+        .isp_info = &ov5647_isp_info[3],
+        .mipi_info = {
+            .mipi_clk = OV5647_MIPI_CSI_LINE_RATE_1920x1080_30FPS,
+            .lane_num = 2,
+            .line_sync_en = CONFIG_CAMERA_OV5647_CSI_LINESYNC_ENABLE ? true : false,
+        },
+        .reserved = NULL,
+    },
+    {
+        .name = "MIPI_2lane_24Minput_RAW10_1280x960_binning_45fps",
+        .format = ESP_CAM_SENSOR_PIXFORMAT_RAW10,
+        .port = ESP_CAM_SENSOR_MIPI_CSI,
+        .xclk = 24000000,
+        .width = 1280,
+        .height = 960,
+        .regs = ov5647_input_24M_MIPI_2lane_raw10_1280x960_45fps,
+        .regs_size = ARRAY_SIZE(ov5647_input_24M_MIPI_2lane_raw10_1280x960_45fps),
+        .fps = 45,
+        .isp_info = &ov5647_isp_info[4],
+        .mipi_info = {
+            .mipi_clk = OV5647_MIPI_CSI_LINE_RATE_1280x960_45FPS,
             .lane_num = 2,
             .line_sync_en = CONFIG_CAMERA_OV5647_CSI_LINESYNC_ENABLE ? true : false,
         },
@@ -244,6 +300,32 @@ static esp_err_t ov5647_set_vflip(esp_cam_sensor_device_t *dev, int enable)
     return ov5647_set_reg_bits(dev->sccb_handle, 0x3820, 1, 1, enable ? 0x01 : 0x00);
 }
 
+static esp_err_t ov5647_set_AE_target(esp_cam_sensor_device_t *dev, int target)
+{
+    esp_err_t ret = ESP_OK;
+    /* stable in high */
+    int fast_high, fast_low;
+    int AE_low = target * 23 / 25;  /* 0.92 */
+    int AE_high = target * 27 / 25; /* 1.08 */
+
+    fast_high = AE_high << 1;
+    if (fast_high > 255) {
+        fast_high = 255;
+    }
+
+    fast_low = AE_low >> 1;
+
+    ret |= ov5647_write(dev->sccb_handle, 0x3a0f, AE_high);
+    ret |= ov5647_write(dev->sccb_handle, 0x3a10, AE_low);
+    ret |= ov5647_write(dev->sccb_handle, 0x3a1b, AE_high);
+    ret |= ov5647_write(dev->sccb_handle, 0x3a1e, AE_low);
+    ret |= ov5647_write(dev->sccb_handle, 0x3a11, fast_high);
+    ret |= ov5647_write(dev->sccb_handle, 0x3a1f, fast_low);
+
+    return ret;
+}
+
+
 static esp_err_t ov5647_query_para_desc(esp_cam_sensor_device_t *dev, esp_cam_sensor_param_desc_t *qdesc)
 {
     esp_err_t ret = ESP_OK;
@@ -255,6 +337,13 @@ static esp_err_t ov5647_query_para_desc(esp_cam_sensor_device_t *dev, esp_cam_se
         qdesc->number.maximum = 1;
         qdesc->number.step = 1;
         qdesc->default_value = 0;
+        break;
+    case ESP_CAM_SENSOR_EXPOSURE_VAL:
+        qdesc->type = ESP_CAM_SENSOR_PARAM_TYPE_NUMBER;
+        qdesc->number.minimum = 2;
+        qdesc->number.maximum = 235;
+        qdesc->number.step = 1;
+        qdesc->default_value = OV5647_AE_TARGET_DEFAULT;
         break;
     default: {
         ESP_LOGE(TAG, "id=%"PRIx32" is not supported", qdesc->id);
@@ -287,6 +376,12 @@ static esp_err_t ov5647_set_para_value(esp_cam_sensor_device_t *dev, uint32_t id
         ret = ov5647_set_mirror(dev, *value);
         break;
     }
+    case ESP_CAM_SENSOR_EXPOSURE_VAL: {
+        int *value = (int *)arg;
+
+        ret = ov5647_set_AE_target(dev, *value);
+        break;
+    }
     default: {
         ESP_LOGE(TAG, "set id=%" PRIx32 " is not supported", id);
         ret = ESP_ERR_INVALID_ARG;
@@ -316,6 +411,134 @@ static esp_err_t ov5647_query_support_capability(esp_cam_sensor_device_t *dev, e
     return ESP_OK;
 }
 
+static int ov5647_get_sysclk(esp_cam_sensor_device_t *dev)
+{
+    /* calculate sysclk */
+    int xvclk = dev->cur_format->xclk / 10000;
+    int sysclk = 0;
+    uint8_t temp1, temp2;
+    int pre_div02x, div_cnt7b, sdiv0, pll_rdiv, bit_div2x, sclk_div, VCO;
+    const int pre_div02x_map[] = {2, 2, 4, 6, 8, 3, 12, 5, 16, 2, 2, 2, 2, 2, 2, 2};
+    const int sdiv0_map[] = {16, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15};
+    const int pll_rdiv_map[] = {1, 2};
+    const int bit_div2x_map[] = {2, 2, 2, 2, 2, 2, 2, 2, 4, 2, 5, 2, 2, 2, 2, 2};
+    const int sclk_div_map[] = {1, 2, 4, 1};
+
+    ov5647_read(dev->sccb_handle, 0x3037, &temp1);
+    temp2 = temp1 & 0x0f;
+    pre_div02x = pre_div02x_map[temp2];
+    temp2 = (temp1 >> 4) & 0x01;
+    pll_rdiv = pll_rdiv_map[temp2];
+    ov5647_read(dev->sccb_handle, 0x3036, &temp1);
+
+    div_cnt7b = temp1;
+
+    VCO = xvclk * 2 / pre_div02x * div_cnt7b;
+    ov5647_read(dev->sccb_handle, 0x3035, &temp1);
+    temp2 = temp1 >> 4;
+    sdiv0 = sdiv0_map[temp2];
+    ov5647_read(dev->sccb_handle, 0x3034, &temp1);
+    temp2 = temp1 & 0x0f;
+    bit_div2x = bit_div2x_map[temp2];
+    ov5647_read(dev->sccb_handle, 0x3106, &temp1);
+    temp2 = (temp1 >> 2) & 0x03;
+    sclk_div = sclk_div_map[temp2];
+    sysclk = VCO * 2 / sdiv0 / pll_rdiv / bit_div2x / sclk_div;
+    return sysclk;
+}
+
+static int ov5647_get_hts(esp_cam_sensor_device_t *dev)
+{
+    /* read HTS from register settings */
+    int hts = 0;
+    uint8_t temp1, temp2;
+
+    ov5647_read(dev->sccb_handle, 0x380c, &temp1);
+    ov5647_read(dev->sccb_handle, 0x380d, &temp2);
+    hts = (temp1 << 8) + temp2;
+
+    return hts;
+}
+
+static int ov5647_get_vts(esp_cam_sensor_device_t *dev)
+{
+    /* read VTS from register settings */
+    int vts = 0;
+    uint8_t temp1, temp2;
+
+    /* total vertical size[15:8] high byte */
+    ov5647_read(dev->sccb_handle, 0x380e, &temp1);
+    ov5647_read(dev->sccb_handle, 0x380f, &temp2);
+
+    vts = (temp1 << 8) + temp2;
+
+    return vts;
+}
+
+static int ov5647_get_light_freq(esp_cam_sensor_device_t *dev)
+{
+    /* get banding filter value */
+    uint8_t temp, temp1;
+    int light_freq = 0;
+
+    ov5647_read(dev->sccb_handle, 0x3c01, &temp);
+
+    if (temp & 0x80) {
+        /* manual */
+        ov5647_read(dev->sccb_handle, 0x3c00, &temp1);
+        if (temp1 & 0x04) {
+            /* 50Hz */
+            light_freq = 50;
+        } else {
+            /* 60Hz */
+            light_freq = 60;
+        }
+    } else {
+        /* auto */
+        ov5647_read(dev->sccb_handle, 0x3c0c, &temp1);
+        if (temp1 & 0x01) {
+            /* 50Hz */
+            light_freq = 50;
+        } else {
+            light_freq = 60;
+        }
+    }
+    return light_freq;
+}
+
+static esp_err_t ov5647_set_bandingfilter(esp_cam_sensor_device_t *dev)
+{
+    esp_err_t ret;
+    int prev_sysclk, prev_VTS, prev_HTS;
+    int band_step60, max_band60, band_step50, max_band50;
+
+    /* read preview PCLK */
+    prev_sysclk = ov5647_get_sysclk(dev);
+    /* read preview HTS */
+    prev_HTS = ov5647_get_hts(dev);
+
+    /* read preview VTS */
+    prev_VTS = ov5647_get_vts(dev);
+
+    /* calculate banding filter */
+    /* 60Hz */
+    band_step60 = prev_sysclk * 100 / prev_HTS * 100 / 120;
+    ret = ov5647_write(dev->sccb_handle, 0x3a0a, (uint8_t)(band_step60 >> 8));
+    ret |= ov5647_write(dev->sccb_handle, 0x3a0b, (uint8_t)(band_step60 & 0xff));
+
+    max_band60 = (int)((prev_VTS - 4) / band_step60);
+    ret |= ov5647_write(dev->sccb_handle, 0x3a0d, (uint8_t)max_band60);
+
+    /* 50Hz */
+    band_step50 = prev_sysclk * 100 / prev_HTS;
+    ret |= ov5647_write(dev->sccb_handle, 0x3a08, (uint8_t)(band_step50 >> 8));
+    ret |= ov5647_write(dev->sccb_handle, 0x3a09, (uint8_t)(band_step50 & 0xff));
+
+    max_band50 = (int)((prev_VTS - 4) / band_step50);
+    ret |= ov5647_write(dev->sccb_handle, 0x3a0e, (uint8_t)max_band50);
+    return ret;
+}
+
 static esp_err_t ov5647_set_format(esp_cam_sensor_device_t *dev, const esp_cam_sensor_format_t *format)
 {
     ESP_CAM_SENSOR_NULL_POINTER_CHECK(TAG, dev);
@@ -336,9 +559,15 @@ static esp_err_t ov5647_set_format(esp_cam_sensor_device_t *dev, const esp_cam_s
     // write format related regs
     ret = ov5647_write_array(dev->sccb_handle, (const ov5647_reginfo_t *)format->regs);
     ESP_RETURN_ON_FALSE(ret == ESP_OK, ret, TAG, "write fmt regs failed");
+
+    ret = ov5647_set_AE_target(dev, OV5647_AE_TARGET_DEFAULT);
+    ESP_RETURN_ON_FALSE(ret == ESP_OK, ret, TAG, "set ae target failed");
+    ov5647_set_bandingfilter(dev);
+
     // stop stream default
     ret = ov5647_set_stream(dev, 0);
     ESP_RETURN_ON_FALSE(ret == ESP_OK, ret, TAG, "write stream regs failed");
+    ESP_LOGD(TAG, "light freq=0x%x", ov5647_get_light_freq(dev));
 
     dev->cur_format = format;
 
