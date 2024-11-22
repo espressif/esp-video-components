@@ -19,3 +19,4 @@ This component provides drivers for camera sensors that can be used on the ESP32
 | SC101IOT  | 1280 x 720    | DVP | YCbCr422<br/>8/10-bit Raw RGB data | 1/4.2"     |
 | SC030IOT  | 640 x 480    | DVP | YCbCr422<br/>8bit Raw RGB data | 1/6.5"     |
 | BF3925  | 1600 x 1200    | DVP | YCbCr422<br/>8bit Raw RGB data | 1/5"     |
+| SC035HGS  | 640 x 480    | MIPI & DVP | Raw MONO<br/>Raw RGB data | 1/6"     |

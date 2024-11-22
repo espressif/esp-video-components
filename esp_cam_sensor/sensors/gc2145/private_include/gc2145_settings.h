@@ -121,7 +121,7 @@ static const gc2145_reginfo_t gc2145_antibanding[4][GC2145_ANTI_BANDING_REG_SIZE
     }, /*ANTIBANDING AUTO*/
 };
 
-static const gc2145_reginfo_t gc2145_mipi_1lane_24Minput_800x600_yuv422_30fps[] = {
+static const gc2145_reginfo_t gc2145_mipi_1lane_24Minput_800x600_rgb565_30fps[] = {
     {0xfe, 0xf0},
     {GC2145_REG_DELAY, 0x09},
     {0xfc, 0x06},
@@ -169,7 +169,7 @@ static const gc2145_reginfo_t gc2145_mipi_1lane_24Minput_800x600_yuv422_30fps[] 
     {0x81, 0x26},
     {0x82, 0xfa},
     {0x83, 0x00},
-    {0x84, 0x03},//yuv422
+    {GC2145_REG_P0_OUTPUT_FORMAT, 0x06},//0x06:rgb565,0x03:yuv422
     {0x86, 0x02},
     {0x88, 0x03},
     {0x89, 0x03},
@@ -845,7 +845,7 @@ static const gc2145_reginfo_t gc2145_mipi_1lane_24Minput_800x600_yuv422_30fps[] 
     {0xfe, 0x00},
 };
 
-static const gc2145_reginfo_t gc2145_mipi_1lane_24Minput_1600x1200_yuv422_7fps[] = {
+static const gc2145_reginfo_t gc2145_mipi_1lane_24Minput_1600x1200_rgb565_7fps[] = {
     {0xfe, 0xf0},
     {GC2145_REG_DELAY, 0x09},
     {0xfc, 0x06},
@@ -897,7 +897,7 @@ static const gc2145_reginfo_t gc2145_mipi_1lane_24Minput_1600x1200_yuv422_7fps[]
     {0x81, 0x26},
     {0x82, 0xfa},
     {0x83, 0x00},
-    {0x84, 0x03},
+    {GC2145_REG_P0_OUTPUT_FORMAT, 0x06},
     {0x86, 0x02},
     {0x88, 0x03},
     {0x89, 0x03},
@@ -1633,7 +1633,7 @@ static const gc2145_reginfo_t gc2145_DVP_8bit_20Minput_640x480_yuv422_15fps_wind
     {0x81, 0x24},//26//24 //BLK dither mode, ll_y_en ,skin_en, edge SA, new_skin_mode, autogray_en,ll_gamma_en,BFF test image
     {0x82, 0xfa}, //FA //auto_SA, auto_EE, auto_DN, auto_DD, auto_LSC, ABS_en, AWB_en, NA
     {0x83, 0x00}, //special_effect
-    {0x84, 0x00}, //output format [4:0] output data mode 5’h06 RGB 565
+    {GC2145_REG_P0_OUTPUT_FORMAT, 0x00}, //output format [4:0] output data mode 5’h06 RGB 565
     {0x86, 0x03}, //c2 //46 //c2 //sync mode
     {0x88, 0x03}, //[1]ctl_auto_gating [0]out_auto_gating
     {0x89, 0x03}, //bypass disable
@@ -2334,7 +2334,7 @@ static const gc2145_reginfo_t gc2145_DVP_8bit_20Minput_1600x1200_yuv422_13fps[] 
     {0x81, 0x26},
     {0x82, 0xfa},
     {0x83, 0x00},
-    {0x84, 0x00},
+    {GC2145_REG_P0_OUTPUT_FORMAT, 0x00},
     {0x86, 0x02},
     {0x88, 0x03},
     {0x89, 0x03},
@@ -3095,7 +3095,7 @@ static const gc2145_reginfo_t gc2145_DVP_8bit_20Minput_800x600_yuv422_20fps[] = 
     {0x81, 0x26},
     {0x82, 0xfa},
     {0x83, 0x00},
-    {0x84, 0x00},
+    {GC2145_REG_P0_OUTPUT_FORMAT, 0x00},
     {0x86, 0x02},
     {0x88, 0x03},
     {0x89, 0x03},

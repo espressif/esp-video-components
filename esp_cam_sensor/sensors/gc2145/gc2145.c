@@ -91,14 +91,14 @@ static const char *TAG = "gc2145";
 
 static const esp_cam_sensor_format_t gc2145_format_info[] = {
     {
-        .name = "MIPI_1lane_24Minput_YUV422_1600x1200_7fps",
-        .format = ESP_CAM_SENSOR_PIXFORMAT_YUV422,
+        .name = "MIPI_1lane_24Minput_RGB565_1600x1200_7fps",
+        .format = ESP_CAM_SENSOR_PIXFORMAT_RGB565,
         .port = ESP_CAM_SENSOR_MIPI_CSI,
         .xclk = 24000000,
         .width = 1600,
         .height = 1200,
-        .regs = gc2145_mipi_1lane_24Minput_1600x1200_yuv422_7fps,
-        .regs_size = ARRAY_SIZE(gc2145_mipi_1lane_24Minput_1600x1200_yuv422_7fps),
+        .regs = gc2145_mipi_1lane_24Minput_1600x1200_rgb565_7fps,
+        .regs_size = ARRAY_SIZE(gc2145_mipi_1lane_24Minput_1600x1200_rgb565_7fps),
         .fps = 7,
         .isp_info = NULL,
         .mipi_info = {
@@ -109,14 +109,14 @@ static const esp_cam_sensor_format_t gc2145_format_info[] = {
         .reserved = NULL,
     },
     {
-        .name = "MIPI_1lane_24Minput_YUV422_800x600_30fps",
-        .format = ESP_CAM_SENSOR_PIXFORMAT_YUV422,
+        .name = "MIPI_1lane_24Minput_RGB565_800x600_30fps",
+        .format = ESP_CAM_SENSOR_PIXFORMAT_RGB565,
         .port = ESP_CAM_SENSOR_MIPI_CSI,
         .xclk = 24000000,
         .width = 800,
         .height = 600,
-        .regs = gc2145_mipi_1lane_24Minput_800x600_yuv422_30fps,
-        .regs_size = ARRAY_SIZE(gc2145_mipi_1lane_24Minput_800x600_yuv422_30fps),
+        .regs = gc2145_mipi_1lane_24Minput_800x600_rgb565_30fps,
+        .regs_size = ARRAY_SIZE(gc2145_mipi_1lane_24Minput_800x600_rgb565_30fps),
         .fps = 30,
         .isp_info = NULL,
         .mipi_info = {

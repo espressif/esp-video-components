@@ -32,21 +32,21 @@ if CAMERA_GC2145
 
     choice CAMERA_GC2145_MIPI_DEFAULT_FMT
         prompt "Default format select"
-        default CAMERA_GC2145_MIPI_YUV422_800x600_30FPS
+        default CAMERA_GC2145_MIPI_RGB565_800x600_30FPS
         help
             Select the default format to load when the sensor is detected.
             When the sensor is in stream off state, the format can be changed.
     
-        config CAMERA_GC2145_MIPI_YUV422_1600x1200_7FPS
-            bool "YUV422 1600x1200 7fps, MIPI 1lane 24M input"
-        config CAMERA_GC2145_MIPI_YUV422_800x600_30FPS
-            bool "YUV422 800x600 30fps, MIPI 1lane 24M input"
+        config CAMERA_GC2145_MIPI_RGB565_1600x1200_7FPS
+            bool "RGB565 1600x1200 7fps, MIPI 1lane 24M input"
+        config CAMERA_GC2145_MIPI_RGB565_800x600_30FPS
+            bool "RGB565 800x600 30fps, MIPI 1lane 24M input"
     endchoice # CAMERA_GC2145_MIPI_DEFAULT_FMT
 
     config CAMERA_GC2145_MIPI_IF_FORMAT_INDEX_DAFAULT
         int
-        default 0 if CAMERA_GC2145_MIPI_YUV422_1600x1200_7FPS
-        default 1 if CAMERA_GC2145_MIPI_YUV422_800x600_30FPS
+        default 0 if CAMERA_GC2145_MIPI_RGB565_1600x1200_7FPS
+        default 1 if CAMERA_GC2145_MIPI_RGB565_800x600_30FPS
         help
             Set the configuration loaded by default for the MIPI interface.
             More information can be obtained by calling the query_support_formats().

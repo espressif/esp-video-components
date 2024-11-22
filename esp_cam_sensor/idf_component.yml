@@ -1,4 +1,4 @@
-version: "0.6.1"
+version: "0.7.0"
 description: "Espressif camera sensor drivers"
 targets:
   - esp32p4
@@ -8,5 +8,5 @@ issues: https://github.com/espressif/esp-video-components/issues
 dependencies:
     idf: ">=5.3"
     esp_sccb_intf:
-      override_path: "../esp_sccb_intf"
+      version: ">=0.0.2"
     cmake_utilities: "0.*"

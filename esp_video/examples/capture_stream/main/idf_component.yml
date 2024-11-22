@@ -3,5 +3,3 @@ dependencies:
   esp_video:
     version: ">=0.1.0"
     override_path: "../../../"
-  esp_cam_sensor:
-    override_path: "../../../../esp_cam_sensor"

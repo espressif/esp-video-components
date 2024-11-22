@@ -2,6 +2,7 @@
 
 - Added support for GC2145 MIPI & DVP camera sensor driver 
 - Added support for BF3925 DVP camera sensor driver
+- Added support for SC035HGS MIPI camera sensor driver 
 
 ## 0.6.1
 
@@ -10,7 +11,7 @@
 ## 0.6.0
 
 - Added support for OV5647 RAW10 format with 1920x1080、1280x960 resolution
-- Added support for OV2710 mipi driver 
+- Added support for OV2710 mipi driver
 
 ## 0.5.5
 
