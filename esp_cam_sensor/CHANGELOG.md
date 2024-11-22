@@ -1,6 +1,7 @@
 ## 0.7.0
 
-- Added support for GC2145 MIPI & DVP camera sensor driver
+- Added support for GC2145 MIPI & DVP camera sensor driver 
+- Added support for BF3925 DVP camera sensor driver
 
 ## 0.6.1
 
