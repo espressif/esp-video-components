@@ -47,6 +47,12 @@ if CAMERA_OV2640
             bool "JPEG 1600x1200 12fps, DVP 8bit 20M input"
         config CAMERA_OV2640_DVP_RAW8_800x640_30FPS
             bool "RAW8 800x640 30fps, DVP 8bit 20M input"
+        config CAMERA_OV2640_DVP_RAW8_800x640_15FPS
+            bool "RAW8 800x640 15fps, DVP 8bit 20M input"
+        config CAMERA_OV2640_DVP_RAW8_800x800_15FPS
+            bool "RAW8 800x800 15fps, DVP 8bit 20M input"
+        config CAMERA_OV2640_DVP_RAW8_1024x600_15FPS
+            bool "RAW8 1024x600 15fps, DVP 8bit 20M input"
     endchoice # CAMERA_OV2640_DVP_DEFAULT_FMT
 
     config CAMERA_OV2640_DVP_IF_FORMAT_INDEX_DAFAULT
@@ -60,6 +66,9 @@ if CAMERA_OV2640
         default 6 if CAMERA_OV2640_DVP_JPEG_320x240_50FPS
         default 7 if CAMERA_OV2640_DVP_JPEG_1280x720_12FPS
         default 8 if CAMERA_OV2640_DVP_RAW8_800x640_30FPS
+        default 9 if CAMERA_OV2640_DVP_RAW8_800x640_15FPS
+        default 10 if CAMERA_OV2640_DVP_RAW8_800x800_15FPS
+        default 11 if CAMERA_OV2640_DVP_RAW8_1024x600_15FPS
         help
             Set the configuration loaded by default for the DVP interface.
             More information can be obtained by calling the query_support_formats().
