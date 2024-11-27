@@ -108,13 +108,13 @@ esp_err_t esp_video_isp_start_by_csi(const esp_video_csi_state_t *state, const s
 /**
  * @brief Stop ISP process
  *
- * @param bypass true: bypass ISP and MIPI-CSI output sensor original data, false: ISP process image
+ * @param state MIPI-CSI state object
  *
  * @return
  *      - ESP_OK on success
  *      - Others if failed
  */
-esp_err_t esp_video_isp_stop(bool bypass);
+esp_err_t esp_video_isp_stop(const esp_video_csi_state_t *state);
 
 /**
  * @brief Enumerate ISP supported output pixel format

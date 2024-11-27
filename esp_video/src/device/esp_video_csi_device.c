@@ -367,7 +367,7 @@ static esp_err_t csi_video_start(struct esp_video *video, uint32_t type)
     return ESP_OK;
 
 exit_3:
-    esp_video_isp_stop(csi_video->state.bypass_isp);
+    esp_video_isp_stop(&csi_video->state);
 exit_2:
     esp_cam_ctlr_stop(csi_video->cam_ctrl_handle);
 exit_1:
@@ -386,7 +386,7 @@ static esp_err_t csi_video_stop(struct esp_video *video, uint32_t type)
     ESP_RETURN_ON_ERROR(esp_cam_sensor_ioctl(csi_video->cam_dev, ESP_CAM_SENSOR_IOC_S_STREAM, &flags),
                         TAG, "failed to stop sensor stream");
 
-    ESP_RETURN_ON_ERROR(esp_video_isp_stop(csi_video->state.bypass_isp), TAG, "failed to stop ISP");
+    ESP_RETURN_ON_ERROR(esp_video_isp_stop(&csi_video->state), TAG, "failed to stop ISP");
 
     ESP_RETURN_ON_ERROR(esp_cam_ctlr_stop(csi_video->cam_ctrl_handle), TAG, "failed to stop CAM ctlr");
     ESP_RETURN_ON_ERROR(esp_cam_ctlr_disable(csi_video->cam_ctrl_handle), TAG, "failed to disable CAM ctlr");
