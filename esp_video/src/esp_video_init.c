@@ -26,6 +26,7 @@
  * @brief SCCB initialization mark
  */
 typedef struct sccb_mark {
+    int i2c_ref;                                /*!< I2C reference */
     i2c_master_bus_handle_t handle;             /*!< I2C master handle */
     const esp_video_init_sccb_config_t *config; /*!< SCCB initialization config pointer */
     uint16_t dev_addr;                          /*!< Slave device address */
@@ -102,6 +103,9 @@ static i2c_master_bus_handle_t create_i2c_master_bus(esp_video_init_sccb_mark_t 
         mark[i2c_port].port = port;
     }
 
+    mark[i2c_port].i2c_ref++;
+    assert(mark[i2c_port].i2c_ref > 0);
+
     return bus_handle;
 }
 
@@ -148,6 +152,32 @@ static esp_sccb_io_handle_t create_sccb_device(esp_video_init_sccb_mark_t *mark,
 
     return sccb_io;
 }
+
+/**
+ * @brief Destroy SCCB device
+ *
+ * @param handle SCCB handle
+ * @param mark SCCB initialization make array
+ *
+ * @return None
+ */
+static void destroy_sccb_device(esp_sccb_io_handle_t handle, esp_video_init_sccb_mark_t *mark,
+                                const esp_video_init_sccb_config_t *init_sccb_config)
+{
+    esp_sccb_del_i2c_io(handle);
+    if (init_sccb_config->init_sccb) {
+        int i2c_port = init_sccb_config->i2c_config.port;
+
+        if (mark[i2c_port].handle) {
+            assert(mark[i2c_port].i2c_ref > 0);
+            mark[i2c_port].i2c_ref--;
+            if (!mark[i2c_port].i2c_ref) {
+                i2c_del_master_bus(mark[i2c_port].handle);
+                mark[i2c_port].handle = NULL;
+            }
+        }
+    }
+}
 #endif
 
 /**
@@ -162,6 +192,8 @@ static esp_sccb_io_handle_t create_sccb_device(esp_video_init_sccb_mark_t *mark,
 esp_err_t esp_video_init(const esp_video_init_config_t *config)
 {
     esp_err_t ret;
+    bool csi_inited = false;
+    bool dvp_inited = false;
     esp_video_init_sccb_mark_t sccb_mark[SCCB_NUM_MAX] = {0};
 
     if (config == NULL) {
@@ -179,7 +211,7 @@ esp_err_t esp_video_init(const esp_video_init_config_t *config)
 
     for (esp_cam_sensor_detect_fn_t *p = &__esp_cam_sensor_detect_fn_array_start; p < &__esp_cam_sensor_detect_fn_array_end; ++p) {
 #if CONFIG_ESP_VIDEO_ENABLE_MIPI_CSI_VIDEO_DEVICE
-        if (p->port == ESP_CAM_SENSOR_MIPI_CSI && config->csi != NULL) {
+        if (!csi_inited && p->port == ESP_CAM_SENSOR_MIPI_CSI && config->csi != NULL) {
             esp_cam_sensor_config_t cfg;
             esp_cam_sensor_device_t *cam_dev;
 
@@ -192,8 +224,9 @@ esp_err_t esp_video_init(const esp_video_init_config_t *config)
             cfg.pwdn_pin = config->csi->pwdn_pin,
             cam_dev = (*(p->detect))((void *)&cfg);
             if (!cam_dev) {
-                ESP_LOGE(TAG, "failed to detect MIPI-CSI camera");
-                return ESP_FAIL;
+                destroy_sccb_device(cfg.sccb_handle, sccb_mark, &config->csi->sccb_config);
+                ESP_LOGE(TAG, "failed to detect MIPI-CSI camera sensor with address=%x", p->sccb_addr);
+                continue;
             }
 
             ret = esp_video_create_csi_video_device(cam_dev);
@@ -222,11 +255,12 @@ esp_err_t esp_video_init(const esp_video_init_config_t *config)
                 }
             }
 #endif
+            csi_inited = true;
         }
 #endif
 
 #if CONFIG_ESP_VIDEO_ENABLE_DVP_VIDEO_DEVICE
-        if (p->port == ESP_CAM_SENSOR_DVP && config->dvp != NULL) {
+        if (!dvp_inited && p->port == ESP_CAM_SENSOR_DVP && config->dvp != NULL) {
             int dvp_ctlr_id = 0;
             esp_cam_sensor_config_t cfg;
             esp_cam_sensor_device_t *cam_dev;
@@ -252,8 +286,10 @@ esp_err_t esp_video_init(const esp_video_init_config_t *config)
             cfg.pwdn_pin = config->dvp->pwdn_pin,
             cam_dev = (*(p->detect))((void *)&cfg);
             if (!cam_dev) {
-                ESP_LOGE(TAG, "failed to detect DVP camera");
-                return ESP_FAIL;
+                destroy_sccb_device(cfg.sccb_handle, sccb_mark, &config->dvp->sccb_config);
+                esp_cam_ctlr_dvp_deinit(dvp_ctlr_id);
+                ESP_LOGE(TAG, "failed to detect DVP camera with address=%x", p->sccb_addr);
+                continue;
             }
 
             ret = esp_video_create_dvp_video_device(cam_dev);
@@ -261,6 +297,8 @@ esp_err_t esp_video_init(const esp_video_init_config_t *config)
                 ESP_LOGE(TAG, "failed to create DVP video device");
                 return ret;
             }
+
+            dvp_inited = true;
         }
 #endif
     }
