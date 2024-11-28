@@ -7,10 +7,16 @@
 #pragma once
 
 #include <stdint.h>
+#include <sys/param.h>
+#include <stdbool.h>
 #include "hal/isp_types.h"
 
 #ifdef __cplusplus
 extern "C" {
+#endif
+
+#ifndef ARRAY_SIZE
+#define ARRAY_SIZE(a)               (sizeof(a) / sizeof((a)[0]))
 #endif
 
 #define ISP_AWB_REGIONS             1   /*!< Auto white balance regions */
@@ -27,7 +33,6 @@ extern "C" {
 /**
  * @brief IPA meta data flags.
  */
-#define IPA_METADATA_FLAGS_CT       (1 << 0)    /*!< Meta data has color temperature */
 #define IPA_METADATA_FLAGS_RG       (1 << 1)    /*!< Meta data has red gain */
 #define IPA_METADATA_FLAGS_BG       (1 << 2)    /*!< Meta data has blue gain */
 #define IPA_METADATA_FLAGS_ET       (1 << 3)    /*!< Meta data has exposure */
@@ -41,8 +46,20 @@ extern "C" {
 #define IPA_METADATA_FLAGS_ST       (1 << 11)   /*!< Meta data has saturation */
 #define IPA_METADATA_FLAGS_HUE      (1 << 12)   /*!< Meta data has hue */
 #define IPA_METADATA_FLAGS_DM       (1 << 13)   /*!< Meta data has demosaic */
+#define IPA_METADATA_FLAGS_LSC      (1 << 14)   /*!< Meta data has LSC */
+
+/**
+ * @brief Auto gain control metering mode
+ */
+typedef enum esp_ipa_agc_meter_mode {
+    ESP_IPA_AGC_METER_AVERAGE = 0,              /*!< Use default metering weight table */
+    ESP_IPA_AGC_METER_HIGHLIGHT_PRIOR,          /*!< Use default metering weight table + high light priority config */
+    ESP_IPA_AGC_METER_LOWLIGHT_PRIOR,           /*!< Use default metering weight table + low light priority config */
+    ESP_IPA_AGC_METER_LIGHT_THRESHOLD           /*!< Use default metering weight table + light threshold config */
+} esp_ipa_agc_meter_mode_t;
 
 struct esp_ipa;
+struct esp_ipa_pipeline;
 
 /**
  * @brief Camera sensor information.
@@ -53,8 +70,8 @@ typedef struct esp_ipa_sensor {
 
     uint32_t max_exposure;                  /*!< Maximum exposure, unit is micro second */
     uint32_t min_exposure;                  /*!< Minmium exposure, unit is micro second */
-    uint32_t cur_exposure;                  /*!< Current exposure, unit is micro second us */
-    uint32_t step_exposure;                 /*!< Step exposure, unit is micro second us; if step_exposure == 0, step size is uneven */
+    uint32_t cur_exposure;                  /*!< Current exposure, unit is micro second */
+    uint32_t step_exposure;                 /*!< Step exposure, unit is micro second; if step_exposure == 0, step size is uneven */
 
     float max_gain;                         /*!< Maximum gain */
     float min_gain;                         /*!< Minimum gain */
@@ -161,12 +178,21 @@ typedef struct esp_ipa_demosaic {
 } esp_ipa_demosaic_t;
 
 /**
+ * @brief LSC(lens shadow correction) meta data.
+ */
+typedef struct esp_ipa_lsc {
+    const isp_lsc_gain_t *gain_r;               /*!< LSC gain array for R channel */
+    const isp_lsc_gain_t *gain_gr;              /*!< LSC gain array for GR channel */
+    const isp_lsc_gain_t *gain_gb;              /*!< LSC gain array for GB channel */
+    const isp_lsc_gain_t *gain_b;               /*!< LSC gain array for B channel */
+    uint32_t lsc_gain_array_size;               /*!< LSC gain array size */
+} esp_ipa_lsc_t;
+
+/**
  * @brief IPA meta data, these data are calculated by IPA and configured to ISP hardware
  */
 typedef struct esp_ipa_metadata {
     uint32_t flags;                         /*!< IPA meta data flags */
-
-    uint32_t color_temp;                    /*!< Color temperature in Kelvin */
 
     float red_gain;                         /*!< Red gain */
     float blue_gain;                        /*!< Blue gain */
@@ -188,7 +214,214 @@ typedef struct esp_ipa_metadata {
     uint32_t contrast;                      /*!< Color contrast */
     uint32_t saturation;                    /*!< Color saturation */
     uint32_t hue;                           /*!< Color hue */
+
+    esp_ipa_lsc_t lsc;                      /*!< LSC parameters */
 } esp_ipa_metadata_t;
+
+/**
+ * @brief Auto gain control metering light luma priority config
+ */
+typedef struct esp_ipa_agc_meter_light_prior_config {
+    uint8_t luma_low_threshold;                 /*!< Light luma low threshold */
+    uint8_t luma_high_threshold;                /*!< Light luma high threshold */
+    uint8_t weight_offset;                      /*!< Light luma weight offset */
+    int8_t luma_offset;                         /*!< Light luma offset */
+} esp_ipa_agc_meter_light_prior_config_t;
+
+/**
+ * @brief Auto gain control metering light threshold unit
+ */
+typedef struct esp_ipa_agc_meter_light_threshold {
+    uint32_t luma_threshold;                    /*!< Light luma threshold */
+    uint32_t weight_offset;                     /*!< Light luma weight offset */
+} esp_ipa_agc_meter_light_threshold_t;
+
+/**
+ * @brief Auto gain control metering light threshold config
+ */
+typedef struct esp_ipa_agc_meter_light_threshold_config {
+    const esp_ipa_agc_meter_light_threshold_t *table;   /*!< metering light threshold table */
+    uint32_t table_size;                        /*!< metering light threshold table size */
+} esp_ipa_agc_meter_light_threshold_config_t;
+
+/**
+ * @brief Color saturation and gain mapping data for auto color correction algorithm
+ */
+typedef struct esp_ipa_acc_sat {
+    uint32_t color_temp;                        /*!< Color temperature */
+    uint32_t saturation;                        /*!< Color saturation */
+} esp_ipa_acc_sat_t;
+
+/**
+ * @brief Color temperature and color correction matrix mapping data for auto color correction algorithm
+ */
+typedef struct esp_ipa_acc_ccm {
+    uint32_t color_temp;                        /*!< Color temperature */
+    esp_ipa_ccm_t ccm;                          /*!< ISP color correction matrix parameter */
+} esp_ipa_acc_ccm_t;
+
+/**
+ * @brief Color temperature and lens shadow correction parameters mapping data for auto color correction algorithm
+ */
+typedef struct esp_ipa_acc_lsc_lut {
+    uint32_t color_temp;                        /* Color temperature */
+    esp_ipa_lsc_t lsc;                          /* Lens shadow correction parameters */
+} esp_ipa_acc_lsc_lut_t;
+
+/**
+ * @brief Color temperature and lens shadow correction parameters mapping data in specific resolution for auto color correction algorithm
+ */
+typedef struct esp_ipa_acc_lsc {
+    uint32_t width;                             /* Picture width */
+    uint32_t height;                            /* Picture height */
+    const esp_ipa_acc_lsc_lut_t *lsc_gain_table;    /* Color temperature and lens shadow correction parameters mapping table */
+    uint32_t lsc_gain_table_size;               /* Color temperature and lens shadow correction parameters mapping table size */
+} esp_ipa_acc_lsc_t;
+
+/**
+ * @brief Bayer filter parameter and gain mapping data for auto denoising algorithm
+ */
+typedef struct esp_ipa_adn_bf {
+    uint32_t gain;                              /*!< Camera sensor gain, unit is 0.001 */
+    esp_ipa_denoising_bf_t bf;                  /*!< ISP bayer filter parameter  */
+} esp_ipa_adn_bf_t;
+
+/**
+ * @brief Demosaic parameter and gain mapping data for auto denoising algorithm
+ */
+typedef struct esp_ipa_adn_dm {
+    uint32_t gain;                              /*!< Camera sensor gain, unit is 0.001 */
+    esp_ipa_demosaic_t dm;                      /*!< ISP demosaic parameter  */
+} esp_ipa_adn_dm_t;
+
+/**
+ * @brief GAMMA parameter for auto enhancement algorithm
+ */
+typedef struct esp_ipa_aen_gamma_config {
+    bool use_gamma_param;                       /*!< true: use variable "gamma_param" to generate gamma mapping table; false: using variable "gamma" */
+    union {
+        float gamma_param;                      /*!< Parameter to generate gamma mapping table */
+        esp_ipa_gamma_t gamma;                  /*!< Gamma mapping table */
+    };
+} esp_ipa_aen_gamma_config_t;
+
+/**
+ * @brief Sharpen parameter and gain mapping data for auto enhancement algorithm
+ */
+typedef struct esp_ipa_aen_sharpen {
+    uint32_t gain;                              /*!< Camera sensor gain, unit is 0.001 */
+    esp_ipa_sharpen_t sharpen;                  /*!< ISP sharpen parameter */
+} esp_ipa_aen_sharpen_t;
+
+/**
+ * @brief Color contrast and gain mapping data for auto enhancement algorithm
+ */
+typedef struct esp_ipa_aen_con {
+    uint32_t gain;                              /*!< Camera sensor gain, unit is 0.001 */
+    uint32_t contrast;                          /*!< Color contrast parameter */
+} esp_ipa_aen_con_t;
+
+/**
+ * @brief Auto white balance algorithm configuration
+ */
+typedef struct esp_ipa_awb_config {
+    uint32_t min_counted;                       /*!< Minimum white point number, less value will not trigger process */
+    float min_red_gain_step;                    /*!< Minimum red channel gain step, less value will not be set into hardware */
+    float min_blue_gain_step;                   /*!< Minimum blue channel gain step, less value will not be set into hardware */
+
+    bool enable_log;                            /*!< Enable auto white balance algorithm log */
+} esp_ipa_awb_config_t;
+
+/**
+ * @brief Auto color correct algorithm configuration
+ */
+typedef struct esp_ipa_acc_config {
+    const esp_ipa_acc_sat_t *sat_table;         /*!< Saturation and gain mapping table */
+    uint32_t sat_table_size;                    /*!< Saturation and gain mapping table size */
+
+    const esp_ipa_acc_ccm_t *ccm_table;         /*!< Color correction matrix and color temperature mapping table */
+    uint32_t ccm_table_size;                    /*!< Color correction matrix and color temperature mapping table size */
+
+    const esp_ipa_acc_lsc_t *lsc_table;         /* Lens shadow correction gain array, color temperature and resolution mapping table */
+    uint32_t lsc_table_size;                    /* Lens shadow correction gain array, color temperature and resolution mapping table size */
+
+    bool enable_log;                            /*!< Enable auto color correct algorithm log */
+} esp_ipa_acc_config_t;
+
+/**
+ * @brief Auto denoising algorithm configuration
+ */
+typedef struct esp_ipa_adn_config {
+    const esp_ipa_adn_bf_t *bf_table;           /*!< Bayer filter parameter and gain mapping table */
+    uint32_t bf_table_size;                     /*!< Bayer filter parameter and gain mapping table size */
+
+    const esp_ipa_adn_dm_t *dm_table;           /*!< Demosaic parameter and gain mapping table */
+    uint32_t dm_table_size;                     /*!< Demosaic parameter and gain mapping table size */
+
+    bool enable_log;                            /*!< Enable auto denoising algorithm log */
+} esp_ipa_adn_config_t;
+
+/**
+ * @brief Auto enhancement algorithm configuration
+ */
+typedef struct esp_ipa_aen_config {
+    const esp_ipa_aen_gamma_config_t *gamma;    /*!< GAMMA configuration */
+
+    const  esp_ipa_aen_sharpen_t *sharpen_table;    /*!< Sharpen parameter and gain mapping table */
+    uint16_t sharpen_table_size;                /*!< Sharpen parameter and gain mapping table size */
+
+    const esp_ipa_aen_con_t *con_table;         /*!< Color contrast and gain mapping table */
+    uint16_t con_table_size;                    /*!< Color contrast and gain mapping table size */
+    bool enable_log;                            /*!< Enable auto enhancement algorithm log */
+} esp_ipa_aen_config_t;
+
+/**
+ * @brief Auto gain control algorithm configuration
+ */
+typedef struct esp_ipa_agc_config {
+    uint8_t exposure_frame_delay;               /*!< Exposure effective delay frames */
+    uint8_t gain_frame_delay;                   /*!< Gain effective delay frames */
+    uint8_t ac_freq;                            /*!< Alternating current frequency */
+
+    uint16_t exposure_adjust_delay;              /*!< Exposure adjustment delay time in milliseconds */
+    float min_gain_step;                        /*!< Minmium gain step */
+    float gain_speed;                           /*!< Luma gain step */
+
+    uint8_t luma_low;                           /*!< Low luma */
+    uint8_t luma_high;                          /*!< High luma */
+    uint8_t luma_target;                        /*!< Target luma */
+
+    uint8_t luma_low_threshold;                 /*!< Low luma threshold */
+    uint8_t luma_low_regions;                   /*!< Low luma region numbers */
+    uint8_t luma_high_threshold;                /*!< High luma threshold */
+    uint8_t luma_high_regions;                  /*!< Low luma region numbers */
+
+    uint8_t luma_weight_table[ISP_AE_REGIONS];  /*!< Luma weight */
+
+    esp_ipa_agc_meter_mode_t meter_mode;        /*!< Metering mode */
+    esp_ipa_agc_meter_light_prior_config_t low_light_prior_config;  /*!< Low light prior config */
+    esp_ipa_agc_meter_light_prior_config_t high_light_prior_config; /*!< High light prior config */
+    esp_ipa_agc_meter_light_threshold_config_t light_threshold_config;  /*!< Light threshold config */
+
+    bool enable_log;                            /*!< Enable auto gain control algorithm log */
+} esp_ipa_agc_config_t;
+
+/**
+ * @brief IPA initialize configuration
+ */
+typedef struct esp_ipa_config {
+    const char **names;                         /*!< Image process algorithm name array */
+    uint8_t nums;                               /*!< Image process algorithm name array */
+
+    bool enable_log;                            /*!< Enable Image process algorithm core function log */
+
+    uint32_t version;                           /*!< Image process algorithm configuration parameters version */
+    const esp_ipa_agc_config_t *agc;            /*!< Auto gain control algorithm configuration */
+    const esp_ipa_awb_config_t *awb;            /*!< Auto white balance algorithm configuration */
+    const esp_ipa_acc_config_t *acc;            /*!< Auto color correct algorithm configuration */
+    const esp_ipa_adn_config_t *adn;            /*!< Auto denoising algorithm configuration */
+    const esp_ipa_aen_config_t *aen;            /*!< Auto enhancement algorithm configuration */
+} esp_ipa_config_t;
 
 /**
  * @brief Image process algorithm operations
@@ -224,6 +457,7 @@ typedef struct esp_ipa_ops {
 typedef struct esp_ipa {
     const char *name;                       /*!< IPA name */
     const esp_ipa_ops_t *ops;               /*!< IPA operations */
+    struct esp_ipa_pipeline *pipeline;      /*!< IPA pipeline */
     void *priv;                             /*!< IPA private data */
 } esp_ipa_t;
 
@@ -231,6 +465,11 @@ typedef struct esp_ipa {
  * @brief Image process algorithm pipeline object
  */
 typedef struct esp_ipa_pipeline {
-    uint8_t ipa_nums;                       /*!< IPA numbers */
+    const esp_ipa_config_t *config;         /*!< IPA numbers */
     esp_ipa_t **ipa_array;                  /*!< IPA array */
+    void *map;                              /*!< IPA global map object pointer */
 } esp_ipa_pipeline_t;
+
+#ifdef __cplusplus
+}
+#endif

@@ -19,17 +19,17 @@ extern "C" {
  */
 typedef struct esp_ipa_detect {
     const char *name;                       /*!< IPA name */
-    esp_ipa_t *(*detect)(void *);           /*!< Pointer to the IPA detect function */
+    esp_ipa_t *(*detect)(const esp_ipa_config_t *config);   /*!< Pointer to the IPA detect function */
 } esp_ipa_detect_t;
 
 #define ESP_IPA_DETECT_FN(f, n, ...)                                                        \
-    esp_ipa_t * __VA_ARGS__ __esp_ipa_detect_fn_##f(void *config);                          \
+    esp_ipa_t * __VA_ARGS__ __esp_ipa_detect_fn_##f(const esp_ipa_config_t *config);        \
     static __attribute__((used)) _SECTION_ATTR_IMPL(".esp_ipa_detect", __COUNTER__)         \
         esp_ipa_detect_t esp_ipa_detect_##f = {                                             \
             .detect = ( __esp_ipa_detect_fn_##f),                                           \
             .name = (n)                                                                     \
         };                                                                                  \
-    esp_ipa_t *__esp_ipa_detect_fn_##f(void *config)
+    esp_ipa_t *__esp_ipa_detect_fn_##f(const esp_ipa_config_t *config)
 
 /**
  * @brief IPA auto detect function array start.
