@@ -1,6 +1,6 @@
 description: "SCCB interface driver for camera"
 url: "https://github.com/espressif/esp-video-components/tree/master/esp_sccb_intf"
 license: "Apache-2.0"
-version: "0.0.3"
+version: "0.0.4"
 dependencies:
     idf: ">=5.3"
