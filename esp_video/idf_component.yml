@@ -8,6 +8,10 @@ issues: https://github.com/espressif/esp-video-components/issues
 dependencies:
   idf: ">=5.3"
   cmake_utilities: "0.*"
-  esp_cam_sensor: "0.*"
   esp_h264: ">=1.0.3"
-  esp_ipa: "0.*"
+  esp_cam_sensor:
+    version: "0.*"
+    override_path: ../esp_cam_sensor
+  esp_ipa:
+    version: "0.*"
+    override_path: ../esp_ipa
