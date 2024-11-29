@@ -167,15 +167,58 @@ static const esp_cam_sensor_format_t ov2640_format_info[] = {
         .reserved = NULL,
     },
     {
+        // Wrong format (deprecated)
         .name = "DVP_8bit_20Minput_RAW8_800x640_30fps",
         .format = ESP_CAM_SENSOR_PIXFORMAT_RAW8,
         .port = ESP_CAM_SENSOR_DVP,
         .xclk = 20000000,
         .width = 800,
         .height = 640,
-        .regs = init_reglist_DVP_8bit_RAW8_800x640_XCLK_20M_30fps,
-        .regs_size = ARRAY_SIZE(init_reglist_DVP_8bit_RAW8_800x640_XCLK_20M_30fps),
+        .regs = init_reglist_DVP_8bit_RAW8_1600x1200_XCLK_20M_15fps,
+        .regs_size = ARRAY_SIZE(init_reglist_DVP_8bit_RAW8_1600x1200_XCLK_20M_15fps),
         .fps = 30,
+        .isp_info = &ov2640_isp_info[0],
+        .mipi_info = {},
+        .reserved = NULL,
+    },
+    {
+        .name = "DVP_8bit_20Minput_RAW8_800x640_15fps",
+        .format = ESP_CAM_SENSOR_PIXFORMAT_RAW8,
+        .port = ESP_CAM_SENSOR_DVP,
+        .xclk = 20000000,
+        .width = 800,
+        .height = 640,
+        .regs = init_reglist_DVP_8bit_RAW8_1600x1200_XCLK_20M_15fps,
+        .regs_size = ARRAY_SIZE(init_reglist_DVP_8bit_RAW8_1600x1200_XCLK_20M_15fps),
+        .fps = 15,
+        .isp_info = &ov2640_isp_info[0],
+        .mipi_info = {},
+        .reserved = NULL,
+    },
+    {
+        .name = "DVP_8bit_20Minput_RAW8_800x800_15fps",
+        .format = ESP_CAM_SENSOR_PIXFORMAT_RAW8,
+        .port = ESP_CAM_SENSOR_DVP,
+        .xclk = 20000000,
+        .width = 800,
+        .height = 800,
+        .regs = init_reglist_DVP_8bit_RAW8_1600x1200_XCLK_20M_15fps,
+        .regs_size = ARRAY_SIZE(init_reglist_DVP_8bit_RAW8_1600x1200_XCLK_20M_15fps),
+        .fps = 15,
+        .isp_info = &ov2640_isp_info[0],
+        .mipi_info = {},
+        .reserved = NULL,
+    },
+    {
+        .name = "DVP_8bit_20Minput_RAW8_1024x600_15fps",
+        .format = ESP_CAM_SENSOR_PIXFORMAT_RAW8,
+        .port = ESP_CAM_SENSOR_DVP,
+        .xclk = 20000000,
+        .width = 1024,
+        .height = 600,
+        .regs = init_reglist_DVP_8bit_RAW8_1600x1200_XCLK_20M_15fps,
+        .regs_size = ARRAY_SIZE(init_reglist_DVP_8bit_RAW8_1600x1200_XCLK_20M_15fps),
+        .fps = 15,
         .isp_info = &ov2640_isp_info[0],
         .mipi_info = {},
         .reserved = NULL,
@@ -434,6 +477,25 @@ static esp_err_t ov2640_set_wb_mode(esp_cam_sensor_device_t *dev, int mode)
     return ret;
 }
 
+static esp_err_t ov2640_set_outsize(esp_cam_sensor_device_t *dev, uint16_t width, uint16_t height)
+{
+    esp_err_t ret = ESP_OK;
+    if (width % 4 || height % 4) {
+        return ESP_ERR_INVALID_ARG;
+    }
+    uint16_t outw = width / 4;
+    uint16_t outh = height / 4;
+    uint8_t temp = 0;
+    WRITE_REG_OR_RETURN(BANK_DSP, RESET, 0x04);
+    WRITE_REG_OR_RETURN(BANK_DSP, 0x5A, outw & 0XFF); // LSB 8 bits of outw
+    WRITE_REG_OR_RETURN(BANK_DSP, 0x5B, outh & 0XFF); // LSB 8 bits of outh
+    temp = (outw >> 8) & 0X03;
+    temp |= (outh >> 6) & 0X04;
+    WRITE_REG_OR_RETURN(BANK_DSP, 0x5C, temp); // MSB of outw and outh
+    WRITE_REG_OR_RETURN(BANK_DSP, RESET, 0x00);
+    return ret;
+}
+
 static esp_err_t ov2640_query_para_desc(esp_cam_sensor_device_t *dev, esp_cam_sensor_param_desc_t *qdesc)
 {
     esp_err_t ret = ESP_OK;
@@ -643,11 +705,17 @@ static esp_err_t ov2640_set_format(esp_cam_sensor_device_t *dev, const esp_cam_s
             return ret;
         }
     }
+    if (!strcmp(format->name, "DVP_8bit_20Minput_RAW8_800x640_30fps")) {
+        ESP_LOGW(TAG, "this format is deprecated, please use 'DVP_8bit_20Minput_RAW8_800x640_15fps' instead");
+    }
     // write common reg list
     ret = ov2640_write_array(dev->sccb_handle, ov2640_settings_cif, ARRAY_SIZE(ov2640_settings_cif));
     ESP_RETURN_ON_FALSE(ret == ESP_OK, ret, TAG, "Common reg list write failed");
     // write format related regs
     ret = ov2640_write_array(dev->sccb_handle, (ov2640_reginfo_t *)format->regs, format->regs_size);
+    if (ret == ESP_OK) {
+        ret = ov2640_set_outsize(dev, format->width, format->height);
+    }
     ESP_RETURN_ON_FALSE(ret == ESP_OK, ESP_CAM_SENSOR_ERR_FAILED_SET_FORMAT, TAG, "format reg list write failed");
 
     dev->cur_format = format;

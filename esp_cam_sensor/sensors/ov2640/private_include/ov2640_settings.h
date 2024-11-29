@@ -628,7 +628,8 @@ static const ov2640_reginfo_t init_reglist_DVP_8bit_JPEG_1600x1200_XCLK_20_12fps
     {REG_DELAY, 0x10},
 };
 
-static const ov2640_reginfo_t init_reglist_DVP_8bit_RAW8_800x640_XCLK_20M_30fps[] = {
+// UXGA mode
+static const ov2640_reginfo_t init_reglist_DVP_8bit_RAW8_1600x1200_XCLK_20M_15fps[] = {
     {BANK_SEL, BANK_DSP},
     {0x2c, 0xff},
     {0x2e, 0xdf},
@@ -825,13 +826,6 @@ static const ov2640_reginfo_t init_reglist_DVP_8bit_RAW8_800x640_XCLK_20M_30fps[
     {0xe0, 0x00},
     {0xdd, 0x7f},
     {0x05, 0x00},
-    // outsize_set
-    {BANK_SEL, BANK_DSP},
-    {RESET, 0x04},
-    {0X5a, 0xc8 & 0xff},
-    {0X5b, 0xa0 & 0xff},
-    {0X5c, 0x00},
-    {RESET, 0X00},
     {REG_DELAY, 0x10},
 };
 
