@@ -1641,14 +1641,6 @@ esp_err_t esp_video_isp_start_by_csi(const esp_video_csi_state_t *state, const s
     uint32_t width = format->fmt.pix.width;
     uint32_t height = format->fmt.pix.height;
 
-    if (state->bypass_isp) {
-        isp_in_color = ISP_COLOR_RAW8;
-        isp_out_color = ISP_COLOR_RGB565;
-    } else {
-        ESP_RETURN_ON_ERROR(isp_get_input_frame_type(state->in_color, &isp_in_color), TAG, "invalid ISP in format");
-        ESP_RETURN_ON_ERROR(isp_get_output_frame_type(state->out_color, &isp_out_color), TAG, "invalid ISP out format");
-    }
-
     if ((format->fmt.pix.quantization == V4L2_QUANTIZATION_DEFAULT) ||
             (format->fmt.pix.quantization == V4L2_QUANTIZATION_FULL_RANGE)) {
         yuv_range = COLOR_RANGE_FULL;
@@ -1667,13 +1659,12 @@ esp_err_t esp_video_isp_start_by_csi(const esp_video_csi_state_t *state, const s
         return ESP_ERR_NOT_SUPPORTED;
     }
 
-    if ((format->fmt.pix.quantization == V4L2_QUANTIZATION_DEFAULT) ||
-            (format->fmt.pix.quantization == V4L2_QUANTIZATION_FULL_RANGE)) {
-        yuv_range = COLOR_RANGE_FULL;
-    } else if (format->fmt.pix.quantization == V4L2_QUANTIZATION_LIM_RANGE) {
-        yuv_range = ISP_COLOR_RANGE_LIMIT;
+    if (state->bypass_isp) {
+        isp_in_color = ISP_COLOR_RAW8;
+        isp_out_color = ISP_COLOR_RGB565;
     } else {
-        return ESP_ERR_INVALID_ARG;
+        ESP_RETURN_ON_ERROR(isp_get_input_frame_type(state->in_color, &isp_in_color), TAG, "invalid ISP in format");
+        ESP_RETURN_ON_ERROR(isp_get_output_frame_type(state->out_color, &isp_out_color), TAG, "invalid ISP out format");
     }
 
     esp_isp_processor_cfg_t isp_config = {
@@ -1694,13 +1685,6 @@ esp_err_t esp_video_isp_start_by_csi(const esp_video_csi_state_t *state, const s
     ISP_LOCK(isp_video);
 
     ESP_GOTO_ON_ERROR(esp_isp_new_processor(&isp_config, &isp_video->isp_proc), fail_0, TAG, "failed to new ISP");
-#if CONFIG_ESP_VIDEO_ENABLE_ISP_VIDEO_DEVICE
-    esp_isp_evt_cbs_t cbs = {
-        .on_sharpen_frame_done = isp_sharpen_stats_done
-    };
-
-    ESP_GOTO_ON_ERROR(esp_isp_register_event_callbacks(isp_video->isp_proc, &cbs, isp_video), fail_1, TAG, "failed to register sharpen callback");
-#endif
 
     if (state->bypass_isp) {
         /**
@@ -1711,16 +1695,21 @@ esp_err_t esp_video_isp_start_by_csi(const esp_video_csi_state_t *state, const s
         ISP.frame_cfg.vadr_num = isp_config.v_res - 1;
         ISP.cntl.isp_en = 0;
     } else {
+#if CONFIG_ESP_VIDEO_ENABLE_ISP_VIDEO_DEVICE
+        esp_isp_evt_cbs_t cbs = {
+            .on_sharpen_frame_done = isp_sharpen_stats_done
+        };
+
+        ESP_GOTO_ON_ERROR(esp_isp_register_event_callbacks(isp_video->isp_proc, &cbs, isp_video), fail_1, TAG, "failed to register sharpen callback");
+#endif
+
         ESP_GOTO_ON_ERROR(esp_isp_enable(isp_video->isp_proc), fail_2, TAG, "failed to enable ISP");
-    }
 
 #if CONFIG_ESP_VIDEO_ENABLE_ISP_VIDEO_DEVICE
-    META_VIDEO_SET_FORMAT(isp_video->video, width, height, V4L2_META_FMT_ESP_ISP_STATS);
-
-    if (!state->bypass_isp) {
+        META_VIDEO_SET_FORMAT(isp_video->video, width, height, V4L2_META_FMT_ESP_ISP_STATS);
         ESP_GOTO_ON_ERROR(isp_start_pipeline(isp_video), fail_3, TAG, "failed to start ISP pipeline");
-    }
 #endif
+    }
 
     ISP_UNLOCK(isp_video);
     return ESP_OK;
@@ -1729,7 +1718,7 @@ esp_err_t esp_video_isp_start_by_csi(const esp_video_csi_state_t *state, const s
 fail_3:
     esp_isp_disable(isp_video->isp_proc);
 fail_2:
-    cbs.on_sharpen_frame_done = NULL;
+    esp_isp_evt_cbs_t cbs = {0};
     esp_isp_register_event_callbacks(isp_video->isp_proc, &cbs, NULL);
 fail_1:
 #else
@@ -1745,31 +1734,32 @@ fail_0:
 /**
  * @brief Stop ISP process
  *
- * @param bypass true: bypass ISP and MIPI-CSI output sensor original data, false: ISP process image
+ * @param state MIPI-CSI state object
  *
  * @return
  *      - ESP_OK on success
  *      - Others if failed
  */
-esp_err_t esp_video_isp_stop(bool bypass)
+esp_err_t esp_video_isp_stop(const esp_video_csi_state_t *state)
 {
     esp_err_t ret = ESP_OK;
     struct isp_video *isp_video = &s_isp_video;
 
     ISP_LOCK(isp_video);
 
+    if (!state->bypass_isp) {
 #if CONFIG_ESP_VIDEO_ENABLE_ISP_VIDEO_DEVICE
-    if (!bypass) {
         ESP_GOTO_ON_ERROR(isp_stop_pipeline(isp_video), exit, TAG, "failed to stop ISP pipeline");
-    }
 #endif
 
-    ESP_GOTO_ON_ERROR(esp_isp_disable(isp_video->isp_proc), exit, TAG, "failed to disable ISP");
+        ESP_GOTO_ON_ERROR(esp_isp_disable(isp_video->isp_proc), exit, TAG, "failed to disable ISP");
+
 #if CONFIG_ESP_VIDEO_ENABLE_ISP_VIDEO_DEVICE
-    esp_isp_evt_cbs_t cbs = {0};
-
-    ESP_GOTO_ON_ERROR(esp_isp_register_event_callbacks(isp_video->isp_proc, &cbs, NULL), exit, TAG, "failed to free ISP event");
+        esp_isp_evt_cbs_t cbs = {0};
+        ESP_GOTO_ON_ERROR(esp_isp_register_event_callbacks(isp_video->isp_proc, &cbs, NULL), exit, TAG, "failed to free ISP event");
 #endif
+    }
+
     ESP_GOTO_ON_ERROR(esp_isp_del_processor(isp_video->isp_proc), exit, TAG, "failed to delete ISP");
     isp_video->isp_proc = NULL;
 
