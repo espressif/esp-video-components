@@ -124,4 +124,29 @@ if CAMERA_SC2336
         config CAMERA_SC2336_DIG_GAIN_PRIORITY
             bool "Digital Gain Priority"
     endchoice # CAMERA_SC2336_ABS_GAIN_MAP_PRIORITY
+
+    choice CAMERA_SC2336_IPA_JSON_CONFIGURATION_FILE
+        prompt "IPA JSON Configuration File"
+        default CAMERA_SC2336_DEFAULT_IPA_JSON_CONFIGURATION_FILE
+        help
+            Select SC2336 JSON configuration file.
+
+        config CAMERA_SC2336_DEFAULT_IPA_JSON_CONFIGURATION_FILE
+            bool "Default"
+            help
+                Use the "esp_cam_sensor/sensors/sc2336/cfg/sc2336_default.json".
+
+        config CAMERA_SC2336_CUSTOMIZED_IPA_JSON_CONFIGURATION_FILE
+            bool "Customized"
+            help
+                Use a customized SC2336 JSON configuration file. Users should configure
+                the file's path using the option "CAMERA_SC2336_CUSTOMIZED_IPA_JSON_CONFIGURATION_FILE_PATH."
+    endchoice
+
+    config CAMERA_SC2336_CUSTOMIZED_IPA_JSON_CONFIGURATION_FILE_PATH
+        string "SC2336 Customized JSON Configuration File Path"
+        depends on CAMERA_SC2336_CUSTOMIZED_IPA_JSON_CONFIGURATION_FILE
+        help
+            Customized SC2336 JSON configuration file's path and this path is evaluated
+            relative to the project root directory by default.
 endif
