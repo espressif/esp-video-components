@@ -6,7 +6,9 @@
 
 #pragma once
 
+#include <string.h>
 #include "esp_err.h"
+#include "esp_ipa.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -18,8 +20,7 @@ extern "C" {
 typedef struct esp_video_isp_config {
     const char *isp_dev;                /*!< ISP video device name */
     const char *cam_dev;                /*!< Camera interface video device name, such as "/dev/video0"(MIPI-CSI) */
-    int ipa_nums;                       /*!< IPA numbers */
-    const char **ipa_names;             /*!< IPA name array */
+    const esp_ipa_config_t *ipa_config; /*!< IPA configuration */
 } esp_video_isp_config_t;
 
 /**
