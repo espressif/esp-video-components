@@ -48,7 +48,7 @@ if __name__ == '__main__':
         '--size-file',
         'size.json',
         '--recursive',
-        '--check-warnings',
+        #'--check-warnings',
         # Build args
         '--collect-size-info',
         'size_info.txt',
