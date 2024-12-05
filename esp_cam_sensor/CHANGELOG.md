@@ -1,3 +1,9 @@
+## 0.7.0
+
+- Added support for GC2145 MIPI & DVP camera sensor driver 
+- Added support for BF3925 DVP camera sensor driver
+- Added support for SC035HGS MIPI camera sensor driver 
+
 ## 0.6.1
 
 - Added support for OV2640 RAW8 format with 800x800, 1024x600 resolution

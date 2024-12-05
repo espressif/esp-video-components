@@ -39,6 +39,12 @@ if(CONFIG_CAMERA_GC0308)
     list(APPEND priv_include_dirs "sensors/gc0308/private_include")
 endif()
 
+if(CONFIG_CAMERA_GC2145)
+    list(APPEND srcs "sensors/gc2145/gc2145.c")
+    list(APPEND include_dirs "sensors/gc2145/include")
+    list(APPEND priv_include_dirs "sensors/gc2145/private_include")
+endif()
+
 if(CONFIG_CAMERA_SC101IOT)
     list(APPEND srcs "sensors/sc101iot/sc101iot.c")
     list(APPEND include_dirs "sensors/sc101iot/include")
@@ -55,6 +61,18 @@ if(CONFIG_CAMERA_OV2710)
     list(APPEND srcs "sensors/ov2710/ov2710.c")
     list(APPEND include_dirs "sensors/ov2710/include")
     list(APPEND priv_include_dirs "sensors/ov2710/private_include")
+endif()
+
+if(CONFIG_CAMERA_SC035HGS)
+    list(APPEND srcs "sensors/sc035hgs/sc035hgs.c")
+    list(APPEND include_dirs "sensors/sc035hgs/include")
+    list(APPEND priv_include_dirs "sensors/sc035hgs/private_include")
+endif()
+
+if(CONFIG_CAMERA_BF3925)
+    list(APPEND srcs "sensors/bf3925/bf3925.c")
+    list(APPEND include_dirs "sensors/bf3925/include")
+    list(APPEND priv_include_dirs "sensors/bf3925/private_include")
 endif()
 
 idf_component_register(SRCS ${srcs}
@@ -87,6 +105,10 @@ if(CONFIG_CAMERA_GC0308_AUTO_DETECT)
     target_link_libraries(${COMPONENT_LIB} INTERFACE "-u gc0308_detect")
 endif()
 
+if(CONFIG_CAMERA_GC2145_AUTO_DETECT)
+    target_link_libraries(${COMPONENT_LIB} INTERFACE "-u gc2145_detect")
+endif()
+
 if(CONFIG_CAMERA_SC101IOT_AUTO_DETECT)
     target_link_libraries(${COMPONENT_LIB} INTERFACE "-u sc101iot_detect")
 endif()
@@ -97,6 +119,14 @@ endif()
 
 if(CONFIG_CAMERA_OV2710_AUTO_DETECT)
     target_link_libraries(${COMPONENT_LIB} INTERFACE "-u ov2710_detect")
+endif()
+
+if(CONFIG_CAMERA_SC035HGS_AUTO_DETECT)
+    target_link_libraries(${COMPONENT_LIB} INTERFACE "-u sc035hgs_detect")
+endif()
+
+if(CONFIG_CAMERA_BF3925_AUTO_DETECT)
+    target_link_libraries(${COMPONENT_LIB} INTERFACE "-u bf3925_detect")
 endif()
 
 include(package_manager)
