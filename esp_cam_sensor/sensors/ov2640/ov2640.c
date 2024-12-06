@@ -559,7 +559,7 @@ static esp_err_t ov2640_query_para_desc(esp_cam_sensor_device_t *dev, esp_cam_se
         qdesc->default_value = 0;
         break;
     default: {
-        ESP_LOGE(TAG, "id=%"PRIx32" is not supported", qdesc->id);
+        ESP_LOGD(TAG, "id=%"PRIx32" is not supported", qdesc->id);
         ret = ESP_ERR_INVALID_ARG;
         break;
     }
