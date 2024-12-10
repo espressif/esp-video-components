@@ -23,7 +23,7 @@
 
 #define OV5647_PID         0x5647
 #define OV5647_SENSOR_NAME "OV5647"
-#define OV5647_AE_TARGET_DEFAULT (0x40)
+#define OV5647_AE_TARGET_DEFAULT (0x50)
 
 #ifndef portTICK_RATE_MS
 #define portTICK_RATE_MS portTICK_PERIOD_MS
@@ -40,7 +40,7 @@ static const esp_cam_sensor_isp_info_t ov5647_isp_info[] = {
             .pclk = 81666700,
             .vts = 1896,
             .hts = 984,
-            .bayer_type = ESP_CAM_SENSOR_BAYER_BGGR,
+            .bayer_type = ESP_CAM_SENSOR_BAYER_GBRG,
         }
     },
     {
@@ -49,7 +49,7 @@ static const esp_cam_sensor_isp_info_t ov5647_isp_info[] = {
             .pclk = 81666700,
             .vts = 1896,
             .hts = 984,
-            .bayer_type = ESP_CAM_SENSOR_BAYER_BGGR,
+            .bayer_type = ESP_CAM_SENSOR_BAYER_GBRG,
         }
     },
     {
@@ -58,7 +58,7 @@ static const esp_cam_sensor_isp_info_t ov5647_isp_info[] = {
             .pclk = 81666700,
             .vts = 1896,
             .hts = 984,
-            .bayer_type = ESP_CAM_SENSOR_BAYER_BGGR,
+            .bayer_type = ESP_CAM_SENSOR_BAYER_GBRG,
         }
     },
     {
@@ -67,7 +67,7 @@ static const esp_cam_sensor_isp_info_t ov5647_isp_info[] = {
             .pclk = 81666700,
             .vts = 1104,
             .hts = 2416,
-            .bayer_type = ESP_CAM_SENSOR_BAYER_BGGR,
+            .bayer_type = ESP_CAM_SENSOR_BAYER_GBRG,
         }
     },
     {
@@ -76,7 +76,7 @@ static const esp_cam_sensor_isp_info_t ov5647_isp_info[] = {
             .pclk = 88333333,
             .vts = 1796,
             .hts = 1093,
-            .bayer_type = ESP_CAM_SENSOR_BAYER_BGGR,
+            .bayer_type = ESP_CAM_SENSOR_BAYER_GBRG,
         }
     },
 };

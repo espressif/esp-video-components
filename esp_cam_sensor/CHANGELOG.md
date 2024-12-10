@@ -1,3 +1,7 @@
+## 0.7.1
+
+- Fixed the bayer type error in the OV5647 driver
+
 ## 0.7.0
 
 - Added support for GC2145 MIPI & DVP camera sensor driver 
