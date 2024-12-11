@@ -64,4 +64,29 @@ if CAMERA_OV5647
         help
             If enabled, the camera module will enable some IO pins to drive the
             VCM motor.
+
+    choice CAMERA_OV5647_IPA_JSON_CONFIGURATION_FILE
+        prompt "IPA JSON Configuration File"
+        default CAMERA_OV5647_DEFAULT_IPA_JSON_CONFIGURATION_FILE
+        help
+            Select OV5647 JSON configuration file.
+
+        config CAMERA_OV5647_DEFAULT_IPA_JSON_CONFIGURATION_FILE
+            bool "Default"
+            help
+                Use the "esp_cam_sensor/sensors/ov5647/cfg/ov5647_default.json".
+
+        config CAMERA_OV5647_CUSTOMIZED_IPA_JSON_CONFIGURATION_FILE
+            bool "Customized"
+            help
+                Use a customized OV5647 JSON configuration file. Users should configure
+                the file's path using the option "CAMERA_OV5647_CUSTOMIZED_IPA_JSON_CONFIGURATION_FILE_PATH."
+    endchoice
+
+    config CAMERA_OV5647_CUSTOMIZED_IPA_JSON_CONFIGURATION_FILE_PATH
+        string "OV5647 Customized JSON Configuration File Path"
+        depends on CAMERA_OV5647_CUSTOMIZED_IPA_JSON_CONFIGURATION_FILE
+        help
+            Customized OV5647 JSON configuration file's path and this path is evaluated
+            relative to the project root directory by default.
 endif

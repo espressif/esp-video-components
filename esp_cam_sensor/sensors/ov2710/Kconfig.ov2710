@@ -56,4 +56,29 @@ if CAMERA_OV2710
         depends on CAMERA_OV2710_STATS_UPDATE_EN
         help
             The value indicates the interval used to update the statistical parameters of the camera sensor.
+
+    choice CAMERA_OV2710_IPA_JSON_CONFIGURATION_FILE
+        prompt "IPA JSON Configuration File"
+        default CAMERA_OV2710_DEFAULT_IPA_JSON_CONFIGURATION_FILE
+        help
+            Select OV2710 JSON configuration file.
+
+        config CAMERA_OV2710_DEFAULT_IPA_JSON_CONFIGURATION_FILE
+            bool "Default"
+            help
+                Use the "esp_cam_sensor/sensors/ov2710/cfg/ov2710_default.json".
+
+        config CAMERA_OV2710_CUSTOMIZED_IPA_JSON_CONFIGURATION_FILE
+            bool "Customized"
+            help
+                Use a customized OV2710 JSON configuration file. Users should configure
+                the file's path using the option "CAMERA_OV2710_CUSTOMIZED_IPA_JSON_CONFIGURATION_FILE_PATH."
+    endchoice
+
+    config CAMERA_OV2710_CUSTOMIZED_IPA_JSON_CONFIGURATION_FILE_PATH
+        string "OV2710 Customized JSON Configuration File Path"
+        depends on CAMERA_OV2710_CUSTOMIZED_IPA_JSON_CONFIGURATION_FILE
+        help
+            Customized OV2710 JSON configuration file's path and this path is evaluated
+            relative to the project root directory by default.
 endif
