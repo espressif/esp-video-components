@@ -285,7 +285,18 @@ static esp_err_t stream_handler(httpd_req_t *req)
             ESP_LOGE(TAG, "failed to get time");
         }
 
-        ESP_ERROR_CHECK(httpd_resp_send_chunk(req, STREAM_BOUNDARY, strlen(STREAM_BOUNDARY)));
+        res = httpd_resp_send_chunk(req, STREAM_BOUNDARY, strlen(STREAM_BOUNDARY));
+        if (res != ESP_OK) {
+            ESP_LOGE(TAG, "Boundary sending failed!");
+            if (ioctl(wc->fd, VIDIOC_QBUF, &buf) != 0) {
+                ESP_LOGE(TAG, "failed to free fb");
+            }
+            /* Abort sending file */
+            httpd_resp_sendstr_chunk(req, NULL);
+            /* Respond with 500 Internal Server Error */
+            httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "Failed to send Boundary");
+            break;
+        }
 
         if (wc->pixel_format == V4L2_PIX_FMT_JPEG) {
             jpeg_ptr = wc->buffer[buf.index];
@@ -297,7 +308,7 @@ static esp_err_t stream_handler(httpd_req_t *req)
                 jpeg_ptr = wc->jpeg_out_buf;
                 jpeg_size = jpeg_encoded_size;
                 tx_valid = true;
-                ESP_LOGI(TAG, "jpeg size = %d", jpeg_size);
+                ESP_LOGD(TAG, "jpeg size = %d", jpeg_size);
             }
         }
 
@@ -354,7 +365,7 @@ static esp_err_t pic_handler(httpd_req_t *req)
                 jpeg_ptr = wc->jpeg_out_buf;
                 jpeg_size = jpeg_encoded_size;
                 tx_valid = true;
-                ESP_LOGI(TAG, "jpeg size = %d", jpeg_size);
+                ESP_LOGD(TAG, "jpeg size = %d", jpeg_size);
             } else {
                 ESP_LOGE(TAG, "jpeg encode failed");
             }
