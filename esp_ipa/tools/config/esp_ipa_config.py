@@ -435,7 +435,8 @@ class ipa_c(object):
             'agc': ipa_unit_agc_c
         }
 
-        self.decodes.append(ipa_unit_lut[type](obj, name, type))
+        if type in ipa_unit_lut:
+            self.decodes.append(ipa_unit_lut[type](obj, name, type))
 
     def get_text(self):        
         text_obj = str()
