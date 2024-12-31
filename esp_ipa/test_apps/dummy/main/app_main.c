@@ -20,6 +20,7 @@
 
 static size_t before_free_8bit;
 static size_t before_free_32bit;
+static const char *TAG = "dummy";
 
 static const esp_ipa_sensor_t s_esp_ipa_sensor = {
     .width = 1080,
@@ -99,10 +100,23 @@ TEST_CASE("Auto color correction test", "[IPA]")
     TEST_ESP_OK(esp_ipa_pipeline_create(ipa_config, &handle));
     TEST_ESP_OK(esp_ipa_pipeline_init(handle, &s_esp_ipa_sensor, &metadata));
 
+    esp_ipa_set_int32(handle->ipa_array[0], "ct", 0);
+
     metadata.flags = 0;
     TEST_ESP_OK(esp_ipa_pipeline_process(handle, &stats, &s_esp_ipa_sensor, &metadata));
     TEST_ASSERT_EQUAL_HEX32(0, metadata.flags & IPA_METADATA_FLAGS_ST);
     TEST_ASSERT_EQUAL_HEX32(0, metadata.flags & IPA_METADATA_FLAGS_CCM);
+
+    esp_ipa_set_float(handle->ipa_array[0], "dummy_gamma_luma", 15.4);
+    metadata.flags = 0;
+    TEST_ESP_OK(esp_ipa_pipeline_process(handle, &stats, &s_esp_ipa_sensor, &metadata));
+    TEST_ASSERT_EQUAL_HEX32(IPA_METADATA_FLAGS_CCM, metadata.flags & IPA_METADATA_FLAGS_CCM);
+    TEST_ASSERT_EQUAL_HEX32(0, memcmp(&metadata.ccm, &ipa_config->acc->ccm->luma_low_ccm, sizeof(esp_ipa_ccm_t)));
+
+    esp_ipa_set_float(handle->ipa_array[0], "dummy_gamma_luma", 15.51);
+    metadata.flags = 0;
+    TEST_ESP_OK(esp_ipa_pipeline_process(handle, &stats, &s_esp_ipa_sensor, &metadata));
+    TEST_ASSERT_EQUAL_HEX32(IPA_METADATA_FLAGS_CCM, metadata.flags & IPA_METADATA_FLAGS_CCM);
 
     static const struct {
         int ct;
@@ -279,13 +293,15 @@ TEST_CASE("Auto denoising test", "[IPA]")
     esp_ipa_pipeline_handle_t handle = NULL;
     esp_ipa_metadata_t metadata = {0};
     esp_ipa_stats_t stats;
+    esp_ipa_sensor_t sensor = s_esp_ipa_sensor;
     const esp_ipa_config_t *ipa_config = esp_ipa_pipeline_get_config(IPA_TARGET_NAME);
 
     TEST_ESP_OK(esp_ipa_pipeline_create(ipa_config, &handle));
     TEST_ESP_OK(esp_ipa_pipeline_init(handle, &s_esp_ipa_sensor, &metadata));
 
     metadata.flags = 0;
-    TEST_ESP_OK(esp_ipa_pipeline_process(handle, &stats, &s_esp_ipa_sensor, &metadata));
+    sensor.cur_gain = 0.1;
+    TEST_ESP_OK(esp_ipa_pipeline_process(handle, &stats, &sensor, &metadata));
     TEST_ASSERT_EQUAL_HEX32(0, metadata.flags & IPA_METADATA_FLAGS_CN);
     TEST_ASSERT_EQUAL_HEX32(0, metadata.flags & IPA_METADATA_FLAGS_SH);
 
@@ -308,7 +324,7 @@ TEST_CASE("Auto denoising test", "[IPA]")
             .gradient_ratio = 0.0
         },
         {
-            .gain = 0.0,
+            .gain = 0.01,
             .level = 1,
             .m0 = 1,
             .gradient_ratio = 1.0
@@ -442,9 +458,10 @@ TEST_CASE("Auto denoising test", "[IPA]")
     };
 
     for (int i = 0; i < ARRAY_SIZE(test_data); i++) {
-        metadata.flags = IPA_METADATA_FLAGS_GN;
-        metadata.gain = test_data[i].gain;
-        TEST_ESP_OK(esp_ipa_pipeline_process(handle, &stats, &s_esp_ipa_sensor, &metadata));
+        metadata.flags = 0;
+        stats.flags = 0;
+        sensor.cur_gain = test_data[i].gain;
+        TEST_ESP_OK(esp_ipa_pipeline_process(handle, &stats, &sensor, &metadata));
         if (test_data[i].level) {
             TEST_ASSERT_EQUAL_HEX32(IPA_METADATA_FLAGS_DM, metadata.flags & IPA_METADATA_FLAGS_DM);
             TEST_ASSERT_EQUAL_HEX32(IPA_METADATA_FLAGS_BF, metadata.flags & IPA_METADATA_FLAGS_BF);
@@ -465,13 +482,15 @@ TEST_CASE("Auto enhancement test", "[IPA]")
     esp_ipa_pipeline_handle_t handle = NULL;
     esp_ipa_metadata_t metadata = {0};
     esp_ipa_stats_t stats;
+    esp_ipa_sensor_t sensor = s_esp_ipa_sensor;
     const esp_ipa_config_t *ipa_config = esp_ipa_pipeline_get_config(IPA_TARGET_NAME);
 
     TEST_ESP_OK(esp_ipa_pipeline_create(ipa_config, &handle));
     TEST_ESP_OK(esp_ipa_pipeline_init(handle, &s_esp_ipa_sensor, &metadata));
 
     metadata.flags = 0;
-    TEST_ESP_OK(esp_ipa_pipeline_process(handle, &stats, &s_esp_ipa_sensor, &metadata));
+    sensor.cur_gain = 0.1;
+    TEST_ESP_OK(esp_ipa_pipeline_process(handle, &stats, &sensor, &metadata));
     TEST_ASSERT_EQUAL_HEX32(0, metadata.flags & IPA_METADATA_FLAGS_CN);
     TEST_ASSERT_EQUAL_HEX32(0, metadata.flags & IPA_METADATA_FLAGS_SH);
 
@@ -494,7 +513,7 @@ TEST_CASE("Auto enhancement test", "[IPA]")
             .contrast = 0
         },
         {
-            .gain = 0.0,
+            .gain = 0.01,
             .h_thresh = 1,
             .m0 = 1,
             .contrast = 1
@@ -628,9 +647,10 @@ TEST_CASE("Auto enhancement test", "[IPA]")
     };
 
     for (int i = 0; i < ARRAY_SIZE(test_data); i++) {
-        metadata.flags = IPA_METADATA_FLAGS_GN;
-        metadata.gain = test_data[i].gain;
-        TEST_ESP_OK(esp_ipa_pipeline_process(handle, &stats, &s_esp_ipa_sensor, &metadata));
+        metadata.flags = 0;
+        stats.flags = 0;
+        sensor.cur_gain = test_data[i].gain;
+        TEST_ESP_OK(esp_ipa_pipeline_process(handle, &stats, &sensor, &metadata));
         if (test_data[i].h_thresh) {
             TEST_ASSERT_EQUAL_HEX32(IPA_METADATA_FLAGS_CN, metadata.flags & IPA_METADATA_FLAGS_CN);
             TEST_ASSERT_EQUAL_HEX32(IPA_METADATA_FLAGS_SH, metadata.flags & IPA_METADATA_FLAGS_SH);
@@ -640,6 +660,110 @@ TEST_CASE("Auto enhancement test", "[IPA]")
         } else {
             TEST_ASSERT_EQUAL_HEX32(0, metadata.flags & IPA_METADATA_FLAGS_CN);
             TEST_ASSERT_EQUAL_HEX32(0, metadata.flags & IPA_METADATA_FLAGS_SH);
+        }
+    }
+
+    TEST_ESP_OK(esp_ipa_pipeline_destroy(handle));
+
+    TEST_ESP_OK(esp_ipa_pipeline_create(ipa_config, &handle));
+    TEST_ESP_OK(esp_ipa_pipeline_init(handle, &s_esp_ipa_sensor, &metadata));
+
+    static const struct {
+        float luma;
+        uint8_t gamma_y0;
+        uint8_t gamma_y1;
+        uint8_t gamma_y13;
+        uint8_t gamma_y15;
+    } test_gamma_data[] = {
+        {
+            1.2,
+            0,
+            0,
+            0,
+            0
+        },
+        {
+            10.1,
+            0,
+            0,
+            0,
+            0
+        },
+        {
+            15.1,
+            8,
+            24,
+            216,
+            255
+        },
+        {
+            15.3,
+            0,
+            0,
+            0,
+            0
+        },
+        {
+            20.1,
+            16,
+            32,
+            224,
+            255
+        },
+        {
+            20.3,
+            0,
+            0,
+            0,
+            0
+        },
+        {
+            25.1,
+            24,
+            40,
+            232,
+            255
+        },
+        {
+            30.1,
+            32,
+            48,
+            240,
+            255
+        },
+        {
+            30.3,
+            0,
+            0,
+            0,
+            0
+        },
+        {
+            40.1,
+            0,
+            0,
+            0,
+            0
+        },
+    };
+
+    for (int i = 0; i < ARRAY_SIZE(test_gamma_data); i++) {
+        esp_ipa_set_float(handle->ipa_array[0], "dummy_gamma_luma", test_gamma_data[i].luma);
+        metadata.flags = 0;
+        stats.flags = 0;
+        TEST_ESP_OK(esp_ipa_pipeline_process(handle, &stats, &s_esp_ipa_sensor, &metadata));
+
+        ESP_LOGV(TAG, "%d: %f %d:%d:%d:%d\n", i, test_gamma_data[i].luma, test_gamma_data[i].gamma_y0, test_gamma_data[i].gamma_y1,
+                 test_gamma_data[i].gamma_y13, test_gamma_data[i].gamma_y15);
+
+        if (test_gamma_data[i].gamma_y15) {
+            TEST_ASSERT_EQUAL_HEX32(IPA_METADATA_FLAGS_GAMMA, metadata.flags & IPA_METADATA_FLAGS_GAMMA);
+            TEST_ASSERT_EQUAL_UINT8(test_gamma_data[i].gamma_y0, metadata.gamma.y[0]);
+            TEST_ASSERT_EQUAL_UINT8(test_gamma_data[i].gamma_y1, metadata.gamma.y[1]);
+            TEST_ASSERT_EQUAL_UINT8(test_gamma_data[i].gamma_y13, metadata.gamma.y[13]);
+            TEST_ASSERT_EQUAL_UINT8(test_gamma_data[i].gamma_y15, metadata.gamma.y[15]);
+        } else {
+            TEST_ASSERT_EQUAL_HEX32(0, metadata.flags & IPA_METADATA_FLAGS_GAMMA);
         }
     }
 

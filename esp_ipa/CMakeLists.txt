@@ -16,6 +16,9 @@ add_prebuilt_library(prebuilt "lib/${idf_target}/libesp_ipa.a"
                      PRIV_REQUIRES esp_timer)
 target_link_libraries(${COMPONENT_LIB} PRIVATE prebuilt)
 
+if(CONFIG_ESP_IPA_IAN_ALGORITHM)
+    target_link_libraries(${COMPONENT_LIB} INTERFACE "-u __esp_ipa_detect_fn_esp_ipa_ian")
+endif()
 
 if(CONFIG_ESP_IPA_ADN_ALGORITHM)
     target_link_libraries(${COMPONENT_LIB} INTERFACE "-u __esp_ipa_detect_fn_esp_ipa_adn")

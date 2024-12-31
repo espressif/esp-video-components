@@ -4,6 +4,10 @@ menu "Espressif Image Process Algorithm Configuration"
         int
         default 1
 
+    config ESP_IPA_IAN_ALGORITHM
+        bool "Image Analyze Algorithm"
+        default y
+
     config ESP_IPA_ADN_ALGORITHM
         bool "Auto Denoising Algorithm"
         default y
