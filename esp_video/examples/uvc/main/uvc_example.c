@@ -47,7 +47,6 @@ typedef struct uvc {
     int m2m_fd;
     uint8_t *m2m_cap_buffer;
 
-    bool setup_buffer;
     uvc_fb_t fb;
 } uvc_t;
 
@@ -284,80 +283,76 @@ static esp_err_t video_start_cb(uvc_format_t uvc_format, int width, int height, 
         capture_fmt = V4L2_PIX_FMT_YUV420;
     }
 
-    if (!uvc->setup_buffer) {
-        /* Configure camera interface capture stream */
+    /* Configure camera interface capture stream */
 
-        memset(&format, 0, sizeof(format));
-        format.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
-        format.fmt.pix.width = width;
-        format.fmt.pix.height = height;
-        format.fmt.pix.pixelformat = capture_fmt;
-        ESP_ERROR_CHECK(ioctl(uvc->cap_fd, VIDIOC_S_FMT, &format));
+    memset(&format, 0, sizeof(format));
+    format.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
+    format.fmt.pix.width = width;
+    format.fmt.pix.height = height;
+    format.fmt.pix.pixelformat = capture_fmt;
+    ESP_ERROR_CHECK(ioctl(uvc->cap_fd, VIDIOC_S_FMT, &format));
 
-        memset(&req, 0, sizeof(req));
-        req.count  = BUFFER_COUNT;
-        req.type   = V4L2_BUF_TYPE_VIDEO_CAPTURE;
-        req.memory = V4L2_MEMORY_MMAP;
-        ESP_ERROR_CHECK(ioctl(uvc->cap_fd, VIDIOC_REQBUFS, &req));
+    memset(&req, 0, sizeof(req));
+    req.count  = BUFFER_COUNT;
+    req.type   = V4L2_BUF_TYPE_VIDEO_CAPTURE;
+    req.memory = V4L2_MEMORY_MMAP;
+    ESP_ERROR_CHECK(ioctl(uvc->cap_fd, VIDIOC_REQBUFS, &req));
 
-        for (int i = 0; i < BUFFER_COUNT; i++) {
-            memset(&buf, 0, sizeof(buf));
-            buf.type        = V4L2_BUF_TYPE_VIDEO_CAPTURE;
-            buf.memory      = V4L2_MEMORY_MMAP;
-            buf.index       = i;
-            ESP_ERROR_CHECK (ioctl(uvc->cap_fd, VIDIOC_QUERYBUF, &buf));
-
-            uvc->cap_buffer[i] = (uint8_t *)mmap(NULL, buf.length, PROT_READ | PROT_WRITE,
-                                                 MAP_SHARED, uvc->cap_fd, buf.m.offset);
-            assert(uvc->cap_buffer[i]);
-
-            ESP_ERROR_CHECK(ioctl(uvc->cap_fd, VIDIOC_QBUF, &buf));
-        }
-
-        /* Configure codec output stream */
-
-        memset(&format, 0, sizeof(format));
-        format.type = V4L2_BUF_TYPE_VIDEO_OUTPUT;
-        format.fmt.pix.width = width;
-        format.fmt.pix.height = height;
-        format.fmt.pix.pixelformat = capture_fmt;
-        ESP_ERROR_CHECK(ioctl(uvc->m2m_fd, VIDIOC_S_FMT, &format));
-
-        memset(&req, 0, sizeof(req));
-        req.count  = 1;
-        req.type   = V4L2_BUF_TYPE_VIDEO_OUTPUT;
-        req.memory = V4L2_MEMORY_USERPTR;
-        ESP_ERROR_CHECK(ioctl(uvc->m2m_fd, VIDIOC_REQBUFS, &req));
-
-        /* Configure codec capture stream */
-
-        memset(&format, 0, sizeof(format));
-        format.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
-        format.fmt.pix.width = width;
-        format.fmt.pix.height = height;
-        format.fmt.pix.pixelformat = uvc->format;
-        ESP_ERROR_CHECK(ioctl(uvc->m2m_fd, VIDIOC_S_FMT, &format));
-
-        memset(&req, 0, sizeof(req));
-        req.count  = 1;
-        req.type   = V4L2_BUF_TYPE_VIDEO_CAPTURE;
-        req.memory = V4L2_MEMORY_MMAP;
-        ESP_ERROR_CHECK(ioctl(uvc->m2m_fd, VIDIOC_REQBUFS, &req));
-
+    for (int i = 0; i < BUFFER_COUNT; i++) {
         memset(&buf, 0, sizeof(buf));
         buf.type        = V4L2_BUF_TYPE_VIDEO_CAPTURE;
         buf.memory      = V4L2_MEMORY_MMAP;
-        buf.index       = 0;
-        ESP_ERROR_CHECK (ioctl(uvc->m2m_fd, VIDIOC_QUERYBUF, &buf));
+        buf.index       = i;
+        ESP_ERROR_CHECK (ioctl(uvc->cap_fd, VIDIOC_QUERYBUF, &buf));
 
-        uvc->m2m_cap_buffer = (uint8_t *)mmap(NULL, buf.length, PROT_READ | PROT_WRITE,
-                                              MAP_SHARED, uvc->m2m_fd, buf.m.offset);
-        assert(uvc->m2m_cap_buffer);
+        uvc->cap_buffer[i] = (uint8_t *)mmap(NULL, buf.length, PROT_READ | PROT_WRITE,
+                                             MAP_SHARED, uvc->cap_fd, buf.m.offset);
+        assert(uvc->cap_buffer[i]);
 
-        ESP_ERROR_CHECK(ioctl(uvc->m2m_fd, VIDIOC_QBUF, &buf));
-
-        uvc->setup_buffer = true;
+        ESP_ERROR_CHECK(ioctl(uvc->cap_fd, VIDIOC_QBUF, &buf));
     }
+
+    /* Configure codec output stream */
+
+    memset(&format, 0, sizeof(format));
+    format.type = V4L2_BUF_TYPE_VIDEO_OUTPUT;
+    format.fmt.pix.width = width;
+    format.fmt.pix.height = height;
+    format.fmt.pix.pixelformat = capture_fmt;
+    ESP_ERROR_CHECK(ioctl(uvc->m2m_fd, VIDIOC_S_FMT, &format));
+
+    memset(&req, 0, sizeof(req));
+    req.count  = 1;
+    req.type   = V4L2_BUF_TYPE_VIDEO_OUTPUT;
+    req.memory = V4L2_MEMORY_USERPTR;
+    ESP_ERROR_CHECK(ioctl(uvc->m2m_fd, VIDIOC_REQBUFS, &req));
+
+    /* Configure codec capture stream */
+
+    memset(&format, 0, sizeof(format));
+    format.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
+    format.fmt.pix.width = width;
+    format.fmt.pix.height = height;
+    format.fmt.pix.pixelformat = uvc->format;
+    ESP_ERROR_CHECK(ioctl(uvc->m2m_fd, VIDIOC_S_FMT, &format));
+
+    memset(&req, 0, sizeof(req));
+    req.count  = 1;
+    req.type   = V4L2_BUF_TYPE_VIDEO_CAPTURE;
+    req.memory = V4L2_MEMORY_MMAP;
+    ESP_ERROR_CHECK(ioctl(uvc->m2m_fd, VIDIOC_REQBUFS, &req));
+
+    memset(&buf, 0, sizeof(buf));
+    buf.type        = V4L2_BUF_TYPE_VIDEO_CAPTURE;
+    buf.memory      = V4L2_MEMORY_MMAP;
+    buf.index       = 0;
+    ESP_ERROR_CHECK (ioctl(uvc->m2m_fd, VIDIOC_QUERYBUF, &buf));
+
+    uvc->m2m_cap_buffer = (uint8_t *)mmap(NULL, buf.length, PROT_READ | PROT_WRITE,
+                                          MAP_SHARED, uvc->m2m_fd, buf.m.offset);
+    assert(uvc->m2m_cap_buffer);
+
+    ESP_ERROR_CHECK(ioctl(uvc->m2m_fd, VIDIOC_QBUF, &buf));
 
     type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
     ESP_ERROR_CHECK(ioctl(uvc->m2m_fd, VIDIOC_STREAMON, &type));
