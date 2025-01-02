@@ -46,7 +46,7 @@ struct ov2710_cam {
 #endif
 #define delay_ms(ms)  vTaskDelay((ms > portTICK_PERIOD_MS ? ms/ portTICK_PERIOD_MS : 1))
 #define OV2710_SUPPORT_NUM CONFIG_CAMERA_OV2710_MAX_SUPPORT
-#define OV2710_AEC_TARGET_DEFAULT (0x40)
+#define OV2710_AEC_TARGET_DEFAULT (0x30)
 #define OV2710_MCLK              (24*1000*1000)
 
 static const char *TAG = "ov2710";
