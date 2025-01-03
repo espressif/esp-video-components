@@ -7,6 +7,8 @@ Espressif video component provides a solution to call POSIX API plus Linux V4L2 
 Now we have implementations based on:
 
 - esp_cam_sensor
+- esp_h264
+- esp_ipa
 
 ## Video Device
 
@@ -19,7 +21,6 @@ Now we have implementations based on:
 | ISP | /dev/video20 | Meta | camera output pixel format  | Metadata: V4L2_META_FMT_ESP_ISP_STATS |
 
 - (1): if camera output pixel format is RAW8, ISP can transform it to other pixel format: RGB565, RGB888, YUV420 and YUV422
-- (2): ISP supports reading and writing pipeline modules, but has not supported capturing the metadata
 
 ## V4L2 Control IDs
 
@@ -48,3 +49,5 @@ Now we have implementations based on:
 | V4L2_CID_CONTRAST | V4L2_CID_USER_CLASS | Array of uint8_t | Read/Write | Picture contrast. |
 | V4L2_CID_SATURATION | V4L2_CID_USER_CLASS | Array of uint8_t | Read/Write | Picture color saturation. |
 | V4L2_CID_HUE | V4L2_CID_USER_CLASS | Array of uint8_t | Read/Write | Picture hue. |
+|  V4L2_CID_CAMERA_STATS | V4L2_CID_CAMERA_CLASS | Array of uint8_t | Read | Camera sensor statistics. |
+| V4L2_CID_CAMERA_AE_LEVEL | V4L2_CID_CAMERA_CLASS | Integer | Read/Write | Camera sensor AE target level. |
