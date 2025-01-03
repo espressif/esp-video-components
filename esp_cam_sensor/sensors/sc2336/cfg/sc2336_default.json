@@ -13,20 +13,24 @@
             "exposure":
             {
                 "frame_delay": 3,
-                "adjust_delay": 2000,
-                "ac_freq": 50
+                "adjust_delay": 0
             },
             "gain":
             {
                 "min_step": 0.03,
                 "frame_delay": 3
             },
-            "speed": 0.18,
+            "anti_flicker":
+            {
+                "mode": "part",
+                "ac_freq": 50
+            },
+            "f_n0": 0.32,
             "luma_adjust":
             {
-                "target_low": 115,
-                "target_high": 133,
-                "target": 123,
+                "target_low": 105,
+                "target_high": 121,
+                "target": 113,
                 "low_threshold": 10,
                 "low_regions": 5,
                 "high_threshold": 240,
@@ -43,10 +47,10 @@
             "mode": "high_light_priority",
             "high_light_priority":
             {
-                "low_threshold": 145,
-                "high_threshold": 210,
+                "low_threshold": 141,
+                "high_threshold": 204,
                 "weight_offset": 5,
-                "luma_offset": -1
+                "luma_offset": -3
             },
             "low_light_priority":
             {
@@ -74,10 +78,27 @@
                     "weight_offset": 4
                 },
                 {
-                    "luma_threshold": 255,
+                    "luma_threshold": 235,
                     "weight_offset": 5
                 }
             ]
+        },
+        "ian":
+        {
+            "luma":
+            {
+                "ae":
+                {
+                    "weight":
+                    [
+                        1, 1, 1, 1, 1,
+                        1, 1, 1, 1, 1,
+                        1, 1, 1, 1, 1,
+                        1, 1, 1, 1, 1,
+                        1, 1, 1, 1, 1
+                    ]
+                }
+            }
         },
         "acc":
         {
@@ -89,17 +110,31 @@
                 }
             ],
             "ccm":
-            [
+            {
+                "low_luma":
                 {
-                    "color_temp": 0,
+                    "luma_env": "ae.luma.avg",
+                    "threshold": 28,
                     "matrix":
                     [
-                         1.408,  -0.094, -0.314,
-                        -0.13,    1.28,  -0.15,
-                        -0.072,  -0.173,  1.245
+                        1.00,  0.00, 0.00,
+                        0.00,    1.00,  0.00,
+                        0.00,  0.00,  1.00
                     ]
-                }
-            ]
+                },
+                "table":
+                [
+                    {
+                        "color_temp": 0,
+                        "matrix":
+                        [
+                            1.408,  -0.094, -0.314,
+                            -0.13,    1.28,  -0.15,
+                            -0.072,  -0.173,  1.245
+                        ]
+                    }
+                ]
+            }
         },
         "adn": {
             "bf":
@@ -107,11 +142,11 @@
                 {
                     "gain": 1,
                     "param": {
-                        "level": 4,
+                        "level": 3,
                         "matrix":
                         [
                             2, 4, 2,
-                            4, 9, 4,
+                            4, 5, 4,
                             2, 4, 2
                         ]
                     }
@@ -119,11 +154,11 @@
                 {
                     "gain": 4,
                     "param": {
-                        "level": 5,
+                        "level": 3,
                         "matrix":
                         [
                             1, 3, 1,
-                            3, 6, 3,
+                            3, 5, 3,
                             1, 3, 1
                         ]
                     }
@@ -131,23 +166,23 @@
                 {
                     "gain": 8,
                     "param": {
-                        "level": 6,
+                        "level": 4,
                         "matrix":
                         [
-                            1, 4, 1,
-                            4, 8, 4,
-                            1, 8, 1
+                            1, 3, 1,
+                            3, 4, 3,
+                            1, 3, 1
                         ]
                     }
                 },
                 {
                     "gain": 16,
                     "param": {
-                        "level": 8,
+                        "level": 5,
                         "matrix":
                         [
                             1, 3, 1,
-                            3, 6, 3,
+                            3, 5, 3,
                             1, 3, 1
                         ]
                     }
@@ -155,11 +190,11 @@
                 {
                     "gain": 24,
                     "param": {
-                        "level": 10,
+                        "level": 6,
                         "matrix":
                         [
                             1, 2, 1,
-                            2, 5, 2,
+                            2, 3, 2,
                             1, 2, 1
                         ]
                     }
@@ -167,7 +202,7 @@
                 {
                     "gain": 32,
                     "param": {
-                        "level": 14,
+                        "level": 7,
                         "matrix":
                         [
                             1, 2, 1,
@@ -179,11 +214,11 @@
                 {
                     "gain": 64,
                     "param": {
-                        "level": 19,
+                        "level": 7,
                         "matrix":
                         [
                             1, 2, 1,
-                            2, 4, 2,
+                            2, 2, 2,
                             1, 2, 1
                         ]
                     }
@@ -213,35 +248,40 @@
         {
             "gamma":
             {
+                "use_gamma_param": true,
+                "luma_env": "ae.luma.avg",
+                "luma_min_step": 16.0,
                 "table":
                 [
-                    0, 40, 64, 84, 103, 120, 136, 151, 165, 179, 193, 206, 219, 231, 243, 255
-                ],
-                "param": 0.688
-            },
+                    {
+                        "luma": 71.1,
+                        "gamma_param": 0.688
+                    }
+                ]
+            },    
             "sharpen":
             [
                 {
                     "gain": 1,
                     "param": {
-                        "h_thresh": 65,
-                        "l_thresh": 10,
-                        "h_coeff": 1.025,
+                        "h_thresh": 25,
+                        "l_thresh": 5,
+                        "h_coeff": 1.925,
                         "m_coeff": 1.825,
                         "matrix":
                         [
-                            3, 2, 3,
-                            2, 1, 2,
-                            3, 2, 3
+                            1, 2, 1,
+                            2, 2, 2,
+                            1, 2, 1
                         ]
                     }
                 },
                 {
                     "gain": 8,
                     "param": {
-                        "h_thresh": 60,
-                        "l_thresh": 12,
-                        "h_coeff": 0.825,
+                        "h_thresh": 20,
+                        "l_thresh": 5,
+                        "h_coeff": 1.825,
                         "m_coeff": 1.425,
                         "matrix":
                         [
@@ -254,14 +294,14 @@
                 {
                     "gain": 12,
                     "param": {
-                        "h_thresh": 60,
-                        "l_thresh": 18,
-                        "h_coeff": 0.525,
-                        "m_coeff": 1.225,
+                        "h_thresh": 16,
+                        "l_thresh": 6,
+                        "h_coeff": 1.625,
+                        "m_coeff": 1.325,
                         "matrix":
                         [
                             1, 1, 1,
-                            1, 1, 2,
+                            1, 1, 1,
                             1, 1, 1
                         ]
                     }
@@ -269,9 +309,9 @@
                 {
                     "gain": 65,
                     "param": {
-                        "h_thresh": 50,
-                        "l_thresh": 20,
-                        "h_coeff": 0.525,
+                        "h_thresh": 20,
+                        "l_thresh": 5,
+                        "h_coeff": 1.625,
                         "m_coeff": 1.225,
                         "matrix":
                         [
@@ -286,19 +326,11 @@
             [
                 {
                     "gain": 1,
-                    "value": 146
-                },
-                {
-                    "gain": 4,
-                    "value": 144
-                },
-                {
-                    "gain": 10,
-                    "value": 138
+                    "value": 132
                 },
                 {
                     "gain": 16,
-                    "value": 132
+                    "value": 130
                 },
                 {
                     "gain": 24,
@@ -306,7 +338,7 @@
                 },
                 {
                     "gain": 65,
-                    "value": 122
+                    "value": 126
                 }
             ]
         }

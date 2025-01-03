@@ -16,7 +16,9 @@
 #include "esp_video_init.h"
 #include "esp_video_device_internal.h"
 #include "esp_private/esp_cam_dvp.h"
+#if CONFIG_ESP_VIDEO_ENABLE_ISP_PIPELINE_CONTROLLER
 #include "esp_video_pipeline_isp.h"
+#endif
 
 #define SCCB_NUM_MAX                I2C_NUM_MAX
 

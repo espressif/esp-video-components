@@ -23,6 +23,157 @@ class ipa_unit_c():
     def get_text(self):
         return self.text
 
+class ipa_unit_ian_c(ipa_unit_c):
+    @staticmethod
+    def decode_ian(name, obj):
+        def ct_code(name, obj):
+            ct_bp_text = str()
+            for i in obj.bp:
+                ct_bp_text += ('''
+                    {
+                        .a0 = %f,
+                        .a1 = %f
+                    },'''%(i.a0, i.a1)
+                )
+
+            ct_text = cfmt_string('''
+                static const esp_ipa_ian_ct_basic_param_t s_ipa_ian_ct_%s_basic_param[] = {
+                    %s
+                };'''%(name, ct_bp_text)
+            )
+
+            g_a2_obj_text = str()
+            for i in obj.g.a2:
+                g_a2_obj_text += '%f, '%(i)
+
+            ct_text += cfmt_string('''
+                static const float s_esp_ipa_ian_ct_%s_g_a2[] = {
+                    %s
+                };'''%(name, g_a2_obj_text)
+            )
+
+            m_a0 = 0
+            m_a1 = 0
+            m_a2 = 0
+            min_step = 0
+            if obj.model == 1:
+                m_a0 = obj.m_1.a0
+                m_a1 = obj.m_1.a1
+                min_step = obj.min_step
+            elif obj.model == 2:
+                m_a0 = obj.m_2.a0
+                m_a1 = obj.m_2.a1
+                m_a2 = obj.m_2.a2
+                min_step = obj.min_step
+
+            ct_text += cfmt_string('''
+                static const esp_ipa_ian_ct_config_t s_esp_ipa_ian_ct_%s_config = {
+                    .model = %d,
+                    .m_a0 = %f,
+                    .m_a1 = %f,
+                    .m_a2 = %f,
+                    .f_n0 = %f,
+                    .bp = s_ipa_ian_ct_%s_basic_param,
+                    .bp_nums = ARRAY_SIZE(s_ipa_ian_ct_%s_basic_param),
+                    .min_step = %d,
+                    .g_a0 = %f,
+                    .g_a1 = %f,
+                    .g_a2 = s_esp_ipa_ian_ct_%s_g_a2,
+                    .g_a2_nums = ARRAY_SIZE(s_esp_ipa_ian_ct_%s_g_a2)       
+                };
+                '''%(name, obj.model, m_a0, m_a1, m_a2,
+                     obj.f_n0, name, name, min_step,
+                     obj.g.a0, obj.g.a1, name, name)
+            )
+
+            return ct_text
+        
+        def luma_code(name, obj):
+            luma_text = ''
+            luma_sub_text = ''
+
+            if hasattr(obj, 'histogram'):
+                hist = obj.histogram
+
+                mean_text = ''
+                for m in hist.mean:
+                    mean_text += '%d,'%(m)
+
+                luma_text += cfmt_string('''
+                    static const esp_ipa_ian_luma_hist_config_t s_esp_ipa_ian_luma_hist_%s_config = {                 
+                        .mean = {
+                            %s
+                        },
+                        .low_index_start = %d,
+                        .low_index_end = %d,
+                        .high_index_start = %d,
+                        .high_index_end = %d,
+                        .back_light_radio_threshold = %0.4f,
+                    }; 
+                    '''%(name, mean_text, hist.low_index.start, hist.low_index.end,
+                         hist.high_index.start, hist.high_index.end, hist.back_light_radio_threshold)
+                )
+
+                luma_sub_text += cfmt_string('''
+                   .hist = &s_esp_ipa_ian_luma_hist_%s_config,
+                    '''%(name)
+                )
+            
+            if hasattr(obj, 'ae'):
+                ae = obj.ae
+
+                weight_text = ''
+                for w in ae.weight:
+                    weight_text += '%d,'%(w)
+                
+                luma_text += cfmt_string('''
+                    static const esp_ipa_ian_luma_ae_config_t s_esp_ipa_ian_luma_ae_%s_config = {                 
+                        .weight = {
+                            %s
+                        },
+                    };'''%(name, weight_text)
+                )
+
+                luma_sub_text += cfmt_string('''
+                   .ae = &s_esp_ipa_ian_luma_ae_%s_config,
+                    '''%(name)
+                )
+
+            luma_text += cfmt_string('''
+                static const esp_ipa_ian_luma_config_t s_esp_ipa_ian_luma_%s_config = {
+                    %s
+                };'''%(name, luma_sub_text)
+            )
+
+            return luma_text
+
+        ian_text = str()
+        ian_obj_text = str()
+        if hasattr(obj,'color_temp'):
+            ian_text += ct_code(name, obj.color_temp)
+            ian_obj_text += cfmt_string('''
+                .ct = &s_esp_ipa_ian_ct_%s_config,
+                '''%(name)
+            )
+
+        if hasattr(obj, 'luma'):
+            ian_text += luma_code(name, obj.luma)
+            ian_obj_text += cfmt_string('''
+                .luma = &s_esp_ipa_ian_luma_%s_config,
+                '''%(name)
+            )
+
+        ian_text += cfmt_string('''
+            static const esp_ipa_ian_config_t s_ipa_ian_%s_config = {
+                %s
+            };'''%(name, ian_obj_text)
+        )
+
+        return ian_text
+
+    def decode(self, obj):
+        self.text = self.decode_ian(self.name, obj)
+
 class ipa_unit_awb_c(ipa_unit_c):
     @staticmethod
     def decode_awb(name, obj):
@@ -53,10 +204,11 @@ class ipa_unit_acc_c(ipa_unit_c):
             return saturation_text
 
         def ccm_code(name, obj):
-            ccm_text = str()
-            for i in obj.ccm:
+            ccm = obj.ccm
+            ccm_table_sub_text = str()
+            for i in ccm.table:
                 m = i.matrix
-                ccm_text += ('''
+                ccm_table_sub_text += ('''
                     {
                         .color_temp = %d,
                         .ccm = {
@@ -69,7 +221,40 @@ class ipa_unit_acc_c(ipa_unit_c):
                     },'''%(i.color_temp, m[0], m[1], m[2],
                            m[3], m[4], m[5], m[6], m[7], m[8])
                 )
-            return ccm_text
+
+            m = ccm.low_luma.matrix
+            ccm_low_table_text = cfmt_string('''
+                    {
+                        .matrix = {
+                            { %0.4f, %0.4f, %0.4f },
+                            { %0.4f, %0.4f, %0.4f },
+                            { %0.4f, %0.4f, %0.4f }
+                        }
+                    }
+                '''%(m[0], m[1], m[2],
+                     m[3], m[4], m[5],
+                     m[6], m[7], m[8])
+            )
+
+            ccm_table_text = cfmt_string('''
+                static const esp_ipa_acc_ccm_unit_t s_esp_ipa_acc_ccm_%s_table[] = {
+                    %s
+                };
+                '''%(name, ccm_table_sub_text)                        
+            )
+
+            ccm_text = cfmt_string('''
+                static const esp_ipa_acc_ccm_config_t s_esp_ipa_acc_ccm_%s_config = {
+                    .luma_env = \"%s\",
+                    .luma_low_threshold = %0.4f,
+                    .luma_low_ccm = %s,
+                    .ccm_table = s_esp_ipa_acc_ccm_%s_table,
+                    .ccm_table_size = %d,
+                };'''%(name, ccm.low_luma.luma_env, ccm.low_luma.threshold,
+                       ccm_low_table_text, name, len(ccm.table))
+            )
+
+            return ccm_table_text + ccm_text
 
         acc_text = str()
         acc_obj_text = str()
@@ -86,15 +271,10 @@ class ipa_unit_acc_c(ipa_unit_c):
             )
 
         if hasattr(obj, 'ccm'):
-            acc_text += cfmt_string('''
-                static const esp_ipa_acc_ccm_t s_ipa_acc_ccm_%s_config[] = {
-                    %s
-                };'''%(name, ccm_code(name, obj))
-            )
+            acc_text += ccm_code(name, obj)
             acc_obj_text += ('''
-                .ccm_table = s_ipa_acc_ccm_%s_config,
-                .ccm_table_size = ARRAY_SIZE(s_ipa_acc_ccm_%s_config)
-                '''%(name, name)
+                .ccm = &s_esp_ipa_acc_ccm_%s_config,
+                '''%(name)
             )
 
         acc_text += cfmt_string('''
@@ -113,32 +293,73 @@ class ipa_unit_aen_c(ipa_unit_c):
     @staticmethod
     def decode_aen(name, obj):
         def gamma_code(name, obj):
-            gamma_text = str()
-            if hasattr(obj.gamma, 'table'):
-                gamma_x = str()
-                for i in range(0, 16): gamma_x += '%3d, ' %(min((i + 1) * 16, 255))
-                
-                gamma_y = str()
-                for i in obj.gamma.table: gamma_y += '%3d, '%(i)
+            gamma = obj.gamma
+            gamma_table_text = str()
+            use_gamma_param_str = str()
 
-                gamma_text += ('''
-                    .use_gamma_param = false,
-                    .gamma = {
-                        .x = {
-                            %s
+            gamma_text = str()
+            if gamma.use_gamma_param == False:
+                gamma_table_str = str()
+                use_gamma_param_str = 'false'
+
+                for u in gamma.table:
+                    gamma_x = str()
+                    for i in range(0, 16): gamma_x += '%3d, ' %(min((i + 1) * 16, 255))
+                    
+                    gamma_y = str()
+                    for i in u.y: gamma_y += '%3d, '%(i)
+
+                    gamma_table_str += cfmt_string('''
+                        {
+                            .luma = %0.4f,
+                            .gamma = {
+                                .x = {
+                                    %s
+                                },
+                                .y = {
+                                    %s
+                                }
+                            }
                         },
-                        .y = {
-                            %s
-                        }
-                    },'''%(gamma_x, gamma_y)
+                        '''%(u.luma, gamma_x, gamma_y)
+                    )
+                
+                gamma_table_text = cfmt_string('''
+                    static const esp_ipa_aen_gamma_unit_t s_esp_ipa_aen_gamma_%s_table[] = {
+                        %s
+                    };
+                    '''%(name, gamma_table_str)
                 )
-            elif hasattr(obj.gamma, 'param'):
-                gamma_text += ('''
-                    .use_gamma_param = true,
-                    .gamma_param = %0.4f
-                    '''%(obj.gamma.param)
+            else:
+                gamma_table_str = str()
+                use_gamma_param_str = 'true'
+
+                for u in gamma.table:
+                    gamma_table_str += cfmt_string('''
+                        {
+                            .luma = %0.4f,
+                            .gamma_param = %0.4f,
+                        },
+                        '''%(u.luma, u.gamma_param)
+                    )
+                
+                gamma_table_text = cfmt_string('''
+                    static const esp_ipa_aen_gamma_unit_t s_esp_ipa_aen_gamma_%s_table[] = {
+                        %s
+                    };
+                    '''%(name, gamma_table_str)
                 )
-            return gamma_text
+
+            gamma_text = cfmt_string('''
+                .use_gamma_param = %s,
+                .luma_env = \"%s\",
+                .luma_min_step = %0.4f,
+                .gamma_table = s_esp_ipa_aen_gamma_%s_table,
+                .gamma_table_size = %d,
+                '''%(use_gamma_param_str, gamma.luma_env, gamma.luma_min_step, name, len(gamma.table))
+            )
+
+            return (gamma_text, gamma_table_text)
 
         def sharpen_code(name, obj):
             sharpen_text = str()
@@ -168,7 +389,7 @@ class ipa_unit_aen_c(ipa_unit_c):
         def contrast_code(name, obj):
             contrast_text = str()
             for i in obj.contrast:
-                contrast_text += ('''
+                contrast_text += cfmt_string('''
                     {
                         .gain = %d,
                         .contrast = %d
@@ -179,12 +400,17 @@ class ipa_unit_aen_c(ipa_unit_c):
         aen_code = str()
         aen_obj_code = str()
         if hasattr(obj, 'gamma'):
+            text = gamma_code(name, obj)
+            aen_code += text[1]
             aen_code += cfmt_string('''
                 static const esp_ipa_aen_gamma_config_t s_ipa_aen_gamma_%s_config = {
                     %s
-                };'''%(name, gamma_code(name, obj))
+                };'''%(name, text[0])
             )
-            aen_obj_code += ('.gamma = &s_ipa_aen_gamma_%s_config,'%(name))
+            aen_obj_code += cfmt_string('''
+                .gamma = &s_ipa_aen_gamma_%s_config,
+                '''%(name)
+            )
 
         if hasattr(obj, 'sharpen'):
             aen_code += cfmt_string('''
@@ -192,7 +418,7 @@ class ipa_unit_aen_c(ipa_unit_c):
                     %s
                 };'''%(name, sharpen_code(name, obj))
             )
-            aen_obj_code += ('''
+            aen_obj_code += cfmt_string('''
                 .sharpen_table = s_ipa_aen_sharpen_%s_config,
                 .sharpen_table_size = ARRAY_SIZE(s_ipa_aen_sharpen_%s_config),
                 '''%(name, name)
@@ -204,7 +430,7 @@ class ipa_unit_aen_c(ipa_unit_c):
                     %s
                 };'''%(name, contrast_code(name, obj))
             )
-            aen_obj_code += ('''
+            aen_obj_code += cfmt_string('''
                 .con_table = s_ipa_aen_con_%s_config,
                 .con_table_size = ARRAY_SIZE(s_ipa_aen_con_%s_config),
                 '''%(name, name)
@@ -310,18 +536,36 @@ class ipa_unit_agc_c(ipa_unit_c):
                 )
             return light_threshold_config_text
 
+        def get_anti_flicker_param(obj):
+            mode_desc_dic = {
+                'full': { 'mode': 'ESP_IPA_AGC_ANTI_FLICKER_FULL', 'ac_freq': True },
+                'part': { 'mode': 'ESP_IPA_AGC_ANTI_FLICKER_PART', 'ac_freq': True },
+                'none': { 'mode': 'ESP_IPA_AGC_ANTI_FLICKER_NONE', 'ac_freq': False },
+            }
+            ac_freq = 0
+            agc_af = obj.anti_flicker
+
+            mode_desc = mode_desc_dic[agc_af.mode]['mode']
+            if mode_desc_dic[agc_af.mode]['ac_freq']:
+                ac_freq = agc_af.ac_freq
+            
+            return (mode_desc, ac_freq)
+
         def exposure_code(name, obj):
             exp = obj.exposure
             gain = obj.gain
+            anti_flicker_mode, af_freq = get_anti_flicker_param(obj)
             exposure_text = ('''
                 .exposure_frame_delay = %d,
-                .ac_freq = %d,
                 .exposure_adjust_delay = %d,
                 .gain_frame_delay = %d,
                 .min_gain_step = %0.4f,
                 .gain_speed = %0.4f,
-                '''%(exp.frame_delay, exp.ac_freq, exp.adjust_delay,
-                     gain.frame_delay,gain.min_step, obj.speed)
+                .anti_flicker_mode = %s,
+                .ac_freq = %d,
+                '''%(exp.frame_delay, exp.adjust_delay,
+                     gain.frame_delay,gain.min_step, obj.f_n0,
+                     anti_flicker_mode, af_freq)
             )
             return exposure_text
         
@@ -428,6 +672,7 @@ class ipa_c(object):
 
     def add(self, obj, name, type):
         ipa_unit_lut = {
+            'ian': ipa_unit_ian_c,
             'awb': ipa_unit_awb_c,
             'acc': ipa_unit_acc_c,
             'aen': ipa_unit_aen_c,
@@ -435,7 +680,8 @@ class ipa_c(object):
             'agc': ipa_unit_agc_c
         }
 
-        self.decodes.append(ipa_unit_lut[type](obj, name, type))
+        if type in ipa_unit_lut:
+            self.decodes.append(ipa_unit_lut[type](obj, name, type))
 
     def get_text(self):        
         text_obj = str()
