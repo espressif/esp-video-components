@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2023-2024 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2023-2025 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -119,6 +119,8 @@ typedef enum {
 #define ESP_CAM_SENSOR_GAIN                         ESP_CAM_SENSOR_CLASS_ID(ESP_CAM_SENSOR_CID_CLASS_3A, 0x17)  /*!< Absolute gain (analog gain + digital gain) */
 #define ESP_CAM_SENSOR_STATS                        ESP_CAM_SENSOR_CLASS_ID(ESP_CAM_SENSOR_CID_CLASS_3A, 0x18)  /*!< Camera sensor gain & wb statistical data */
 #define ESP_CAM_SENSOR_AE_FLICKER                   ESP_CAM_SENSOR_CLASS_ID(ESP_CAM_SENSOR_CID_CLASS_3A, 0x19)  /*!< Anti banding flicker */
+#define ESP_CAM_SENSOR_GROUP_EXP_GAIN               ESP_CAM_SENSOR_CLASS_ID(ESP_CAM_SENSOR_CID_CLASS_3A, 0x1a)  /*!< Pack a group of (exposure and gain)registers to be effective at a specific time */
+#define ESP_CAM_SENSOR_EXPOSURE_US                  ESP_CAM_SENSOR_CLASS_ID(ESP_CAM_SENSOR_CID_CLASS_3A, 0x1b)  /*!< Exposure time in us(microseconds) */
 #define ESP_CAM_SENSOR_AUTO_N_PRESET_WB             ESP_CAM_SENSOR_CLASS_ID(ESP_CAM_SENSOR_CID_CLASS_3A, 0x20)  /*!< Pre set white balance mode when automatic white balance is not enabled */
 
 /**
@@ -361,6 +363,17 @@ typedef struct {
         } wb_avg;
     };
 } esp_cam_sensor_stats_t;
+
+/**
+ * @brief Description of cam sensor expousre val and total gain index when group hold is used.
+ * Group hold refers to the packing of a group of registers to be effective at a specific time within a frame.
+ * When the exposure time and gain need to be updated at the same time,
+ * the group hold can be used to ensure that all of them take effect at the same time.
+ */
+typedef struct {
+    uint32_t exposure_us; /*!< Exposure time in us */
+    uint32_t gain_index;  /*!< the index of gain map table */
+} esp_cam_sensor_gh_exp_gain_t;
 
 #ifdef __cplusplus
 }

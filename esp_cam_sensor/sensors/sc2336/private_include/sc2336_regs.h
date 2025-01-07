@@ -21,6 +21,7 @@ extern "C" {
 #define SC2336_REG_SENSOR_ID_L             0x3108
 
 #define SC2336_REG_GROUP_HOLD              0x3812
+#define SC2336_REG_GROUP_HOLD_DELAY        0x3802
 
 #define SC2336_REG_DIG_COARSE_GAIN         0x3e06
 #define SC2336_REG_DIG_FINE_GAIN           0x3e07
