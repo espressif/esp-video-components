@@ -1,4 +1,4 @@
-version: "0.7.1"
+version: "0.8.0"
 description: "Espressif camera sensor drivers"
 targets:
   - esp32p4

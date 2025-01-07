@@ -1,3 +1,9 @@
+## 0.8.0
+
+- Added the dependency of esp-ipa component in esp_cam_sensor
+- Fixed the minimum exposure time for SC2336 and SC202CS.
+- Added default IPA JSON configuration files for OV2710, OV5647 and SC2336.
+
 ## 0.7.1
 
 - Fixed the bayer type error in the OV5647 driver
