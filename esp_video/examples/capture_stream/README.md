@@ -1,5 +1,7 @@
 # Capture Stream Example
 
+(See the [README.md](../README.md) file in the upper level [examples](../) directory for more information about examples.)
+
 This example demonstrates the following:
 
 - How to initialize esp_video with specific parameters
@@ -7,21 +9,7 @@ This example demonstrates the following:
 
 ## How to use example
 
-### Hardware Required
-
-#### 1. MIPI-CSI Development Kit
-
-* A ESP32-P4 development board with MIPI-CSI interface
-* A SC2336 camera sensor
-* A USB Type-C cable for power supply and programming
-
-### 2. DVP Development Kit
-
-* A ESP32-P4 development board with DVP interface
-* A OV2640 camera sensor
-* A USB Type-C cable for power supply and programming
-
-### Build and Flash
+### Configure the Project
 
 Configure camera hardware data interface based on development kit:
 
@@ -29,8 +17,11 @@ Configure camera hardware data interface based on development kit:
 
 ```
 Example Configuration  --->
-    [*] Enable MIPI CSI Camera Sensor
-    [ ] Enable DVP Camera Sensor
+    Camera sensor interface (MIPI-CSI)  --->
+        (X) MIPI-CSI
+    (0) MIPI CSI SCCB I2C Port Number
+    (8) MIPI CSI SCCB I2C SCL Pin
+    (7) MIPI CSI SCCB I2C SDA Pin
 
 Component config  --->
     Espressif Camera Sensors Configurations  --->
@@ -42,15 +33,20 @@ Component config  --->
 
 ```
 Example Configuration  --->
-    [ ] Enable MIPI CSI Camera Sensor
-    [*] Enable DVP Camera Sensor
+    Camera sensor interface (DVP)  --->
+        (X) DVP
+    (1) DVP SCCB I2C Port Number (NEW)
+    (33) DVP SCCB I2C SCL Pin (NEW)
+    (32) DVP SCCB I2C SDA Pin (NEW)
 
 Component config  --->
     Espressif Camera Sensors Configurations  --->
         [*] OV2640  --->
         [ ] SC2336  ----
 ```
+Note: For custom development boards, please update the I2C pins configuration in the `Example Configuration` menu.
 
+### Build and Flash
 Build the project and flash it to the board, then run monitor tool to view serial output:
 
 ```
@@ -65,7 +61,7 @@ See the [ESP-IDF Getting Started Guide](https://docs.espressif.com/projects/esp-
 
 Running this example, you will see the following log output on the serial monitor:
 
-### MIPI-CSI Development Kit
+#### MIPI-CSI Development Kit
 
 ```
 ...
@@ -114,7 +110,7 @@ I (16355) main_task: Returned from app_main()
 ...
 ```
 
-### DVP Development Kit
+#### DVP Development Kit
 
 ```
 ...
