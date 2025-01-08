@@ -1,3 +1,7 @@
+## 0.8.0~1
+
+- esp-video v0.8.x is fixed to using esp_cam_sensor v0.8.x and esp_ipa v0.2.x
+
 ## 0.8.0
 
 - Supported enabling multiple camera sensors in menuconfig
