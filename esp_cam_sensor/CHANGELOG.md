@@ -1,3 +1,8 @@
+## 0.8.1
+
+- Added group hold feature in the SC2336 camera driver.
+- Added brief guide on how to add new camera drivers.
+
 ## 0.8.0
 
 - Added the dependency of esp-ipa component in esp_cam_sensor

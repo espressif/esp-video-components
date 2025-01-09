@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2024 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2024-2025 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -30,6 +30,7 @@ typedef struct {
 
 typedef struct {
     uint32_t exposure_val;
+    uint32_t exposure_max;
     uint32_t gain_index; // current gain index
 
     uint32_t vflip_en : 1;
@@ -45,9 +46,14 @@ struct sc2336_cam {
 #define SC2336_ENABLE_OUT_XCLK(pin,clk)
 #define SC2336_DISABLE_OUT_XCLK(pin)
 
-#define SC2336_EXPOSURE_MIN     1
-#define SC2336_EXPOSURE_STEP        1
+#define EXPOSURE_V4L2_UNIT_US                   100
+#define EXPOSURE_V4L2_TO_SC2336(v, sf)          \
+    ((uint32_t)(((double)v) * (sf)->fps * (sf)->isp_info->isp_v1_info.vts / (1000000 / EXPOSURE_V4L2_UNIT_US) + 0.5))
+#define EXPOSURE_SC2336_TO_V4L2(v, sf)          \
+    ((int32_t)(((double)v) * 1000000 / (sf)->fps / (sf)->isp_info->isp_v1_info.vts / EXPOSURE_V4L2_UNIT_US + 0.5))
+
 #define SC2336_VTS_MAX          0x7fff // Max exposure is VTS-6
+#define SC2336_EXP_MAX_OFFSET   0x06
 
 #define SC2336_FETCH_EXP_H(val)     (((val) >> 12) & 0xF)
 #define SC2336_FETCH_EXP_M(val)     (((val) >> 4) & 0xFF)
@@ -55,6 +61,10 @@ struct sc2336_cam {
 
 #define SC2336_FETCH_DGAIN_COARSE(val)  (((val) >> 8) & 0x03)
 #define SC2336_FETCH_DGAIN_FINE(val)    ((val) & 0xFF)
+
+#define SC2336_GROUP_HOLD_START        0x00
+#define SC2336_GROUP_HOLD_END          0x30
+#define SC2336_GROUP_HOLD_DELAY_FRAMES 0x01
 
 #define SC2336_PID         0xcb3a
 #define SC2336_SENSOR_NAME "SC2336"
@@ -66,6 +76,7 @@ struct sc2336_cam {
 
 static const uint32_t s_limited_gain = CONFIG_CAMERA_SC2336_ABSOLUTE_GAIN_LIMIT;
 static size_t s_limited_gain_index;
+static const uint8_t s_sc2336_exp_min = 0x08;
 static const char *TAG = "sc2336";
 
 #if CONFIG_CAMERA_SC2336_ANA_GAIN_PRIORITY
@@ -1425,22 +1436,78 @@ static esp_err_t sc2336_set_vflip(esp_cam_sensor_device_t *dev, int enable)
     return sc2336_set_reg_bits(dev->sccb_handle, 0x3221, 5, 2, enable ? 0x03 : 0x00);
 }
 
+static esp_err_t sc2336_set_exp_val(esp_cam_sensor_device_t *dev, uint32_t u32_val)
+{
+    esp_err_t ret;
+    struct sc2336_cam *cam_sc2336 = (struct sc2336_cam *)dev->priv;
+    uint32_t value_buf = MAX(u32_val, s_sc2336_exp_min);
+    value_buf = MIN(value_buf, cam_sc2336->sc2336_para.exposure_max);
+
+    ESP_LOGD(TAG, "set exposure 0x%" PRIx32, value_buf);
+    /* 4 least significant bits of expsoure are fractional part */
+    ret = sc2336_write(dev->sccb_handle,
+                       SC2336_REG_SHUTTER_TIME_H,
+                       SC2336_FETCH_EXP_H(value_buf));
+    ret |= sc2336_write(dev->sccb_handle,
+                        SC2336_REG_SHUTTER_TIME_M,
+                        SC2336_FETCH_EXP_M(value_buf));
+    ret |= sc2336_write(dev->sccb_handle,
+                        SC2336_REG_SHUTTER_TIME_L,
+                        SC2336_FETCH_EXP_L(value_buf));
+    if (ret == ESP_OK) {
+        cam_sc2336->sc2336_para.exposure_val = value_buf;
+    }
+    return ret;
+}
+
+static esp_err_t sc2336_set_total_gain_val(esp_cam_sensor_device_t *dev, uint32_t u32_val)
+{
+    esp_err_t ret;
+    struct sc2336_cam *cam_sc2336 = (struct sc2336_cam *)dev->priv;
+
+    ESP_LOGD(TAG, "dgain_fine %" PRIx8 ", dgain_coarse %" PRIx8 ", again_coarse %" PRIx8, sc2336_gain_map[u32_val].dgain_fine, sc2336_gain_map[u32_val].dgain_coarse, sc2336_gain_map[u32_val].analog_gain);
+    ret = sc2336_write(dev->sccb_handle,
+                       SC2336_REG_DIG_FINE_GAIN,
+                       sc2336_gain_map[u32_val].dgain_fine);
+    ret |= sc2336_write(dev->sccb_handle,
+                        SC2336_REG_DIG_COARSE_GAIN,
+                        sc2336_gain_map[u32_val].dgain_coarse);
+    ret |= sc2336_write(dev->sccb_handle,
+                        SC2336_REG_ANG_GAIN,
+                        sc2336_gain_map[u32_val].analog_gain);
+    if (ret == ESP_OK) {
+        cam_sc2336->sc2336_para.gain_index = u32_val;
+    }
+    return ret;
+}
+
 static esp_err_t sc2336_query_para_desc(esp_cam_sensor_device_t *dev, esp_cam_sensor_param_desc_t *qdesc)
 {
     esp_err_t ret = ESP_OK;
     switch (qdesc->id) {
     case ESP_CAM_SENSOR_EXPOSURE_VAL:
         qdesc->type = ESP_CAM_SENSOR_PARAM_TYPE_NUMBER;
-        qdesc->number.minimum = 0x08;
-        qdesc->number.maximum = dev->cur_format->isp_info->isp_v1_info.vts - 6; // max = VTS-6 = height+vblank-6, so when update vblank, exposure_max must be updated
+        qdesc->number.minimum = s_sc2336_exp_min;
+        qdesc->number.maximum = dev->cur_format->isp_info->isp_v1_info.vts - SC2336_EXP_MAX_OFFSET; // max = VTS-6 = height+vblank-6, so when update vblank, exposure_max must be updated
         qdesc->number.step = 1;
         qdesc->default_value = dev->cur_format->isp_info->isp_v1_info.exp_def;
+        break;
+    case ESP_CAM_SENSOR_EXPOSURE_US:
+        qdesc->type = ESP_CAM_SENSOR_PARAM_TYPE_NUMBER;
+        qdesc->number.minimum = EXPOSURE_SC2336_TO_V4L2(s_sc2336_exp_min, dev->cur_format);
+        qdesc->number.maximum = EXPOSURE_SC2336_TO_V4L2((dev->cur_format->isp_info->isp_v1_info.vts - SC2336_EXP_MAX_OFFSET), dev->cur_format); // max = VTS-6 = height+vblank-6, so when update vblank, exposure_max must be updated
+        qdesc->number.step = EXPOSURE_SC2336_TO_V4L2(0x01, dev->cur_format);
+        qdesc->default_value = EXPOSURE_SC2336_TO_V4L2((dev->cur_format->isp_info->isp_v1_info.exp_def), dev->cur_format);
         break;
     case ESP_CAM_SENSOR_GAIN:
         qdesc->type = ESP_CAM_SENSOR_PARAM_TYPE_ENUMERATION;
         qdesc->enumeration.count = s_limited_gain_index;
         qdesc->enumeration.elements = sc2336_total_gain_val_map;
         qdesc->default_value = dev->cur_format->isp_info->isp_v1_info.gain_def; // gain index
+        break;
+    case ESP_CAM_SENSOR_GROUP_EXP_GAIN:
+        qdesc->type = ESP_CAM_SENSOR_PARAM_TYPE_U8;
+        qdesc->u8.size = sizeof(esp_cam_sensor_gh_exp_gain_t);
         break;
     case ESP_CAM_SENSOR_VFLIP:
     case ESP_CAM_SENSOR_HMIRROR:
@@ -1483,41 +1550,32 @@ static esp_err_t sc2336_get_para_value(esp_cam_sensor_device_t *dev, uint32_t id
 static esp_err_t sc2336_set_para_value(esp_cam_sensor_device_t *dev, uint32_t id, const void *arg, size_t size)
 {
     esp_err_t ret = ESP_OK;
-    uint32_t u32_val = *(uint32_t *)arg;
-    struct sc2336_cam *cam_sc2336 = (struct sc2336_cam *)dev->priv;
 
     switch (id) {
     case ESP_CAM_SENSOR_EXPOSURE_VAL: {
-        ESP_LOGD(TAG, "set exposure 0x%" PRIx32, u32_val);
-        /* 4 least significant bits of expsoure are fractional part */
-        ret = sc2336_write(dev->sccb_handle,
-                           SC2336_REG_SHUTTER_TIME_H,
-                           SC2336_FETCH_EXP_H(u32_val));
-        ret |= sc2336_write(dev->sccb_handle,
-                            SC2336_REG_SHUTTER_TIME_M,
-                            SC2336_FETCH_EXP_M(u32_val));
-        ret |= sc2336_write(dev->sccb_handle,
-                            SC2336_REG_SHUTTER_TIME_L,
-                            SC2336_FETCH_EXP_L(u32_val));
-        if (ret == ESP_OK) {
-            cam_sc2336->sc2336_para.exposure_val = u32_val;
-        }
+        uint32_t u32_val = *(uint32_t *)arg;
+        ret = sc2336_set_exp_val(dev, u32_val);
+        break;
+    }
+    case ESP_CAM_SENSOR_EXPOSURE_US: {
+        uint32_t u32_val = *(uint32_t *)arg;
+        uint32_t ori_exp = EXPOSURE_V4L2_TO_SC2336(u32_val, dev->cur_format);
+        ret = sc2336_set_exp_val(dev, ori_exp);
         break;
     }
     case ESP_CAM_SENSOR_GAIN: {
-        ESP_LOGD(TAG, "dgain_fine %" PRIx8 ", dgain_coarse %" PRIx8 ", again_coarse %" PRIx8, sc2336_gain_map[u32_val].dgain_fine, sc2336_gain_map[u32_val].dgain_coarse, sc2336_gain_map[u32_val].analog_gain);
-        ret = sc2336_write(dev->sccb_handle,
-                           SC2336_REG_DIG_FINE_GAIN,
-                           sc2336_gain_map[u32_val].dgain_fine);
-        ret |= sc2336_write(dev->sccb_handle,
-                            SC2336_REG_DIG_COARSE_GAIN,
-                            sc2336_gain_map[u32_val].dgain_coarse);
-        ret |= sc2336_write(dev->sccb_handle,
-                            SC2336_REG_ANG_GAIN,
-                            sc2336_gain_map[u32_val].analog_gain);
-        if (ret == ESP_OK) {
-            cam_sc2336->sc2336_para.gain_index = u32_val;
-        }
+        uint32_t u32_val = *(uint32_t *)arg;
+        ret = sc2336_set_total_gain_val(dev, u32_val);
+        break;
+    }
+    case ESP_CAM_SENSOR_GROUP_EXP_GAIN: {
+        esp_cam_sensor_gh_exp_gain_t *value = (esp_cam_sensor_gh_exp_gain_t *)arg;
+        uint32_t ori_exp = EXPOSURE_V4L2_TO_SC2336(value->exposure_us, dev->cur_format);
+        ret = sc2336_write(dev->sccb_handle, SC2336_REG_GROUP_HOLD, SC2336_GROUP_HOLD_START);
+        ret |= sc2336_set_exp_val(dev, ori_exp);
+        ret |= sc2336_set_total_gain_val(dev, value->gain_index);
+        ret |= sc2336_write(dev->sccb_handle, SC2336_REG_GROUP_HOLD_DELAY, SC2336_GROUP_HOLD_DELAY_FRAMES);
+        ret |= sc2336_write(dev->sccb_handle, SC2336_REG_GROUP_HOLD, SC2336_GROUP_HOLD_END);
         break;
     }
     case ESP_CAM_SENSOR_VFLIP: {
@@ -1585,6 +1643,7 @@ static esp_err_t sc2336_set_format(esp_cam_sensor_device_t *dev, const esp_cam_s
     // init para
     cam_sc2336->sc2336_para.exposure_val = dev->cur_format->isp_info->isp_v1_info.exp_def;
     cam_sc2336->sc2336_para.gain_index = dev->cur_format->isp_info->isp_v1_info.gain_def;
+    cam_sc2336->sc2336_para.exposure_max = dev->cur_format->isp_info->isp_v1_info.vts - SC2336_EXP_MAX_OFFSET;
 
     return ret;
 }
