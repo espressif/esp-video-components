@@ -8,12 +8,6 @@
 #include "esp_video_ioctl.h"
 #include "esp_video_sensor.h"
 
-#define EXPOSURE_V4L2_UNIT_US                   100
-#define EXPOSURE_V4L2_TO_SENSOR(v, sf)          \
-    ((int32_t)(((double)v) * (sf)->fps * (sf)->isp_info->isp_v1_info.vts / (1000000 / EXPOSURE_V4L2_UNIT_US) + 0.5))
-#define EXPOSURE_SENSOR_TO_V4L2(v, sf)          \
-    ((int32_t)(((double)v) * 1000000 / (sf)->fps / (sf)->isp_info->isp_v1_info.vts / EXPOSURE_V4L2_UNIT_US + 0.5))
-
 struct control_map {
     uint32_t esp_cam_sensor_id;
     uint32_t v4l2_id;
@@ -50,7 +44,7 @@ static const struct control_map s_control_map_table[] = {
         .v4l2_id = V4L2_CID_GAIN,
     },
     {
-        .esp_cam_sensor_id = ESP_CAM_SENSOR_EXPOSURE_VAL,
+        .esp_cam_sensor_id = ESP_CAM_SENSOR_EXPOSURE_US,
         .v4l2_id = V4L2_CID_EXPOSURE_ABSOLUTE,
     },
     {
@@ -64,6 +58,10 @@ static const struct control_map s_control_map_table[] = {
     {
         .esp_cam_sensor_id = ESP_CAM_SENSOR_AE_LEVEL,
         .v4l2_id = V4L2_CID_CAMERA_AE_LEVEL
+    },
+    {
+        .esp_cam_sensor_id = ESP_CAM_SENSOR_GROUP_EXP_GAIN,
+        .v4l2_id = V4L2_CID_CAMERA_GROUP
     }
 };
 
@@ -193,7 +191,6 @@ esp_err_t esp_video_set_ext_ctrls_to_sensor(esp_cam_sensor_device_t *cam_dev, co
     for (int i = 0; i < controls->count; i++) {
         bool ioctl;
         void *value_ptr;
-        int32_t value_buf;
         size_t value_size;
         esp_cam_sensor_param_desc_t qdesc;
         struct v4l2_ext_control *ctrl = &controls->controls[i];
@@ -210,15 +207,7 @@ esp_err_t esp_video_set_ext_ctrls_to_sensor(esp_cam_sensor_device_t *cam_dev, co
                 break;
             }
         } else {
-            if (ctrl->id == V4L2_CID_EXPOSURE_ABSOLUTE) {
-                value_buf = EXPOSURE_V4L2_TO_SENSOR(ctrl->value, cam_dev->cur_format);
-                value_buf = MIN(value_buf, qdesc.number.maximum);
-                value_buf = MAX(value_buf, qdesc.number.minimum);
-                value_ptr = &value_buf;
-                value_size = sizeof(value_buf);
-            } else {
-                value_buf = ctrl->value;
-            }
+            int32_t value_buf = ctrl->value;
 
             switch (qdesc.type) {
             case ESP_CAM_SENSOR_PARAM_TYPE_NUMBER:
@@ -308,10 +297,6 @@ esp_err_t esp_video_get_ext_ctrls_from_sensor(esp_cam_sensor_device_t *cam_dev, 
                 ESP_LOGE(TAG, "failed to get ctrl id=%" PRIx32, ctrl->id);
                 break;
             }
-
-            if (ctrl->id == V4L2_CID_EXPOSURE_ABSOLUTE) {
-                ctrl->value = EXPOSURE_SENSOR_TO_V4L2(ctrl->value, cam_dev->cur_format);
-            }
         }
     }
 
@@ -395,13 +380,6 @@ esp_err_t esp_video_query_ext_ctrls_from_sensor(esp_cam_sensor_device_t *cam_dev
     default:
         ESP_LOGD(TAG, "sensor type=%" PRIu32 " is not supported", qdesc.type);
         return ESP_ERR_NOT_SUPPORTED;
-    }
-
-    if (qctrl->id == V4L2_CID_EXPOSURE_ABSOLUTE) {
-        qctrl->minimum = EXPOSURE_SENSOR_TO_V4L2(qctrl->minimum, cam_dev->cur_format);
-        qctrl->maximum = EXPOSURE_SENSOR_TO_V4L2(qctrl->maximum, cam_dev->cur_format);
-        qctrl->step = MAX(EXPOSURE_SENSOR_TO_V4L2(qctrl->step, cam_dev->cur_format), 1);
-        qctrl->default_value = EXPOSURE_SENSOR_TO_V4L2(qctrl->default_value, cam_dev->cur_format);
     }
 
     return ESP_OK;

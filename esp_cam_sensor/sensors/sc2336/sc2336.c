@@ -1496,7 +1496,7 @@ static esp_err_t sc2336_query_para_desc(esp_cam_sensor_device_t *dev, esp_cam_se
         qdesc->type = ESP_CAM_SENSOR_PARAM_TYPE_NUMBER;
         qdesc->number.minimum = EXPOSURE_SC2336_TO_V4L2(s_sc2336_exp_min, dev->cur_format);
         qdesc->number.maximum = EXPOSURE_SC2336_TO_V4L2((dev->cur_format->isp_info->isp_v1_info.vts - SC2336_EXP_MAX_OFFSET), dev->cur_format); // max = VTS-6 = height+vblank-6, so when update vblank, exposure_max must be updated
-        qdesc->number.step = EXPOSURE_SC2336_TO_V4L2(0x01, dev->cur_format);
+        qdesc->number.step = MAX(EXPOSURE_SC2336_TO_V4L2(0x01, dev->cur_format), 1);
         qdesc->default_value = EXPOSURE_SC2336_TO_V4L2((dev->cur_format->isp_info->isp_v1_info.exp_def), dev->cur_format);
         break;
     case ESP_CAM_SENSOR_GAIN:

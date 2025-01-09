@@ -18,6 +18,7 @@ extern "C" {
 
 #define V4L2_CID_CAMERA_AE_LEVEL        (V4L2_CID_CAMERA_CLASS_BASE + 40)
 #define V4L2_CID_CAMERA_STATS           (V4L2_CID_CAMERA_CLASS_BASE + 41)
+#define V4L2_CID_CAMERA_GROUP           (V4L2_CID_CAMERA_CLASS_BASE + 42)
 
 #ifdef __cplusplus
 }
