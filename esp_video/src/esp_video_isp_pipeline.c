@@ -629,6 +629,34 @@ static void config_sensor_ae_target_level(esp_video_isp_t *isp, esp_ipa_metadata
     }
 }
 
+static void config_awb(esp_video_isp_t *isp, esp_ipa_metadata_t *metadata)
+{
+    struct v4l2_ext_controls controls;
+    struct v4l2_ext_control control[1];
+    esp_video_isp_awb_t awb;
+
+    if (metadata->flags & IPA_METADATA_FLAGS_AWB) {
+        esp_ipa_awb_range_t *range = &metadata->awb;
+
+        awb.enable = true;
+        awb.green_max = range->green_max;
+        awb.green_min = range->green_min;
+        awb.rg_max = range->rg_max;
+        awb.rg_min = range->rg_min;
+        awb.bg_max = range->bg_max;
+        awb.bg_min = range->bg_min;
+
+        controls.ctrl_class = V4L2_CID_USER_CLASS;
+        controls.count      = 1;
+        controls.controls   = control;
+        control[0].id       = V4L2_CID_USER_ESP_ISP_AWB;
+        control[0].p_u8     = (uint8_t *)&awb;
+        if (ioctl(isp->isp_fd, VIDIOC_S_EXT_CTRLS, &controls) != 0) {
+            ESP_LOGE(TAG, "failed to set AWB");
+        }
+    }
+}
+
 static void config_isp_and_camera(esp_video_isp_t *isp, esp_ipa_metadata_t *metadata)
 {
     if (!isp->sensor_attr.awb) {
@@ -644,6 +672,7 @@ static void config_isp_and_camera(esp_video_isp_t *isp, esp_ipa_metadata_t *meta
 #if ESP_VIDEO_ISP_DEVICE_LSC
     config_lsc(isp, metadata);
 #endif
+    config_awb(isp, metadata);
 
     config_sensor_ae_target_level(isp, metadata);
     config_exposure_and_gain(isp, metadata);

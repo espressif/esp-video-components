@@ -59,15 +59,6 @@
 #define ISP_REGION_START            (0.2)
 #define ISP_REGION_END              (0.8)
 
-#define ISP_RGB_RG_L                0.5040
-#define ISP_RGB_RG_H                0.8899
-
-#define ISP_RGB_BG_L                0.4838
-#define ISP_RGB_BG_H                0.7822
-
-#define ISP_AWB_MAX_LUM             395
-#define ISP_AWB_MIN_LUM             185
-
 #define ISP_STARTED(iv)             ((iv)->isp_proc != NULL)
 
 #define ISP_STATS_AWB_FLAG          ESP_VIDEO_ISP_STATS_FLAG_AWB
@@ -76,7 +67,7 @@
 #define ISP_STATS_SHARPEN_FLAG      ESP_VIDEO_ISP_STATS_FLAG_SHARPEN
 #define ISP_STATS_AF_FLAG           ESP_VIDEO_ISP_STATS_FLAG_AF
 
-#define ISP_STATS_FLAGS             (ISP_STATS_AE_FLAG | ISP_STATS_AWB_FLAG | ISP_STATS_HIST_FLAG)
+#define ISP_STATS_FLAGS             (ISP_STATS_AE_FLAG | ISP_STATS_HIST_FLAG)
 
 #define ISP_LSC_GET_GRIDS(res)      (((res) - 1) / 2 / ISP_LL_LSC_GRID_HEIGHT + 2)
 
@@ -130,6 +121,10 @@ struct isp_video {
 
     esp_isp_color_config_t color_config;
 
+    /* Auto white balance statistics range configuration */
+
+    esp_video_isp_awb_t awb;
+
 #if ESP_VIDEO_ISP_DEVICE_LSC
     /* LSC Configuration */
 
@@ -160,6 +155,7 @@ struct isp_video {
     uint8_t sharpen_started         : 1;
     uint8_t gamma_started           : 1;
     uint8_t demosaic_started        : 1;
+    uint8_t awb_started             : 1;
 
 #if ESP_VIDEO_ISP_DEVICE_LSC
     uint8_t lsc_started             : 1;
@@ -319,6 +315,17 @@ static const struct v4l2_query_ext_ctrl s_isp_qctrl[] = {
         .nr_of_dims = 1,
         .default_value = ISP_HUE_DEFAULT,
         .name = "hue",
+    },
+    {
+        .id = V4L2_CID_USER_ESP_ISP_AWB,
+        .type = V4L2_CTRL_TYPE_U8,
+        .maximum = UINT8_MAX,
+        .minimum = 0,
+        .step = 1,
+        .elems = sizeof(esp_video_isp_awb_t),
+        .nr_of_dims = 1,
+        .default_value = 0,
+        .name = "AWB",
     },
 #if ESP_VIDEO_ISP_DEVICE_LSC
     {
@@ -482,6 +489,9 @@ static esp_err_t isp_stats_done(struct isp_video *isp_video, const void *buffer,
     if (isp_video->af_started) {
         target_flags |= ISP_STATS_AF_FLAG;
     }
+    if (isp_video->awb_started) {
+        target_flags |= ISP_STATS_AWB_FLAG;
+    }
     if ((isp_video->stats_buffer->flags & target_flags) == target_flags) {
         isp_video->stats_buffer->seq = isp_video->seq++;
         META_VIDEO_DONE_BUF(isp_video->video, isp_video->stats_buffer, sizeof(esp_video_isp_stats_t));
@@ -569,32 +579,50 @@ static bool isp_awb_stats_done(isp_awb_ctlr_t awb_ctlr, const esp_isp_awb_evt_da
     return ret == ESP_OK ? true : false;
 }
 
+static void isp_init_awb_param(struct isp_video *isp_video, esp_isp_awb_config_t *awb_config)
+{
+    esp_video_isp_awb_t *awb = &isp_video->awb;
+    uint32_t width = META_VIDEO_GET_FORMAT_WIDTH(isp_video->video);
+    uint32_t height = META_VIDEO_GET_FORMAT_HEIGHT(isp_video->video);
+
+    awb_config->sample_point = ISP_AWB_SAMPLE_POINT_BEFORE_CCM;
+
+    awb_config->window.top_left.x = width * ISP_REGION_START;
+    awb_config->window.top_left.y = height * ISP_REGION_START;
+    awb_config->window.btm_right.x = width * ISP_REGION_END;
+    awb_config->window.btm_right.y = height * ISP_REGION_END;
+
+    awb_config->white_patch.luminance.max = (float)awb->green_max * (1 + awb->rg_max + awb->bg_max);
+    awb_config->white_patch.luminance.min = (float)awb->green_min * (1 + awb->rg_min + awb->bg_min);
+
+    awb_config->white_patch.red_green_ratio.max = awb->rg_max;
+    awb_config->white_patch.red_green_ratio.min = awb->rg_min;
+
+    awb_config->white_patch.blue_green_ratio.max = awb->bg_max;
+    awb_config->white_patch.blue_green_ratio.min = awb->bg_min;
+}
+
 static esp_err_t isp_start_awb(struct isp_video *isp_video)
 {
     esp_err_t ret;
-    uint32_t width = META_VIDEO_GET_FORMAT_WIDTH(isp_video->video);
-    uint32_t height = META_VIDEO_GET_FORMAT_HEIGHT(isp_video->video);
-    esp_isp_awb_config_t awb_config = {
-        .sample_point = ISP_AWB_SAMPLE_POINT_BEFORE_CCM,
-        .window = {
-            .top_left = {.x = width * ISP_REGION_START, .y = height * ISP_REGION_START},
-            .btm_right = {.x = width * ISP_REGION_END, .y = height * ISP_REGION_END},
-        },
-        .white_patch = {
-            .luminance = {.min = ISP_AWB_MIN_LUM, .max = ISP_AWB_MAX_LUM},
-            .red_green_ratio = {.min = ISP_RGB_RG_L, .max = ISP_RGB_RG_H},
-            .blue_green_ratio = {.min = ISP_RGB_BG_L, .max = ISP_RGB_BG_H},
-        },
-    };
+    esp_isp_awb_config_t awb_config;
     esp_isp_awb_cbs_t awb_cb = {
         .on_statistics_done = isp_awb_stats_done,
     };
+
+    if (isp_video->awb_started) {
+        return ESP_OK;
+    }
+
+    isp_init_awb_param(isp_video, &awb_config);
 
     ESP_RETURN_ON_ERROR(esp_isp_new_awb_controller(isp_video->isp_proc, &awb_config, &isp_video->awb_ctlr), TAG, "failed to new AWB");
 
     ESP_GOTO_ON_ERROR(esp_isp_awb_register_event_callbacks(isp_video->awb_ctlr, &awb_cb, isp_video), fail_0, TAG, "failed to register AWB callback");
     ESP_GOTO_ON_ERROR(esp_isp_awb_controller_enable(isp_video->awb_ctlr), fail_0, TAG, "failed to enable AWB");
     ESP_GOTO_ON_ERROR(esp_isp_awb_controller_start_continuous_statistics(isp_video->awb_ctlr), fail_1, TAG, "failed to start AWB");
+
+    isp_video->awb_started = true;
 
     return ESP_OK;
 
@@ -606,13 +634,36 @@ fail_0:
     return ret;
 }
 
+static esp_err_t isp_reconfigure_awb(struct isp_video *isp_video)
+{
+    if (isp_video->awb_started) {
+        esp_isp_awb_config_t awb_config;
+
+        isp_init_awb_param(isp_video, &awb_config);
+
+        ESP_RETURN_ON_ERROR(esp_isp_awb_controller_stop_continuous_statistics(isp_video->awb_ctlr), TAG, "failed to stop AWB");
+        ESP_RETURN_ON_ERROR(esp_isp_awb_controller_reconfig(isp_video->awb_ctlr, &awb_config), TAG, "failed to reconfig AWB");
+        ESP_RETURN_ON_ERROR(esp_isp_awb_controller_start_continuous_statistics(isp_video->awb_ctlr), TAG, "failed to start AWB");
+    } else {
+        ESP_RETURN_ON_ERROR(isp_start_awb(isp_video), TAG, "failed to start AWB in reconfigure stage");
+    }
+
+    return ESP_OK;
+}
+
 static esp_err_t isp_stop_awb(struct isp_video *isp_video)
 {
+    if (!isp_video->awb_started) {
+        return ESP_OK;
+    }
+
     ESP_RETURN_ON_ERROR(esp_isp_awb_controller_stop_continuous_statistics(isp_video->awb_ctlr), TAG, "failed to stop AWB");
     ESP_RETURN_ON_ERROR(esp_isp_awb_controller_disable(isp_video->awb_ctlr), TAG, "failed to disable AWB");
     ESP_RETURN_ON_ERROR(esp_isp_del_awb_controller(isp_video->awb_ctlr), TAG, "failed to delete AWB");
 
     isp_video->awb_ctlr = NULL;
+
+    isp_video->awb_started = false;
 
     return ESP_OK;
 }
@@ -1121,7 +1172,10 @@ static esp_err_t isp_start_pipeline(struct isp_video *isp_video)
         ESP_GOTO_ON_ERROR(isp_start_bf(isp_video), fail_0, TAG, "failed to start BF");
     }
 
-    ESP_GOTO_ON_ERROR(isp_start_awb(isp_video), fail_1, TAG, "failed to start AWB");
+    if (isp_video->awb.enable) {
+        ESP_GOTO_ON_ERROR(isp_start_awb(isp_video), fail_1, TAG, "failed to start AWB");
+    }
+
     ESP_GOTO_ON_ERROR(isp_start_ae(isp_video), fail_2, TAG, "failed to start AE");
     ESP_GOTO_ON_ERROR(isp_start_hist(isp_video), fail_3, TAG, "failed to start histogram");
 
@@ -1471,6 +1525,30 @@ static esp_err_t isp_video_set_ext_ctrl(struct esp_video *video, const struct v4
             }
             break;
         }
+        case V4L2_CID_USER_ESP_ISP_AWB: {
+            const esp_video_isp_awb_t *awb = (const esp_video_isp_awb_t *)ctrl->p_u8;
+
+            if (awb->rg_min > awb->rg_max || awb->bg_min > awb->bg_max) {
+                ESP_LOGE(TAG, "Invalid ratio range");
+                break;
+            }
+            if (awb->green_min > awb->green_max) {
+                ESP_LOGE(TAG, "Invalid green value range");
+                break;
+            }
+
+            memcpy(&isp_video->awb, awb, sizeof(esp_video_isp_awb_t));
+            if (awb->enable) {
+                if (ISP_STARTED(isp_video)) {
+                    ESP_GOTO_ON_ERROR(isp_reconfigure_awb(isp_video), exit, TAG, "failed to reconfigure AWB");
+                }
+            } else {
+                if (ISP_STARTED(isp_video)) {
+                    ESP_GOTO_ON_ERROR(isp_stop_awb(isp_video), exit, TAG, "failed to reconfigure AWB");
+                }
+            }
+            break;
+        }
 #if ESP_VIDEO_ISP_DEVICE_LSC
         case V4L2_CID_USER_ESP_ISP_LSC: {
             const esp_video_isp_lsc_t *lsc = (const esp_video_isp_lsc_t *)ctrl->p_u8;
@@ -1619,6 +1697,10 @@ static esp_err_t isp_video_get_ext_ctrl(struct esp_video *video, struct v4l2_ext
         }
         case V4L2_CID_HUE: {
             ctrl->value = isp_video->color_config.color_hue;
+            break;
+        }
+        case V4L2_CID_USER_ESP_ISP_AWB: {
+            memcpy(ctrl->p_u8, &isp_video->awb, sizeof(esp_video_isp_awb_t));
             break;
         }
 #if ESP_VIDEO_ISP_DEVICE_LSC

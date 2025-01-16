@@ -29,6 +29,7 @@ extern "C" {
 #define V4L2_CID_USER_ESP_ISP_WB            (V4L2_CID_USER_ESP_ISP_BASE + 0x0005)   /*!< White balance V4L2 controller ID */
 #define V4L2_CID_USER_ESP_ISP_LSC           (V4L2_CID_USER_ESP_ISP_BASE + 0x0006)   /*!< LSC V4L2 controller ID */
 #define V4L2_CID_USER_ESP_ISP_AF            (V4L2_CID_USER_ESP_ISP_BASE + 0x0007)   /*!< Auto focus V4L2 controller ID */
+#define V4L2_CID_USER_ESP_ISP_AWB           (V4L2_CID_USER_ESP_ISP_BASE + 0x0008)   /*!< Auto white balance statistics V4L2 controller ID */
 
 /**
  * @brief ESP32XXX ISP image statistics output, data type is "esp_ipa_stats_t"
@@ -183,6 +184,22 @@ typedef struct esp_video_isp_af {
 
     uint32_t edge_thresh;           /*!< AF edge threshold, definition higher than this value will be counted as a valid pixel for calculating AF result */
 } esp_video_isp_af_t;
+
+/**
+ * @brief Auto white balance statistics configuration.
+ */
+typedef struct esp_video_isp_awb {
+    bool enable;                    /*!< true: enable AWB statistics, false: disable AWB statistics */
+
+    uint8_t green_max;              /*!< Maximum green value */
+    uint8_t green_min;              /*!< Minimum green value */
+
+    float rg_max;                   /*!< Maximum red/green ratio */
+    float rg_min;                   /*!< Minimum red/green ratio */
+
+    float bg_max;                   /*!< Maximum blue/green ratio */
+    float bg_min;                   /*!< Minimum blue/green ratio */
+} esp_video_isp_awb_t;
 
 /**
  * @brief ISP statistics.
