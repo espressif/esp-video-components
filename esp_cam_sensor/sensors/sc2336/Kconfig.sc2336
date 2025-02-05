@@ -32,53 +32,53 @@ if CAMERA_SC2336
 
     choice CAMERA_SC2336_MIPI_DEFAULT_FMT
         prompt "Default format select for MIPI"
-        default CAMERA_SC2336_MIPI_RAW8_1280x720_30FPS
+        default CAMERA_SC2336_MIPI_RAW8_1280X720_30FPS
         help
             Select the default format to load when the sensor is detected.
             When the sensor is in stream off state, the format can be changed.
     
-        config CAMERA_SC2336_MIPI_RAW10_1280x720_30FPS
+        config CAMERA_SC2336_MIPI_RAW10_1280X720_30FPS
             bool "RAW10 1280x720 30fps, MIPI 2lane 24M input"
-        config CAMERA_SC2336_MIPI_RAW10_1280x720_50FPS
+        config CAMERA_SC2336_MIPI_RAW10_1280X720_50FPS
             bool "RAW10 1280x720 50fps, MIPI 2lane 24M input"
-        config CAMERA_SC2336_MIPI_RAW10_1280x720_60FPS
+        config CAMERA_SC2336_MIPI_RAW10_1280X720_60FPS
             bool "RAW10_1280x720 60fps, MIPI 2lane 24M input"
-        config CAMERA_SC2336_MIPI_RAW10_1920x1080_25FPS_1_LANE
+        config CAMERA_SC2336_MIPI_RAW10_1920X1080_25FPS_1_LANE
             bool "RAW10 1920x1080 25fps, MIPI 1lane 24M input"
-        config CAMERA_SC2336_MIPI_RAW10_1920x1080_25FPS_2_LANE
+        config CAMERA_SC2336_MIPI_RAW10_1920X1080_25FPS_2_LANE
             bool "RAW10 1920x1080 25fps, MIPI 2lane 24M input"
-        config CAMERA_SC2336_MIPI_RAW10_1920x1080_30FPS
+        config CAMERA_SC2336_MIPI_RAW10_1920X1080_30FPS
             bool "RAW10 1920x1080 30fps, MIPI 2lane 24M input"
-        config CAMERA_SC2336_MIPI_RAW10_800x800_30FPS
+        config CAMERA_SC2336_MIPI_RAW10_800X800_30FPS
             bool "RAW10 800x800 30fps, MIPI 2lane 24M input"
-        config CAMERA_SC2336_MIPI_RAW10_640x480_50FPS
+        config CAMERA_SC2336_MIPI_RAW10_640X480_50FPS
             bool "RAW10 640x480 50fps, MIPI 2lane 24M input"
-        config CAMERA_SC2336_MIPI_RAW8_1920x1080_30FPS
+        config CAMERA_SC2336_MIPI_RAW8_1920X1080_30FPS
             bool "RAW8 1920x1080 30fps, MIPI 2lane 24M input"
-        config CAMERA_SC2336_MIPI_RAW8_1280x720_30FPS
+        config CAMERA_SC2336_MIPI_RAW8_1280X720_30FPS
             bool "RAW8 1280x720 30fps, MIPI 2lane 24M input"
-        config CAMERA_SC2336_MIPI_RAW8_800x800_30FPS
+        config CAMERA_SC2336_MIPI_RAW8_800X800_30FPS
             bool "RAW8 800x800 30fps, MIPI 2lane 24M input"
-        config CAMERA_SC2336_MIPI_RAW8_1024x600_30FPS
+        config CAMERA_SC2336_MIPI_RAW8_1024X600_30FPS
             bool "RAW8 1024x600 30fps, MIPI 2lane 24M input"                                       
     endchoice # CAMERA_SC2336_MIPI_DEFAULT_FMT
 
     config CAMERA_SC2336_MIPI_IF_FORMAT_INDEX_DAFAULT
         int
-        default 0 if CAMERA_SC2336_MIPI_RAW10_1280x720_30FPS
-        default 1 if CAMERA_SC2336_MIPI_RAW10_1280x720_50FPS
-        default 2 if CAMERA_SC2336_MIPI_RAW10_1280x720_60FPS
-        default 3 if CAMERA_SC2336_MIPI_RAW10_1920x1080_25FPS_1_LANE
+        default 0 if CAMERA_SC2336_MIPI_RAW10_1280X720_30FPS
+        default 1 if CAMERA_SC2336_MIPI_RAW10_1280X720_50FPS
+        default 2 if CAMERA_SC2336_MIPI_RAW10_1280X720_60FPS
+        default 3 if CAMERA_SC2336_MIPI_RAW10_1920X1080_25FPS_1_LANE
 
-        default 4 if CAMERA_SC2336_MIPI_RAW10_1920x1080_25FPS_2_LANE
-        default 5 if CAMERA_SC2336_MIPI_RAW10_1920x1080_30FPS
-        default 6 if CAMERA_SC2336_MIPI_RAW10_800x800_30FPS
-        default 7 if CAMERA_SC2336_MIPI_RAW10_640x480_50FPS
+        default 4 if CAMERA_SC2336_MIPI_RAW10_1920X1080_25FPS_2_LANE
+        default 5 if CAMERA_SC2336_MIPI_RAW10_1920X1080_30FPS
+        default 6 if CAMERA_SC2336_MIPI_RAW10_800X800_30FPS
+        default 7 if CAMERA_SC2336_MIPI_RAW10_640X480_50FPS
 
-        default 8 if CAMERA_SC2336_MIPI_RAW8_1920x1080_30FPS
-        default 9 if CAMERA_SC2336_MIPI_RAW8_1280x720_30FPS
-        default 10 if CAMERA_SC2336_MIPI_RAW8_800x800_30FPS
-        default 11 if CAMERA_SC2336_MIPI_RAW8_1024x600_30FPS
+        default 8 if CAMERA_SC2336_MIPI_RAW8_1920X1080_30FPS
+        default 9 if CAMERA_SC2336_MIPI_RAW8_1280X720_30FPS
+        default 10 if CAMERA_SC2336_MIPI_RAW8_800X800_30FPS
+        default 11 if CAMERA_SC2336_MIPI_RAW8_1024X600_30FPS
 
         help
             Set the configuration loaded by default for the MIPI interface.
@@ -86,18 +86,18 @@ if CAMERA_SC2336
 
     choice CAMERA_SC2336_DVP_DEFAULT_FMT
         prompt "Default format select for DVP"
-        default CAMERA_SC2336_DVP_RAW10_1280x720_30FPS
+        default CAMERA_SC2336_DVP_RAW10_1280X720_30FPS
         help
             Select the default format to load when the sensor is detected.
             When the sensor is in stream off state, the format can be changed.
     
-        config CAMERA_SC2336_DVP_RAW10_1280x720_30FPS
+        config CAMERA_SC2336_DVP_RAW10_1280X720_30FPS
             bool "RAW10 1280x720 30fps, DVP 8bit 24M input"
     endchoice # CAMERA_SC2336_DVP_DEFAULT_FMT
 
     config CAMERA_SC2336_DVP_IF_FORMAT_INDEX_DAFAULT
         int
-        default 12 if CAMERA_SC2336_DVP_RAW10_1280x720_30FPS
+        default 12 if CAMERA_SC2336_DVP_RAW10_1280X720_30FPS
         help
             Set the configuration loaded by default for the DVP interface.
             More information can be obtained by calling the query_support_formats().

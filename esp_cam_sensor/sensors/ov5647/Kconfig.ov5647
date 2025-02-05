@@ -24,30 +24,30 @@ if CAMERA_OV5647
 
     choice CAMERA_OV5647_MIPI_DEFAULT_FMT
         prompt "Default format select"
-        default CAMERA_OV5647_MIPI_RAW8_800x800_50FPS
+        default CAMERA_OV5647_MIPI_RAW8_800X800_50FPS
         help
             Select the default format to load when the sensor is detected.
             When the sensor is in stream off state, the format can be changed.
     
-        config CAMERA_OV5647_MIPI_RAW8_800x1280_50FPS
+        config CAMERA_OV5647_MIPI_RAW8_800X1280_50FPS
             bool "RAW8 800x1280 50fps, MIPI 2lane 24M input"
-        config CAMERA_OV5647_MIPI_RAW8_800x640_50FPS
+        config CAMERA_OV5647_MIPI_RAW8_800X640_50FPS
             bool "RAW8 800x640 50fps, MIPI 2lane 24M input"
-        config CAMERA_OV5647_MIPI_RAW8_800x800_50FPS
+        config CAMERA_OV5647_MIPI_RAW8_800X800_50FPS
             bool "RAW8 800x800 50fps, MIPI 2lane 24M input"
-        config CAMERA_OV5647_MIPI_RAW10_1920x1080_30FPS
+        config CAMERA_OV5647_MIPI_RAW10_1920X1080_30FPS
             bool "RAW10 1920x1080 30fps, MIPI 2lane 24M input"
-        config CAMERA_OV5647_MIPI_RAW10_1280x960_BINNING_45FPS
+        config CAMERA_OV5647_MIPI_RAW10_1280X960_BINNING_45FPS
             bool "RAW10 1280x960 Binning 45fps, MIPI 2lane 24M input"
     endchoice # CAMERA_OV5647_MIPI_DEFAULT_FMT
 
     config CAMERA_OV5647_MIPI_IF_FORMAT_INDEX_DAFAULT
         int
-        default 0 if CAMERA_OV5647_MIPI_RAW8_800x1280_50FPS
-        default 1 if CAMERA_OV5647_MIPI_RAW8_800x640_50FPS
-        default 2 if CAMERA_OV5647_MIPI_RAW8_800x800_50FPS
-        default 3 if CAMERA_OV5647_MIPI_RAW10_1920x1080_30FPS
-        default 4 if CAMERA_OV5647_MIPI_RAW10_1280x960_BINNING_45FPS
+        default 0 if CAMERA_OV5647_MIPI_RAW8_800X1280_50FPS
+        default 1 if CAMERA_OV5647_MIPI_RAW8_800X640_50FPS
+        default 2 if CAMERA_OV5647_MIPI_RAW8_800X800_50FPS
+        default 3 if CAMERA_OV5647_MIPI_RAW10_1920X1080_30FPS
+        default 4 if CAMERA_OV5647_MIPI_RAW10_1280X960_BINNING_45FPS
         help
             Set the configuration loaded by default for the MIPI interface.
             More information can be obtained by calling the query_support_formats().
