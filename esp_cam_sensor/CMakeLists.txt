@@ -1,7 +1,12 @@
-set(srcs "src/esp_cam_sensor.c")
+set(srcs "src/esp_cam_sensor.c" "src/esp_cam_sensor_xclk.c")
 
 set(include_dirs "include")
 set(requires "driver" "esp_sccb_intf")
+set(priv_requires "esp_driver_gpio")
+
+if(CONFIG_CAMERA_XCLK_USE_LEDC)
+    list(APPEND requires "esp_driver_ledc")
+endif()
 
 if(CONFIG_CAMERA_OV2640)
     list(APPEND srcs "sensors/ov2640/ov2640.c")
@@ -79,6 +84,7 @@ idf_component_register(SRCS ${srcs}
                        INCLUDE_DIRS ${include_dirs}
                        PRIV_INCLUDE_DIRS ${priv_include_dirs}
                        REQUIRES ${requires}
+                       PRIV_REQUIRES ${priv_requires}
                        LDFRAGMENTS linker.lf)
 
 if(CONFIG_CAMERA_OV2640_AUTO_DETECT)
