@@ -387,3 +387,59 @@ esp_err_t esp_video_create_dvp_video_device(esp_cam_sensor_device_t *cam_dev)
 
     return ESP_OK;
 }
+
+/**
+ * @brief Destroy DVP video device
+ *
+ * @param None
+ *
+ * @return
+ *      - ESP_OK on success
+ *      - Others if failed
+ */
+esp_err_t esp_video_destroy_dvp_video_device(void)
+{
+    esp_err_t ret;
+    struct esp_video *video;
+    struct dvp_video *dvp_video;
+
+    video = esp_video_device_get_object(DVP_NAME);
+    if (!video) {
+        return ESP_ERR_NOT_FOUND;
+    }
+
+    dvp_video = VIDEO_PRIV_DATA(struct dvp_video *, video);
+
+    ret = esp_video_destroy(video);
+    if (ret != ESP_OK) {
+        return ret;
+    }
+
+    heap_caps_free(dvp_video);
+
+    return ESP_OK;
+}
+
+/**
+ * @brief Get the sensor connected to DVP video device
+ *
+ * @param None
+ *
+ * @return
+ *      - Sensor pointer on success
+ *      - NULL if failed
+ */
+esp_cam_sensor_device_t *esp_video_get_dvp_video_device_sensor(void)
+{
+    struct esp_video *video;
+    struct dvp_video *dvp_video;
+
+    video = esp_video_device_get_object(DVP_NAME);
+    if (!video) {
+        return NULL;
+    }
+
+    dvp_video = VIDEO_PRIV_DATA(struct dvp_video *, video);
+
+    return dvp_video->cam_dev;
+}

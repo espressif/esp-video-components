@@ -9,8 +9,10 @@
 #include "driver/gpio.h"
 #include "esp_err.h"
 #include "esp_log.h"
+#include "esp_check.h"
 
 #include "esp_sccb_i2c.h"
+#include "esp_cam_sensor.h"
 #include "esp_cam_sensor_detect.h"
 
 #include "esp_video_init.h"
@@ -35,6 +37,12 @@ typedef struct sccb_mark {
     esp_cam_sensor_port_t port;                 /*!< Slave device data interface */
 } esp_video_init_sccb_mark_t;
 
+typedef struct sensor_sccb_mask {
+    i2c_master_bus_handle_t handle;             /*!< I2C master handle */
+    esp_sccb_io_handle_t sccb_io[2];            /*!< SCCB I/O handle */
+} sensor_sccb_mask_t;
+
+static sensor_sccb_mask_t s_sensor_sccb_mask[SCCB_NUM_MAX];
 static const char *TAG = "esp_video_init";
 
 #if CONFIG_ESP_VIDEO_ENABLE_MIPI_CSI_VIDEO_DEVICE || CONFIG_ESP_VIDEO_ENABLE_DVP_VIDEO_DEVICE
@@ -132,6 +140,8 @@ static esp_sccb_io_handle_t create_sccb_device(esp_video_init_sccb_mark_t *mark,
     esp_sccb_io_handle_t sccb_io;
     sccb_i2c_config_t sccb_config = {0};
     i2c_master_bus_handle_t bus_handle;
+    int i2c_port = init_sccb_config->i2c_config.port;
+    int sccb_io_num = port == ESP_CAM_SENSOR_DVP ? 0 : 1;
 
     if (init_sccb_config->init_sccb) {
         bus_handle = create_i2c_master_bus(mark, port, init_sccb_config, dev_addr);
@@ -151,6 +161,11 @@ static esp_sccb_io_handle_t create_sccb_device(esp_video_init_sccb_mark_t *mark,
         ESP_LOGE(TAG, "failed to initialize SCCB");
         return NULL;
     }
+
+    if (init_sccb_config->init_sccb) {
+        s_sensor_sccb_mask[i2c_port].handle = bus_handle;
+    }
+    s_sensor_sccb_mask[i2c_port].sccb_io[sccb_io_num] = sccb_io;
 
     return sccb_io;
 }
@@ -176,9 +191,18 @@ static void destroy_sccb_device(esp_sccb_io_handle_t handle, esp_video_init_sccb
             if (!mark[i2c_port].i2c_ref) {
                 i2c_del_master_bus(mark[i2c_port].handle);
                 mark[i2c_port].handle = NULL;
+
+                s_sensor_sccb_mask[i2c_port].handle = NULL;
+                s_sensor_sccb_mask[i2c_port].sccb_io[0] = NULL;
+                s_sensor_sccb_mask[i2c_port].sccb_io[1] = NULL;
             }
         }
     }
+}
+
+static bool sensor_is_detected(esp_cam_sensor_detect_fn_t *p, esp_cam_sensor_device_t *cam_dev)
+{
+    return true;
 }
 #endif
 
@@ -325,6 +349,97 @@ esp_err_t esp_video_init(const esp_video_init_config_t *config)
         ESP_LOGE(TAG, "failed to create hardware JPEG video device");
         return ret;
     }
+#endif
+
+    return ESP_OK;
+}
+
+/**
+ * @brief Deinitialize video hardware and software, including I2C, MIPI CSI and so on.
+ *
+ * @param None
+ *
+ * @return
+ *      - ESP_OK on success
+ *      - Others if failed
+ */
+esp_err_t esp_video_deinit(void)
+{
+    bool csi_deinited = false;
+    bool dvp_deinited = false;
+
+#if CONFIG_ESP_VIDEO_ENABLE_HW_JPEG_VIDEO_DEVICE
+    ESP_RETURN_ON_ERROR(esp_video_destroy_jpeg_video_device(), TAG, "Failed to destroy JPEG video device");
+#endif
+
+#if CONFIG_ESP_VIDEO_ENABLE_HW_H264_VIDEO_DEVICE
+    ESP_RETURN_ON_ERROR(esp_video_destroy_h264_video_device(true), TAG, "Failed to destroy H.264 video device");
+#endif
+
+    for (esp_cam_sensor_detect_fn_t *p = &__esp_cam_sensor_detect_fn_array_start; p < &__esp_cam_sensor_detect_fn_array_end; ++p) {
+#if CONFIG_ESP_VIDEO_ENABLE_MIPI_CSI_VIDEO_DEVICE
+        if (!csi_deinited && p->port == ESP_CAM_SENSOR_MIPI_CSI) {
+            esp_cam_sensor_device_t *cam_dev;
+
+            cam_dev = esp_video_get_csi_video_device_sensor();
+            if (!cam_dev) {
+                continue;
+            }
+
+            if (!sensor_is_detected(p, cam_dev)) {
+                continue;
+            }
+
+#if CONFIG_ESP_VIDEO_ENABLE_ISP_PIPELINE_CONTROLLER
+            ESP_RETURN_ON_ERROR(esp_video_isp_pipeline_deinit(), TAG, "Failed to destroy ISP controller");
+#endif
+
+            ESP_RETURN_ON_ERROR(esp_video_destroy_csi_video_device(), TAG, "Failed to destroy CSI video device");
+            ESP_RETURN_ON_ERROR(esp_cam_sensor_del_dev(cam_dev), TAG, "Failed to delete CSI sensor");
+
+            csi_deinited = true;
+        }
+#endif
+
+#if CONFIG_ESP_VIDEO_ENABLE_DVP_VIDEO_DEVICE
+        if (!dvp_deinited && p->port == ESP_CAM_SENSOR_DVP) {
+            int dvp_ctlr_id = 0;
+            esp_cam_sensor_device_t *cam_dev;
+
+            cam_dev = esp_video_get_dvp_video_device_sensor();
+            if (!cam_dev) {
+                continue;
+            }
+
+            if (!sensor_is_detected(p, cam_dev)) {
+                continue;
+            }
+
+            ESP_RETURN_ON_ERROR(esp_video_destroy_dvp_video_device(), TAG, "Failed to destroy DVP video device");
+            ESP_RETURN_ON_ERROR(esp_cam_sensor_del_dev(cam_dev), TAG, "Failed to delete DVP sensor");
+            ESP_RETURN_ON_ERROR(esp_cam_ctlr_dvp_deinit(dvp_ctlr_id), TAG, "Failed to deinit DVP port");
+
+            dvp_deinited = true;
+        }
+#endif
+    }
+
+    for (int i = 0; i < SCCB_NUM_MAX; i++) {
+        sensor_sccb_mask_t *m = &s_sensor_sccb_mask[i];
+
+        if (m->handle) {
+            for (int j = 0; j < ARRAY_SIZE(m->sccb_io); j++) {
+                if (m->sccb_io[j]) {
+                    esp_sccb_del_i2c_io(m->sccb_io[j]);
+                }
+            }
+            i2c_del_master_bus(s_sensor_sccb_mask[i].handle);
+        }
+    }
+    memset(s_sensor_sccb_mask, 0, sizeof(s_sensor_sccb_mask));
+
+#if CONFIG_ESP_VIDEO_ENABLE_ISP_VIDEO_DEVICE
+    ESP_RETURN_ON_ERROR(esp_video_destroy_isp_video_device(), TAG, "Failed to destroy ISP video device");
 #endif
 
     return ESP_OK;

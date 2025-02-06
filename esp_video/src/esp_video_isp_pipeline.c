@@ -50,9 +50,12 @@ typedef struct esp_video_isp {
         uint8_t stats       : 1;
         uint8_t awb         : 1;
     } sensor_attr;
+
+    TaskHandle_t task_handler;
 } esp_video_isp_t;
 
 static const char *TAG = "ISP";
+static esp_video_isp_t *s_esp_video_isp;
 
 /**
  * @brief Print ISP statistics data
@@ -861,9 +864,10 @@ esp_err_t esp_video_isp_pipeline_init(const esp_video_isp_config_t *config)
                       fail_3, TAG, "failed to initialize IPA pipeline");
     config_isp_and_camera(isp, &metadata);
 
-    ESP_GOTO_ON_FALSE(xTaskCreate(isp_task, "isp_task", ISP_TASK_STACK_SIZE, isp, ISP_TASK_PRIORITY, NULL) == pdPASS,
+    ESP_GOTO_ON_FALSE(xTaskCreate(isp_task, "isp_task", ISP_TASK_STACK_SIZE, isp, ISP_TASK_PRIORITY, &isp->task_handler) == pdPASS,
                       ESP_ERR_NO_MEM, fail_3, TAG, "failed to create ISP task");
 
+    s_esp_video_isp = isp;
     return ESP_OK;
 
 fail_3:
@@ -875,4 +879,37 @@ fail_1:
 fail_0:
     free(isp);
     return ret;
+}
+
+/**
+ * @brief Deinitialize ISP system module.
+ *
+ * @param None
+ *
+ * @return
+ *      - ESP_OK on success
+ *      - Others if failed
+ */
+esp_err_t esp_video_isp_pipeline_deinit(void)
+{
+    int ret;
+    esp_video_isp_t *isp = s_esp_video_isp;
+    int type = V4L2_BUF_TYPE_META_CAPTURE;
+
+    ESP_RETURN_ON_FALSE(s_esp_video_isp, ESP_FAIL, TAG, "ISP controller is not initialized");
+
+    ret = ioctl(isp->isp_fd, VIDIOC_STREAMOFF, &type);
+    ESP_RETURN_ON_FALSE(ret == 0, ESP_FAIL, TAG, "failed to stop stream");
+    vTaskDelay(ISP_METADATA_BUFFER_COUNT * 50 / portTICK_PERIOD_MS);
+
+    vTaskDelete(isp->task_handler);
+    vTaskDelay(1);
+
+    ESP_RETURN_ON_FALSE(close(isp->isp_fd) == 0, ESP_FAIL, TAG, "failed to close ISP");
+    ESP_RETURN_ON_FALSE(close(isp->cam_fd) == 0, ESP_FAIL, TAG, "failed to close camera sensor");
+    ESP_RETURN_ON_ERROR(esp_ipa_pipeline_destroy(isp->ipa_pipeline), TAG, "failed to destroy pipeline");
+    free(isp);
+    s_esp_video_isp = NULL;
+
+    return ESP_OK;
 }

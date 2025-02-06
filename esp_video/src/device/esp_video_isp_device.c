@@ -1618,6 +1618,36 @@ esp_err_t esp_video_create_isp_video_device(void)
 
     return ESP_OK;
 }
+
+/**
+ * @brief Destroy ISP video device
+ *
+ * @param None
+ *
+ * @return
+ *      - ESP_OK on success
+ *      - Others if failed
+ */
+esp_err_t esp_video_destroy_isp_video_device(void)
+{
+    esp_err_t ret;
+    struct esp_video *video;
+
+    video = esp_video_device_get_object(ISP_NAME);
+    if (!video) {
+        return ESP_ERR_NOT_FOUND;
+    }
+
+    ret = esp_video_destroy(video);
+    if (ret != ESP_OK) {
+        return ret;
+    }
+
+    vSemaphoreDelete(s_isp_video.mutex);
+    memset(&s_isp_video, 0, sizeof(struct isp_video));
+
+    return ESP_OK;
+}
 #endif
 
 /**

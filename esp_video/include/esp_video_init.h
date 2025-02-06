@@ -89,6 +89,17 @@ typedef struct esp_video_init_config {
  */
 esp_err_t esp_video_init(const esp_video_init_config_t *config);
 
+/**
+ * @brief Deinitialize video hardware and software, including I2C, MIPI CSI and so on.
+ *
+ * @param None
+ *
+ * @return
+ *      - ESP_OK on success
+ *      - Others if failed
+ */
+esp_err_t esp_video_deinit(void);
+
 #ifdef __cplusplus
 }
 #endif

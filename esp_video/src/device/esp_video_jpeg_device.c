@@ -411,3 +411,35 @@ esp_err_t esp_video_create_jpeg_video_device(jpeg_encoder_handle_t enc_handle)
 
     return ESP_OK;
 }
+
+/**
+ * @brief Destroy JPEG video device
+ *
+ * @param None
+ *
+ * @return
+ *      - ESP_OK on success
+ *      - Others if failed
+ */
+esp_err_t esp_video_destroy_jpeg_video_device(void)
+{
+    esp_err_t ret;
+    struct esp_video *video;
+    struct jpeg_video *jpeg_video;
+
+    video = esp_video_device_get_object(JPEG_NAME);
+    if (!video) {
+        return ESP_ERR_NOT_FOUND;
+    }
+
+    jpeg_video = VIDEO_PRIV_DATA(struct jpeg_video *, video);
+
+    ret = esp_video_destroy(video);
+    if (ret != ESP_OK) {
+        return ret;
+    }
+
+    heap_caps_free(jpeg_video);
+
+    return ESP_OK;
+}
