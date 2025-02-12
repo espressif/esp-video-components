@@ -1,0 +1,10 @@
+# This file was generated using idf.py save-defconfig. It can be edited manually.
+# Espressif IoT Development Framework (ESP-IDF) 5.5.0 Project Minimal Configuration
+#
+CONFIG_SPIRAM=y
+CONFIG_SPIRAM_SPEED_200M=y
+CONFIG_CAMERA_SC2336=y
+CONFIG_ESP_VIDEO_ENABLE_HW_H264_VIDEO_DEVICE=y
+CONFIG_ESP_VIDEO_ENABLE_HW_JPEG_VIDEO_DEVICE=y
+CONFIG_ESP_VIDEO_ENABLE_ISP_PIPELINE_CONTROLLER=y
+CONFIG_IDF_EXPERIMENTAL_FEATURES=y
