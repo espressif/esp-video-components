@@ -82,5 +82,18 @@ menu "Espressif Video Configuration"
                 the task "isp_task". This task reads statistics from the ISP
                 statistics module, passes statistics to the image process algorithm
                 module, and writes calculated data to the ISP or sensor.
+
+        if ESP_VIDEO_ENABLE_ISP_PIPELINE_CONTROLLER
+
+            config ISP_PIPELINE_CONTROLLER_TASK_STACK_USE_PSRAM
+                bool "ISP Controller Task Stack Use PSRAM"
+                default n
+                depends on SPIRAM
+                select FREERTOS_TASK_CREATE_ALLOW_EXT_MEM
+                help
+                    Select this option to use PSRAM for the ISP controller task stack instead of DRAM.
+                    Default is 'n' because using DRAM provides better performance and avoids potential
+                    issues with PSRAM availability or access speed.
+        endif
     endif
 endmenu

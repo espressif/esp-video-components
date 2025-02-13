@@ -31,6 +31,7 @@
 #define ISP_METADATA_BUFFER_COUNT   2
 #define ISP_TASK_PRIORITY           11
 #define ISP_TASK_STACK_SIZE         4096
+#define ISP_TASK_NAME               "isp_task"
 
 #define UNUSED(x)                   (void)(x)
 
@@ -54,6 +55,10 @@ typedef struct esp_video_isp {
     } sensor_attr;
 
     TaskHandle_t task_handler;
+#if CONFIG_ISP_PIPELINE_CONTROLLER_TASK_STACK_USE_PSRAM
+    StaticTask_t *task_ptr;
+    StackType_t *task_stack_ptr;
+#endif
 } esp_video_isp_t;
 
 static const char *TAG = "ISP";
@@ -943,12 +948,39 @@ esp_err_t esp_video_isp_pipeline_init(const esp_video_isp_config_t *config)
                       fail_3, TAG, "failed to initialize IPA pipeline");
     config_isp_and_camera(isp, &metadata);
 
-    ESP_GOTO_ON_FALSE(xTaskCreate(isp_task, "isp_task", ISP_TASK_STACK_SIZE, isp, ISP_TASK_PRIORITY, &isp->task_handler) == pdPASS,
+    /**
+     * If CONFIG_ISP_PIPELINE_CONTROLLER_TASK_STACK_USE_PSRAM is enabled, the ISP controller task stack
+     * will be allocated in PSRAM instead of DRAM. This reduces DRAM usage but may introduce slight
+     * performance overhead due to slower PSRAM access.
+     */
+#if CONFIG_ISP_PIPELINE_CONTROLLER_TASK_STACK_USE_PSRAM
+    StaticTask_t *task_ptr = heap_caps_malloc(sizeof(StaticTask_t), MALLOC_CAP_INTERNAL);
+    ESP_GOTO_ON_FALSE(task_ptr, ESP_ERR_NO_MEM, fail_3, TAG, "failed to malloc task");
+
+    StackType_t *task_stack_ptr = heap_caps_malloc(ISP_TASK_STACK_SIZE * sizeof(StackType_t), MALLOC_CAP_SPIRAM);
+    ESP_GOTO_ON_FALSE(task_stack_ptr, ESP_ERR_NO_MEM, fail_4, TAG, "failed to malloc task stack");
+
+    isp->task_handler = xTaskCreateStatic(isp_task, ISP_TASK_NAME, ISP_TASK_STACK_SIZE,
+                                          isp, ISP_TASK_PRIORITY, task_stack_ptr, task_ptr);
+    ESP_GOTO_ON_FALSE(isp->task_handler != NULL, ESP_ERR_NO_MEM,
+                      fail_5, TAG, "failed to create ISP static task");
+
+    isp->task_ptr = task_ptr;
+    isp->task_stack_ptr = task_stack_ptr;
+#else
+    ESP_GOTO_ON_FALSE(xTaskCreate(isp_task, ISP_TASK_NAME, ISP_TASK_STACK_SIZE, isp, ISP_TASK_PRIORITY, &isp->task_handler) == pdPASS,
                       ESP_ERR_NO_MEM, fail_3, TAG, "failed to create ISP task");
+#endif
 
     s_esp_video_isp = isp;
     return ESP_OK;
 
+#if CONFIG_ISP_PIPELINE_CONTROLLER_TASK_STACK_USE_PSRAM
+fail_5:
+    heap_caps_free(task_stack_ptr);
+fail_4:
+    heap_caps_free(task_ptr);
+#endif
 fail_3:
     close(isp->isp_fd);
 fail_2:
@@ -983,6 +1015,10 @@ esp_err_t esp_video_isp_pipeline_deinit(void)
 
     vTaskDelete(isp->task_handler);
     vTaskDelay(1);
+#if CONFIG_ISP_PIPELINE_CONTROLLER_TASK_STACK_USE_PSRAM
+    heap_caps_free(isp->task_ptr);
+    heap_caps_free(isp->task_stack_ptr);
+#endif
 
     ESP_RETURN_ON_FALSE(close(isp->isp_fd) == 0, ESP_FAIL, TAG, "failed to close ISP");
     ESP_RETURN_ON_FALSE(close(isp->cam_fd) == 0, ESP_FAIL, TAG, "failed to close camera sensor");
