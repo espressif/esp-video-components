@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2024 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2024-2025 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -72,6 +72,60 @@ static const esp_cam_sensor_format_t sc030iot_format_info[] = {
         .mipi_info = {},
         .reserved = NULL,
     },
+    {
+        .name = "MIPI_1lane_24Minput_480p_yuv422_25fps",
+        .format = ESP_CAM_SENSOR_PIXFORMAT_YUV422,
+        .port = ESP_CAM_SENSOR_MIPI_CSI,
+        .xclk = 24000000,
+        .width = 640,
+        .height = 480,
+        .regs = MIPI_1lane_24Minput_480p_yuv422_25fps,
+        .regs_size = ARRAY_SIZE(MIPI_1lane_24Minput_480p_yuv422_25fps),
+        .fps = 25,
+        .isp_info = NULL,
+        .mipi_info = {
+            .mipi_clk = 360000000,
+            .lane_num = 1,
+            .line_sync_en = false,
+        },
+        .reserved = NULL,
+    },
+    {
+        .name = "MIPI_1lane_24Minput_480p_yuv422_50fps",
+        .format = ESP_CAM_SENSOR_PIXFORMAT_YUV422,
+        .port = ESP_CAM_SENSOR_MIPI_CSI,
+        .xclk = 24000000,
+        .width = 640,
+        .height = 480,
+        .regs = MIPI_1lane_24Minput_480p_yuv422_50fps,
+        .regs_size = ARRAY_SIZE(MIPI_1lane_24Minput_480p_yuv422_50fps),
+        .fps = 50,
+        .isp_info = NULL,
+        .mipi_info = {
+            .mipi_clk = 360000000,
+            .lane_num = 1,
+            .line_sync_en = false,
+        },
+        .reserved = NULL,
+    },
+    {
+        .name = "MIPI_1lane_24Minput_480p_raw8_60fps",
+        .format = ESP_CAM_SENSOR_PIXFORMAT_RAW8,
+        .port = ESP_CAM_SENSOR_MIPI_CSI,
+        .xclk = 24000000,
+        .width = 640,
+        .height = 480,
+        .regs = MIPI_1lane_24Minput_480p_raw8_60fps,
+        .regs_size = ARRAY_SIZE(MIPI_1lane_24Minput_480p_raw8_60fps),
+        .fps = 60,
+        .isp_info = &sc030iot_isp_info[0],
+        .mipi_info = {
+            .mipi_clk = 216000000,
+            .lane_num = 1,
+            .line_sync_en = false,
+        },
+        .reserved = NULL,
+    }
 };
 
 /* sc030 use "i2c paging mode", so the high byte of the register needs to be written to the 0xf0 reg.
@@ -104,6 +158,7 @@ static esp_err_t sc030iot_write_array(esp_sccb_io_handle_t sccb_handle, sc030iot
         }
         i++;
     }
+    ESP_LOGD(TAG, "Set array done[i=%d]", i);
     return ret;
 }
 
@@ -191,6 +246,7 @@ static esp_err_t sc030iot_set_stream(esp_cam_sensor_device_t *dev, int enable)
     if (ret == ESP_OK) {
         dev->stream_status = enable;
     }
+
     ESP_LOGD(TAG, "Stream=%d", enable);
     return ret;
 }
@@ -285,7 +341,8 @@ static esp_err_t sc030iot_set_format(esp_cam_sensor_device_t *dev, const esp_cam
     /* Depending on the interface type, an available configuration is automatically loaded.
     You can set the output format of the sensor without using query_format().*/
     if (format == NULL) {
-        format = &sc030iot_format_info[CONFIG_CAMERA_SC030IOT_DVP_IF_FORMAT_INDEX_DAFAULT];
+        format = dev->cur_format;
+        ESP_LOGD(TAG, "Set default fmt%s", dev->cur_format->name);
     }
 
     ret = sc030iot_write_array(dev->sccb_handle, (sc030iot_reginfo_t *)format->regs, format->regs_size);
@@ -459,8 +516,13 @@ esp_cam_sensor_device_t *sc030iot_detect(esp_cam_sensor_config_t *config)
     dev->pwdn_pin = config->pwdn_pin;
     dev->sensor_port = config->sensor_port;
     dev->ops = &sc030iot_ops;
-    dev->cur_format = &sc030iot_format_info[CONFIG_CAMERA_SC030IOT_DVP_IF_FORMAT_INDEX_DAFAULT];
 
+    if (config->sensor_port != ESP_CAM_SENSOR_DVP) {
+        dev->cur_format = &sc030iot_format_info[CONFIG_CAMERA_SC030IOT_MIPI_IF_FORMAT_INDEX_DAFAULT];
+    } else {
+        dev->cur_format = &sc030iot_format_info[CONFIG_CAMERA_SC030IOT_DVP_IF_FORMAT_INDEX_DAFAULT];
+    }
+    ESP_LOGD(TAG, "fmt=%s", dev->cur_format->name);
     // Configure sensor power, clock, and SCCB port
     if (sc030iot_power_on(dev) != ESP_OK) {
         ESP_LOGE(TAG, "Camera power on failed");
@@ -489,6 +551,14 @@ err_free_handler:
 ESP_CAM_SENSOR_DETECT_FN(sc030iot_detect, ESP_CAM_SENSOR_DVP, SC030IOT_SCCB_ADDR)
 {
     ((esp_cam_sensor_config_t *)config)->sensor_port = ESP_CAM_SENSOR_DVP;
+    return sc030iot_detect(config);
+}
+#endif
+
+#if CONFIG_CAMERA_SC030IOT_AUTO_DETECT_MIPI_INTERFACE_SENSOR
+ESP_CAM_SENSOR_DETECT_FN(sc030iot_detect, ESP_CAM_SENSOR_MIPI_CSI, SC030IOT_SCCB_ADDR)
+{
+    ((esp_cam_sensor_config_t *)config)->sensor_port = ESP_CAM_SENSOR_MIPI_CSI;
     return sc030iot_detect(config);
 }
 #endif

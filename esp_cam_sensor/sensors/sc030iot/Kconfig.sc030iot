@@ -20,6 +20,14 @@ if CAMERA_SC030IOT
                 When enabled, you don't need to call sc030iot_detect manaually, SC030IOT will
                 be automatically detected and connected to the DVP interface when the
                 application starts.
+    
+        config CAMERA_SC030IOT_AUTO_DETECT_MIPI_INTERFACE_SENSOR
+            bool "Detect for MIPI interface sensor"
+            default n
+            help
+                When enabled, you don't need to call sc030iot_detect manaually, SC030IOT will
+                be automatically detected and connected to the MIPI CSI interface when
+                the application starts.
     endif
 
     choice CAMERA_SC030IOT_DVP_DEFAULT_FMT
@@ -41,5 +49,29 @@ if CAMERA_SC030IOT
         default 1 if CAMERA_SC030IOT_DVP_RAW8_640X480_26FPS
         help
             Set the configuration loaded by default for the DVP interface.
+            More information can be obtained by calling the query_support_formats().
+    
+    choice CAMERA_SC030IOT_MIPI_DEFAULT_FMT
+        prompt "Default format select for MIPI"
+        default CAMERA_SC030IOT_MIPI_YUV422_640X480_25FPS
+        help
+            Select the default format to load when the sensor is detected.
+            When the sensor is in stream off state, the format can be changed.
+    
+        config CAMERA_SC030IOT_MIPI_YUV422_640X480_25FPS
+            bool "YUV422 640x480 25fps, MIPI 1lane 24M input"
+        config CAMERA_SC030IOT_MIPI_YUV422_640X480_50FPS
+            bool "YUV422 640x480 50fps, MIPI 1lane 24M input"
+        config CAMERA_SC030IOT_MIPI_RAW8_640X480_60FPS
+            bool "RAW8 640x480 60fps, MIPI 1lane 24M input"
+    endchoice # CAMERA_SC030IOT_MIPI_DEFAULT_FMT
+
+    config CAMERA_SC030IOT_MIPI_IF_FORMAT_INDEX_DAFAULT
+        int
+        default 2 if CAMERA_SC030IOT_MIPI_YUV422_640X480_25FPS
+        default 3 if CAMERA_SC030IOT_MIPI_YUV422_640X480_50FPS
+        default 4 if CAMERA_SC030IOT_MIPI_RAW8_640X480_60FPS
+        help
+            Set the configuration loaded by default for the MIPI interface.
             More information can be obtained by calling the query_support_formats().
 endif
