@@ -178,4 +178,12 @@ menu "Example Configuration"
         help
             Select this option, enable camera sensor picture horizontal flip.
 
+    config EXAMPLE_SCCB_I2C_INIT_BY_APP
+        bool "Camera device uses an initialized I2C port"
+        default n
+        help
+            Select this option to use an explicitly initialized I2C master bus for the camera sensor. 
+            When enabled, the application must initialize the I2C bus before using the camera sensor. 
+            This allows the I2C master to be shared among multiple I2C devices.
+
 endmenu
