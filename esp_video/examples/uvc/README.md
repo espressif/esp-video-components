@@ -1,5 +1,7 @@
 # USB Video Class Example
 
+(See the [README.md](../README.md) file in the upper level [examples](../) directory for more information about examples.)
+
 This example demonstrates the following:
 
 - How to initialize esp_video with specific parameters
@@ -9,25 +11,11 @@ This example demonstrates the following:
 
 ## How to use example
 
-### Hardware Required
-
-#### 1. MIPI-CSI Development Kit
-
-* A ESP32-P4 development board with MIPI-CSI interface
-* A SC2336 camera sensor
-* A USB Type-C cable for power supply and programming
-
-#### 2. DVP Development Kit
-
-* A ESP32-P4 development board with DVP interface
-* A OV2640 camera sensor
-* A USB Type-C cable for power supply and programming
-
-#### 3. Software Required
+### Software Required
 
 * `potplay` APP for PC on Windows OS
 
-### Build and Flash
+### Configure the Project
 
 Configure camera hardware data interface based on development kit:
 
@@ -37,6 +25,9 @@ Configure camera hardware data interface based on development kit:
 Example Configuration  --->
     Camera sensor interface (MIPI-CSI)  --->
         (X) MIPI-CSI
+    (0) MIPI CSI SCCB I2C Port Number
+    (8) MIPI CSI SCCB I2C SCL Pin
+    (7) MIPI CSI SCCB I2C SDA Pin
 
 Component config  --->
     Espressif Camera Sensors Configurations  --->
@@ -52,6 +43,7 @@ Component config  --->
             (1280) Cam1 Frame Width
             (720) Cam1 Frame Height
 ```
+Note: For custom development boards, please update the I2C pins configuration in the `Example Configuration` menu.
 
 #### DVP Development Kit
 
@@ -59,6 +51,9 @@ Component config  --->
 Example Configuration  --->
     Camera sensor interface (DVP)  --->
         (X) DVP
+    (1) DVP SCCB I2C Port Number (NEW)
+    (33) DVP SCCB I2C SCL Pin (NEW)
+    (32) DVP SCCB I2C SDA Pin (NEW)
 
 Component config  --->
     Espressif Camera Sensors Configurations  --->
@@ -75,9 +70,9 @@ Component config  --->
             (480) Cam1 Frame Height
 ```
 
-Select USB video class output video format:
+####  Select USB video class output video format
 
-#### JPEG
+##### JPEG
 
 ```
 component config  --->
@@ -87,7 +82,7 @@ component config  --->
                 (X) MJPEG
 ```
 
-#### H.264
+##### H.264
 
 ```
 component config  --->
@@ -99,6 +94,7 @@ component config  --->
 
 ***Please note that the OV2640 doesn't support H.264 format, it only supports the JPEG format***.
 
+### Build and Flash
 Build the project and flash it to the board, then run monitor tool to view serial output:
 
 ```
@@ -211,7 +207,7 @@ I (192411) usbd_uvc: dwFrameInterval: 333333
 
     ```txt
     A fatal error occurred: bootloader/bootloader.bin requires chip revision in range [v0.1 - v0.99] (this chip is revision v0.0). Use --force to flash anyway
-    ``` 
+    ```
 
     menuconfig:
     ```

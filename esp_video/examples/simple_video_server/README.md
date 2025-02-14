@@ -3,6 +3,8 @@
 
 # Simple Video Server Example
 
+(See the [README.md](../README.md) file in the upper level [examples](../) directory for more information about examples.)
+
 ## Overview
 
 The example starts a HTTP server on a local network. You can use a browser to access this local server.
@@ -20,31 +22,29 @@ Note that this is a single-threaded simple server. When `/stream` is opened, oth
 
 ## How to use example
 
-### Hardware Required
-
-* A ESP32-P4 development board with MIPI-CSI interface (e.g., ESP32-P4-Function-EV-Board)
-* A camera sensor that has been adapted, see the [esp_cam_sensor](https://github.com/espressif/esp-video-components/tree/master/esp_cam_sensor)
-* A USB Type-C cable for power supply and programming
-
 ### Configure the project
 
 Open the project configuration menu (`idf.py menuconfig`).
 
+#### Pin Assignment:
 In the `Example Configuration` menu:
 
 * Choose the I2C Port and I2C pins connected to the sensor.
 * Choose the reset pin and powerdown pin connected to the sensor(Set to -1 if not used).
+
+#### Connection Configuration:
+In the `Example Connection Configuration` menu:
+
 * If you select the Wi-Fi interface, you also have to set:
   * Wi-Fi SSID and Wi-Fi password that your esp32 will connect to.
   * Wi-Fi SoftAP's SSID and password if you want esp32 work as an Access Point.
-
-In the `Example Connection Configuration` menu:
 
 * If you select the Ethernet interface, you also have to set:
   * PHY model in `Ethernet PHY` option, e.g. IP101.
   * PHY address in `PHY Address` option, which should be determined by your board schematic.
   * EMAC Clock mode, GPIO used by SMI.
 
+#### Configuration of the camera sensor
 In the `Espressif Camera Sensors Configurations` menu:
 
 * Select the camera sensor you want to connect to.
@@ -58,7 +58,7 @@ app_video_init(video_cam_fd0, V4L2_PIX_FMT_YUV422P);
 
 If the default format selected in the configuration menu is `RAW8`, the ISP can automatically generate interpolated data formats(e.g., RGB888, RGB565, YUV422, YUV420, etc). You can configure the output format to RAW8 or YUV422, etc.
 
-Note that the MIPI-CSI interface is selected to connect the camera sensor  by default, , so there are:
+Note that the MIPI-CSI interface is selected to connect the camera sensor by default, so there are:
 
 ```c
 #define CAM_DEV_PATH                 ESP_VIDEO_MIPI_CSI_DEVICE_NAME
