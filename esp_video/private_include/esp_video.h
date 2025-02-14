@@ -567,6 +567,18 @@ esp_err_t esp_video_get_sensor_format(struct esp_video *video, esp_cam_sensor_fo
  */
 esp_err_t esp_video_query_menu(struct esp_video *video, struct v4l2_querymenu *qmenu);
 
+/**
+ * @brief Set video owner
+ *
+ * @param video  Video object
+ * @param owner  non-zero: video reference adds by 1; 0: video reference subs by 1. Must be 0 or 1.
+ *
+ * @return
+ *      - ESP_OK on success
+ *      - Others if failed
+ */
+esp_err_t esp_video_set_owner(struct esp_video *video, int owner);
+
 #ifdef __cplusplus
 }
 #endif

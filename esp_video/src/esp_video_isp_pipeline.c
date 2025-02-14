@@ -656,6 +656,7 @@ static void isp_task(void *p)
 static esp_err_t init_cam_dev(const esp_video_isp_config_t *config, esp_video_isp_t *isp)
 {
     int fd;
+    int owner = 0;
     esp_err_t ret;
     struct v4l2_query_ext_ctrl qctrl;
     struct v4l2_ext_controls controls;
@@ -664,6 +665,9 @@ static esp_err_t init_cam_dev(const esp_video_isp_config_t *config, esp_video_is
     fd = open(config->cam_dev, O_RDWR);
     ESP_RETURN_ON_FALSE(fd > 0, ESP_ERR_INVALID_ARG, TAG, "failed to open %s", config->cam_dev);
     print_dev_info(fd);
+
+    ret = ioctl(fd, VIDIOC_SET_OWNER, &owner);
+    ESP_GOTO_ON_FALSE(ret == 0, ESP_ERR_NOT_SUPPORTED, fail_0, TAG, "failed to set owner");
 
     qctrl.id = V4L2_CID_GAIN;
     ret = ioctl(fd, VIDIOC_QUERY_EXT_CTRL, &qctrl);
