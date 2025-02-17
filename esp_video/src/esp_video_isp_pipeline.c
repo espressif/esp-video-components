@@ -43,12 +43,14 @@ typedef struct esp_video_isp {
     esp_ipa_pipeline_handle_t ipa_pipeline;
 
     esp_ipa_sensor_t sensor;
+    int32_t prev_gain_index;
     uint32_t sensor_stats_seq;
     struct {
         uint8_t gain        : 1;
         uint8_t exposure    : 1;
         uint8_t stats       : 1;
         uint8_t awb         : 1;
+        uint8_t group       : 1;
     } sensor_attr;
 } esp_video_isp_t;
 
@@ -216,107 +218,6 @@ static void config_white_balance(esp_video_isp_t *isp, esp_ipa_metadata_t *metad
         control[0].value    = metadata->blue_gain * V4L2_CID_BLUE_BALANCE_DEN;
         if (ioctl(isp->isp_fd, VIDIOC_S_EXT_CTRLS, &controls) != 0) {
             ESP_LOGE(TAG, "failed to set blue balance");
-        }
-    }
-}
-
-static void config_exposure_time(esp_video_isp_t *isp, esp_ipa_metadata_t *metadata)
-{
-    struct v4l2_ext_controls controls;
-    struct v4l2_ext_control control[1];
-
-    if (metadata->flags & IPA_METADATA_FLAGS_ET) {
-        controls.ctrl_class = V4L2_CID_CAMERA_CLASS;
-        controls.count      = 1;
-        controls.controls   = control;
-        control[0].id       = V4L2_CID_EXPOSURE_ABSOLUTE;
-        control[0].value    = (int32_t)metadata->exposure / 100;
-        if (ioctl(isp->cam_fd, VIDIOC_S_EXT_CTRLS, &controls) != 0) {
-            ESP_LOGE(TAG, "failed to set exposure time");
-        } else {
-            isp->sensor.cur_exposure = metadata->exposure;
-        }
-    }
-}
-
-static void config_pixel_gain(esp_video_isp_t *isp, esp_ipa_metadata_t *metadata)
-{
-    esp_err_t ret;
-    int fd = isp->cam_fd;
-    struct v4l2_querymenu qmenu;
-    struct v4l2_query_ext_ctrl qctrl;
-    struct v4l2_ext_controls controls;
-    struct v4l2_ext_control control[1];
-
-    if (metadata->flags & IPA_METADATA_FLAGS_GN) {
-        int32_t gain_value = 0;
-        int32_t index = -1;
-        int32_t target_gain = 0;
-        int32_t base_gain = 1;
-
-        qctrl.id = V4L2_CID_GAIN;
-        ret = ioctl(fd, VIDIOC_QUERY_EXT_CTRL, &qctrl);
-        if (ret) {
-            ESP_LOGE(TAG, "failed to query gain");
-            return;
-        }
-
-        for (int32_t i = qctrl.minimum; i < qctrl.maximum; i++) {
-            int32_t gain0;
-            int32_t gain1;
-
-            qmenu.id = V4L2_CID_GAIN;
-            qmenu.index = i;
-            ret = ioctl(fd, VIDIOC_QUERYMENU, &qmenu);
-            if (ret) {
-                ESP_LOGE(TAG, "failed to query gain min menu");
-                return;
-            }
-            gain0 = qmenu.value;
-
-            if (i == qctrl.minimum) {
-                gain_value = gain0 * metadata->gain;
-                base_gain = gain0;
-            }
-
-            qmenu.id = V4L2_CID_GAIN;
-            qmenu.index = i + 1;
-            ret = ioctl(fd, VIDIOC_QUERYMENU, &qmenu);
-            if (ret) {
-                ESP_LOGE(TAG, "failed to query gain min menu");
-                return;
-            }
-            gain1 = qmenu.value;
-
-            if ((gain_value >= gain0) && (gain_value <= gain1)) {
-                uint32_t len_1st = gain_value - gain0;
-                uint32_t len_2nd = gain1 - gain_value;
-
-                ESP_LOGD(TAG, "[%" PRIu32 ", %" PRIu32 "]", gain0, gain1);
-
-                if (len_1st > len_2nd) {
-                    index = i + 1;
-                    target_gain = gain1;
-                } else {
-                    index = i;
-                    target_gain = gain0;
-                }
-            }
-        }
-
-        if (index >= 0) {
-            controls.ctrl_class = V4L2_CID_USER_CLASS;
-            controls.count      = 1;
-            controls.controls   = control;
-            control[0].id       = V4L2_CID_GAIN;
-            control[0].value    = index;
-            if (ioctl(isp->cam_fd, VIDIOC_S_EXT_CTRLS, &controls) != 0) {
-                ESP_LOGE(TAG, "failed to set pixel gain");
-            } else {
-                isp->sensor.cur_gain = (float)target_gain / base_gain;
-            }
-        } else {
-            ESP_LOGE(TAG, "failed to find %0.4f", metadata->gain);
         }
     }
 }
@@ -496,6 +397,181 @@ static void config_color(esp_video_isp_t *isp, esp_ipa_metadata_t *metadata)
     }
 }
 
+static void config_exposure_and_gain(esp_video_isp_t *isp, esp_ipa_metadata_t *metadata)
+{
+    float target_gain = 0.0;
+    int32_t gain_index = -1;
+    struct v4l2_ext_controls controls;
+    struct v4l2_ext_control control[1];
+
+    if (metadata->flags & IPA_METADATA_FLAGS_GN) {
+        int ret;
+        int32_t base_gain;
+        int32_t gain_value;
+        uint32_t cur_index;
+        uint32_t left_index;
+        uint32_t right_index;
+        struct v4l2_querymenu qmenu;
+        struct v4l2_query_ext_ctrl qctrl;
+
+        qctrl.id = V4L2_CID_GAIN;
+        ret = ioctl(isp->cam_fd, VIDIOC_QUERY_EXT_CTRL, &qctrl);
+        if (ret) {
+            ESP_LOGE(TAG, "failed to query gain");
+            return;
+        }
+
+        qmenu.id = V4L2_CID_GAIN;
+        qmenu.index = qctrl.minimum;
+        ret = ioctl(isp->cam_fd, VIDIOC_QUERYMENU, &qmenu);
+        if (ret) {
+            ESP_LOGE(TAG, "failed to query gain min menu");
+            return;
+        }
+
+        gain_value = qmenu.value * metadata->gain;
+        base_gain = qmenu.value;
+        left_index = qctrl.minimum;
+        right_index = qctrl.maximum;
+        cur_index = (left_index + right_index) / 2;
+
+        int max_inter = qctrl.maximum - qctrl.minimum;
+        do {
+            if (max_inter-- <= 0) {
+                ESP_LOGE(TAG, "failed to search target gain");
+                break;
+            }
+
+            ESP_LOGD(TAG, "index:%"PRIu32", left:%"PRIu32", right:%"PRIu32"", cur_index, left_index, right_index);
+
+            qmenu.id = V4L2_CID_GAIN;
+            qmenu.index = cur_index;
+            if (ioctl(isp->cam_fd, VIDIOC_QUERYMENU, &qmenu)) {
+                ESP_LOGE(TAG, "failed to query gain min menu");
+                return;
+            }
+
+            if (gain_value > qmenu.value) {
+                left_index = cur_index;
+                cur_index = (cur_index + right_index) / 2;
+            } else if (gain_value < qmenu.value) {
+                right_index = cur_index;
+                cur_index = (cur_index + left_index) / 2;
+            } else {
+                gain_index = cur_index;
+                target_gain = (float)qmenu.value / base_gain;
+                break;
+            }
+
+            int index_diff = right_index - left_index;
+            if (index_diff == 1) {
+                uint32_t left_gain;
+                uint32_t right_gain;
+                uint32_t left_len;
+                uint32_t right_len;
+
+                qmenu.id = V4L2_CID_GAIN;
+                qmenu.index = left_index;
+                if (ioctl(isp->cam_fd, VIDIOC_QUERYMENU, &qmenu)) {
+                    ESP_LOGE(TAG, "failed to query gain min menu");
+                    return;
+                }
+                left_gain = qmenu.value;
+
+                qmenu.id = V4L2_CID_GAIN;
+                qmenu.index = right_index;
+                if (ioctl(isp->cam_fd, VIDIOC_QUERYMENU, &qmenu)) {
+                    ESP_LOGE(TAG, "failed to query gain min menu");
+                    return;
+                }
+                right_gain = qmenu.value;
+
+                left_len = gain_value - left_gain;
+                right_len = right_gain - gain_value;
+                if (left_len > right_len) {
+                    gain_index = right_index;
+                    target_gain = (float)right_gain / base_gain;
+                } else {
+                    gain_index = left_index;
+                    target_gain = (float)left_gain / base_gain;
+                }
+
+                break;
+            } else if (index_diff == 0) {
+                qmenu.id = V4L2_CID_GAIN;
+                qmenu.index = left_index;
+                if (ioctl(isp->cam_fd, VIDIOC_QUERYMENU, &qmenu)) {
+                    ESP_LOGE(TAG, "failed to query gain min menu");
+                    return;
+                }
+
+                gain_index = left_index;
+                target_gain = (float)qmenu.value / base_gain;
+                break;
+            }
+        } while (1);
+
+        if (gain_index < 0) {
+            ESP_LOGE(TAG, "failed to find gain=%0.4f", metadata->gain);
+            return;
+        } else if (isp->prev_gain_index == gain_index) {
+            metadata->flags &= ~IPA_METADATA_FLAGS_GN;
+        }
+    }
+
+    if ((metadata->flags & IPA_METADATA_FLAGS_ET) &&
+            (metadata->flags & IPA_METADATA_FLAGS_GN) &&
+            isp->sensor_attr.group) {
+        esp_cam_sensor_gh_exp_gain_t group;
+
+        group.exposure_us = metadata->exposure / 100;
+        group.gain_index = gain_index;
+
+        controls.ctrl_class = V4L2_CID_CAMERA_CLASS;
+        controls.count      = 1;
+        controls.controls   = control;
+        control[0].id       = V4L2_CID_CAMERA_GROUP;
+        control[0].p_u8     = (uint8_t *)&group;
+        control[0].size     = sizeof(esp_cam_sensor_gh_exp_gain_t);
+        if (ioctl(isp->cam_fd, VIDIOC_S_EXT_CTRLS, &controls) != 0) {
+            ESP_LOGE(TAG, "failed to set group");
+        } else {
+            isp->sensor.cur_exposure = metadata->exposure;
+            isp->sensor.cur_gain = target_gain;
+            isp->prev_gain_index = gain_index;
+        }
+    } else {
+        if ((metadata->flags & IPA_METADATA_FLAGS_ET) &&
+                isp->sensor_attr.exposure) {
+            controls.ctrl_class = V4L2_CID_CAMERA_CLASS;
+            controls.count      = 1;
+            controls.controls   = control;
+            control[0].id       = V4L2_CID_EXPOSURE_ABSOLUTE;
+            control[0].value    = (int32_t)metadata->exposure / 100;
+            if (ioctl(isp->cam_fd, VIDIOC_S_EXT_CTRLS, &controls) != 0) {
+                ESP_LOGE(TAG, "failed to set exposure time");
+            } else {
+                isp->sensor.cur_exposure = metadata->exposure;
+            }
+        }
+
+        if ((metadata->flags & IPA_METADATA_FLAGS_GN) &&
+                isp->sensor_attr.gain) {
+            controls.ctrl_class = V4L2_CID_USER_CLASS;
+            controls.count      = 1;
+            controls.controls   = control;
+            control[0].id       = V4L2_CID_GAIN;
+            control[0].value    = gain_index;
+            if (ioctl(isp->cam_fd, VIDIOC_S_EXT_CTRLS, &controls) != 0) {
+                ESP_LOGE(TAG, "failed to set pixel gain");
+            } else {
+                isp->sensor.cur_gain = target_gain;
+                isp->prev_gain_index = gain_index;
+            }
+        }
+    }
+}
+
 static void config_isp_and_camera(esp_video_isp_t *isp, esp_ipa_metadata_t *metadata)
 {
     if (!isp->sensor_attr.awb) {
@@ -509,12 +585,7 @@ static void config_isp_and_camera(esp_video_isp_t *isp, esp_ipa_metadata_t *meta
     config_ccm(isp, metadata);
     config_color(isp, metadata);
 
-    if (isp->sensor_attr.exposure) {
-        config_exposure_time(isp, metadata);
-    }
-    if (isp->sensor_attr.gain) {
-        config_pixel_gain(isp, metadata);
-    }
+    config_exposure_and_gain(isp, metadata);
 }
 
 static void isp_stats_to_ipa_stats(esp_video_isp_stats_t *isp_stat, esp_ipa_stats_t *ipa_stats)
@@ -763,6 +834,14 @@ static esp_err_t init_cam_dev(const esp_video_isp_config_t *config, esp_video_is
         isp->sensor_attr.stats = 1;
     } else {
         ESP_LOGD(TAG, "V4L2_CID_CAMERA_STATS is not supported");
+    }
+
+    qctrl.id = V4L2_CID_CAMERA_GROUP;
+    ret = ioctl(fd, VIDIOC_QUERY_EXT_CTRL, &qctrl);
+    if (ret == 0) {
+        isp->sensor_attr.group = 1;
+    } else {
+        ESP_LOGD(TAG, "V4L2_CID_CAMERA_GROUP is not supported");
     }
 
     isp->cam_fd = fd;

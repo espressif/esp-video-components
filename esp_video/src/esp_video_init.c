@@ -20,6 +20,8 @@
 #include "esp_video_pipeline_isp.h"
 #endif
 
+#define UNUSED(a)                   ((void)(a))
+
 #define SCCB_NUM_MAX                I2C_NUM_MAX
 
 #define INTF_PORT_NAME(port)        (((port) == ESP_CAM_SENSOR_DVP) ? "DVP" : "CSI")
@@ -199,6 +201,11 @@ esp_err_t esp_video_init(const esp_video_init_config_t *config)
     esp_video_init_sccb_mark_t sccb_mark[SCCB_NUM_MAX] = {0};
 
     if (config == NULL) {
+        UNUSED(ret);
+        UNUSED(csi_inited);
+        UNUSED(dvp_inited);
+        UNUSED(sccb_mark);
+
         ESP_LOGW(TAG, "Please validate camera config");
         return ESP_ERR_INVALID_ARG;
     }
