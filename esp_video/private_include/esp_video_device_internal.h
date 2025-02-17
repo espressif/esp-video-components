@@ -38,6 +38,7 @@ typedef struct esp_video_csi_state {
     color_raw_element_order_t bayer_order;  /*!< Bayer order of raw data */
 } esp_video_csi_state_t;
 
+#if CONFIG_ESP_VIDEO_ENABLE_MIPI_CSI_VIDEO_DEVICE
 /**
  * @brief Create MIPI CSI video device
  *
@@ -47,10 +48,32 @@ typedef struct esp_video_csi_state {
  *      - ESP_OK on success
  *      - Others if failed
  */
-#if CONFIG_ESP_VIDEO_ENABLE_MIPI_CSI_VIDEO_DEVICE
 esp_err_t esp_video_create_csi_video_device(esp_cam_sensor_device_t *cam_dev);
+
+/**
+ * @brief Destroy MIPI-CSI video device
+ *
+ * @param None
+ *
+ * @return
+ *      - ESP_OK on success
+ *      - Others if failed
+ */
+esp_err_t esp_video_destroy_csi_video_device(void);
+
+/**
+ * @brief Get the sensor connected to MIPI-CSI video device
+ *
+ * @param None
+ *
+ * @return
+ *      - Sensor pointer on success
+ *      - NULL if failed
+ */
+esp_cam_sensor_device_t *esp_video_get_csi_video_device_sensor(void);
 #endif
 
+#if CONFIG_ESP_VIDEO_ENABLE_DVP_VIDEO_DEVICE
 /**
  * @brief Create DVP video device
  *
@@ -60,10 +83,32 @@ esp_err_t esp_video_create_csi_video_device(esp_cam_sensor_device_t *cam_dev);
  *      - ESP_OK on success
  *      - Others if failed
  */
-#if CONFIG_ESP_VIDEO_ENABLE_DVP_VIDEO_DEVICE
 esp_err_t esp_video_create_dvp_video_device(esp_cam_sensor_device_t *cam_dev);
+
+/**
+ * @brief Destroy DVP video device
+ *
+ * @param None
+ *
+ * @return
+ *      - ESP_OK on success
+ *      - Others if failed
+ */
+esp_err_t esp_video_destroy_dvp_video_device(void);
+
+/**
+ * @brief Get the sensor connected to DVP video device
+ *
+ * @param None
+ *
+ * @return
+ *      - Sensor pointer on success
+ *      - NULL if failed
+ */
+esp_cam_sensor_device_t *esp_video_get_dvp_video_device_sensor(void);
 #endif
 
+#ifdef CONFIG_ESP_VIDEO_ENABLE_H264_VIDEO_DEVICE
 /**
  * @brief Create H.264 video device
  *
@@ -73,10 +118,21 @@ esp_err_t esp_video_create_dvp_video_device(esp_cam_sensor_device_t *cam_dev);
  *      - ESP_OK on success
  *      - Others if failed
  */
-#ifdef CONFIG_ESP_VIDEO_ENABLE_H264_VIDEO_DEVICE
 esp_err_t esp_video_create_h264_video_device(bool hw_codec);
+
+/**
+ * @brief Destroy H.264 video device
+ *
+ * @param hw_codec true: hardware H.264, false: software H.264(has not supported)
+ *
+ * @return
+ *      - ESP_OK on success
+ *      - Others if failed
+ */
+esp_err_t esp_video_destroy_h264_video_device(bool hw_codec);
 #endif
 
+#ifdef CONFIG_ESP_VIDEO_ENABLE_JPEG_VIDEO_DEVICE
 /**
  * @brief Create JPEG video device
  *
@@ -88,8 +144,19 @@ esp_err_t esp_video_create_h264_video_device(bool hw_codec);
  *      - ESP_OK on success
  *      - Others if failed
  */
-#ifdef CONFIG_ESP_VIDEO_ENABLE_JPEG_VIDEO_DEVICE
+
 esp_err_t esp_video_create_jpeg_video_device(jpeg_encoder_handle_t enc_handle);
+
+/**
+ * @brief Destroy JPEG video device
+ *
+ * @param None
+ *
+ * @return
+ *      - ESP_OK on success
+ *      - Others if failed
+ */
+esp_err_t esp_video_destroy_jpeg_video_device(void);
 #endif
 
 #if CONFIG_ESP_VIDEO_ENABLE_ISP
@@ -150,6 +217,17 @@ esp_err_t esp_video_isp_check_format(const struct v4l2_format *format);
  *      - Others if failed
  */
 esp_err_t esp_video_create_isp_video_device(void);
+
+/**
+ * @brief Destroy ISP video device
+ *
+ * @param None
+ *
+ * @return
+ *      - ESP_OK on success
+ *      - Others if failed
+ */
+esp_err_t esp_video_destroy_isp_video_device(void);
 #endif
 #endif
 

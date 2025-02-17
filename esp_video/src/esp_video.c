@@ -398,13 +398,11 @@ esp_err_t esp_video_destroy(struct esp_video *video)
         return ESP_ERR_NO_MEM;
     }
 
-    ret = esp_video_vfs_dev_unregister(vfs_name);
-    if (ret <= 0) {
-        ESP_LOGE(TAG, "Failed to unregister video VFS dev name=%s", vfs_name);
-        return ESP_ERR_NO_MEM;
-    }
-
     _lock_acquire(&s_video_lock);
+    ESP_GOTO_ON_FALSE(video->reference == 0, ESP_ERR_NOT_ALLOWED, fail_0, TAG, "video device %s is opened", vfs_name);
+
+    ESP_GOTO_ON_ERROR(esp_video_vfs_dev_unregister(vfs_name), fail_0, TAG, "Failed to unregister video VFS dev name=%s", vfs_name);
+
     SLIST_REMOVE(&s_video_list, video, esp_video, node);
     _lock_release(&s_video_lock);
 
@@ -413,6 +411,10 @@ esp_err_t esp_video_destroy(struct esp_video *video)
     heap_caps_free(video);
 
     return ESP_OK;
+
+fail_0:
+    _lock_release(&s_video_lock);
+    return ret;
 }
 
 /**

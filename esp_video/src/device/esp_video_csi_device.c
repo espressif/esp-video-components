@@ -567,3 +567,59 @@ esp_err_t esp_video_create_csi_video_device(esp_cam_sensor_device_t *cam_dev)
 
     return ESP_OK;
 }
+
+/**
+ * @brief Destroy MIPI-CSI video device
+ *
+ * @param None
+ *
+ * @return
+ *      - ESP_OK on success
+ *      - Others if failed
+ */
+esp_err_t esp_video_destroy_csi_video_device(void)
+{
+    esp_err_t ret;
+    struct esp_video *video;
+    struct csi_video *csi_video;
+
+    video = esp_video_device_get_object(CSI_NAME);
+    if (!video) {
+        return ESP_ERR_NOT_FOUND;
+    }
+
+    csi_video = VIDEO_PRIV_DATA(struct csi_video *, video);
+
+    ret = esp_video_destroy(video);
+    if (ret != ESP_OK) {
+        return ret;
+    }
+
+    heap_caps_free(csi_video);
+
+    return ESP_OK;
+}
+
+/**
+ * @brief Get the sensor connected to MIPI-CSI video device
+ *
+ * @param None
+ *
+ * @return
+ *      - Sensor pointer on success
+ *      - NULL if failed
+ */
+esp_cam_sensor_device_t *esp_video_get_csi_video_device_sensor(void)
+{
+    struct esp_video *video;
+    struct csi_video *csi_video;
+
+    video = esp_video_device_get_object(CSI_NAME);
+    if (!video) {
+        return NULL;
+    }
+
+    csi_video = VIDEO_PRIV_DATA(struct csi_video *, video);
+
+    return csi_video->cam_dev;
+}

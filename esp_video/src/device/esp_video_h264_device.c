@@ -482,3 +482,39 @@ esp_err_t esp_video_create_h264_video_device(bool hw_codec)
 
     return ESP_OK;
 }
+
+/**
+ * @brief Destroy H.264 video device
+ *
+ * @param hw_codec true: hardware H.264, false: software H.264(has not supported)
+ *
+ * @return
+ *      - ESP_OK on success
+ *      - Others if failed
+ */
+esp_err_t esp_video_destroy_h264_video_device(bool hw_codec)
+{
+    esp_err_t ret;
+    struct esp_video *video;
+    struct h264_video *h264_video;
+
+    if (hw_codec == false) {
+        return ESP_ERR_NOT_SUPPORTED;
+    }
+
+    video = esp_video_device_get_object(H264_NAME);
+    if (!video) {
+        return ESP_ERR_NOT_FOUND;
+    }
+
+    h264_video = VIDEO_PRIV_DATA(struct h264_video *, video);
+
+    ret = esp_video_destroy(video);
+    if (ret != ESP_OK) {
+        return ret;
+    }
+
+    heap_caps_free(h264_video);
+
+    return ESP_OK;
+}
