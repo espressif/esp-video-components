@@ -25,6 +25,7 @@
 #define UNUSED(a)                   ((void)(a))
 
 #define SCCB_NUM_MAX                I2C_NUM_MAX
+#define SCCB_DEV_NUM                2
 
 #define INTF_PORT_NAME(port)        (((port) == ESP_CAM_SENSOR_DVP) ? "DVP" : "CSI")
 
@@ -41,7 +42,7 @@ typedef struct sccb_mark {
 
 typedef struct sensor_sccb_mask {
     i2c_master_bus_handle_t handle;             /*!< I2C master handle */
-    esp_sccb_io_handle_t sccb_io[2];            /*!< SCCB I/O handle */
+    esp_sccb_io_handle_t sccb_io[SCCB_DEV_NUM]; /*!< SCCB I/O handle */
 } sensor_sccb_mask_t;
 
 static sensor_sccb_mask_t s_sensor_sccb_mask[SCCB_NUM_MAX];
@@ -166,8 +167,15 @@ static esp_sccb_io_handle_t create_sccb_device(esp_video_init_sccb_mark_t *mark,
 
     if (init_sccb_config->init_sccb) {
         s_sensor_sccb_mask[i2c_port].handle = bus_handle;
+        s_sensor_sccb_mask[i2c_port].sccb_io[sccb_io_num] = sccb_io;
+    } else {
+        for (int i = 0; i < SCCB_DEV_NUM; i++) {
+            if (!s_sensor_sccb_mask[i].sccb_io[sccb_io_num]) {
+                s_sensor_sccb_mask[i].sccb_io[sccb_io_num] = sccb_io;
+                break;
+            }
+        }
     }
-    s_sensor_sccb_mask[i2c_port].sccb_io[sccb_io_num] = sccb_io;
 
     return sccb_io;
 }
@@ -434,13 +442,14 @@ esp_err_t esp_video_deinit(void)
     for (int i = 0; i < SCCB_NUM_MAX; i++) {
         sensor_sccb_mask_t *m = &s_sensor_sccb_mask[i];
 
-        if (m->handle) {
-            for (int j = 0; j < ARRAY_SIZE(m->sccb_io); j++) {
-                if (m->sccb_io[j]) {
-                    esp_sccb_del_i2c_io(m->sccb_io[j]);
-                }
+        for (int j = 0; j < SCCB_DEV_NUM; j++) {
+            if (m->sccb_io[j]) {
+                esp_sccb_del_i2c_io(m->sccb_io[j]);
             }
-            i2c_del_master_bus(s_sensor_sccb_mask[i].handle);
+        }
+
+        if (m->handle) {
+            i2c_del_master_bus(m->handle);
         }
     }
     memset(s_sensor_sccb_mask, 0, sizeof(s_sensor_sccb_mask));
