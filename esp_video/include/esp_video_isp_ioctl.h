@@ -28,6 +28,7 @@ extern "C" {
 #define V4L2_CID_USER_ESP_ISP_DEMOSAIC      (V4L2_CID_USER_ESP_ISP_BASE + 0x0004)   /*!< Demosaic V4L2 controller ID */
 #define V4L2_CID_USER_ESP_ISP_WB            (V4L2_CID_USER_ESP_ISP_BASE + 0x0005)   /*!< White balance V4L2 controller ID */
 #define V4L2_CID_USER_ESP_ISP_LSC           (V4L2_CID_USER_ESP_ISP_BASE + 0x0006)   /*!< LSC V4L2 controller ID */
+#define V4L2_CID_USER_ESP_ISP_AF            (V4L2_CID_USER_ESP_ISP_BASE + 0x0007)   /*!< Auto focus V4L2 controller ID */
 
 /**
  * @brief ESP32XXX ISP image statistics output, data type is "esp_ipa_stats_t"
@@ -49,6 +50,7 @@ extern "C" {
 #define ESP_VIDEO_ISP_STATS_FLAG_AWB        (1 << 1)    /*!< ISP statistics has AWB */
 #define ESP_VIDEO_ISP_STATS_FLAG_HIST       (1 << 2)    /*!< ISP statistics has histogram */
 #define ESP_VIDEO_ISP_STATS_FLAG_SHARPEN    (1 << 3)    /*!< ISP statistics has sharpen */
+#define ESP_VIDEO_ISP_STATS_FLAG_AF         (1 << 4)    /*!< ISP statistics has AF */
 
 /**
  * @brief GAMMA point coordinate.
@@ -170,6 +172,19 @@ typedef struct esp_video_isp_lsc {
 } esp_video_isp_lsc_t;
 
 /**
+ * @brief AF(auto focus) configuration.
+ */
+typedef struct esp_video_isp_af {
+    bool enable;                    /*!< true: enable AF, false: disable AF */
+
+    /*!< The sampling windows coordinate configuration of AF */
+
+    isp_window_t windows[ISP_AF_WINDOW_NUM];
+
+    uint32_t edge_thresh;           /*!< AF edge threshold, definition higher than this value will be counted as a valid pixel for calculating AF result */
+} esp_video_isp_af_t;
+
+/**
  * @brief ISP statistics.
  */
 typedef struct esp_video_isp_stats {
@@ -180,6 +195,7 @@ typedef struct esp_video_isp_stats {
     esp_isp_awb_evt_data_t awb;             /*!< ISP white balance statistics */
     esp_isp_hist_evt_data_t hist;           /*!< ISP histogram statistics */
     esp_isp_sharpen_evt_data_t sharpen;     /*!< ISP sharpen statistics */
+    esp_isp_af_env_detector_evt_data_t af;  /*!< ISP AF statistics */
 } esp_video_isp_stats_t;
 
 #ifdef __cplusplus
