@@ -25,6 +25,7 @@
 #include "esp_video_pipeline_isp.h"
 #include "esp_video_ioctl.h"
 #include "esp_video_isp_ioctl.h"
+#include "esp_video_device_internal.h"
 #include "esp_ipa.h"
 #include "esp_cam_sensor.h"
 
@@ -575,6 +576,33 @@ static void config_exposure_and_gain(esp_video_isp_t *isp, esp_ipa_metadata_t *m
     }
 }
 
+#if ESP_VIDEO_ISP_DEVICE_LSC
+static void config_lsc(esp_video_isp_t *isp, esp_ipa_metadata_t *metadata)
+{
+    struct v4l2_ext_controls controls;
+    struct v4l2_ext_control control[1];
+    esp_video_isp_lsc_t lsc;
+
+    if (metadata->flags & IPA_METADATA_FLAGS_LSC) {
+        lsc.enable = true;
+        lsc.gain_r = metadata->lsc.gain_r;
+        lsc.gain_gr = metadata->lsc.gain_gr;
+        lsc.gain_gb = metadata->lsc.gain_gb;
+        lsc.gain_b = metadata->lsc.gain_b;
+        lsc.lsc_gain_size = metadata->lsc.lsc_gain_array_size;
+
+        controls.ctrl_class = V4L2_CID_USER_CLASS;
+        controls.count      = 1;
+        controls.controls   = control;
+        control[0].id       = V4L2_CID_USER_ESP_ISP_LSC;
+        control[0].p_u8     = (uint8_t *)&lsc;
+        if (ioctl(isp->isp_fd, VIDIOC_S_EXT_CTRLS, &controls) != 0) {
+            ESP_LOGE(TAG, "failed to set LSC");
+        }
+    }
+}
+#endif
+
 static void config_isp_and_camera(esp_video_isp_t *isp, esp_ipa_metadata_t *metadata)
 {
     if (!isp->sensor_attr.awb) {
@@ -587,6 +615,9 @@ static void config_isp_and_camera(esp_video_isp_t *isp, esp_ipa_metadata_t *meta
     config_gamma(isp, metadata);
     config_ccm(isp, metadata);
     config_color(isp, metadata);
+#if ESP_VIDEO_ISP_DEVICE_LSC
+    config_lsc(isp, metadata);
+#endif
 
     config_exposure_and_gain(isp, metadata);
 }
@@ -652,7 +683,7 @@ static void get_sensor_state(esp_video_isp_t *isp, int index)
     ret = ioctl(isp->cam_fd, VIDIOC_G_FMT, &format);
     if (ret == 0) {
         isp->sensor.width = format.fmt.pix.width;
-        isp->sensor.height = format.fmt.pix.width;
+        isp->sensor.height = format.fmt.pix.height;
     }
 
     if (isp->sensor_attr.stats) {
@@ -731,6 +762,7 @@ static esp_err_t init_cam_dev(const esp_video_isp_config_t *config, esp_video_is
 {
     int fd;
     esp_err_t ret;
+    struct v4l2_format format;
     struct v4l2_query_ext_ctrl qctrl;
     struct v4l2_ext_controls controls;
     struct v4l2_ext_control control[1];
@@ -845,6 +877,14 @@ static esp_err_t init_cam_dev(const esp_video_isp_config_t *config, esp_video_is
         isp->sensor_attr.group = 1;
     } else {
         ESP_LOGD(TAG, "V4L2_CID_CAMERA_GROUP is not supported");
+    }
+
+    memset(&format, 0, sizeof(struct v4l2_format));
+    format.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
+    ret = ioctl(fd, VIDIOC_G_FMT, &format);
+    if (ret == 0) {
+        isp->sensor.width = format.fmt.pix.width;
+        isp->sensor.height = format.fmt.pix.height;
     }
 
     isp->cam_fd = fd;
