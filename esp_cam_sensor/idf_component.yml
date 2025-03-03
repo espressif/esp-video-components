@@ -1,4 +1,4 @@
-version: "0.9.0"
+version: "0.9.1"
 description: "Espressif camera sensor drivers, it is recommended to use with esp_video"
 targets:
   - esp32p4

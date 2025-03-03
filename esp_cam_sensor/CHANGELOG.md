@@ -1,3 +1,8 @@
+## 0.9.1
+
+- Added support for SC031IOT MIPI camera sensor driver.
+- Fixed test pattern regs for GC2145 camera sensor.
+
 ## 0.9.0
 
 - Added APIs to generate XCLK needed by camera sensor.

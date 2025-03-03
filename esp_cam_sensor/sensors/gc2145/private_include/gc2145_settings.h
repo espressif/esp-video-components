@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2024 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2024-2025 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -121,7 +121,7 @@ static const gc2145_reginfo_t gc2145_antibanding[4][GC2145_ANTI_BANDING_REG_SIZE
     }, /*ANTIBANDING AUTO*/
 };
 
-static const gc2145_reginfo_t gc2145_mipi_1lane_24Minput_800x600_rgb565_30fps[] = {
+static const gc2145_reginfo_t gc2145_mipi_1lane_24Minput_800x600_yuv422_30fps[] = {
     {0xfe, 0xf0},
     {GC2145_REG_DELAY, 0x09},
     {0xfc, 0x06},
@@ -169,7 +169,7 @@ static const gc2145_reginfo_t gc2145_mipi_1lane_24Minput_800x600_rgb565_30fps[] 
     {0x81, 0x26},
     {0x82, 0xfa},
     {0x83, 0x00},
-    {GC2145_REG_P0_OUTPUT_FORMAT, 0x06},//0x06:rgb565,0x03:yuv422
+    {GC2145_REG_P0_OUTPUT_FORMAT, 0x00},//0x06:rgb565,0x03:yuv422
     {0x86, 0x02},
     {0x88, 0x03},
     {0x89, 0x03},
@@ -845,7 +845,7 @@ static const gc2145_reginfo_t gc2145_mipi_1lane_24Minput_800x600_rgb565_30fps[] 
     {0xfe, 0x00},
 };
 
-static const gc2145_reginfo_t gc2145_mipi_1lane_24Minput_1600x1200_rgb565_7fps[] = {
+static const gc2145_reginfo_t gc2145_mipi_1lane_24Minput_1600x1200_yuv422_7fps[] = {
     {0xfe, 0xf0},
     {GC2145_REG_DELAY, 0x09},
     {0xfc, 0x06},
@@ -897,7 +897,7 @@ static const gc2145_reginfo_t gc2145_mipi_1lane_24Minput_1600x1200_rgb565_7fps[]
     {0x81, 0x26},
     {0x82, 0xfa},
     {0x83, 0x00},
-    {GC2145_REG_P0_OUTPUT_FORMAT, 0x06},
+    {GC2145_REG_P0_OUTPUT_FORMAT, 0x00},
     {0x86, 0x02},
     {0x88, 0x03},
     {0x89, 0x03},
