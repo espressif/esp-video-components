@@ -74,6 +74,7 @@
 #define ISP_STATS_AE_FLAG           ESP_VIDEO_ISP_STATS_FLAG_AE
 #define ISP_STATS_HIST_FLAG         ESP_VIDEO_ISP_STATS_FLAG_HIST
 #define ISP_STATS_SHARPEN_FLAG      ESP_VIDEO_ISP_STATS_FLAG_SHARPEN
+#define ISP_STATS_AF_FLAG           ESP_VIDEO_ISP_STATS_FLAG_AF
 
 #define ISP_STATS_FLAGS             (ISP_STATS_AE_FLAG | ISP_STATS_AWB_FLAG | ISP_STATS_HIST_FLAG)
 
@@ -88,6 +89,7 @@ struct isp_video {
     isp_awb_ctlr_t awb_ctlr;
     isp_ae_ctlr_t ae_ctlr;
     isp_hist_ctlr_t hist_ctlr;
+    isp_af_ctlr_t af_ctlr;
 
     portMUX_TYPE spinlock;
     SemaphoreHandle_t mutex;
@@ -135,6 +137,8 @@ struct isp_video {
     esp_isp_lsc_gain_array_t lsc_gain_array;
 #endif
 
+    esp_video_isp_af_t af_config;
+
     /* Application command target */
 
     uint8_t red_balance_enable      : 1;
@@ -160,6 +164,8 @@ struct isp_video {
 #if ESP_VIDEO_ISP_DEVICE_LSC
     uint8_t lsc_started             : 1;
 #endif
+
+    uint8_t af_started              : 1;
 
     /* Meta capture state */
 
@@ -319,6 +325,17 @@ static const struct v4l2_query_ext_ctrl s_isp_qctrl[] = {
         .name = "LSC",
     },
 #endif
+    {
+        .id = V4L2_CID_USER_ESP_ISP_AF,
+        .type = V4L2_CTRL_TYPE_U8,
+        .maximum = UINT8_MAX,
+        .minimum = 0,
+        .step = 1,
+        .elems = sizeof(esp_video_isp_af_t),
+        .nr_of_dims = 1,
+        .default_value = 0,
+        .name = "AF",
+    },
 };
 #endif
 static const char *TAG = "isp_video";
@@ -437,6 +454,13 @@ static esp_err_t isp_stats_done(struct isp_video *isp_video, const void *buffer,
         *sharpen_stats = *edata;
         break;
     }
+    case ISP_STATS_AF_FLAG: {
+        const esp_isp_af_env_detector_evt_data_t *edata = (const esp_isp_af_env_detector_evt_data_t *)buffer;
+        esp_isp_af_env_detector_evt_data_t *af_stats = &isp_video->stats_buffer->af;
+
+        *af_stats = *edata;
+        break;
+    }
     default:
         ESP_EARLY_LOGE(TAG, "flags=%" PRIx32 " is not supported", flags);
         ret = ESP_ERR_INVALID_ARG;
@@ -446,6 +470,9 @@ static esp_err_t isp_stats_done(struct isp_video *isp_video, const void *buffer,
     isp_video->stats_buffer->flags |= flags;
     if (isp_video->sharpen_started) {
         target_flags |= ISP_STATS_SHARPEN_FLAG;
+    }
+    if (isp_video->af_started) {
+        target_flags |= ISP_STATS_AF_FLAG;
     }
     if ((isp_video->stats_buffer->flags & target_flags) == target_flags) {
         isp_video->stats_buffer->seq = isp_video->seq++;
@@ -1004,6 +1031,73 @@ static esp_err_t isp_stop_lsc(struct isp_video *isp_video)
 }
 #endif
 
+static bool isp_af_stats_done(isp_af_ctlr_t af_ctlr, const esp_isp_af_env_detector_evt_data_t *edata, void *user_data)
+{
+    esp_err_t ret;
+    struct isp_video *isp_video = (struct isp_video *)user_data;
+
+    ret = isp_stats_done(isp_video, edata, ISP_STATS_AF_FLAG);
+
+    return ret == ESP_OK ? true : false;
+}
+
+static esp_err_t isp_start_af(struct isp_video *isp_video)
+{
+    esp_err_t ret = ESP_OK;
+    esp_isp_af_config_t af_config = {0};
+    esp_isp_af_env_detector_evt_cbs_t af_cb = {
+        .on_env_statistics_done = isp_af_stats_done,
+        .on_env_change = NULL,
+    };
+
+    if (isp_video->af_started) {
+        return ESP_OK;
+    }
+
+    memcpy(af_config.window, isp_video->af_config.windows, sizeof(af_config.window));
+    af_config.edge_thresh = isp_video->af_config.edge_thresh;
+    ESP_RETURN_ON_ERROR(esp_isp_new_af_controller(isp_video->isp_proc, &af_config, &isp_video->af_ctlr), TAG, "failed to new AF");
+
+    ESP_GOTO_ON_ERROR(esp_isp_af_env_detector_register_event_callbacks(isp_video->af_ctlr, &af_cb, isp_video), fail_0, TAG, "failed to register cb");
+    ESP_GOTO_ON_ERROR(esp_isp_af_controller_enable(isp_video->af_ctlr), fail_0, TAG, "failed to enable AF");
+    ESP_GOTO_ON_ERROR(esp_isp_af_controller_start_continuous_statistics(isp_video->af_ctlr), fail_1, TAG, "failed to start AF");
+
+    isp_video->af_started = 1;
+
+    return ESP_OK;
+
+fail_1:
+    esp_isp_af_controller_disable(isp_video->af_ctlr);
+fail_0:
+    esp_isp_del_af_controller(isp_video->af_ctlr);
+    isp_video->af_ctlr = NULL;
+    return ret;
+}
+
+static esp_err_t isp_stop_af(struct isp_video *isp_video)
+{
+    if (!isp_video->af_started) {
+        return ESP_OK;
+    }
+
+    ESP_RETURN_ON_ERROR(esp_isp_af_controller_stop_continuous_statistics(isp_video->af_ctlr), TAG, "failed to stop AF");
+    ESP_RETURN_ON_ERROR(esp_isp_af_controller_disable(isp_video->af_ctlr), TAG, "failed to disable AF");
+    ESP_RETURN_ON_ERROR(esp_isp_del_af_controller(isp_video->af_ctlr), TAG, "failed to delete AF");
+    isp_video->af_ctlr = NULL;
+
+    isp_video->af_started = false;
+
+    return ESP_OK;
+}
+
+static esp_err_t isp_reconfig_af(struct isp_video *isp_video)
+{
+    ESP_RETURN_ON_ERROR(isp_stop_af(isp_video), TAG, "failed to stop AF");
+    ESP_RETURN_ON_ERROR(isp_start_af(isp_video), TAG, "failed to start AF");
+
+    return ESP_OK;
+}
+
 static esp_err_t isp_start_pipeline(struct isp_video *isp_video)
 {
     esp_err_t ret;
@@ -1039,10 +1133,16 @@ static esp_err_t isp_start_pipeline(struct isp_video *isp_video)
     }
 #endif
 
+    ESP_GOTO_ON_ERROR(isp_start_af(isp_video), fail_9, TAG, "failed to start AF");
+
     return ESP_OK;
 
+fail_9:
 #if ESP_VIDEO_ISP_DEVICE_LSC
+    isp_stop_lsc(isp_video);
 fail_8:
+    isp_stop_color(isp_video);
+#else
     isp_stop_color(isp_video);
 #endif
 fail_7:
@@ -1066,6 +1166,8 @@ fail_0:
 
 static esp_err_t isp_stop_pipeline(struct isp_video *isp_video)
 {
+    ESP_RETURN_ON_ERROR(isp_stop_af(isp_video), TAG, "failed to stop AF");
+
 #if ESP_VIDEO_ISP_DEVICE_LSC
     ESP_RETURN_ON_ERROR(isp_stop_lsc(isp_video), TAG, "failed to stop LSC");
 #endif
@@ -1379,6 +1481,21 @@ static esp_err_t isp_video_set_ext_ctrl(struct esp_video *video, const struct v4
             break;
         }
 #endif
+        case V4L2_CID_USER_ESP_ISP_AF: {
+            esp_video_isp_af_t *af = (esp_video_isp_af_t *)ctrl->p_u8;
+
+            isp_video->af_config = *af;
+            if (af->enable) {
+                if (ISP_STARTED(isp_video)) {
+                    ESP_GOTO_ON_ERROR(isp_reconfig_af(isp_video), exit, TAG, "failed to reconfigure AF");
+                }
+            } else {
+                if (ISP_STARTED(isp_video)) {
+                    ESP_GOTO_ON_ERROR(isp_stop_af(isp_video), exit, TAG, "failed to stop AF");
+                }
+            }
+            break;
+        }
         default:
             ret = ESP_ERR_NOT_SUPPORTED;
             break;
@@ -1503,6 +1620,12 @@ static esp_err_t isp_video_get_ext_ctrl(struct esp_video *video, struct v4l2_ext
             break;
         }
 #endif
+        case V4L2_CID_USER_ESP_ISP_AF: {
+            esp_video_isp_af_t *af = (esp_video_isp_af_t *)ctrl->p_u8;
+
+            *af = isp_video->af_config;
+            break;
+        }
         default:
             ret = ESP_ERR_NOT_SUPPORTED;
             break;
