@@ -1721,7 +1721,7 @@ esp_err_t esp_video_isp_start_by_csi(const esp_video_csi_state_t *state, const s
          * IDF-9706
          */
 
-        ISP.frame_cfg.hadr_num = ceil((float)(isp_config.h_res * 16) / 32.0) - 1;
+        ISP.frame_cfg.hadr_num = ceil((float)(isp_config.h_res * state->out_bpp) / 32.0) - 1;
         ISP.frame_cfg.vadr_num = isp_config.v_res - 1;
         ISP.cntl.isp_en = 0;
     } else {
@@ -1801,6 +1801,7 @@ exit:
 /**
  * @brief Enumerate ISP supported output pixel format
  *
+ * @param state        MIPI-CSI state object
  * @param index        Enumerated number index
  * @param pixel_format Supported output pixel format
  *
@@ -1808,13 +1809,15 @@ exit:
  *      - ESP_OK on success
  *      - Others if failed
  */
-esp_err_t esp_video_isp_enum_format(uint32_t index, uint32_t *pixel_format)
+esp_err_t esp_video_isp_enum_format(esp_video_csi_state_t *state, uint32_t index, uint32_t *pixel_format)
 {
-    if (index >= s_isp_isp_format_nums) {
+    if (index < s_isp_isp_format_nums) {
+        *pixel_format = s_isp_isp_format[index];
+    } else if (index == s_isp_isp_format_nums) {
+        *pixel_format = state->in_fmt;
+    } else {
         return ESP_ERR_INVALID_ARG;
     }
-
-    *pixel_format = s_isp_isp_format[index];
 
     return ESP_OK;
 }
@@ -1822,15 +1825,21 @@ esp_err_t esp_video_isp_enum_format(uint32_t index, uint32_t *pixel_format)
 /**
  * @brief Check if input format is valid
  *
+ * @param state  MIPI-CSI state object
  * @param format V4L2 format object
  *
  * @return
  *      - ESP_OK on success
  *      - Others if failed
  */
-esp_err_t esp_video_isp_check_format(const struct v4l2_format *format)
+esp_err_t esp_video_isp_check_format(esp_video_csi_state_t *state, const struct v4l2_format *format)
 {
     bool found = false;
+    isp_color_t isp_in_color;
+
+    if (isp_get_input_frame_type(state->in_color, &isp_in_color) != ESP_OK) {
+        return ESP_ERR_NOT_SUPPORTED;
+    }
 
     for (int i = 0; i < s_isp_isp_format_nums; i++) {
         if (format->fmt.pix.pixelformat == s_isp_isp_format[i]) {

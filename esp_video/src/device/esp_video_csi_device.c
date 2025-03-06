@@ -53,37 +53,44 @@ struct csi_video {
 
 static const char *TAG = "csi_video";
 
-static esp_err_t csi_get_input_frame_type(uint32_t sensor_fmt, cam_ctlr_color_t *csi_color, uint8_t *csi_in_bpp)
+static esp_err_t csi_get_input_frame_type(uint32_t sensor_fmt, cam_ctlr_color_t *csi_color, uint8_t *csi_in_bpp, uint32_t *in_fmt)
 {
     esp_err_t ret = ESP_OK;
 
     switch (sensor_fmt) {
     case ESP_CAM_SENSOR_PIXFORMAT_RAW8:
         *csi_color = CAM_CTLR_COLOR_RAW8;
+        *in_fmt = V4L2_PIX_FMT_SBGGR8;
         *csi_in_bpp = 8;
         break;
     case ESP_CAM_SENSOR_PIXFORMAT_RAW10:
         *csi_color = CAM_CTLR_COLOR_RAW10;
+        *in_fmt = V4L2_PIX_FMT_SBGGR10;
         *csi_in_bpp = 10;
         break;
     case ESP_CAM_SENSOR_PIXFORMAT_RAW12:
         *csi_color = CAM_CTLR_COLOR_RAW12;
+        *in_fmt = V4L2_PIX_FMT_SBGGR12;
         *csi_in_bpp = 12;
         break;
     case ESP_CAM_SENSOR_PIXFORMAT_RGB565:
         *csi_color = CAM_CTLR_COLOR_RGB565;
+        *in_fmt = V4L2_PIX_FMT_RGB565;
         *csi_in_bpp = 16;
         break;
     case ESP_CAM_SENSOR_PIXFORMAT_RGB888:
         *csi_color = CAM_CTLR_COLOR_RGB888;
+        *in_fmt = V4L2_PIX_FMT_RGB24;
         *csi_in_bpp = 24;
         break;
     case ESP_CAM_SENSOR_PIXFORMAT_YUV420:
         *csi_color = CAM_CTLR_COLOR_YUV420;
+        *in_fmt = V4L2_PIX_FMT_YUV420;
         *csi_in_bpp = 12;
         break;
     case ESP_CAM_SENSOR_PIXFORMAT_YUV422:
         *csi_color = CAM_CTLR_COLOR_YUV422;
+        *in_fmt = V4L2_PIX_FMT_YUV422P;
         *csi_in_bpp = 16;
         break;
     default:
@@ -102,6 +109,14 @@ static esp_err_t csi_get_output_frame_type_from_v4l2(uint32_t output_fmt, cam_ct
     case V4L2_PIX_FMT_SBGGR8:
         *csi_color = CAM_CTLR_COLOR_RAW8;
         *out_bpp = 8;
+        break;
+    case V4L2_PIX_FMT_SBGGR10:
+        *csi_color = CAM_CTLR_COLOR_RAW10;
+        *out_bpp = 10;
+        break;
+    case V4L2_PIX_FMT_SBGGR12:
+        *csi_color = CAM_CTLR_COLOR_RAW12;
+        *out_bpp = 12;
         break;
     case V4L2_PIX_FMT_RGB565:
         *csi_color = CAM_CTLR_COLOR_RGB565;
@@ -265,7 +280,7 @@ static esp_err_t init_config(struct esp_video *video)
     ESP_RETURN_ON_ERROR(esp_cam_sensor_get_format(cam_dev, &sensor_format), TAG, "failed to get sensor format");
     ESP_RETURN_ON_FALSE(sensor_format.mipi_info.mipi_clk, ESP_ERR_NOT_SUPPORTED, TAG, "camera sensor mipi_clk is 0");
     ESP_RETURN_ON_ERROR(csi_get_data_lane(sensor_format.mipi_info.lane_num, &csi_video->state.lane_num), TAG, "failed to get CSI data lane number");
-    ESP_RETURN_ON_ERROR(csi_get_input_frame_type(sensor_format.format, &csi_video->state.in_color, &csi_in_bpp), TAG, "failed to get CSI input frame format");
+    ESP_RETURN_ON_ERROR(csi_get_input_frame_type(sensor_format.format, &csi_video->state.in_color, &csi_in_bpp, &csi_video->state.in_fmt), TAG, "failed to get CSI input frame format");
     ESP_RETURN_ON_ERROR(csi_get_input_bayer_order(sensor_format.isp_info, &csi_video->state.bayer_order), TAG, "failed to get bayer order");
 
     csi_video->state.lane_bitrate_mbps = sensor_format.mipi_info.mipi_clk / (1000 * 1000);
@@ -412,60 +427,37 @@ static esp_err_t csi_video_enum_format(struct esp_video *video, uint32_t type, u
     esp_err_t ret = ESP_OK;
     struct csi_video *csi_video = VIDEO_PRIV_DATA(struct csi_video *, video);
 
-    if (csi_video->state.bypass_isp) {
-        if (index == 0) {
-            *pixel_format = CAPTURE_VIDEO_GET_FORMAT_PIXEL_FORMAT(video);
-        } else {
-            ret = ESP_ERR_NOT_SUPPORTED;
-        }
-    } else {
-        ret = esp_video_isp_enum_format(index, pixel_format);
-    }
+    ret = esp_video_isp_enum_format(&csi_video->state, index, pixel_format);
 
     return ret;
 }
 
 static esp_err_t csi_video_set_format(struct esp_video *video, const struct v4l2_format *format)
 {
+    uint8_t out_bpp;
+    cam_ctlr_color_t out_color;
     const struct v4l2_pix_format *pix = &format->fmt.pix;
     struct csi_video *csi_video = VIDEO_PRIV_DATA(struct csi_video *, video);
 
-    if (csi_video->state.bypass_isp) {
-        if (pix->width != CAPTURE_VIDEO_GET_FORMAT_WIDTH(video) ||
-                pix->height != CAPTURE_VIDEO_GET_FORMAT_HEIGHT(video) ||
-                pix->pixelformat != CAPTURE_VIDEO_GET_FORMAT_PIXEL_FORMAT(video)) {
-            ESP_LOGE(TAG, "width or height or format is not supported");
-            return ESP_ERR_INVALID_ARG;
-        }
+    ESP_RETURN_ON_ERROR(csi_get_output_frame_type_from_v4l2(pix->pixelformat, &out_color, &out_bpp),
+                        TAG, "CSI does not support format=%" PRIx32, pix->pixelformat);
 
-        if ((format->fmt.pix.pixelformat == V4L2_PIX_FMT_YUV420) ||
-                (format->fmt.pix.pixelformat == V4L2_PIX_FMT_YUV422P)) {
-            if (format->fmt.pix.ycbcr_enc != V4L2_YCBCR_ENC_DEFAULT) {
-                return ESP_ERR_NOT_SUPPORTED;
-            }
-
-            if (format->fmt.pix.quantization != V4L2_QUANTIZATION_DEFAULT) {
-                return ESP_ERR_NOT_SUPPORTED;
-            }
-        }
+    if (esp_video_isp_check_format(&csi_video->state, format) == ESP_OK) {
+        csi_video->state.bypass_isp = false;
     } else {
-        if (pix->width != CAPTURE_VIDEO_GET_FORMAT_WIDTH(video) ||
-                pix->height != CAPTURE_VIDEO_GET_FORMAT_HEIGHT(video)) {
-            ESP_LOGE(TAG, "width or height is not supported");
-            return ESP_ERR_INVALID_ARG;
-        }
-
-        ESP_RETURN_ON_ERROR(esp_video_isp_check_format(format), TAG, "ISP does not support format=%" PRIx32, pix->pixelformat);
-
-        ESP_RETURN_ON_ERROR(csi_get_output_frame_type_from_v4l2(pix->pixelformat, &csi_video->state.out_color, &csi_video->state.out_bpp),
-                            TAG, "CSI does not support format=%" PRIx32, pix->pixelformat);
-
-        uint32_t buf_size = CAPTURE_VIDEO_GET_FORMAT_WIDTH(video) * CAPTURE_VIDEO_GET_FORMAT_HEIGHT(video) * csi_video->state.out_bpp / 8;
-
-        ESP_LOGD(TAG, "buffer size=%" PRIu32, buf_size);
-
-        CAPTURE_VIDEO_SET_BUF_INFO(video, buf_size, CSI_DMA_ALIGN_BYTES, CSI_MEM_CAPS);
+        ESP_RETURN_ON_FALSE(csi_video->state.in_color == out_color, ESP_ERR_NOT_SUPPORTED,
+                            TAG, "ISP does not support format=%" PRIx32, pix->pixelformat);
+        csi_video->state.bypass_isp = true;
     }
+
+    csi_video->state.out_color = out_color;
+    csi_video->state.out_bpp = out_bpp;
+
+    uint32_t buf_size = CAPTURE_VIDEO_GET_FORMAT_WIDTH(video) * CAPTURE_VIDEO_GET_FORMAT_HEIGHT(video) * out_bpp / 8;
+
+    ESP_LOGD(TAG, "buffer size=%" PRIu32, buf_size);
+
+    CAPTURE_VIDEO_SET_BUF_INFO(video, buf_size, CSI_DMA_ALIGN_BYTES, CSI_MEM_CAPS);
 
     return ESP_OK;
 }

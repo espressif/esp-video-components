@@ -47,6 +47,12 @@ static const struct esp_video_format_desc_map esp_video_format_desc_maps[] = {
         V4L2_PIX_FMT_SBGGR8, "RAW8 BGGR",
     },
     {
+        V4L2_PIX_FMT_SBGGR10, "RAW10 BGGR",
+    },
+    {
+        V4L2_PIX_FMT_SBGGR12, "RAW12 BGGR",
+    },
+    {
         V4L2_PIX_FMT_RGB565, "RGB 5-6-5",
     },
     {
