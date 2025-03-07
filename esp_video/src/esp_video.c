@@ -448,7 +448,7 @@ struct esp_video *esp_video_open(const char *name)
 
     xSemaphoreTake(video->mutex, portMAX_DELAY);
 
-    assert(video->reference <= UINT8_MAX);
+    assert(video->reference < UINT8_MAX);
     video->reference++;
     if (video->reference > 1) {
         goto exit_0;
@@ -1645,4 +1645,39 @@ esp_err_t esp_video_query_menu(struct esp_video *video, struct v4l2_querymenu *q
     }
 
     return ESP_OK;
+}
+
+/**
+ * @brief Set video owner
+ *
+ * @param video  Video object
+ * @param owner  non-zero: video reference adds by 1; 0: video reference subs by 1. Must be 0 or 1.
+ *
+ * @return
+ *      - ESP_OK on success
+ *      - Others if failed
+ */
+esp_err_t esp_video_set_owner(struct esp_video *video, int owner)
+{
+    esp_err_t ret = ESP_ERR_INVALID_ARG;
+
+    CHECK_VIDEO_OBJ(video);
+
+    xSemaphoreTake(video->mutex, portMAX_DELAY);
+
+    if (owner) {
+        if (video->reference < (UINT8_MAX - 1)) {
+            video->reference += 1;
+            ret = ESP_OK;
+        }
+    } else {
+        if (video->reference > 0) {
+            video->reference -= 1;
+            ret = ESP_OK;
+        }
+    }
+
+    xSemaphoreGive(video->mutex);
+
+    return ret;
 }

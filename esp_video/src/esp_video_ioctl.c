@@ -239,6 +239,11 @@ static inline esp_err_t esp_video_ioctl_query_menu(struct esp_video *video, stru
     return esp_video_query_menu(video, qmenu);
 }
 
+static inline esp_err_t esp_video_ioctl_set_owner(struct esp_video *video, int *value)
+{
+    return esp_video_set_owner(video, *value);
+}
+
 esp_err_t esp_video_ioctl(struct esp_video *video, int cmd, va_list args)
 {
     esp_err_t ret = ESP_OK;
@@ -302,6 +307,9 @@ esp_err_t esp_video_ioctl(struct esp_video *video, int cmd, va_list args)
         break;
     case VIDIOC_QUERYMENU:
         ret = esp_video_ioctl_query_menu(video, (struct v4l2_querymenu *)arg_ptr);
+        break;
+    case VIDIOC_SET_OWNER:
+        ret = esp_video_ioctl_set_owner(video, (int *)arg_ptr);
         break;
     default:
         ret = ESP_ERR_INVALID_ARG;
