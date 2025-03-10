@@ -33,6 +33,7 @@ typedef struct esp_video_csi_state {
     cam_ctlr_color_t in_color;              /*!< MIPI-CSI input(from camera sensor) data color format */
     cam_ctlr_color_t out_color;             /*!< MIPI-CSI output(based on ISP output) data color format */
     uint8_t out_bpp;                        /*!< MIPI-CSI output data color format bit per pixel */
+    uint32_t in_fmt;                        /*!< MIPI-CSI input V4L2 format from sensor */
     bool line_sync;                         /*!< true: line has start and end packet; false. line has no start and end packet */
     bool bypass_isp;                        /*!< true: ISP directly output data from input port with processing. false: ISP output processed data by pipeline  */
     color_raw_element_order_t bayer_order;  /*!< Bayer order of raw data */
@@ -186,6 +187,7 @@ esp_err_t esp_video_isp_stop(const esp_video_csi_state_t *state);
 /**
  * @brief Enumerate ISP supported output pixel format
  *
+ * @param state        MIPI-CSI state object
  * @param index        Enumerated number index
  * @param pixel_format Supported output pixel format
  *
@@ -193,18 +195,19 @@ esp_err_t esp_video_isp_stop(const esp_video_csi_state_t *state);
  *      - ESP_OK on success
  *      - Others if failed
  */
-esp_err_t esp_video_isp_enum_format(uint32_t index, uint32_t *pixel_format);
+esp_err_t esp_video_isp_enum_format(esp_video_csi_state_t *state, uint32_t index, uint32_t *pixel_format);
 
 /**
  * @brief Check if input format is valid
  *
+ * @param state  MIPI-CSI state object
  * @param format V4L2 format object
  *
  * @return
  *      - ESP_OK on success
  *      - Others if failed
  */
-esp_err_t esp_video_isp_check_format(const struct v4l2_format *format);
+esp_err_t esp_video_isp_check_format(esp_video_csi_state_t *state, const struct v4l2_format *format);
 
 #if CONFIG_ESP_VIDEO_ENABLE_ISP_VIDEO_DEVICE
 /**
