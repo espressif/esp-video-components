@@ -167,6 +167,14 @@ struct isp_video {
 
     uint8_t af_started              : 1;
 
+    /**
+     * Output format dependence:
+     *
+     *   when output format is RAW8/10/12, AF can't be enable
+     */
+
+    uint8_t af_support              : 1;
+
     /* Meta capture state */
 
     bool capture_meta;
@@ -1050,7 +1058,7 @@ static esp_err_t isp_start_af(struct isp_video *isp_video)
         .on_env_change = NULL,
     };
 
-    if (isp_video->af_started) {
+    if (!isp_video->af_support || isp_video->af_started) {
         return ESP_OK;
     }
 
@@ -1076,7 +1084,7 @@ fail_0:
 
 static esp_err_t isp_stop_af(struct isp_video *isp_video)
 {
-    if (!isp_video->af_started) {
+    if (!isp_video->af_support || !isp_video->af_started) {
         return ESP_OK;
     }
 
@@ -1092,6 +1100,10 @@ static esp_err_t isp_stop_af(struct isp_video *isp_video)
 
 static esp_err_t isp_reconfig_af(struct isp_video *isp_video)
 {
+    if (!isp_video->af_support) {
+        return ESP_OK;
+    }
+
     ESP_RETURN_ON_ERROR(isp_stop_af(isp_video), TAG, "failed to stop AF");
     ESP_RETURN_ON_ERROR(isp_start_af(isp_video), TAG, "failed to start AF");
 
@@ -1133,7 +1145,9 @@ static esp_err_t isp_start_pipeline(struct isp_video *isp_video)
     }
 #endif
 
-    ESP_GOTO_ON_ERROR(isp_start_af(isp_video), fail_9, TAG, "failed to start AF");
+    if (isp_video->af_config.enable) {
+        ESP_GOTO_ON_ERROR(isp_start_af(isp_video), fail_9, TAG, "failed to start AF");
+    }
 
     return ESP_OK;
 
@@ -1859,6 +1873,12 @@ esp_err_t esp_video_isp_start_by_csi(const esp_video_csi_state_t *state, const s
         ESP_GOTO_ON_ERROR(esp_isp_enable(isp_video->isp_proc), fail_2, TAG, "failed to enable ISP");
 
 #if CONFIG_ESP_VIDEO_ENABLE_ISP_VIDEO_DEVICE
+        if (COLOR_SPACE_TYPE(isp_in_color) == COLOR_SPACE_RAW) {
+            isp_video->af_support = 0;
+        } else {
+            isp_video->af_support = 1;
+        }
+
         META_VIDEO_SET_FORMAT(isp_video->video, width, height, V4L2_META_FMT_ESP_ISP_STATS);
         ESP_GOTO_ON_ERROR(isp_start_pipeline(isp_video), fail_3, TAG, "failed to start ISP pipeline");
 #endif
