@@ -1693,3 +1693,68 @@ esp_err_t esp_video_set_owner(struct esp_video *video, int owner)
 
     return ret;
 }
+
+/**
+ * @brief Set V4L2 selection rectangles
+ *
+ * @param video     Video object
+ * @param selection Selection rectangles buffer pointer
+ *
+ * @return
+ *      - ESP_OK on success
+ *      - Others if failed
+ */
+esp_err_t esp_video_set_selection(struct esp_video *video, struct v4l2_selection *selection)
+{
+    esp_err_t ret;
+    struct esp_video_stream *stream;
+
+    CHECK_VIDEO_OBJ(video);
+
+    stream = esp_video_get_stream(video, selection->type);
+    if (!stream) {
+        return ESP_ERR_INVALID_ARG;
+    }
+
+    if (video->ops->set_selection) {
+        ret = video->ops->set_selection(video, selection);
+        if (ret != ESP_OK) {
+            ESP_LOGE(TAG, "video->ops->set_selection=%x", ret);
+            return ret;
+        }
+    } else {
+        ESP_LOGD(TAG, "video->ops->set_selection=NULL");
+        return ESP_ERR_NOT_SUPPORTED;
+    }
+
+    memcpy(&stream->rect, &selection->r, sizeof(struct v4l2_rect));
+
+    return ESP_OK;
+}
+
+/**
+ * @brief Get V4L2 selection rectangles
+ *
+ * @param video     Video object
+ * @param selection Selection rectangles buffer pointer
+ *
+ * @return
+ *      - ESP_OK on success
+ *      - Others if failed
+ */
+esp_err_t esp_video_get_selection(struct esp_video *video, struct v4l2_selection *selection)
+{
+    struct esp_video_stream *stream;
+
+    CHECK_VIDEO_OBJ(video);
+
+    stream = esp_video_get_stream(video, selection->type);
+    if (!stream) {
+        return ESP_ERR_INVALID_ARG;
+    }
+
+    selection->flags = 0;
+    memcpy(&selection->r, &stream->rect, sizeof(struct v4l2_rect));
+
+    return ESP_OK;
+}

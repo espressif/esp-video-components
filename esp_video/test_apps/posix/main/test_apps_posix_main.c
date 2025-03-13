@@ -237,6 +237,46 @@ TEST_CASE("V4L2 M2M device", "[video]")
     TEST_ESP_OK(ret);
 }
 
+TEST_CASE("V4L2 set/get selection", "[video]")
+{
+    int fd;
+    struct v4l2_selection in_selection;
+    struct v4l2_selection out_selection;
+
+    ut_init();
+
+    fd = open(ESP_VIDEO_ISP1_DEVICE_NAME, O_RDWR);
+    TEST_ASSERT_GREATER_OR_EQUAL(0, fd);
+
+    memset(&in_selection, 0, sizeof(in_selection));
+    in_selection.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
+    TEST_ASSERT_NOT_EQUAL_HEX32(-1, ioctl(fd, VIDIOC_G_SELECTION, &in_selection));
+
+    memset(&in_selection, 0, sizeof(in_selection));
+    in_selection.type = V4L2_BUF_TYPE_VIDEO_OUTPUT;
+    TEST_ASSERT_NOT_EQUAL_HEX32(-1, ioctl(fd, VIDIOC_S_SELECTION, &in_selection));
+
+    memset(&in_selection, 0, sizeof(in_selection));
+    in_selection.type = V4L2_BUF_TYPE_META_CAPTURE;
+    TEST_ESP_OK(ioctl(fd, VIDIOC_G_SELECTION, &in_selection));
+
+    memset(&in_selection, 0, sizeof(in_selection));
+    in_selection.type = V4L2_BUF_TYPE_META_CAPTURE;
+    in_selection.r.left = 0;
+    in_selection.r.width = 1080;
+    in_selection.r.top = 0;
+    in_selection.r.height = 720;
+    TEST_ESP_OK(ioctl(fd, VIDIOC_S_SELECTION, &in_selection));
+
+    memset(&out_selection, 0, sizeof(out_selection));
+    out_selection.type = V4L2_BUF_TYPE_META_CAPTURE;
+    TEST_ESP_OK(ioctl(fd, VIDIOC_G_SELECTION, &out_selection));
+
+    TEST_ESP_OK(memcmp(&out_selection, &in_selection, sizeof(out_selection)));
+
+    TEST_ESP_OK(close(fd));
+}
+
 static void check_leak(size_t before_free, size_t after_free, const char *type)
 {
     ssize_t delta = after_free - before_free;

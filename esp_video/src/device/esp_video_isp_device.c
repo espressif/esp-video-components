@@ -173,7 +173,8 @@ struct isp_video {
 
     /* Meta capture state */
 
-    bool capture_meta;
+    uint8_t capture_meta            : 1;
+    uint8_t rect_set                : 1;
 
     /* Statistics data */
 
@@ -417,6 +418,17 @@ static esp_err_t isp_get_output_frame_type(cam_ctlr_color_t ctlr_color, isp_colo
 }
 
 #if CONFIG_ESP_VIDEO_ENABLE_ISP_VIDEO_DEVICE
+static void video_rect2window(struct esp_video *video, isp_window_t *window)
+{
+    struct v4l2_rect *r = META_VIDEO_GET_RECT(video);
+
+    window->top_left.x = r->left;
+    window->top_left.y = r->top;
+
+    window->btm_right.x = r->left + r->width;
+    window->btm_right.y = r->top + r->height;
+}
+
 static esp_err_t isp_stats_done(struct isp_video *isp_video, const void *buffer, uint32_t flags)
 {
     esp_err_t ret = ESP_OK;
@@ -516,13 +528,7 @@ static bool isp_hist_stats_done(isp_hist_ctlr_t hist_ctlr, const esp_isp_hist_ev
 static esp_err_t isp_start_hist(struct isp_video *isp_video)
 {
     esp_err_t ret;
-    uint32_t width = META_VIDEO_GET_FORMAT_WIDTH(isp_video->video);
-    uint32_t height = META_VIDEO_GET_FORMAT_HEIGHT(isp_video->video);
     esp_isp_hist_config_t hist_config = {
-        .window = {
-            .top_left = {.x = width * ISP_REGION_START, .y = height * ISP_REGION_START},
-            .btm_right = {.x = width * ISP_REGION_END, .y = height * ISP_REGION_END},
-        },
         .hist_mode = ISP_HIST_SAMPLING_YUV_Y,
         .rgb_coefficient = {
             .coeff_b = {{85, 0}},
@@ -541,6 +547,8 @@ static esp_err_t isp_start_hist(struct isp_video *isp_video)
     esp_isp_hist_cbs_t hist_cb = {
         .on_statistics_done = isp_hist_stats_done,
     };
+
+    video_rect2window(isp_video->video, &hist_config.window);
 
     ESP_RETURN_ON_ERROR(esp_isp_new_hist_controller(isp_video->isp_proc, &hist_config, &isp_video->hist_ctlr), TAG, "failed to new histogram");
 
@@ -582,15 +590,8 @@ static bool isp_awb_stats_done(isp_awb_ctlr_t awb_ctlr, const esp_isp_awb_evt_da
 static void isp_init_awb_param(struct isp_video *isp_video, esp_isp_awb_config_t *awb_config)
 {
     esp_video_isp_awb_t *awb = &isp_video->awb;
-    uint32_t width = META_VIDEO_GET_FORMAT_WIDTH(isp_video->video);
-    uint32_t height = META_VIDEO_GET_FORMAT_HEIGHT(isp_video->video);
 
     awb_config->sample_point = ISP_AWB_SAMPLE_POINT_BEFORE_CCM;
-
-    awb_config->window.top_left.x = width * ISP_REGION_START;
-    awb_config->window.top_left.y = height * ISP_REGION_START;
-    awb_config->window.btm_right.x = width * ISP_REGION_END;
-    awb_config->window.btm_right.y = height * ISP_REGION_END;
 
     awb_config->white_patch.luminance.max = (float)awb->green_max * (1 + awb->rg_max + awb->bg_max);
     awb_config->white_patch.luminance.min = (float)awb->green_min * (1 + awb->rg_min + awb->bg_min);
@@ -600,6 +601,8 @@ static void isp_init_awb_param(struct isp_video *isp_video, esp_isp_awb_config_t
 
     awb_config->white_patch.blue_green_ratio.max = awb->bg_max;
     awb_config->white_patch.blue_green_ratio.min = awb->bg_min;
+
+    video_rect2window(isp_video->video, &awb_config->window);
 }
 
 static esp_err_t isp_start_awb(struct isp_video *isp_video)
@@ -796,19 +799,15 @@ static bool isp_ae_stats_done(isp_ae_ctlr_t ae_ctlr, const esp_isp_ae_env_detect
 
 static esp_err_t isp_start_ae(struct isp_video *isp_video)
 {
-    uint32_t width = META_VIDEO_GET_FORMAT_WIDTH(isp_video->video);
-    uint32_t height = META_VIDEO_GET_FORMAT_HEIGHT(isp_video->video);
     esp_isp_ae_config_t ae_config = {
         .sample_point = ISP_AE_SAMPLE_POINT_AFTER_GAMMA,
-        .window = {
-            .top_left = {.x = width * ISP_REGION_START, .y = height * ISP_REGION_START},
-            .btm_right = {.x = width * ISP_REGION_END, .y = height * ISP_REGION_END},
-        },
         .intr_priority = 0,
     };
     esp_isp_ae_env_detector_evt_cbs_t cbs = {
         .on_env_statistics_done = isp_ae_stats_done,
     };
+
+    video_rect2window(isp_video->video, &ae_config.window);
 
     ESP_ERROR_CHECK(esp_isp_new_ae_controller(isp_video->isp_proc, &ae_config, &isp_video->ae_ctlr));
 
@@ -1784,6 +1783,20 @@ static esp_err_t isp_video_query_ext_ctrl(struct esp_video *video, struct v4l2_q
     return ret;
 }
 
+static esp_err_t isp_video_set_selection(struct esp_video *video, struct v4l2_selection *selection)
+{
+    struct isp_video *isp_video = VIDEO_PRIV_DATA(struct isp_video *, video);
+
+    if (isp_video->isp_proc) {
+        ESP_LOGE(TAG, "MIPI-CSI or ISP-DVP should be stream off");
+        return ESP_ERR_INVALID_STATE;
+    }
+
+    isp_video->rect_set = true;
+
+    return ESP_OK;
+}
+
 static const struct esp_video_ops s_isp_video_ops = {
     .init           = isp_video_init,
     .deinit         = isp_video_deinit,
@@ -1795,6 +1808,7 @@ static const struct esp_video_ops s_isp_video_ops = {
     .set_ext_ctrl   = isp_video_set_ext_ctrl,
     .get_ext_ctrl   = isp_video_get_ext_ctrl,
     .query_ext_ctrl = isp_video_query_ext_ctrl,
+    .set_selection  = isp_video_set_selection,
 };
 
 /**
@@ -1934,6 +1948,21 @@ esp_err_t esp_video_isp_start_by_csi(const esp_video_csi_state_t *state, const s
     ISP_LOCK(isp_video);
 
     ESP_GOTO_ON_ERROR(esp_isp_new_processor(&isp_config, &isp_video->isp_proc), fail_0, TAG, "failed to new ISP");
+
+#if CONFIG_ESP_VIDEO_ENABLE_ISP_VIDEO_DEVICE
+    if (!isp_video->rect_set) {
+        struct v4l2_rect rect = {
+            .left = width * ISP_REGION_START,
+            .top = height * ISP_REGION_START,
+            .height = height * (ISP_REGION_END - ISP_REGION_START),
+            .width = width * (ISP_REGION_END - ISP_REGION_START),
+        };
+
+
+        META_VIDEO_SET_RECT(isp_video->video, &rect);
+        isp_video->rect_set = true;
+    }
+#endif
 
     if (state->bypass_isp) {
         /**

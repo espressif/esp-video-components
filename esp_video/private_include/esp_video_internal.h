@@ -17,6 +17,7 @@ extern "C" {
 
 #define STREAM_FORMAT(s)                    (&(s)->format)
 #define STREAM_BUF_INFO(s)                  (&(s)->buf_info)
+#define STREAM_RECT(s)                      (&(s)->rect)
 
 #define STREAM_BUFFER_SIZE(s)               (STREAM_BUF_INFO(s)->size)
 
@@ -208,6 +209,7 @@ extern "C" {
 /* video meta operations */
 
 #define META_VIDEO_STREAM(v)                ((v)->stream)
+#define META_VIDEO_RECT(v)                  STREAM_RECT(META_VIDEO_STREAM(v))
 #define META_VIDEO_BUF_SIZE(v)              STREAM_BUFFER_SIZE(CAPTURE_VIDEO_STREAM(v))
 
 #define META_VIDEO_GET_FORMAT_WIDTH(v)                                  \
@@ -243,6 +245,12 @@ extern "C" {
 
 #define META_VIDEO_DONE_BUF(v, b, n)                                    \
     esp_video_done_buffer(v, V4L2_BUF_TYPE_META_CAPTURE, (uint8_t *)b, n)
+
+#define META_VIDEO_SET_RECT(v, r)                                       \
+    memcpy(META_VIDEO_RECT(v), (r), sizeof(struct v4l2_rect))
+
+#define META_VIDEO_GET_RECT(v)                                          \
+    (META_VIDEO_RECT(v))
 
 /**
  * @brief Video event.
@@ -327,6 +335,10 @@ struct esp_video_ops {
     /*!< Query menu value */
 
     esp_err_t (*query_menu)(struct esp_video *video, struct v4l2_querymenu *qmenu);
+
+    /*< Set Selection */
+
+    esp_err_t (*set_selection)(struct esp_video *video, struct v4l2_selection *selection);
 };
 
 #ifdef __cplusplus
