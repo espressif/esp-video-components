@@ -32,6 +32,22 @@ typedef enum {
     ESP_CAM_SENSOR_PIXFORMAT_JPEG
 } esp_cam_sensor_output_format_t;
 
+
+typedef enum {
+    ESP_CAM_SENSOR_DATA_SEQ_NONE = 0,
+
+    /**
+     * Swap short data, for example:
+     *
+     *  Data address:     0x0     0x2     0x4     0x6
+     *
+     *  Original data: 0x0100, 0x0302, 0x0504, 0x0706
+     *  Swapped data:  0x0302, 0x0100, 0x0706, 0x0504
+     */
+    ESP_CAM_SENSOR_DATA_SEQ_SHORT_SWAPPED = 1,
+    ESP_CAM_SENSOR_DATA_SEQ_WORD_INTERNAL_SWAPPED = 2
+} esp_cam_sensor_data_seq_t;
+
 #define ESP_CAM_SENSOR_STATS_FLAG_WB_GAIN           (1 <<  0)
 #define ESP_CAM_SENSOR_STATS_FLAG_AGC_GAIN          (1 <<  1)
 
@@ -96,7 +112,7 @@ typedef enum {
 #define ESP_CAM_SENSOR_SPECIAL_EFFECT               ESP_CAM_SENSOR_CLASS_ID(ESP_CAM_SENSOR_CID_CLASS_DEFAULT, 0x11)
 #define ESP_CAM_SENSOR_LENC                         ESP_CAM_SENSOR_CLASS_ID(ESP_CAM_SENSOR_CID_CLASS_DEFAULT, 0x12)    /*!< Len Shading Correction from the sensor */
 #define ESP_CAM_SENSOR_SCENE                        ESP_CAM_SENSOR_CLASS_ID(ESP_CAM_SENSOR_CID_CLASS_DEFAULT, 0x13)
-#define ESP_CAM_SENSOR_DATA_SWAP_EN                 ESP_CAM_SENSOR_CLASS_ID(ESP_CAM_SENSOR_CID_CLASS_DEFAULT, 0x14)    /*!< For RGB565 and YUV422 formats, byte order swapped flag. */
+#define ESP_CAM_SENSOR_DATA_SEQ                     ESP_CAM_SENSOR_CLASS_ID(ESP_CAM_SENSOR_CID_CLASS_DEFAULT, 0x14)    /*!< For some formats, such as RGB565 and YUV422 formats, byte order swapped flag. */
 
 /**
  * @brief Camera sensor 3A class's control ID

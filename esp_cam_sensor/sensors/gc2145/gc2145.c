@@ -582,6 +582,10 @@ static esp_err_t gc2145_query_para_desc(esp_cam_sensor_device_t *dev, esp_cam_se
         qdesc->number.step = 1;
         qdesc->default_value = GC2145_WB_AUTO;
         break;
+    case ESP_CAM_SENSOR_DATA_SEQ:
+        qdesc->type = ESP_CAM_SENSOR_PARAM_TYPE_U8;
+        qdesc->u8.size = sizeof(uint32_t);
+        break;
     default: {
         ESP_LOGD(TAG, "id=%"PRIx32" is not supported", qdesc->id);
         ret = ESP_ERR_INVALID_ARG;
@@ -593,7 +597,26 @@ static esp_err_t gc2145_query_para_desc(esp_cam_sensor_device_t *dev, esp_cam_se
 
 static esp_err_t gc2145_get_para_value(esp_cam_sensor_device_t *dev, uint32_t id, void *arg, size_t size)
 {
-    return ESP_ERR_NOT_SUPPORTED;
+    esp_err_t ret = ESP_OK;
+
+    switch (id) {
+    case ESP_CAM_SENSOR_DATA_SEQ:
+        if (dev->cur_format->port == ESP_CAM_SENSOR_MIPI_CSI) {
+#if CONFIG_CAMERA_GC2145_MIPI_DATA_SHORT_SWAPPED
+            *(uint32_t *)arg = ESP_CAM_SENSOR_DATA_SEQ_SHORT_SWAPPED;
+#elif CONFIG_CAMERA_GC2145_MIPI_DATA_INTERNAL_SWAPPED
+            *(uint32_t *)arg = ESP_CAM_SENSOR_DATA_SEQ_WORD_INTERNAL_SWAPPED;
+#else
+            *(uint32_t *)arg = ESP_CAM_SENSOR_DATA_SEQ_NONE;
+#endif
+        }
+        break;
+    default:
+        ret = ESP_ERR_NOT_SUPPORTED;
+        break;
+    }
+
+    return ret;
 }
 
 static esp_err_t gc2145_set_para_value(esp_cam_sensor_device_t *dev, uint32_t id, const void *arg, size_t size)

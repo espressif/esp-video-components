@@ -31,8 +31,8 @@ if CAMERA_GC2145
     endif
 
     choice CAMERA_GC2145_MIPI_DEFAULT_FMT
-        prompt "Default format select"
-        default CAMERA_GC2145_MIPI_RGB565_800X600_30FPS
+        prompt "Default format select for MIPI"
+        default CAMERA_GC2145_MIPI_RGB565_640X480_15FPS
         help
             Select the default format to load when the sensor is detected.
             When the sensor is in stream off state, the format can be changed.
@@ -41,37 +41,57 @@ if CAMERA_GC2145
             bool "RGB565 1600x1200 7fps, MIPI 1lane 24M input"
         config CAMERA_GC2145_MIPI_RGB565_800X600_30FPS
             bool "RGB565 800x600 30fps, MIPI 1lane 24M input"
+        config CAMERA_GC2145_MIPI_RGB565_640X480_15FPS
+            bool "RGB565 640x480 15fps, MIPI 1lane 24M input"
     endchoice # CAMERA_GC2145_MIPI_DEFAULT_FMT
 
     config CAMERA_GC2145_MIPI_IF_FORMAT_INDEX_DAFAULT
         int
         default 0 if CAMERA_GC2145_MIPI_RGB565_1600X1200_7FPS
         default 1 if CAMERA_GC2145_MIPI_RGB565_800X600_30FPS
+        default 2 if CAMERA_GC2145_MIPI_RGB565_640X480_15FPS
         help
             Set the configuration loaded by default for the MIPI interface.
             More information can be obtained by calling the query_support_formats().
     
     choice CAMERA_GC2145_DVP_DEFAULT_FMT
         prompt "Default format select for DVP"
-        default CAMERA_GC2145_DVP_YUV422_640X480_15FPS
+        default CAMERA_GC2145_DVP_RGB565_640X480_15FPS
         help
             Select the default format to load when the sensor is detected.
             When the sensor is in stream off state, the format can be changed.
     
-        config CAMERA_GC2145_DVP_YUV422_640X480_15FPS
-            bool "YUV422 640x480 15fps, DVP 8bit 20M input"
-        config CAMERA_GC2145_DVP_YUV422_1600X1200_13FPS
-            bool "YUV422 1600x1200 13fps, DVP 8bit 20M input"
-        config CAMERA_GC2145_DVP_YUV422_800X600_20FPS
-            bool "YUV422 800x600 20fps, DVP 8bit 20M input"
+        config CAMERA_GC2145_DVP_RGB565_640X480_15FPS
+            bool "RGB565 640x480 15fps, DVP 8bit 20M input"
+        config CAMERA_GC2145_DVP_RGB565_1600X1200_13FPS
+            bool "RGB565 1600x1200 13fps, DVP 8bit 20M input"
+        config CAMERA_GC2145_DVP_RGB565_800X600_20FPS
+            bool "RGB565 800x600 20fps, DVP 8bit 20M input"
     endchoice # CAMERA_GC2145_DVP_DEFAULT_FMT
 
     config CAMERA_GC2145_DVP_IF_FORMAT_INDEX_DAFAULT
         int
-        default 2 if CAMERA_GC2145_DVP_YUV422_640X480_15FPS
-        default 3 if CAMERA_GC2145_DVP_YUV422_1600X1200_13FPS
-        default 4 if CAMERA_GC2145_DVP_YUV422_800X600_20FPS
+        default 3 if CAMERA_GC2145_DVP_RGB565_640X480_15FPS
+        default 4 if CAMERA_GC2145_DVP_RGB565_1600X1200_13FPS
+        default 5 if CAMERA_GC2145_DVP_RGB565_800X600_20FPS
         help
             Set the configuration loaded by default for the DVP interface.
             More information can be obtained by calling the query_support_formats().
+    
+    choice CAMERA_GC2145_MIPI_DATA_SEQ
+        prompt "Data seq for MIPI"
+        default CAMERA_GC2145_MIPI_DATA_SHORT_SWAPPED
+        depends on CAMERA_GC2145_AUTO_DETECT_MIPI_INTERFACE_SENSOR
+        help
+            When the sensor outputs RGB565 or YUV422 format, the each pixel corresponds to two bytes of data.
+            If the byte order is incorrect, the image may have abnormal colors or edges.
+            Enabling this option will enable the byte order swap function in esp-video.
+    
+        config CAMERA_GC2145_MIPI_DATA_SHORT_SWAPPED
+            bool "Codec short swapped"
+        config CAMERA_GC2145_MIPI_DATA_INTERNAL_SWAPPED
+            bool "Internal endian order swapped"
+        config CAMERA_GC2145_MIPI_DATA_NONE_SWAPPED
+            bool "None swap"
+    endchoice # CAMERA_SC2336_MIPI_DEFAULT_FMT
 endif
