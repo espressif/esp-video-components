@@ -96,6 +96,7 @@ typedef enum {
 #define ESP_CAM_SENSOR_SPECIAL_EFFECT               ESP_CAM_SENSOR_CLASS_ID(ESP_CAM_SENSOR_CID_CLASS_DEFAULT, 0x11)
 #define ESP_CAM_SENSOR_LENC                         ESP_CAM_SENSOR_CLASS_ID(ESP_CAM_SENSOR_CID_CLASS_DEFAULT, 0x12)    /*!< Len Shading Correction from the sensor */
 #define ESP_CAM_SENSOR_SCENE                        ESP_CAM_SENSOR_CLASS_ID(ESP_CAM_SENSOR_CID_CLASS_DEFAULT, 0x13)
+#define ESP_CAM_SENSOR_DATA_SWAP_EN                 ESP_CAM_SENSOR_CLASS_ID(ESP_CAM_SENSOR_CID_CLASS_DEFAULT, 0x14)    /*!< For RGB565 and YUV422 formats, byte order swapped flag. */
 
 /**
  * @brief Camera sensor 3A class's control ID
