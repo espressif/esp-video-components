@@ -1954,12 +1954,16 @@ exit:
  */
 esp_err_t esp_video_isp_enum_format(esp_video_csi_state_t *state, uint32_t index, uint32_t *pixel_format)
 {
-    if (index < s_isp_isp_format_nums) {
-        *pixel_format = s_isp_isp_format[index];
-    } else if (index == s_isp_isp_format_nums) {
+    if (state->bypass_isp) {
         *pixel_format = state->in_fmt;
     } else {
-        return ESP_ERR_INVALID_ARG;
+        if (index < s_isp_isp_format_nums) {
+            *pixel_format = s_isp_isp_format[index];
+        } else if (index == s_isp_isp_format_nums) {
+            *pixel_format = state->in_fmt;
+        } else {
+            return ESP_ERR_INVALID_ARG;
+        }
     }
 
     return ESP_OK;

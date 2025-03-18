@@ -11,6 +11,13 @@ set(priv_include_dirs "private_include")
 set(priv_requires "vfs")
 set(requires "esp_driver_cam" "esp_driver_isp" "esp_cam_sensor" "esp_h264" "esp_driver_jpeg")
 
+if(CONFIG_IDF_TARGET_ESP32P4)
+    if(CONFIG_ESP_VIDEO_ENABLE_SWAP_SHORT)
+        list(APPEND srcs "src/data_reprocessing/esp32p4/esp_video_swap_short.c")
+        list(APPEND srcs "src/data_reprocessing/esp32p4/esp_video_swap_short.S")
+    endif()
+endif()
+
 if(CONFIG_ESP_VIDEO_ENABLE_MIPI_CSI_VIDEO_DEVICE)
     list(APPEND srcs "src/device/esp_video_csi_device.c")
 endif()
@@ -46,4 +53,18 @@ cu_pkg_define_version(${CMAKE_CURRENT_LIST_DIR})
 
 if(CONFIG_ESP_VIDEO_ENABLE_ISP_PIPELINE_CONTROLLER)
     idf_component_optional_requires(PRIVATE "esp_ipa")
+endif()
+
+if(CONFIG_IDF_TARGET_ESP32P4)
+    if(CONFIG_ESP_VIDEO_ENABLE_SWAP_SHORT_PERF_LOG)
+        idf_component_optional_requires(PRIVATE "esp_timer")
+    endif()
+
+    if(CONFIG_ESP_VIDEO_ENABLE_BITSCRAMBLER)
+        idf_component_optional_requires(PRIVATE "esp_driver_bitscrambler")
+
+        if(CONFIG_ESP_VIDEO_ENABLE_SWAP_SHORT)
+            target_bitscrambler_add_src("src/data_reprocessing/esp32p4/esp_video_swap_short.bsasm")
+        endif()
+    endif()
 endif()

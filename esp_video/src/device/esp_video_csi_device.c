@@ -19,6 +19,9 @@
 #include "esp_video.h"
 #include "esp_video_sensor.h"
 #include "esp_video_device_internal.h"
+#if CONFIG_ESP_VIDEO_ENABLE_SWAP_SHORT
+#include "esp_video_swap_short.h"
+#endif
 
 #define CSI_NAME                    "MIPI-CSI"
 
@@ -48,6 +51,10 @@ struct csi_video {
     esp_cam_sensor_device_t *cam_dev;
 #if CONFIG_ESP_VIDEO_DISABLE_MIPI_CSI_DRIVER_BACKUP_BUFFER
     struct esp_video_buffer_element *element;
+#endif
+
+#if CONFIG_ESP_VIDEO_ENABLE_SWAP_SHORT
+    esp_video_swap_short_t *swap_short;
 #endif
 };
 
@@ -229,7 +236,7 @@ static bool IRAM_ATTR csi_video_on_trans_finished(esp_cam_ctlr_handle_t handle, 
 {
     struct esp_video *video = (struct esp_video *)user_data;
 
-    ESP_LOGD(TAG, "size=%zu", trans->received_size);
+    ESP_EARLY_LOGD(TAG, "size=%zu", trans->received_size);
 
 #if CONFIG_ESP_VIDEO_DISABLE_MIPI_CSI_DRIVER_BACKUP_BUFFER
     struct csi_video *csi_video = VIDEO_PRIV_DATA(struct csi_video *, video);
@@ -345,6 +352,18 @@ static esp_err_t csi_video_start(struct esp_video *video, uint32_t type)
     esp_err_t ret;
     struct csi_video *csi_video = VIDEO_PRIV_DATA(struct csi_video *, video);
 
+#if CONFIG_ESP_VIDEO_ENABLE_SWAP_SHORT
+    uint32_t data_seq;
+
+    ret = esp_cam_sensor_get_para_value(csi_video->cam_dev, ESP_CAM_SENSOR_DATA_SEQ, &data_seq, sizeof(data_seq));
+    if (ret == ESP_OK && (data_seq == ESP_CAM_SENSOR_DATA_SEQ_SHORT_SWAPPED)) {
+        csi_video->swap_short = esp_video_swap_short_create(CAPTURE_VIDEO_BUF_SIZE(video));
+        if (!csi_video->swap_short) {
+            return ESP_ERR_NO_MEM;
+        }
+    }
+#endif
+
     esp_cam_ctlr_csi_config_t csi_config = {
         .ctlr_id = CSI_CTRL_ID,
         .clk_src = CSI_CLK_SRC,
@@ -360,36 +379,43 @@ static esp_err_t csi_video_start(struct esp_video *video, uint32_t type)
         .bk_buffer_dis = true,
 #endif
     };
-    ESP_RETURN_ON_ERROR(esp_cam_new_csi_ctlr(&csi_config, &csi_video->cam_ctrl_handle), TAG, "failed to new CSI");
+    ESP_GOTO_ON_ERROR(esp_cam_new_csi_ctlr(&csi_config, &csi_video->cam_ctrl_handle), exit_0, TAG, "failed to new CSI");
 
     esp_cam_ctlr_evt_cbs_t cam_ctrl_cbs = {
         .on_get_new_trans = csi_video_on_get_new_trans,
         .on_trans_finished = csi_video_on_trans_finished
     };
     ESP_GOTO_ON_ERROR(esp_cam_ctlr_register_event_callbacks(csi_video->cam_ctrl_handle, &cam_ctrl_cbs, video),
-                      exit_0, TAG, "failed to register CAM ctlr event callback");
+                      exit_1, TAG, "failed to register CAM ctlr event callback");
 
-    ESP_GOTO_ON_ERROR(esp_cam_ctlr_enable(csi_video->cam_ctrl_handle), exit_0, TAG, "failed to enable CAM ctlr");
-    ESP_GOTO_ON_ERROR(esp_cam_ctlr_start(csi_video->cam_ctrl_handle), exit_1, TAG, "failed to start CAM ctlr");
+    ESP_GOTO_ON_ERROR(esp_cam_ctlr_enable(csi_video->cam_ctrl_handle), exit_1, TAG, "failed to enable CAM ctlr");
+    ESP_GOTO_ON_ERROR(esp_cam_ctlr_start(csi_video->cam_ctrl_handle), exit_2, TAG, "failed to start CAM ctlr");
 
     ESP_GOTO_ON_ERROR(esp_video_isp_start_by_csi(&csi_video->state, STREAM_FORMAT(CAPTURE_VIDEO_STREAM(video))),
-                      exit_2, TAG, "failed to start ISP");
+                      exit_3, TAG, "failed to start ISP");
 
     int flags = 1;
     ESP_GOTO_ON_ERROR(esp_cam_sensor_ioctl(csi_video->cam_dev, ESP_CAM_SENSOR_IOC_S_STREAM, &flags),
-                      exit_3, TAG, "failed to start sensor stream");
+                      exit_4, TAG, "failed to start sensor stream");
 
     return ESP_OK;
 
-exit_3:
+exit_4:
     esp_video_isp_stop(&csi_video->state);
-exit_2:
+exit_3:
     esp_cam_ctlr_stop(csi_video->cam_ctrl_handle);
-exit_1:
+exit_2:
     esp_cam_ctlr_disable(csi_video->cam_ctrl_handle);
-exit_0:
+exit_1:
     esp_cam_ctlr_del(csi_video->cam_ctrl_handle);
     csi_video->cam_ctrl_handle = NULL;
+exit_0:
+#if CONFIG_ESP_VIDEO_ENABLE_SWAP_SHORT
+    if (csi_video->swap_short) {
+        esp_video_swap_short_free(csi_video->swap_short);
+        csi_video->swap_short = NULL;
+    }
+#endif
     return ret;
 }
 
@@ -408,6 +434,13 @@ static esp_err_t csi_video_stop(struct esp_video *video, uint32_t type)
 
     ESP_RETURN_ON_ERROR(esp_cam_ctlr_del(csi_video->cam_ctrl_handle), TAG, "failed to delete CAM ctlr");
     csi_video->cam_ctrl_handle = NULL;
+
+#if CONFIG_ESP_VIDEO_ENABLE_SWAP_SHORT
+    if (csi_video->swap_short) {
+        esp_video_swap_short_free(csi_video->swap_short);
+        csi_video->swap_short = NULL;
+    }
+#endif
 
     return ESP_OK;
 }
@@ -464,7 +497,27 @@ static esp_err_t csi_video_set_format(struct esp_video *video, const struct v4l2
 
 static esp_err_t csi_video_notify(struct esp_video *video, enum esp_video_event event, void *arg)
 {
-    return ESP_OK;
+    esp_err_t ret = ESP_OK;
+
+#if CONFIG_ESP_VIDEO_ENABLE_SWAP_SHORT
+    struct csi_video *csi_video = VIDEO_PRIV_DATA(struct csi_video *, video);
+
+    if (event == ESP_VIDEO_DATA_PREPROCESSING && csi_video->swap_short) {
+        struct esp_video_buffer_element *element = CAPTURE_VIDEO_GET_FIRST_DONE_ELEMENT_PTR(video);
+
+        if (element) {
+            size_t ret_size;
+
+            ret = esp_video_swap_short_process(csi_video->swap_short, element->buffer, element->valid_size,
+                                               element->buffer, CAPTURE_VIDEO_BUF_SIZE(video), &ret_size);
+            if (ret == ESP_OK) {
+                element->valid_size = ret_size;
+            }
+        }
+    }
+#endif
+
+    return ret;
 }
 
 static esp_err_t csi_video_set_ext_ctrl(struct esp_video *video, const struct v4l2_ext_controls *ctrls)

@@ -117,6 +117,9 @@ extern "C" {
 #define CAPTURE_VIDEO_GET_QUEUED_ELEMENT(v)                             \
     esp_video_get_queued_element(v, V4L2_BUF_TYPE_VIDEO_CAPTURE)
 
+#define CAPTURE_VIDEO_GET_FIRST_DONE_ELEMENT_PTR(v)                     \
+    SLIST_FIRST(&CAPTURE_VIDEO_STREAM(v)->done_list)
+
 /* video M2M operations */
 
 #define M2M_VIDEO_CAPTURE_STREAM(v)         (&(v)->stream[0])
@@ -247,6 +250,7 @@ extern "C" {
 enum esp_video_event {
     ESP_VIDEO_BUFFER_VALID = 0,     /*!< Video buffer is freed and it can be allocated by video device */
     ESP_VIDEO_M2M_TRIGGER,          /*!< Trigger M2M video device transforming event */
+    ESP_VIDEO_DATA_PREPROCESSING,   /*!< Trigger data preprocessing */
 };
 
 struct esp_video;
