@@ -10,18 +10,19 @@ It is highly recommended that users use it in the [esp-video](https://github.com
 
 | model   | max resolution | output interface | output format                                                | Len Size |
 | ------- | -------------- | ---------- | ------------------------------------------------------------ | -------- |
-| SC2336  | 1920 x 1080    | MIPI & DVP      | 8/10-bit Raw RGB data | 1/3"     |
-| SC202CS(SC2356) | 1600 x 1200    | MIPI      | 8/10-bit Raw RGB data | 1/5.1"     |
-| OV5645  | 2592 x 1944    | MIPI      | 8/10-bit Raw RGB data<br/>RGB565<br/>YUV/YCbCr422<br/>YUV420 | 1/4"     |
-| OV5647  | 2592 x 1944    | MIPI & DVP      | 8/10-bit Raw RGB data | 1/4"     |
-| OV2640  | 1600 x 1200    | DVP | 8/10-bit Raw RGB data<br/>JPEG compression<br/>YUV/YCbCr422<br/>RGB565 | 1/4"     |
-| OV2710  | 1920 x 1080    | MIPI | Raw RGB data | 1/2.7"     |
+| BF3925  | 1600 x 1200    | DVP | YCbCr422<br/>8bit Raw RGB data | 1/5"     |
+| BF3A03  | 640 x 480    | DVP | YCbCr422<br/>RGB565<br/>8bit Raw RGB data | 1/6.5"     |
 | GC0308  | 640 x 480    | DVP | Grayscale<br/>YCbCr422<br/>RGB565 | 1/6.5"     |
 | GC2145  | 1600 x 1200    | MIPI & DVP | RGB565<br/>YCbCr422<br/>8bit Raw RGB data | 1/5"     |
-| SC101IOT  | 1280 x 720    | DVP | YCbCr422<br/>8/10-bit Raw RGB data | 1/4.2"     |
+| OV2640  | 1600 x 1200    | DVP | 8/10-bit Raw RGB data<br/>JPEG compression<br/>YUV/YCbCr422<br/>RGB565 | 1/4"     |
+| OV2710  | 1920 x 1080    | MIPI | Raw RGB data | 1/2.7"     |
+| OV5645  | 2592 x 1944    | MIPI      | 8/10-bit Raw RGB data<br/>RGB565<br/>YUV/YCbCr422<br/>YUV420 | 1/4"     |
+| OV5647  | 2592 x 1944    | MIPI & DVP      | 8/10-bit Raw RGB data | 1/4"     |
 | SC030IOT  | 640 x 480    | DVP | YCbCr422<br/>8bit Raw RGB data | 1/6.5"     |
-| BF3925  | 1600 x 1200    | DVP | YCbCr422<br/>8bit Raw RGB data | 1/5"     |
 | SC035HGS  | 640 x 480    | MIPI & DVP | Raw MONO<br/>Raw RGB data | 1/6"     |
+| SC101IOT  | 1280 x 720    | DVP | YCbCr422<br/>8/10-bit Raw RGB data | 1/4.2"     |
+| SC202CS(SC2356) | 1600 x 1200    | MIPI      | 8/10-bit Raw RGB data | 1/5.1"     |
+| SC2336  | 1920 x 1080    | MIPI & DVP      | 8/10-bit Raw RGB data | 1/3"     |
 
 ## Steps to add a new camera sensor driver
 
