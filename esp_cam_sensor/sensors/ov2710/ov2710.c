@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2024 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2024-2025 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -60,7 +60,7 @@ static const esp_cam_sensor_isp_info_t ov2710_isp_info[] = {
         .isp_v1_info = {
             .version = SENSOR_ISP_INFO_VERSION_DEFAULT,
             .pclk = 80000000,
-            .vts = 1104,
+            .vts = 1322,
             .hts = 2420,
             .bayer_type = ESP_CAM_SENSOR_BAYER_BGGR,
         }
@@ -69,8 +69,8 @@ static const esp_cam_sensor_isp_info_t ov2710_isp_info[] = {
         .isp_v1_info = {
             .version = SENSOR_ISP_INFO_VERSION_DEFAULT,
             .pclk = 80000000,
-            .vts = 744,
-            .hts = 1792,
+            .vts = 1322,
+            .hts = 2420,
             .bayer_type = ESP_CAM_SENSOR_BAYER_BGGR,
         },
     },
@@ -79,15 +79,15 @@ static const esp_cam_sensor_isp_info_t ov2710_isp_info[] = {
 static const esp_cam_sensor_format_t ov2710_format_info[] = {
     /* For MIPI */
     {
-        .name = "MIPI_1lane_24Minput_RAW10_1920x1080_30fps",
+        .name = "MIPI_1lane_24Minput_RAW10_1920x1080_25fps",
         .format = ESP_CAM_SENSOR_PIXFORMAT_RAW10,
         .port = ESP_CAM_SENSOR_MIPI_CSI,
         .xclk = OV2710_MCLK,
         .width = 1920,
         .height = 1080,
-        .regs = init_reglist_MIPI_1lane_1920_1080_30fps,
-        .regs_size = ARRAY_SIZE(init_reglist_MIPI_1lane_1920_1080_30fps),
-        .fps = 30,
+        .regs = init_reglist_MIPI_1lane_1920_1080_25fps,
+        .regs_size = ARRAY_SIZE(init_reglist_MIPI_1lane_1920_1080_25fps),
+        .fps = 25,
         .isp_info = &ov2710_isp_info[0],
         .mipi_info = {
             .mipi_clk = 800000000,
@@ -97,15 +97,15 @@ static const esp_cam_sensor_format_t ov2710_format_info[] = {
         .reserved = NULL,
     },
     {
-        .name = "MIPI_1lane_24Minput_RAW10_1280x720_60fps",
+        .name = "MIPI_1lane_24Minput_RAW10_1280x720_25fps",
         .format = ESP_CAM_SENSOR_PIXFORMAT_RAW10,
         .port = ESP_CAM_SENSOR_MIPI_CSI,
         .xclk = OV2710_MCLK,
         .width = 1280,
         .height = 720,
-        .regs = init_reglist_MIPI_1lane_1280_720_60fps,
-        .regs_size = ARRAY_SIZE(init_reglist_MIPI_1lane_1280_720_60fps),
-        .fps = 60,
+        .regs = init_reglist_MIPI_1lane_1280_720_25fps,
+        .regs_size = ARRAY_SIZE(init_reglist_MIPI_1lane_1280_720_25fps),
+        .fps = 25,
         .isp_info = &ov2710_isp_info[1],
         .mipi_info = {
             .mipi_clk = 800000000,

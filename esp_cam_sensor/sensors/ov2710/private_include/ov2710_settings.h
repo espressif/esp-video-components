@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2024 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2024-2025 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -18,8 +18,8 @@ extern "C" {
 
 #define BIT(nr)                                    (1UL << (nr))
 
-/* MCLK:24MHz  1920x1080  30fps   mipi 1lane   800Mbps/lane V4L2_MBUS_FMT_SBGGR10_1X10 */
-static const ov2710_reginfo_t init_reglist_MIPI_1lane_1920_1080_30fps[] = {
+/* MCLK:24MHz  1920x1080  25fps   mipi 1lane   800Mbps/lane V4L2_MBUS_FMT_SBGGR10_1X10 */
+static const ov2710_reginfo_t init_reglist_MIPI_1lane_1920_1080_25fps[] = {
     {0x3008, 0x82}, // reset
     {OV2710_REG_DELAY, 0x04},
     {0x4800, BIT(0)},// Ensure streaming off to make `clock lane` go into LP-11 state.
@@ -106,14 +106,14 @@ static const ov2710_reginfo_t init_reglist_MIPI_1lane_1920_1080_30fps[] = {
     {0x3a1f, 0x10},
     {0x380c, 0x09},/*HTS H*/
     {0x380d, 0x74},/*HTS L*/
-    {0x380e, 0x04},/*VTS H*/
-    {0x380f, 0x50},/*VTS L*/
+    {0x380e, 0x05},/*VTS H*/
+    {0x380f, 0x2a},/*VTS L*/
     {0x4800, 0x24}, // 0x14? 0x00? CONFIG_CAMERA_CSI_LINESYNC_ENABLE ? 0x14 : 0x00
     {OV2710_REG_DELAY, 0x02},
     {OV2710_REG_END, 0x00},
 };
 
-static const ov2710_reginfo_t init_reglist_MIPI_1lane_1280_720_60fps[] = {
+static const ov2710_reginfo_t init_reglist_MIPI_1lane_1280_720_25fps[] = {
     {0x3103, 0x93},
     {0x3008, 0x82}, // reset
     {OV2710_REG_DELAY, 0x04},
@@ -179,10 +179,10 @@ static const ov2710_reginfo_t init_reglist_MIPI_1lane_1280_720_60fps[] = {
     {0x3809, 0x00},
     {0x380a, 0x02},
     {0x380b, 0xd0},
-    {0x380e, 0x02},
-    {0x380f, 0xe8},
-    {0x380c, 0x07},
-    {0x380d, 0x00},
+    {0x380c, 0x09},/*HTS H*/
+    {0x380d, 0x74},/*HTS L*/
+    {0x380e, 0x05},/*VTS H*/
+    {0x380f, 0x2a},/*VTS L*/
     {0x5688, 0x03},
     {0x5684, 0x05},
     {0x5685, 0x00},
