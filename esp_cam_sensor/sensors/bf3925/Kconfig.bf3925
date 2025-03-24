@@ -24,18 +24,18 @@ if CAMERA_BF3925
 
     choice CAMERA_BF3925_DVP_DEFAULT_FMT
         prompt "Default format select"
-        default CAMERA_BF3925_DVP_YUV422_1600x1200_9FPS
+        default CAMERA_BF3925_DVP_YUV422_1600X1200_9FPS
         help
             Select the default format to load when the sensor is detected.
             When the sensor is in stream off state, the format can be changed.
     
-        config CAMERA_BF3925_DVP_YUV422_1600x1200_9FPS
+        config CAMERA_BF3925_DVP_YUV422_1600X1200_9FPS
             bool "YUV422 1600x1200 9fps, DVP 8bit 20M input"
     endchoice # CAMERA_BF3925_DVP_DEFAULT_FMT
 
     config CAMERA_BF3925_DVP_IF_FORMAT_INDEX_DAFAULT
         int
-        default 0 if CAMERA_BF3925_DVP_YUV422_1600x1200_9FPS
+        default 0 if CAMERA_BF3925_DVP_YUV422_1600X1200_9FPS
         help
             Set the configuration loaded by default for the DVP interface.
             More information can be obtained by calling the query_support_formats().

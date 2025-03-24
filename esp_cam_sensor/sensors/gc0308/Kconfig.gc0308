@@ -24,33 +24,33 @@ if CAMERA_GC0308
 
     choice CAMERA_GC0308_DVP_DEFAULT_FMT
         prompt "Default format select"
-        default CAMERA_GC0308_DVP_YUV422_640x480_16FPS
+        default CAMERA_GC0308_DVP_YUV422_640X480_16FPS
         help
             Select the default format to load when the sensor is detected.
             When the sensor is in stream off state, the format can be changed.
     
-        config CAMERA_GC0308_DVP_YUV422_640x480_16FPS
+        config CAMERA_GC0308_DVP_YUV422_640X480_16FPS
             bool "YUV422 640x480 16fps, DVP 8bit 20M input"
-        config CAMERA_GC0308_DVP_RGB565_640x480_16FPS
+        config CAMERA_GC0308_DVP_RGB565_640X480_16FPS
             bool "RGB565 640x480 16fps, DVP 8bit 20M input"
-        config CAMERA_GC0308_DVP_GRAY_640x480_16FPS
+        config CAMERA_GC0308_DVP_GRAY_640X480_16FPS
             bool "Grayscale 640x480 16fps, DVP 8bit 20M input"
-        config CAMERA_GC0308_DVP_YUV422_320x240_20FPS
+        config CAMERA_GC0308_DVP_YUV422_320X240_20FPS
             bool "YUV422 320x240 20fps, DVP 8bit 20M input"
-        config CAMERA_GC0308_DVP_GRAY_320x240_20FPS
+        config CAMERA_GC0308_DVP_GRAY_320X240_20FPS
             bool "Grayscale 320x240 20fps, DVP 8bit 20M input"
-        config CAMERA_GC0308_DVP_RGB565_320x240_20FPS
+        config CAMERA_GC0308_DVP_RGB565_320X240_20FPS
             bool "RGB565 320x240 20fps, DVP 8bit 20M input"
     endchoice # CAMERA_GC0308_DVP_DEFAULT_FMT
 
     config CAMERA_GC0308_DVP_IF_FORMAT_INDEX_DAFAULT
         int
-        default 0 if CAMERA_GC0308_DVP_YUV422_640x480_16FPS
-        default 1 if CAMERA_GC0308_DVP_RGB565_640x480_16FPS
-        default 2 if CAMERA_GC0308_DVP_GRAY_640x480_16FPS
-        default 3 if CAMERA_GC0308_DVP_YUV422_320x240_20FPS
-        default 4 if CAMERA_GC0308_DVP_GRAY_320x240_20FPS
-        default 5 if CAMERA_GC0308_DVP_RGB565_320x240_20FPS
+        default 0 if CAMERA_GC0308_DVP_YUV422_640X480_16FPS
+        default 1 if CAMERA_GC0308_DVP_RGB565_640X480_16FPS
+        default 2 if CAMERA_GC0308_DVP_GRAY_640X480_16FPS
+        default 3 if CAMERA_GC0308_DVP_YUV422_320X240_20FPS
+        default 4 if CAMERA_GC0308_DVP_GRAY_320X240_20FPS
+        default 5 if CAMERA_GC0308_DVP_RGB565_320X240_20FPS
         help
             Set the configuration loaded by default for the DVP interface.
             More information can be obtained by calling the query_support_formats().

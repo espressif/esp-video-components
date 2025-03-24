@@ -24,21 +24,21 @@ if CAMERA_OV2710
 
     choice CAMERA_OV2710_MIPI_DEFAULT_FMT
         prompt "Default format select for MIPI"
-        default CAMERA_OV2710_MIPI_RAW10_1920x1080_30FPS
+        default CAMERA_OV2710_MIPI_RAW10_1920X1080_30FPS
         help
             Select the default format to load when the sensor is detected.
             When the sensor is in stream off state, the format can be changed.
     
-        config CAMERA_OV2710_MIPI_RAW10_1920x1080_30FPS
+        config CAMERA_OV2710_MIPI_RAW10_1920X1080_30FPS
             bool "RAW10 1920x1080 30fps, MIPI 1lane 24M input"
-        config CAMERA_OV2710_MIPI_RAW10_1280x720_60FPS
+        config CAMERA_OV2710_MIPI_RAW10_1280X720_60FPS
             bool "RAW10 1280x720 60fps, MIPI 1lane 24M input"                               
     endchoice # CAMERA_OV2710_MIPI_DEFAULT_FMT
 
     config CAMERA_OV2710_MIPI_IF_FORMAT_INDEX_DAFAULT
         int
-        default 0 if CAMERA_OV2710_MIPI_RAW10_1920x1080_30FPS
-        default 1 if CAMERA_OV2710_MIPI_RAW10_1280x720_60FPS
+        default 0 if CAMERA_OV2710_MIPI_RAW10_1920X1080_30FPS
+        default 1 if CAMERA_OV2710_MIPI_RAW10_1280X720_60FPS
         help
             Set the configuration loaded by default for the MIPI interface.
             More information can be obtained by calling the query_support_formats().
