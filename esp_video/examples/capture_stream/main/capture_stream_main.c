@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2024 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2024-2025 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: ESPRESSIF MIT
  */
@@ -13,9 +13,13 @@
 #include "esp_err.h"
 #include "esp_log.h"
 #include "esp_timer.h"
+#include "esp_check.h"
 #include "linux/videodev2.h"
 #include "esp_video_device.h"
 #include "esp_video_init.h"
+#if CONFIG_EXAMPLE_SCCB_I2C_INIT_BY_APP
+#include "driver/i2c_master.h"
+#endif
 
 #if CONFIG_EXAMPLE_VIDEO_BUFFER_TYPE_USER
 #include "esp_heap_caps.h"
@@ -37,7 +41,31 @@
 
 static const char *TAG = "example";
 
+#if CONFIG_EXAMPLE_SCCB_I2C_INIT_BY_APP
+/**
+ * @brief i2c master initialization
+ * The Camera device uses the I2C bus as the control bus for the camera sensor.
+ * Explicitly initializing the I2C bus in the application will allow you to use this I2C master in multiple tasks.
+ *
+ * @param[out] bus_handle Pointer to store the initialized I2C bus handle
+ * @return None
+ */
+static void i2c_master_init(i2c_master_bus_handle_t *bus_handle, uint8_t port, uint8_t scl_pin, uint8_t sda_pin)
+{
+    i2c_master_bus_config_t bus_config = {
+        .i2c_port = port,
+        .sda_io_num = sda_pin,
+        .scl_io_num = scl_pin,
+        .clk_source = I2C_CLK_SRC_DEFAULT,
+        .glitch_ignore_cnt = 7,
+        .flags.enable_internal_pullup = true,
+    };
+    ESP_ERROR_CHECK(i2c_new_master_bus(&bus_config, bus_handle));
+}
+#endif
+
 #if CONFIG_EXAMPLE_ENABLE_MIPI_CSI_CAM_SENSOR
+#if !CONFIG_EXAMPLE_SCCB_I2C_INIT_BY_APP
 static const esp_video_init_csi_config_t csi_config[] = {
     {
         .sccb_config = {
@@ -53,9 +81,22 @@ static const esp_video_init_csi_config_t csi_config[] = {
         .pwdn_pin  = CONFIG_EXAMPLE_MIPI_CSI_CAM_SENSOR_PWDN_PIN,
     },
 };
-#endif
+#else
+static esp_video_init_csi_config_t csi_config[] = {
+    {
+        .sccb_config = {
+            .init_sccb = false,
+            .freq = CONFIG_EXAMPLE_MIPI_CSI_SCCB_I2C_FREQ,
+        },
+        .reset_pin = CONFIG_EXAMPLE_MIPI_CSI_CAM_SENSOR_RESET_PIN,
+        .pwdn_pin  = CONFIG_EXAMPLE_MIPI_CSI_CAM_SENSOR_PWDN_PIN,
+    },
+};
+#endif // CONFIG_EXAMPLE_SCCB_I2C_INIT_BY_APP
+#endif // CONFIG_EXAMPLE_ENABLE_MIPI_CSI_CAM_SENSOR
 
 #if CONFIG_EXAMPLE_ENABLE_DVP_CAM_SENSOR
+#if !CONFIG_EXAMPLE_SCCB_I2C_INIT_BY_APP
 static const esp_video_init_dvp_config_t dvp_config[] = {
     {
         .sccb_config = {
@@ -81,8 +122,32 @@ static const esp_video_init_dvp_config_t dvp_config[] = {
             .xclk_io = CONFIG_EXAMPLE_DVP_XCLK_PIN,
         },
         .xclk_freq = CONFIG_EXAMPLE_DVP_XCLK_FREQ,
+    }
+};
+#else
+static esp_video_init_dvp_config_t dvp_config[] = {
+    {
+        .sccb_config = {
+            .init_sccb = false,
+            .freq      = CONFIG_EXAMPLE_DVP_SCCB_I2C_FREQ,
+        },
+        .reset_pin = CONFIG_EXAMPLE_DVP_CAM_SENSOR_RESET_PIN,
+        .pwdn_pin  = CONFIG_EXAMPLE_DVP_CAM_SENSOR_PWDN_PIN,
+        .dvp_pin = {
+            .data_width = CAM_CTLR_DATA_WIDTH_8,
+            .data_io = {
+                CONFIG_EXAMPLE_DVP_D0_PIN, CONFIG_EXAMPLE_DVP_D1_PIN, CONFIG_EXAMPLE_DVP_D2_PIN, CONFIG_EXAMPLE_DVP_D3_PIN,
+                CONFIG_EXAMPLE_DVP_D4_PIN, CONFIG_EXAMPLE_DVP_D5_PIN, CONFIG_EXAMPLE_DVP_D6_PIN, CONFIG_EXAMPLE_DVP_D7_PIN,
+            },
+            .vsync_io = CONFIG_EXAMPLE_DVP_VSYNC_PIN,
+            .de_io = CONFIG_EXAMPLE_DVP_DE_PIN,
+            .pclk_io = CONFIG_EXAMPLE_DVP_PCLK_PIN,
+            .xclk_io = CONFIG_EXAMPLE_DVP_XCLK_PIN,
+        },
+        .xclk_freq = CONFIG_EXAMPLE_DVP_XCLK_FREQ,
     },
 };
+#endif
 #endif
 
 static const esp_video_init_config_t cam_config = {
@@ -337,16 +402,28 @@ exit_0:
 void app_main(void)
 {
     esp_err_t ret = ESP_OK;
-
+#if CONFIG_EXAMPLE_SCCB_I2C_INIT_BY_APP
+    i2c_master_bus_handle_t i2c_bus_handle = NULL;
+#if CONFIG_EXAMPLE_ENABLE_MIPI_CSI_CAM_SENSOR
+    i2c_master_init(&i2c_bus_handle, CONFIG_EXAMPLE_MIPI_CSI_SCCB_I2C_PORT, CONFIG_EXAMPLE_MIPI_CSI_SCCB_I2C_SCL_PIN, CONFIG_EXAMPLE_MIPI_CSI_SCCB_I2C_SDA_PIN);
+    csi_config->sccb_config.i2c_handle = i2c_bus_handle;
+#elif CONFIG_EXAMPLE_ENABLE_DVP_CAM_SENSOR
+    i2c_master_init(&i2c_bus_handle, CONFIG_EXAMPLE_DVP_SCCB_I2C_PORT, CONFIG_EXAMPLE_DVP_SCCB_I2C_SCL_PIN, CONFIG_EXAMPLE_DVP_SCCB_I2C_SDA_PIN);
+    dvp_config->sccb_config.i2c_handle = i2c_bus_handle;
+#endif
+#endif
     ret = esp_video_init(&cam_config);
-    if (ret != ESP_OK) {
-        ESP_LOGE(TAG, "Camera init failed with error 0x%x", ret);
-        return;
-    }
+    ESP_GOTO_ON_ERROR(ret, clean1, TAG, "Camera init failed");
 
     ret = camera_capture_stream();
-    if (ret != ESP_OK) {
-        ESP_LOGE(TAG, "Camera capture stream failed with error 0x%x", ret);
-        return;
-    }
+    ESP_GOTO_ON_ERROR(ret, clean0, TAG, "Camera capture stream failed");
+
+clean0:
+    ESP_ERROR_CHECK(esp_video_deinit());
+clean1:
+#if CONFIG_EXAMPLE_SCCB_I2C_INIT_BY_APP
+    /* Todo, Add esp_video_deinit */
+    ESP_ERROR_CHECK(i2c_del_master_bus(i2c_bus_handle));
+#endif
+    return;
 }
