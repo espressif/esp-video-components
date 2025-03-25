@@ -158,3 +158,11 @@ Enter `http://esp-web.local/pic` or `192.168.47.100/pic` in the browser to acces
 
    - Check that the camera sensor is connected to the board and that the pins are correctly configured in the menuconfig.
 
+2. Error occurred:
+
+   ```
+   E (1857) dvp_video: format is not supported
+   E (1857) esp_video: video->ops->set_format=102
+   ```
+
+- Check if the parameters of command `VIDIOC_S_FMT` in the code match the format selected in the menuconfig.
