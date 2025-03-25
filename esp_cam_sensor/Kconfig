@@ -1,6 +1,7 @@
 menu "Espressif Camera Sensors Configurations"
     menu "Camera Sensor Configuration"
         rsource "sensors/bf3925/Kconfig.bf3925"
+        rsource "sensors/bf3a03/Kconfig.bf3a03"
         rsource "sensors/gc0308/Kconfig.gc0308"
         rsource "sensors/gc2145/Kconfig.gc2145"
         rsource "sensors/ov2640/Kconfig.ov2640"

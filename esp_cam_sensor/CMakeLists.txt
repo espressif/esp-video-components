@@ -80,6 +80,12 @@ if(CONFIG_CAMERA_BF3925)
     list(APPEND priv_include_dirs "sensors/bf3925/private_include")
 endif()
 
+if(CONFIG_CAMERA_BF3A03)
+    list(APPEND srcs "sensors/bf3a03/bf3a03.c")
+    list(APPEND include_dirs "sensors/bf3a03/include")
+    list(APPEND priv_include_dirs "sensors/bf3a03/private_include")
+endif()
+
 idf_component_register(SRCS ${srcs}
                        INCLUDE_DIRS ${include_dirs}
                        PRIV_INCLUDE_DIRS ${priv_include_dirs}
@@ -133,6 +139,10 @@ endif()
 
 if(CONFIG_CAMERA_BF3925_AUTO_DETECT)
     target_link_libraries(${COMPONENT_LIB} INTERFACE "-u bf3925_detect")
+endif()
+
+if(CONFIG_CAMERA_BF3A03_AUTO_DETECT)
+    target_link_libraries(${COMPONENT_LIB} INTERFACE "-u bf3a03_detect")
 endif()
 
 include(package_manager)
