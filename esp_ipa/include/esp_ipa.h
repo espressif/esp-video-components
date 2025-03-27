@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2024 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2024-2025 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: ESPRESSIF MIT
  */
@@ -135,6 +135,27 @@ void esp_ipa_set_float(esp_ipa_t *ipa, const char *name, float val);
  * @return Float type global variable
  */
 float esp_ipa_get_float(esp_ipa_t *ipa, const char *name);
+
+/**
+ * @brief Set pointer type global variable.
+ *
+ * @param ipa   Image process algorithm object
+ * @param name  Variable name
+ * @param ptr   Pointer type global variable
+ *
+ * @return None
+ */
+void esp_ipa_set_ptr(esp_ipa_t *ipa, const char *name, const void *ptr);
+
+/**
+ * @brief Get pointer type global variable.
+ *
+ * @param ipa   Image process algorithm object
+ * @param name  Variable name
+ *
+ * @return Pointer type global variable
+ */
+const void *esp_ipa_get_ptr(esp_ipa_t *ipa, const char *name);
 
 /**
  * @brief Get IPA configuration pointer by target name

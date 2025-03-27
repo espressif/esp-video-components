@@ -1,11 +1,38 @@
-# SPDX-FileCopyrightText: 2024 Espressif Systems (Shanghai) CO LTD
+# SPDX-FileCopyrightText: 2024-2025 Espressif Systems (Shanghai) CO LTD
 # SPDX-License-Identifier: Apache-2.0
 
 import argparse
 import sys
 import json
+import math
 from abc import ABCMeta, abstractmethod
 from esp_ipa_utils import fatal_error, cfmt_string, dict_object
+
+class base_default(object):
+    def __init__(self):
+        pass
+
+class awb_range_default():
+    def __init__(self, name):
+        self.green = base_default()
+        self.rg = base_default()
+        self.bg = base_default()
+
+        self.green.max = 220
+        self.green.min = 180
+        self.rg.max = 0.8899
+        self.rg.min = 0.5040
+        self.bg.max = 0.7822
+        self.bg.min = 0.4838
+
+class awb_default():
+    def __init__(self, name):
+        self.model = 0
+        self.range = awb_range_default(name)
+        self.min_counted = 1000
+        self.green_luma_env = 'ae.luma.avg'
+        self.green_luma_init = 200
+        self.green_luma_step_ratio = 0.3
 
 class ipa_unit_c():
     __metaclass__ = ABCMeta
@@ -19,7 +46,10 @@ class ipa_unit_c():
     @abstractmethod
     def decode(self, obj):
         pass
-    
+
+    def customized_name(self):
+        return None
+
     def get_text(self):
         return self.text
 
@@ -177,14 +207,48 @@ class ipa_unit_ian_c(ipa_unit_c):
 class ipa_unit_awb_c(ipa_unit_c):
     @staticmethod
     def decode_awb(name, obj):
+        defconf = awb_default(name)
+
+        if not hasattr(obj, 'model'):
+            obj.model = defconf.model
+        if not hasattr(obj, 'min_counted'):
+            obj.min_counted = defconf.min_counted
+        if not hasattr(obj, 'range'):
+            obj.range = defconf.range
+        if not hasattr(obj, 'green_luma_env'):
+            obj.green_luma_env = defconf.green_luma_env
+        if not hasattr(obj, 'green_luma_init'):
+            obj.green_luma_init = defconf.green_luma_init
+        if not hasattr(obj, 'green_luma_step_ratio'):
+            obj.green_luma_step_ratio = defconf.green_luma_step_ratio
+
+        model_dict = {
+            0: 'ESP_IPA_AWB_MODEL_0',
+            1: 'ESP_IPA_AWB_MODEL_1'
+        }
+
         return cfmt_string('''
             static const esp_ipa_awb_config_t s_ipa_awb_%s_config = {
+                .model = %s,
                 .min_counted = %d,
                 .min_red_gain_step = %0.4f,
-                .min_blue_gain_step = %0.4f
+                .min_blue_gain_step = %0.4f,
+                .range = {
+                    .green_max = %d,
+                    .green_min = %d,
+                    .rg_max = %0.4f,
+                    .rg_min = %0.4f,
+                    .bg_max = %0.4f,
+                    .bg_min = %0.4f
+                },
+                .green_luma_env = \"%s\",
+                .green_luma_init = %d,
+                .green_luma_step_ratio = %0.4f
             };
             '''
-            %(name, obj.min_counted, obj.min_red_gain_step, obj.min_red_gain_step)
+            %(name, model_dict[obj.model], obj.min_counted, obj.min_red_gain_step, obj.min_red_gain_step,
+              obj.range.green.max, obj.range.green.min, obj.range.rg.max, obj.range.rg.min,
+              obj.range.bg.max, obj.range.bg.min, obj.green_luma_env, obj.green_luma_init, obj.green_luma_step_ratio)
         )
 
     def decode(self, obj):
@@ -243,18 +307,105 @@ class ipa_unit_acc_c(ipa_unit_c):
                 '''%(name, ccm_table_sub_text)                        
             )
 
+            if not hasattr(ccm, 'model'):
+                ccm.model = 0
+
+            sub_param_text = str()
+            if ccm.model == 1:
+                sub_param_text = cfmt_string('''
+                    .min_ct_step = %d,
+                    '''%(ccm.min_ct_step)
+                )
+
             ccm_text = cfmt_string('''
                 static const esp_ipa_acc_ccm_config_t s_esp_ipa_acc_ccm_%s_config = {
+                    .model = %d,
                     .luma_env = \"%s\",
                     .luma_low_threshold = %0.4f,
                     .luma_low_ccm = %s,
                     .ccm_table = s_esp_ipa_acc_ccm_%s_table,
                     .ccm_table_size = %d,
-                };'''%(name, ccm.low_luma.luma_env, ccm.low_luma.threshold,
-                       ccm_low_table_text, name, len(ccm.table))
+                    %s
+                };'''%(name, ccm.model, ccm.low_luma.luma_env, ccm.low_luma.threshold,
+                       ccm_low_table_text, name, len(ccm.table), sub_param_text)
             )
 
             return ccm_table_text + ccm_text
+
+        def lsc_code(name, obj):
+            lsc = obj.lsc
+            lsc_table_text = str()
+            lsc_text = str()
+
+            for i in lsc.table:
+                lsc_text += cfmt_string('''
+                    static const isp_lsc_gain_t s_esp_ipa_acc_lsc_gain_r_%s_%d_x_%d_ct_%d_config[] = {
+                        %s
+                    };
+                    '''%(name, lsc.img_w, lsc.img_h, i.ct,
+                         ', '.join('{.val = %d}'%(round(u * 256)) for u in i.calibrations_r_tbl))
+                )
+
+                lsc_text += cfmt_string('''
+                    static const isp_lsc_gain_t s_esp_ipa_acc_lsc_gain_gr_%s_%d_x_%d_ct_%d_config[] = {
+                        %s
+                    };
+                    '''%(name, lsc.img_w, lsc.img_h, i.ct,
+                         ', '.join('{.val = %d}'%(round(u * 256)) for u in i.calibrations_gr_tbl))
+                )
+
+                lsc_text += cfmt_string('''
+                    static const isp_lsc_gain_t s_esp_ipa_acc_lsc_gain_gb_%s_%d_x_%d_ct_%d_config[] = {
+                        %s
+                    };
+                    '''%(name, lsc.img_w, lsc.img_h, i.ct,
+                         ', '.join('{.val = %d}'%(round(u * 256)) for u in i.calibrations_gb_tbl))
+                )
+
+                lsc_text += cfmt_string('''
+                    static const isp_lsc_gain_t s_esp_ipa_acc_lsc_gain_b_%s_%d_x_%d_ct_%d_config[] = {
+                        %s
+                    };
+                    '''%(name, lsc.img_w, lsc.img_h, i.ct,
+                         ', '.join('{.val = %d}'%(round(u * 256)) for u in i.calibrations_b_tbl))
+                )
+
+                lsc_table_text += cfmt_string('''
+                    {
+                        .color_temp = %d,
+                        .lsc = {
+                            .gain_r  = s_esp_ipa_acc_lsc_gain_r_%s_%d_x_%d_ct_%d_config,
+                            .gain_gr = s_esp_ipa_acc_lsc_gain_gr_%s_%d_x_%d_ct_%d_config,
+                            .gain_gb = s_esp_ipa_acc_lsc_gain_gb_%s_%d_x_%d_ct_%d_config,
+                            .gain_b  = s_esp_ipa_acc_lsc_gain_b_%s_%d_x_%d_ct_%d_config,
+                            .lsc_gain_array_size = %d
+                        },
+                    },
+                    '''%(i.ct,
+                         name, lsc.img_w, lsc.img_h, i.ct, name, lsc.img_w, lsc.img_h, i.ct,
+                         name, lsc.img_w, lsc.img_h, i.ct, name, lsc.img_w, lsc.img_h, i.ct,
+                         lsc.lsc_tbl_size)
+                )
+
+            lsc_text += cfmt_string('''
+                static const esp_ipa_acc_lsc_lut_t s_esp_ipa_acc_lsc_%s_%d_x_%d_config[] = {
+                    %s
+                };
+                '''%(name, lsc.img_w, lsc.img_h, lsc_table_text)
+            )
+
+            lsc_text += cfmt_string('''
+                static const esp_ipa_acc_lsc_t s_esp_ipa_acc_lsc_%s_config[] = {
+                    {
+                        .width = %d,
+                        .height = %d,
+                        .lsc_gain_table = s_esp_ipa_acc_lsc_%s_%d_x_%d_config,
+                        .lsc_gain_table_size = %d
+                    }
+                };'''%(name, lsc.img_w, lsc.img_h, name, lsc.img_w, lsc.img_h, len(lsc.table))
+            )
+
+            return lsc_text
 
         acc_text = str()
         acc_obj_text = str()
@@ -275,6 +426,14 @@ class ipa_unit_acc_c(ipa_unit_c):
             acc_obj_text += ('''
                 .ccm = &s_esp_ipa_acc_ccm_%s_config,
                 '''%(name)
+            )
+        
+        if hasattr(obj, 'lsc'):
+            acc_text += lsc_code(name, obj)
+            acc_obj_text += ('''
+                .lsc_table = s_esp_ipa_acc_lsc_%s_config,
+                .lsc_table_size = ARRAY_SIZE(s_esp_ipa_acc_lsc_%s_config),
+                '''%(name, name)
             )
 
         acc_text += cfmt_string('''
@@ -454,7 +613,21 @@ class ipa_unit_adn_c(ipa_unit_c):
             adn_text = str()
             for i in obj.bf:
                 p = i.param
-                m = p.matrix
+                m = list()
+                if hasattr(p, 'matrix'):
+                    m = p.matrix
+                elif hasattr(p, 'sigma'):
+                    sigma = p.sigma
+                    num = 3
+                    for x in range(0, num):
+                       for y in range(0, num):
+                            _x = y - (num // 2)
+                            _y = (num // 2) - x
+                            k = math.exp(-(_x ** 2 + _y ** 2) / (2 * sigma ** 2)) / (2 * math.pi * sigma ** 2)
+                            m.append(k)
+                    k_max = max(m)
+                    for n in range(0, num ** 2):
+                        m[n] = min(math.floor(m[n] / k_max * 15 + 0.5), 15)
                 adn_text += ('''
                     {
                         .gain = %d,
@@ -552,6 +725,9 @@ class ipa_unit_agc_c(ipa_unit_c):
             return (mode_desc, ac_freq)
 
         def exposure_code(name, obj):
+            if not hasattr(obj, 'f_m0'):
+                obj.f_m0 = obj.f_n0
+
             exp = obj.exposure
             gain = obj.gain
             anti_flicker_mode, af_freq = get_anti_flicker_param(obj)
@@ -560,11 +736,12 @@ class ipa_unit_agc_c(ipa_unit_c):
                 .exposure_adjust_delay = %d,
                 .gain_frame_delay = %d,
                 .min_gain_step = %0.4f,
-                .gain_speed = %0.4f,
+                .inc_gain_ratio = %0.4f,
+                .dec_gain_ratio = %0.4f,
                 .anti_flicker_mode = %s,
                 .ac_freq = %d,
                 '''%(exp.frame_delay, exp.adjust_delay,
-                     gain.frame_delay,gain.min_step, obj.f_n0,
+                     gain.frame_delay,gain.min_step, obj.f_n0, obj.f_m0,
                      anti_flicker_mode, af_freq)
             )
             return exposure_text
@@ -664,6 +841,28 @@ class ipa_unit_agc_c(ipa_unit_c):
     def decode(self, obj):
         self.text = self.decode_agc(self.name, obj)
 
+class ipa_unit_customized_c(ipa_unit_c):
+    def customized_name(self):
+        return self.name
+
+    def decode(self, obj):
+        self.name = obj.name
+
+class ipa_unit_atc_c(ipa_unit_c):
+    @staticmethod
+    def decode_atc(name, obj):
+        atc_code = cfmt_string('''
+            static const esp_ipa_atc_config_t s_ipa_atc_%s_config = {
+                .init_value = %d,
+            };
+            '''%(name, obj.init_value)
+        )
+
+        return atc_code
+
+    def decode(self, obj):
+        self.text = self.decode_atc(self.name, obj)
+
 class ipa_c(object):
     def __init__(self, name, version):
         self.name = name
@@ -677,11 +876,15 @@ class ipa_c(object):
             'acc': ipa_unit_acc_c,
             'aen': ipa_unit_aen_c,
             'adn': ipa_unit_adn_c,
-            'agc': ipa_unit_agc_c
+            'agc': ipa_unit_agc_c,
+            'atc': ipa_unit_atc_c
         }
 
         if type in ipa_unit_lut:
             self.decodes.append(ipa_unit_lut[type](obj, name, type))
+        else:
+            if 'customized_ipa_' in type:
+                self.decodes.append(ipa_unit_customized_c(obj, name, type))
 
     def get_text(self):        
         text_obj = str()
@@ -689,9 +892,13 @@ class ipa_c(object):
         names = str()
 
         for i in self.decodes:
-            text += i.get_text()
-            text_obj += ('.%s = &s_ipa_%s_%s_config,\n'%(i.type, i.type, i.name))
-            names += ('\"esp_ipa_%s\",\n'%(i.type))
+            cname = i.customized_name()
+            if cname == None:
+                text += i.get_text()
+                text_obj += ('.%s = &s_ipa_%s_%s_config,\n'%(i.type, i.type, i.name))
+                names += ('\"esp_ipa_%s\",\n'%(i.type))
+            else:
+                names += ('\"%s\",\n'%(cname))
 
         text += cfmt_string('''
             static const char *s_ipa_%s_names[] = {

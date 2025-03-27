@@ -12,6 +12,7 @@ Espressif image process algorithm component provides a suit of image process alg
 | Auto Gain Control | Calculate exposure and gain |
 | Auto White Balance | Calculate red and blue channels' gain |
 | Image Analyze | Calculate image color temperature and luma |
+| Auto Sensor AE Target Control | This is added for the sensors supported AEG/AGC by themselves |
 
 ## 2. Pipeline Global Variable
 
@@ -78,9 +79,31 @@ Developers can refer to the configuration files in [esp_cam_sensor](https://gith
 {
     "awb":
     {
+        "model": 0,
         "min_counted": 2000,
         "min_red_gain_step": 0.034,
-        "min_blue_gain_step": 0.034
+        "min_blue_gain_step": 0.034,
+        "range":
+        {
+            "green":
+            {
+                "max": 200,
+                "min": 180
+            },
+            "rg":
+            {
+                "max": 1.2,
+                "min": 0.8
+            },
+            "bg":
+            {
+                "max": 1.2,
+                "min": 0.8
+            }
+        },
+        "green_luma_env": "awb_green_luma",
+        "green_luma_init": 200,
+        "green_luma_step_ratio": 0.3
     }
 }
 ```
@@ -88,9 +111,23 @@ Developers can refer to the configuration files in [esp_cam_sensor](https://gith
 | Parameter | Type | Range | Description |
 |:-:|:-:|:-:|:-|
 | awb | Object | / | Auto white balance configuration parameters |
+| model | Integer | {0,1} | AWB data process model |
 |  min_counted | Integer | >0 | Minimum white points: Only when the white points number is larger than or equal to this does the auto white balance algorithm run |
 | min_red_gain_step | Float | >0 | Minimum red channel gain step: Only when the red channel gain step is larger than or equal to this is the gain set into the ISP |
 | min_blue_gain_step | Float | >0 | Minimum blue channel gain step: Only when the blue channel gain step is larger than or equal to this is the gain set into the ISP |
+| range | Object | / | AWB statistics parameters |
+| green | Object | / | AWB green channel statistics parameters |
+| max(green) | Integer | <div style="white-space: nowrap;">(0,255)</div> | AWB green channel maximum lumina |
+| min(green) | Integer | <div style="white-space: nowrap;">(0,255)</div> | AWB green channel minimum lumina |
+| rg | Object | / | AWB red channel and green channel ratio statistics parameters |
+| max(rg) | Integer | <div style="white-space: nowrap;">(0,255)</div> | AWB red channel and green channel maximum ratio |
+| min(rg) | Integer | <div style="white-space: nowrap;">(0,255)</div> | AWB red channel and green channel minimum ratio |
+| bg | Object | / | AWB blue channel and green channel ratio ratio statistics parameters |
+| max(bg) | Integer | <div style="white-space: nowrap;">(0,255)</div> | AWB blue channel and green channel maximum ratio |
+| min(bg) | Integer | <div style="white-space: nowrap;">(0,255)</div> | AWB blue channel and green channel minimum ratio |
+| green_luma_env | String | / | AWB green channel lumina variable name |
+| green_luma_init | Integer | <div style="white-space: nowrap;">(0,255)</div> | AWB green channel initialization lumina |
+| green_luma_step_ratio | Float | >0 | AWB green channel minimum lumina step ratio |
 
 ---
 
@@ -105,7 +142,7 @@ Developers can refer to the configuration files in [esp_cam_sensor](https://gith
 }
 ```
 
-| Parameter | Type | Range | Descrip>0tion |
+| Parameter | Type | Range | Description |
 |:-:|:-:|:-:|:-|
 | acc | Object | / | Auto color correction configuration parameters |
 
@@ -146,7 +183,22 @@ Developers can refer to the configuration files in [esp_cam_sensor](https://gith
 
 ---
 
-```json127
+```json
+"ccm":
+{
+    "model": 1,
+    "min_ct_step": 500
+}
+```
+
+| Parameter | Type | Range | Description |
+|:-:|:-:|:-:|:-|
+| model | Integer | {0,1} | CCM data process model |
+| min_ct_step | Integer | >0 | Color temperature minimum step value for generating new CCM value  |
+
+---
+
+```json
 "ccm":
 {
     "low_luma":
@@ -199,6 +251,55 @@ Developers can refer to the configuration files in [esp_cam_sensor](https://gith
 
 ---
 
+```json
+"acc":
+{
+    "lsc": {}
+}
+```
+
+| Parameter | Type | Range | Description |
+|:-:|:-:|:-:|:-|
+| lsc | Object | / | Lens shadow correction(LSC) configuration parameters |
+
+---
+
+```json
+"lsc":
+{
+    "model": 0,
+    "img_w": 1920,
+    "img_h": 1080,
+    "lsc_tbl_size": 558,
+    "table":
+    [
+        {
+            "ct": 3350,
+            "calibrations_r_tbl": [ 2.13310074, ... ],
+            "calibrations_gr_tbl": [ 1.92501747, ... ],
+            "calibrations_gb_tbl": [ 1.90096950, ... ],
+            "calibrations_b_tbl": [ 1.67257392, ... ],
+        },
+        ...
+    ]
+}
+```
+
+| Parameter | Type | Range | Description |
+|:-:|:-:|:-:|:-|
+| model | Integer | 0 | LSC data process model |
+| img_w | Integer | >0 | Image resolution width |
+| img_h | Integer | >0 | Image resolution height |
+| lsc_tbl_size | Integer | >0 | LSC data array size, different image resolution has different values, such as "lsc_tbl_size" of 1920x1080 resolution is 558 |
+| table | Array | / | The LSC array data and color temperature mapping table adopted the principle of nearest neighbor indexing |
+| ct | Integer | >0 | Color temperature value |
+| calibrations_r_tbl | Array[Float] | <div style="white-space: nowrap;">ESP32-P4: (-4,4)</div> | LSC data array for the red channel in RAW field |
+| calibrations_gr_tbl | Array[Float] | <div style="white-space: nowrap;">ESP32-P4: (-4,4)</div> | LSC data array for the red-green(RG) channel in RAW field |
+| calibrations_gb_tbl | Array[Float] | <div style="white-space: nowrap;">ESP32-P4: (-4,4)</div> | LSC data array for the blue-green(BG) channel in RAW field |
+| calibrations_b_tbl | Array[Float] | <div style="white-space: nowrap;">ESP32-P4: (-4,4)</div> | LSC data array for the blue channel in RAW field |
+
+---
+
 #### 3.2.3 Auto Denoising
 
 ---
@@ -231,7 +332,8 @@ Developers can refer to the configuration files in [esp_cam_sensor](https://gith
                     1, 3, 1,
                     3, 5, 3,
                     1, 3, 1
-                ]
+                ],
+                "sigma": 1
             }
         },
         ...
@@ -246,8 +348,10 @@ Developers can refer to the configuration files in [esp_cam_sensor](https://gith
 | param | Object | / | Bayer filter parameters |
 | level | Integer | <div style="white-space: nowrap;">ESP32-P4: [2,20]</div> | Bayer filter sigma |
 | matrix | Integer | ESP32-P4: [0,15] | Bayer filter matrix |
+| sigma | Float | >0 | Sigma parameter to generate Gaussian matrix |
 
-* Note: The Bayer filter is a bilateral filter, sigma is a parameter of range kernel, and matrix is a parameter of spatial kernel
+* Note: The Bayer filter is a bilateral filter, level is a parameter of range kernel, and matrix is a parameter of spatial kernel
+* Note: If there is a matrix, the JSON tools use it firstly, otherwise, use sigma
 
 ---
 
@@ -478,13 +582,15 @@ Developers can refer to the configuration files in [esp_cam_sensor](https://gith
 ```json
 "agc":
 {
-    "f_n0": 0.32
+    "f_n0": 0.32,
+    "f_m0": 0.32
 }
 ```
 
 | Parameter | Type | Range | Description | 
 |:-:|:-:|:-:|:-|
-| f_n0 | Float | (0,1] | The parameter to control gain or exposure changing speed, with a higher value, makes the changing speed faster |
+| f_n0 | Float | (0,1] | The parameter to control gain or exposure increasing speed, with a higher value, makes the increasing speed faster |
+| f_m0 | Float | (0,1] | The parameter to control gain or exposure decreasing speed, with a higher value, makes the decreasing speed faster |
 
 ---
 
@@ -610,5 +716,34 @@ Developers can refer to the configuration files in [esp_cam_sensor](https://gith
 | weight_offset | Integer | [0,255] | Image brightness sampled data weight increasing value |
 
 * Note: if "mode" is "light_threshold_priority" this configuration applies
+
+---
+
+#### 3.2.6 Auto Sensor AE Target Control
+
+---
+
+```json
+"OV2710":
+{
+    "atc": {}
+}
+```
+
+| Parameter | Type | Range | Description |
+|:-:|:-:|:-:|:-|
+| atc | Object | / | Auto sensor AE target control configuration parameters |
+
+---
+
+```json
+"atc":
+{
+    "init_value": 48
+}
+```
+| Parameter | Type | Range | Description |
+|:-:|:-:|:-:|:-|
+| init_value | Integer | >0 | Auto sensor AE target control initialization value |
 
 ---

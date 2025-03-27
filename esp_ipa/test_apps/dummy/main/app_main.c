@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2022-2023 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2024-2025 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -122,151 +122,126 @@ TEST_CASE("Auto color correction test", "[IPA]")
         int ct;
         float m0;
         uint32_t saturation;
-        uint32_t lsc_gain;
     } test_data[] = {
         {
             .ct = 1510,
             .m0 = 1.2,
             .saturation = 2,
-            .lsc_gain = 2,
         },
         {
             .ct = 1990,
             .m0 = 1.0,
             .saturation = 0,
-            .lsc_gain = 0
         },
         {
             .ct = 10,
             .m0 = 1.1,
             .saturation = 1,
-            .lsc_gain = 1
         },
         {
             .ct = 900,
             .m0 = 1.0,
             .saturation = 0,
-            .lsc_gain = 0
         },
         {
             .ct = 2100,
             .m0 = 1.2,
             .saturation = 2,
-            .lsc_gain = 2
         },
         {
             .ct = 2490,
             .m0 = 1.0,
             .saturation = 0,
-            .lsc_gain = 0
         },
         {
             .ct = 1510,
             .m0 = 1.0,
             .saturation = 0,
-            .lsc_gain = 0
         },
         {
             .ct = 999,
             .m0 = 1.1,
             .saturation = 1,
-            .lsc_gain = 1
         },
         {
             .ct = 2400,
             .m0 = 1.2,
             .saturation = 2,
-            .lsc_gain = 2
         },
         {
             .ct = 2600,
             .m0 = 1.3,
             .saturation = 3,
-            .lsc_gain = 3
         },
         {
             .ct = 2499,
             .m0 = 1.2,
             .saturation = 2,
-            .lsc_gain = 2
         },
         {
             .ct = 4001,
             .m0 = 1.4,
             .saturation = 4,
-            .lsc_gain = 4
         },
         {
             .ct = 3410,
             .m0 = 1.3,
             .saturation = 3,
-            .lsc_gain = 3
         },
         {
             .ct = 4510,
             .m0 = 1.5,
             .saturation = 5,
-            .lsc_gain = 5
         },
         {
             .ct = 4490,
             .m0 = 1.4,
             .saturation = 4,
-            .lsc_gain = 4
         },
         {
             .ct = 5000,
             .m0 = 1.5,
             .saturation = 5,
-            .lsc_gain = 5
         },
         {
             .ct = 4490,
             .m0 = 1.4,
             .saturation = 4,
-            .lsc_gain = 4
         },
         {
             .ct = 5001,
             .m0 = 1.5,
             .saturation = 5,
-            .lsc_gain = 5
         },
         {
             .ct = 4490,
             .m0 = 1.4,
             .saturation = 4,
-            .lsc_gain = 4
         },
         {
             .ct = 5999,
             .m0 = 1.5,
             .saturation = 5,
-            .lsc_gain = 5
         },
         {
             .ct = 4490,
             .m0 = 1.4,
             .saturation = 4,
-            .lsc_gain = 4
         },
         {
             .ct = 6000,
             .m0 = 1.5,
             .saturation = 5,
-            .lsc_gain = 5
         },
         {
             .ct = 4490,
             .m0 = 1.4,
             .saturation = 4,
-            .lsc_gain = 4
         },
         {
             .ct = 10001,
             .m0 = 1.5,
             .saturation = 5,
-            .lsc_gain = 5
         },
     };
 
@@ -282,6 +257,152 @@ TEST_CASE("Auto color correction test", "[IPA]")
         } else {
             TEST_ASSERT_EQUAL_HEX32(0, metadata.flags & IPA_METADATA_FLAGS_CCM);
             TEST_ASSERT_EQUAL_HEX32(0, metadata.flags & IPA_METADATA_FLAGS_ST);
+        }
+    }
+
+    static const struct {
+        int ct;
+        uint32_t gain_r;
+        uint32_t gain_gr;
+        uint32_t gain_gb;
+        uint32_t gain_b;
+    } test_lsc_data[] = {
+        {
+            .ct = 1000,
+            .gain_r  = 256,
+            .gain_gr = 384,
+            .gain_gb = 512,
+            .gain_b  = 640
+        },
+        {
+            .ct = 2000,
+            .gain_r  = 0
+        },
+        {
+            .ct = 3000,
+            .gain_r  = 0
+        },
+        {
+            .ct = 4001,
+            .gain_r  = 26,
+            .gain_gr = 77,
+            .gain_gb = 128,
+            .gain_b  = 205
+        },
+        {
+            .ct = 5000,
+            .gain_r  = 0
+        },
+        {
+            .ct = 6000,
+            .gain_r  = 0
+        },
+        {
+            .ct = 3999,
+            .gain_r  = 256,
+            .gain_gr = 384,
+            .gain_gb = 512,
+            .gain_b  = 640
+        },
+    };
+
+    metadata.flags = 0;
+    esp_ipa_set_int32(handle->ipa_array[0], "ct", 10000);
+    TEST_ESP_OK(esp_ipa_pipeline_process(handle, &stats, &s_esp_ipa_sensor, &metadata));
+
+    for (int i = 0; i < ARRAY_SIZE(test_lsc_data); i++) {
+        metadata.flags = 0;
+        esp_ipa_set_int32(handle->ipa_array[0], "ct", test_lsc_data[i].ct);
+        TEST_ESP_OK(esp_ipa_pipeline_process(handle, &stats, &s_esp_ipa_sensor, &metadata));
+        if (test_lsc_data[i].gain_r != 0) {
+            TEST_ASSERT_EQUAL_HEX32(IPA_METADATA_FLAGS_LSC, metadata.flags & IPA_METADATA_FLAGS_LSC);
+            TEST_ASSERT_EQUAL_HEX32(test_lsc_data[i].gain_r,  metadata.lsc.gain_r[0].val);
+            TEST_ASSERT_EQUAL_HEX32(test_lsc_data[i].gain_gr, metadata.lsc.gain_gr[0].val);
+            TEST_ASSERT_EQUAL_HEX32(test_lsc_data[i].gain_gb, metadata.lsc.gain_gb[0].val);
+            TEST_ASSERT_EQUAL_HEX32(test_lsc_data[i].gain_b,  metadata.lsc.gain_b[0].val);
+        } else {
+            TEST_ASSERT_EQUAL_HEX32(0, metadata.flags & IPA_METADATA_FLAGS_LSC);
+        }
+    }
+
+    TEST_ESP_OK(esp_ipa_pipeline_destroy(handle));
+
+    ipa_config = esp_ipa_pipeline_get_config(IPA_TARGET_NAME_2);
+
+    TEST_ESP_OK(esp_ipa_pipeline_create(ipa_config, &handle));
+    TEST_ESP_OK(esp_ipa_pipeline_init(handle, &s_esp_ipa_sensor, &metadata));
+
+    static const struct {
+        int ct;
+        float m0;
+    } test_data_2[] = {
+        {
+            .ct = 2000,
+            .m0 = 1.2,
+        },
+        {
+            .ct = 100,
+            .m0 = 1.1,
+        },
+        {
+            .ct = 500,
+            .m0 = 0,
+        },
+        {
+            .ct = 1000,
+            .m0 = 0,
+        },
+        {
+            .ct = 1100,
+            .m0 = 0,
+        },
+        {
+            .ct = 1499,
+            .m0 = 0,
+        },
+        {
+            .ct = 1500,
+            .m0 = 1.15,
+        },
+        {
+            .ct = 1999,
+            .m0 = 0,
+        },
+        {
+            .ct = 2000,
+            .m0 = 1.2,
+        },
+        {
+            .ct = 4000,
+            .m0 = 1.4,
+        },
+        {
+            .ct = 4500,
+            .m0 = 1.45,
+        },
+        {
+            .ct = 4999,
+            .m0 = 0,
+        },
+        {
+            .ct = 5000,
+            .m0 = 1.5,
+        },
+        {
+            .ct = 6000,
+            .m0 = 0,
+        }
+    };
+
+    for (int i = 0; i < ARRAY_SIZE(test_data_2); i++) {
+        metadata.flags = 0;
+        esp_ipa_set_int32(handle->ipa_array[0], "ct", test_data_2[i].ct);
+        TEST_ESP_OK(esp_ipa_pipeline_process(handle, &stats, &s_esp_ipa_sensor, &metadata));
+        if (test_data_2[i].m0 != 0) {
+            TEST_ASSERT_EQUAL_HEX32(IPA_METADATA_FLAGS_CCM, metadata.flags & IPA_METADATA_FLAGS_CCM);
+            TEST_ASSERT_EQUAL_HEX32(test_data_2[i].m0, metadata.ccm.matrix[0][0]);
+        } else {
+            TEST_ASSERT_EQUAL_HEX32(0, metadata.flags & IPA_METADATA_FLAGS_CCM);
         }
     }
 
@@ -1123,8 +1244,23 @@ TEST_CASE("Auto gain control test", "[IPA]")
         TEST_ASSERT_FLOAT_WITHIN(0.001, test_data_low_light[i].gain, metadata.gain);
         TEST_ESP_OK(esp_ipa_pipeline_destroy(handle));
     }
+
+
 }
 
+TEST_CASE("Auto sensor target control test", "[IPA]")
+{
+    esp_ipa_pipeline_handle_t handle = NULL;
+    esp_ipa_metadata_t metadata = {0};
+    const esp_ipa_config_t *ipa_config = esp_ipa_pipeline_get_config(IPA_TARGET_NAME);
+
+    TEST_ESP_OK(esp_ipa_pipeline_create(ipa_config, &handle));
+    TEST_ESP_OK(esp_ipa_pipeline_init(handle, &s_esp_ipa_sensor, &metadata));
+    TEST_ASSERT_EQUAL_HEX32(IPA_METADATA_FLAGS_AETL, metadata.flags & IPA_METADATA_FLAGS_AETL);
+    TEST_ASSERT_EQUAL_INT32(100, metadata.ae_target_level);
+
+    TEST_ESP_OK(esp_ipa_pipeline_destroy(handle));
+}
 
 TEST_CASE("Set/Get IPAs global variable", "[IPA]")
 {
@@ -1186,6 +1322,44 @@ TEST_CASE("Set/Get IPAs global variable", "[IPA]")
     TEST_ASSERT_TRUE(esp_ipa_has_var(handle->ipa_array[1], "ct"));
     TEST_ASSERT_TRUE(esp_ipa_has_var(handle->ipa_array[1], "ct1"));
     TEST_ASSERT_FALSE(esp_ipa_has_var(handle->ipa_array[1], "ct2"));
+
+    TEST_ASSERT_TRUE(esp_ipa_has_var(handle->ipa_array[0], "ct"));
+    TEST_ASSERT_TRUE(esp_ipa_has_var(handle->ipa_array[1], "ct"));
+
+    char *test_ptr1 = "test_ptr1";
+    char *test_ptr2 = "test_ptr2";
+    esp_ipa_set_ptr(handle->ipa_array[0], test_ptr1, test_ptr1);
+    esp_ipa_set_ptr(handle->ipa_array[1], test_ptr2, test_ptr2);
+    TEST_ASSERT_EQUAL_PTR(esp_ipa_get_ptr(handle->ipa_array[1], test_ptr1), test_ptr1);
+    TEST_ASSERT_EQUAL_PTR(esp_ipa_get_ptr(handle->ipa_array[0], test_ptr2), test_ptr2);
+
+    TEST_ESP_OK(esp_ipa_pipeline_destroy(handle));
+}
+
+TEST_CASE("Customized IPA Process", "[IPA]")
+{
+    const int counted = 1000;
+    const esp_ipa_config_t *ipa_config = esp_ipa_pipeline_get_config(IPA_TARGET_NAME);
+    esp_ipa_pipeline_handle_t handle = NULL;
+    esp_ipa_stats_t stats = {0};
+    esp_ipa_metadata_t metadata = {0};
+    int32_t int_val = 0;
+    float float_val = 0.01;
+
+    TEST_ESP_OK(esp_ipa_pipeline_create(ipa_config, &handle));
+    TEST_ESP_OK(esp_ipa_pipeline_init(handle, &s_esp_ipa_sensor, &metadata));
+
+    TEST_ASSERT_EQUAL_INT32(esp_ipa_get_int32(handle->ipa_array[0], "esp_ipa_customized_0_val"), int_val);
+    TEST_ASSERT_EQUAL_FLOAT(esp_ipa_get_float(handle->ipa_array[0], "esp_ipa_customized_1_val"), float_val);
+
+    for (int i = 0; i < counted; i++) {
+        TEST_ESP_OK(esp_ipa_pipeline_process(handle, &stats, &s_esp_ipa_sensor, &metadata));
+
+        int_val += 1;
+        float_val += 0.01;
+        TEST_ASSERT_EQUAL_INT32(esp_ipa_get_int32(handle->ipa_array[0], "esp_ipa_customized_0_val"), int_val);
+        TEST_ASSERT_EQUAL_FLOAT(esp_ipa_get_float(handle->ipa_array[0], "esp_ipa_customized_1_val"), float_val);
+    }
 
     TEST_ESP_OK(esp_ipa_pipeline_destroy(handle));
 }

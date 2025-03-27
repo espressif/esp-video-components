@@ -3,3 +3,5 @@ dependencies:
   idf: ">=5.3"
   esp_ipa:
     override_path: ../../../
+  customized_ipa:
+    override_path: ../customized_ipa
