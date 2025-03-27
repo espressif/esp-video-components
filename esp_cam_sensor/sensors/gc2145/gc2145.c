@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2024 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2024-2025 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -127,42 +127,60 @@ static const esp_cam_sensor_format_t gc2145_format_info[] = {
         .reserved = NULL,
     },
     {
-        .name = "DVP_8bit_20Minput_YUV422_640x480_15fps",
-        .format = ESP_CAM_SENSOR_PIXFORMAT_YUV422,
+        .name = "MIPI_1lane_24Minput_rgb565_640x480_15fps",
+        .format = ESP_CAM_SENSOR_PIXFORMAT_RGB565,
+        .port = ESP_CAM_SENSOR_MIPI_CSI,
+        .xclk = 24000000,
+        .width = 640,
+        .height = 480,
+        .regs = gc2145_mipi_1lane_24Minput_640x480_rgb565_15fps,
+        .regs_size = ARRAY_SIZE(gc2145_mipi_1lane_24Minput_640x480_rgb565_15fps),
+        .fps = 15,
+        .isp_info = NULL,
+        .mipi_info = {
+            .mipi_clk = 336000000,
+            .lane_num = 1,
+            .line_sync_en = false,
+        },
+        .reserved = NULL,
+    },
+    {
+        .name = "DVP_8bit_20Minput_RGB565_640x480_15fps",
+        .format = ESP_CAM_SENSOR_PIXFORMAT_RGB565,
         .port = ESP_CAM_SENSOR_DVP,
         .xclk = 20000000,
         .width = 640,
         .height = 480,
-        .regs = gc2145_DVP_8bit_20Minput_640x480_yuv422_15fps_windowing,
-        .regs_size = ARRAY_SIZE(gc2145_DVP_8bit_20Minput_640x480_yuv422_15fps_windowing),
+        .regs = gc2145_DVP_8bit_20Minput_640x480_rgb565_15fps_windowing,
+        .regs_size = ARRAY_SIZE(gc2145_DVP_8bit_20Minput_640x480_rgb565_15fps_windowing),
         .fps = 15,
         .isp_info = NULL,
         .mipi_info = {},
         .reserved = NULL,
     },
     {
-        .name = "DVP_8bit_20Minput_YUV422_1600x1200_13fps",
-        .format = ESP_CAM_SENSOR_PIXFORMAT_YUV422,
+        .name = "DVP_8bit_20Minput_RGB565_1600x1200_13fps",
+        .format = ESP_CAM_SENSOR_PIXFORMAT_RGB565,
         .port = ESP_CAM_SENSOR_DVP,
         .xclk = 20000000,
         .width = 1600,
         .height = 1200,
-        .regs = gc2145_DVP_8bit_20Minput_1600x1200_yuv422_13fps,
-        .regs_size = ARRAY_SIZE(gc2145_DVP_8bit_20Minput_1600x1200_yuv422_13fps),
+        .regs = gc2145_DVP_8bit_20Minput_1600x1200_rgb565_13fps,
+        .regs_size = ARRAY_SIZE(gc2145_DVP_8bit_20Minput_1600x1200_rgb565_13fps),
         .fps = 13,
         .isp_info = NULL,
         .mipi_info = {},
         .reserved = NULL,
     },
     {
-        .name = "DVP_8bit_20Minput_YUV422_800x600_20fps",
-        .format = ESP_CAM_SENSOR_PIXFORMAT_YUV422,
+        .name = "DVP_8bit_20Minput_RGB565_800x600_20fps",
+        .format = ESP_CAM_SENSOR_PIXFORMAT_RGB565,
         .port = ESP_CAM_SENSOR_DVP,
         .xclk = 20000000,
         .width = 800,
         .height = 600,
-        .regs = gc2145_DVP_8bit_20Minput_800x600_yuv422_20fps,
-        .regs_size = ARRAY_SIZE(gc2145_DVP_8bit_20Minput_800x600_yuv422_20fps),
+        .regs = gc2145_DVP_8bit_20Minput_800x600_rgb565_20fps,
+        .regs_size = ARRAY_SIZE(gc2145_DVP_8bit_20Minput_800x600_rgb565_20fps),
         .fps = 20,
         .isp_info = NULL,
         .mipi_info = {},
@@ -221,7 +239,22 @@ static esp_err_t gc2145_set_test_pattern(esp_cam_sensor_device_t *dev, int enabl
 {
     ESP_LOGW(TAG, "Test image support in UXGA");
     esp_err_t ret = gc2145_select_page(dev, 0x00);
-    ret |=  gc2145_write(dev->sccb_handle, GC2145_REG_P0_DEBUG_MODE2, enable ? 0x08 : 0x00);
+    if (enable) {
+        ret |= gc2145_write(dev->sccb_handle, 0xfe, 0x00);
+        ret |= gc2145_write(dev->sccb_handle, 0x8c, 0x02); //01
+        ret |= gc2145_write(dev->sccb_handle, 0x80, 0x00);
+        ret |= gc2145_write(dev->sccb_handle, 0x81, 0x00);
+        ret |= gc2145_write(dev->sccb_handle, 0x82, 0x00);
+        ret |= gc2145_write(dev->sccb_handle, 0xb6, 0x00);
+    } else {
+        ret |= gc2145_write(dev->sccb_handle, 0xfe, 0x00);
+        ret |= gc2145_write(dev->sccb_handle, 0x8c, 0x00);
+        ret |= gc2145_write(dev->sccb_handle, 0x80, 0xff);
+        ret |= gc2145_write(dev->sccb_handle, 0x81, 0x24);
+        ret |= gc2145_write(dev->sccb_handle, 0x82, 0xfa);
+        ret |= gc2145_write(dev->sccb_handle, 0xb6, 0x01);
+    }
+
     return ret;
 }
 
@@ -549,6 +582,10 @@ static esp_err_t gc2145_query_para_desc(esp_cam_sensor_device_t *dev, esp_cam_se
         qdesc->number.step = 1;
         qdesc->default_value = GC2145_WB_AUTO;
         break;
+    case ESP_CAM_SENSOR_DATA_SEQ:
+        qdesc->type = ESP_CAM_SENSOR_PARAM_TYPE_U8;
+        qdesc->u8.size = sizeof(uint32_t);
+        break;
     default: {
         ESP_LOGD(TAG, "id=%"PRIx32" is not supported", qdesc->id);
         ret = ESP_ERR_INVALID_ARG;
@@ -560,7 +597,26 @@ static esp_err_t gc2145_query_para_desc(esp_cam_sensor_device_t *dev, esp_cam_se
 
 static esp_err_t gc2145_get_para_value(esp_cam_sensor_device_t *dev, uint32_t id, void *arg, size_t size)
 {
-    return ESP_ERR_NOT_SUPPORTED;
+    esp_err_t ret = ESP_OK;
+
+    switch (id) {
+    case ESP_CAM_SENSOR_DATA_SEQ:
+        if (dev->cur_format->port == ESP_CAM_SENSOR_MIPI_CSI) {
+#if CONFIG_CAMERA_GC2145_MIPI_DATA_SHORT_SWAPPED
+            *(uint32_t *)arg = ESP_CAM_SENSOR_DATA_SEQ_SHORT_SWAPPED;
+#elif CONFIG_CAMERA_GC2145_MIPI_DATA_INTERNAL_SWAPPED
+            *(uint32_t *)arg = ESP_CAM_SENSOR_DATA_SEQ_WORD_INTERNAL_SWAPPED;
+#else
+            *(uint32_t *)arg = ESP_CAM_SENSOR_DATA_SEQ_NONE;
+#endif
+        }
+        break;
+    default:
+        ret = ESP_ERR_NOT_SUPPORTED;
+        break;
+    }
+
+    return ret;
 }
 
 static esp_err_t gc2145_set_para_value(esp_cam_sensor_device_t *dev, uint32_t id, const void *arg, size_t size)
