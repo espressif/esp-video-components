@@ -12,6 +12,15 @@ menu "Espressif Video Configuration"
         bool
         default n
 
+    config ESP_VIDEO_ENABLE_BITSCRAMBLER
+        bool
+        default n
+        depends on SOC_BITSCRAMBLER_SUPPORTED
+    
+    config ESP_VIDEO_ENABLE_DATA_PREPROCESSING
+        bool
+        default n
+
     config ESP_VIDEO_CHECK_PARAMETERS
         bool "Check Video Function Parameters"
         default y
@@ -95,5 +104,9 @@ menu "Espressif Video Configuration"
                     Default is 'n' because using DRAM provides better performance and avoids potential
                     issues with PSRAM availability or access speed.
         endif
+    endif
+
+    if IDF_TARGET_ESP32P4
+        rsource "./src/data_reprocessing/$IDF_TARGET/Kconfig.data_reprocessing"
     endif
 endmenu

@@ -1,0 +1,106 @@
+menu "Video Data Preprocessing"
+
+config ESP_VIDEO_ENABLE_SWAP_SHORT
+    bool "Enable Swapping Short"
+    default y
+    select ESP_VIDEO_ENABLE_DATA_PREPROCESSING
+    help
+        Select this option, enable swapping short data,
+        for example:
+        
+            Data address:     0x0     0x2     0x4     0x6
+
+            Original data: 0x0100, 0x0302, 0x0504, 0x0706
+            Swapped data:  0x0302, 0x0100, 0x0706, 0x0504
+
+if ESP_VIDEO_ENABLE_SWAP_SHORT
+
+choice ESP_VIDEO_ENABLE_SWAP_SHORT_IMPL
+    prompt "Swapping Short Implement"
+    default ESP_VIDEO_ENABLE_SWAP_SHORT_RISCV
+    help
+        RISC-V assembly instruction and processor instruction extension(PIE)
+        are much faster than hardware bitscrambler, but they use the
+        CPU to swap data.
+
+        Although the hardware bitscrambler is much slower, it uses a
+        peripheral to swap data, so it doesn't use the CPU.
+
+    config ESP_VIDEO_ENABLE_SWAP_SHORT_RISCV
+        bool "RISC-V Assembly Instruction"
+    
+    config ESP_VIDEO_ENABLE_SWAP_SHORT_PIE
+        bool "Processor Instruction Extension(PIE)(Experimental)"
+    
+    config ESP_VIDEO_ENABLE_SWAP_SHORT_BITSCRAMBLER
+        bool "Hardware Bitscrambler(Experimental)"
+        select ESP_VIDEO_ENABLE_BITSCRAMBLER
+        depends on SOC_BITSCRAMBLER_SUPPORTED
+endchoice # ESP_VIDEO_ENABLE_SWAP_SHORT_IMPL
+
+choice ESP_VIDEO_ENABLE_SWAP_SHORT_BITSCRAMBLER_PERIPHERAL
+    prompt "Bitscrambler Peripheral"
+    default ESP_VIDEO_ENABLE_SWAP_SHORT_BITSCRAMBLER_PARL_IO
+    depends on ESP_VIDEO_ENABLE_SWAP_SHORT_BITSCRAMBLER
+    help
+        Select the peripheral not used in your project for bitscrambler.
+
+        Please note that ADC, I2C, I3C, UHCI, and RMT are much slower than
+        parallel I/O, LCD_CAM, SPI, AES, and SHA.
+
+    config ESP_VIDEO_ENABLE_SWAP_SHORT_BITSCRAMBLER_PARL_IO
+        bool "Parallel I/O"
+    
+    config ESP_VIDEO_ENABLE_SWAP_SHORT_BITSCRAMBLER_LCD_CAM
+        bool "LCD_CAM"
+    
+    config ESP_VIDEO_ENABLE_SWAP_SHORT_BITSCRAMBLER_GPSPI2
+        bool "GPSPI2"
+    
+    config ESP_VIDEO_ENABLE_SWAP_SHORT_BITSCRAMBLER_GPSPI3
+        bool "GPSPI3"
+    
+    config ESP_VIDEO_ENABLE_SWAP_SHORT_BITSCRAMBLER_AES
+        bool "AES"
+
+    config ESP_VIDEO_ENABLE_SWAP_SHORT_BITSCRAMBLER_SHA
+        bool "SHA"
+
+    config ESP_VIDEO_ENABLE_SWAP_SHORT_BITSCRAMBLER_ADC
+        bool "ADC"
+
+    config ESP_VIDEO_ENABLE_SWAP_SHORT_BITSCRAMBLER_I2S0
+        bool "I2S0"
+
+    config ESP_VIDEO_ENABLE_SWAP_SHORT_BITSCRAMBLER_I2S1
+        bool "I2S1"
+
+    config ESP_VIDEO_ENABLE_SWAP_SHORT_BITSCRAMBLER_I2S2
+        bool "I2S2"
+
+    config ESP_VIDEO_ENABLE_SWAP_SHORT_BITSCRAMBLER_I3C_MST
+        bool "I3C_MST"
+
+    config ESP_VIDEO_ENABLE_SWAP_SHORT_BITSCRAMBLER_UHCI
+        bool "UHCI"
+
+    config ESP_VIDEO_ENABLE_SWAP_SHORT_BITSCRAMBLER_RMT
+        bool "RMT"
+endchoice # ESP_VIDEO_ENABLE_SWAP_SHORT_BITSCRAMBLER_PERIPHERAL
+
+config ESP_VIDEO_ENABLE_SWAP_SHORT_PERF_LOG
+    bool "Enable Swapping Short Performance Log"
+    default n
+    help
+        Select this option to print swapping short performance log.
+
+config ESP_VIDEO_SWAP_SHORT_PERF_LOG_INTERVAL_US
+    int "Swapping Short Performance Log Interval(Microsecond)"
+    default 1000000
+    depends on ESP_VIDEO_ENABLE_SWAP_SHORT_PERF_LOG
+    help
+        The time interval for the swapping short to print performance information,
+        and the unit is a microsecond.
+
+endif # ESP_VIDEO_ENABLE_SWAP_SHORT
+endmenu

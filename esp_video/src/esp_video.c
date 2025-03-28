@@ -1161,6 +1161,7 @@ struct esp_video_buffer_element *esp_video_recv_element(struct esp_video *video,
     BaseType_t ret;
     struct esp_video_stream *stream;
     struct esp_video_buffer_element *element;
+    uint32_t val = type;
 
     stream = esp_video_get_stream(video, type);
     if (!stream) {
@@ -1168,8 +1169,6 @@ struct esp_video_buffer_element *esp_video_recv_element(struct esp_video *video,
     }
 
     if (video->device_caps & V4L2_CAP_VIDEO_M2M) {
-        uint32_t val = type;
-
         /**
          * Software M2M device: this callback call can do real codec process.
          * Hardware M2M device: this callback call can start hardware if necessary.
@@ -1185,6 +1184,13 @@ struct esp_video_buffer_element *esp_video_recv_element(struct esp_video *video,
     if (ret != pdTRUE) {
         return NULL;
     }
+
+#if CONFIG_ESP_VIDEO_ENABLE_DATA_PREPROCESSING
+    ret = video->ops->notify(video, ESP_VIDEO_DATA_PREPROCESSING, &val);
+    if (ret != ESP_OK) {
+        return NULL;
+    }
+#endif
 
     element = esp_video_get_done_element(video, type);
 
