@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2024 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2024-2025 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: ESPRESSIF MIT
  */
@@ -33,6 +33,7 @@ extern "C" {
 /**
  * @brief IPA meta data flags.
  */
+#define IPA_METADATA_FLAGS_AWB      (1 << 0)    /*!< Meta data has AWB */
 #define IPA_METADATA_FLAGS_RG       (1 << 1)    /*!< Meta data has red gain */
 #define IPA_METADATA_FLAGS_BG       (1 << 2)    /*!< Meta data has blue gain */
 #define IPA_METADATA_FLAGS_ET       (1 << 3)    /*!< Meta data has exposure */
@@ -47,6 +48,7 @@ extern "C" {
 #define IPA_METADATA_FLAGS_HUE      (1 << 12)   /*!< Meta data has hue */
 #define IPA_METADATA_FLAGS_DM       (1 << 13)   /*!< Meta data has demosaic */
 #define IPA_METADATA_FLAGS_LSC      (1 << 14)   /*!< Meta data has LSC */
+#define IPA_METADATA_FLAGS_AETL     (1 << 15)   /*!< Meta data has sensor AE target level */
 
 /**
  * @brief Auto gain control metering mode
@@ -66,6 +68,14 @@ typedef enum esp_ipa_ian_ct_model {
     ESP_IPA_IAN_CT_MODEL_1,                     /*!< The source data model type 1 */
     ESP_IPA_IAN_CT_MODEL_2,                     /*!< The source data model type 2 */
 } esp_ipa_ian_ct_model_t;
+
+/**
+ * @brief CCM data generation model
+ */
+typedef enum esp_ipa_acc_ccm_model {
+    ESP_IPA_ACC_CCM_MODEL_0 = 0,                /*!< CCM data generation model type 0 */
+    ESP_IPA_ACC_CCM_MODEL_1,                    /*!< CCM data generation model type 1 */
+} esp_ipa_acc_ccm_model_t;
 
 /**
  * @brief Auto gain control anti-flicker mode
@@ -95,6 +105,11 @@ typedef struct esp_ipa_sensor {
     float min_gain;                         /*!< Minimum gain */
     float cur_gain;                         /*!< Current gain */
     float step_gain;                        /*!< Step gain; if step_gain == 0.0, step size is uneven */
+
+    uint32_t max_ae_target_level;           /*!< Maximum Sensor AE target level */
+    uint32_t min_ae_target_level;           /*!< Minimum Sensor AE target level */
+    uint32_t cur_ae_target_level;           /*!< Current Sensor AE target level */
+    uint32_t step_ae_target_level;          /*!< Step Sensor AE target level */
 } esp_ipa_sensor_t;
 
 /**
@@ -207,6 +222,20 @@ typedef struct esp_ipa_lsc {
 } esp_ipa_lsc_t;
 
 /**
+ * @brief AWB(Auto white balance) statistics range meta data.
+ */
+typedef struct esp_ipa_awb_range {
+    uint8_t green_max;                          /*!< Maximum green value */
+    uint8_t green_min;                          /*!< Minimum green value */
+
+    float rg_max;                               /*!< Maximum red/green ratio */
+    float rg_min;                               /*!< Minimum red/green ratio */
+
+    float bg_max;                               /*!< Maximum blue/green ratio */
+    float bg_min;                               /*!< Minimum blue/green ratio */
+} esp_ipa_awb_range_t;
+
+/**
  * @brief IPA meta data, these data are calculated by IPA and configured to ISP hardware
  */
 typedef struct esp_ipa_metadata {
@@ -234,6 +263,10 @@ typedef struct esp_ipa_metadata {
     uint32_t hue;                           /*!< Color hue */
 
     esp_ipa_lsc_t lsc;                      /*!< LSC parameters */
+
+    esp_ipa_awb_range_t awb;                /*!< AWB statistics range parameters */
+
+    uint32_t ae_target_level;               /*!< Sensor AE target level */
 } esp_ipa_metadata_t;
 
 /**
@@ -420,26 +453,54 @@ typedef struct esp_ipa_ian_config {
 } esp_ipa_ian_config_t;
 
 /**
+ * @brief AWB algorithm model.
+ */
+typedef enum esp_ipa_awb_model {
+    ESP_IPA_AWB_MODEL_0 = 0,                    /*!< Use gray world*/
+    ESP_IPA_AWB_MODEL_1                         /*!< Use color temperature indexing */
+} esp_ipa_awb_model_t;
+
+/**
  * @brief Auto white balance algorithm configuration
  */
 typedef struct esp_ipa_awb_config {
-    uint32_t min_counted;                       /*!< Minimum white point number, less value will not trigger process */
+    esp_ipa_awb_model_t model;                  /*!< AWB algorithm model */
+
+    /* Common configuration parameters */
+
     float min_red_gain_step;                    /*!< Minimum red channel gain step, less value will not be set into hardware */
     float min_blue_gain_step;                   /*!< Minimum blue channel gain step, less value will not be set into hardware */
 
     bool enable_log;                            /*!< Enable auto white balance algorithm log */
+
+    /* Configuration parameters used in model_0 */
+
+    uint32_t min_counted;                       /*!< Minimum white point number, less value will not trigger process */
+    esp_ipa_awb_range_t range;                  /*!< AWB statistics range data */
+
+    /* Configuration parameters used in model_1 */
+
+    const char *green_luma_env;                 /*!< Green luma environment variable name */
+    float green_luma_init;                      /*!< Green luma initialization value */
+    float green_luma_step_ratio;                /*!< Green luma step ratio, when changing ratio is larger then this value, update AWB statistics range */
 } esp_ipa_awb_config_t;
 
 /**
  * @brief Auto color correct matrix configuration
  */
 typedef struct esp_ipa_acc_ccm_config {
+    esp_ipa_acc_ccm_model_t model;              /*!< CCM data generation model */
+
     const char *luma_env;
     float luma_low_threshold;                   /*!< Luma low threshold */
     esp_ipa_ccm_t luma_low_ccm;                 /*!< ISP color correction matrix parameter */
 
     const esp_ipa_acc_ccm_unit_t *ccm_table;    /*!< Color correction matrix and color temperature mapping table */
     uint32_t ccm_table_size;                    /*!< Color correction matrix and color temperature mapping table size */
+
+    /* Configuration parameters used in model_1 */
+
+    uint32_t min_ct_step;                       /*!< Minmium color temperature step */
 } esp_ipa_acc_ccm_config_t;
 
 /**
@@ -493,7 +554,8 @@ typedef struct esp_ipa_agc_config {
 
     uint16_t exposure_adjust_delay;             /*!< Exposure adjustment delay time in milliseconds */
     float min_gain_step;                        /*!< Minmium gain step */
-    float gain_speed;                           /*!< Luma gain step */
+    float inc_gain_ratio;                       /*!< Luma gain increasing ratio */
+    float dec_gain_ratio;                       /*!< Luma gain decreasing ratio */
 
     esp_ipa_agc_anti_flicker_mode_t anti_flicker_mode;  /*!< Anti-flicker mode */
     uint8_t ac_freq;                            /*!< Alternating current frequency */
@@ -518,6 +580,15 @@ typedef struct esp_ipa_agc_config {
 } esp_ipa_agc_config_t;
 
 /**
+ * @brief Auto sensor AE target level control algorithm configuration
+ */
+typedef struct esp_ipa_atc_config {
+    uint32_t init_value;                        /*!< Sensor AE target level initialization value */
+
+    bool enable_log;                            /*!< Enable Auto sensor AE target level control algorithm log */
+} esp_ipa_atc_config_t;
+
+/**
  * @brief IPA initialize configuration
  */
 typedef struct esp_ipa_config {
@@ -533,6 +604,7 @@ typedef struct esp_ipa_config {
     const esp_ipa_acc_config_t *acc;            /*!< Auto color correct algorithm configuration */
     const esp_ipa_adn_config_t *adn;            /*!< Auto denoising algorithm configuration */
     const esp_ipa_aen_config_t *aen;            /*!< Auto enhancement algorithm configuration */
+    const esp_ipa_atc_config_t *atc;            /*!< Auto sensor AE target level control algorithm configuration */
 } esp_ipa_config_t;
 
 /**
