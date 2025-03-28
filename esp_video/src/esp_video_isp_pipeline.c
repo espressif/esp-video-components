@@ -53,6 +53,7 @@ typedef struct esp_video_isp {
         uint8_t stats       : 1;
         uint8_t awb         : 1;
         uint8_t group       : 1;
+        uint8_t ae_level    : 1;
     } sensor_attr;
 
     TaskHandle_t task_handler;
@@ -608,6 +609,26 @@ static void config_lsc(esp_video_isp_t *isp, esp_ipa_metadata_t *metadata)
 }
 #endif
 
+static void config_sensor_ae_target_level(esp_video_isp_t *isp, esp_ipa_metadata_t *metadata)
+{
+    struct v4l2_ext_controls controls;
+    struct v4l2_ext_control control[1];
+
+    if ((metadata->flags & IPA_METADATA_FLAGS_AETL) &&
+            isp->sensor_attr.ae_level) {
+        controls.ctrl_class = V4L2_CID_USER_CLASS;
+        controls.count      = 1;
+        controls.controls   = control;
+        control[0].id       = V4L2_CID_CAMERA_AE_LEVEL;
+        control[0].value    = metadata->ae_target_level;
+        if (ioctl(isp->cam_fd, VIDIOC_S_EXT_CTRLS, &controls) != 0) {
+            ESP_LOGE(TAG, "failed to set sensor AE target level");
+        } else {
+            isp->sensor.cur_ae_target_level = metadata->ae_target_level;
+        }
+    }
+}
+
 static void config_isp_and_camera(esp_video_isp_t *isp, esp_ipa_metadata_t *metadata)
 {
     if (!isp->sensor_attr.awb) {
@@ -624,6 +645,7 @@ static void config_isp_and_camera(esp_video_isp_t *isp, esp_ipa_metadata_t *meta
     config_lsc(isp, metadata);
 #endif
 
+    config_sensor_ae_target_level(isp, metadata);
     config_exposure_and_gain(isp, metadata);
 }
 
@@ -886,6 +908,33 @@ static esp_err_t init_cam_dev(const esp_video_isp_config_t *config, esp_video_is
         isp->sensor_attr.group = 1;
     } else {
         ESP_LOGD(TAG, "V4L2_CID_CAMERA_GROUP is not supported");
+    }
+
+    qctrl.id = V4L2_CID_CAMERA_AE_LEVEL;
+    ret = ioctl(fd, VIDIOC_QUERY_EXT_CTRL, &qctrl);
+    if (ret == 0) {
+        isp->sensor_attr.ae_level = 1;
+
+        controls.ctrl_class = V4L2_CID_CAMERA_CLASS;
+        controls.count      = 1;
+        controls.controls   = control;
+        control[0].id       = V4L2_CID_CAMERA_AE_LEVEL;
+        control[0].value    = 0;
+        ret = ioctl(fd, VIDIOC_G_EXT_CTRLS, &controls);
+        ESP_GOTO_ON_FALSE(ret == 0, ESP_ERR_NOT_SUPPORTED, fail_0, TAG, "failed to get AE target level");
+
+        isp->sensor.min_ae_target_level = qctrl.minimum;
+        isp->sensor.max_ae_target_level = qctrl.maximum;
+        isp->sensor.step_ae_target_level = qctrl.step;
+        isp->sensor.cur_ae_target_level = control[0].value;
+
+        ESP_LOGD(TAG, "AE target level:");
+        ESP_LOGD(TAG, "  min:     %"PRIi64, qctrl.minimum);
+        ESP_LOGD(TAG, "  max:     %"PRIi64, qctrl.maximum);
+        ESP_LOGD(TAG, "  step:    %"PRIu64, qctrl.step);
+        ESP_LOGD(TAG, "  current: %"PRIi32, control[0].value);
+    } else {
+        ESP_LOGD(TAG, "V4L2_CID_CAMERA_AE_LEVEL is not supported");
     }
 
     memset(&format, 0, sizeof(struct v4l2_format));
