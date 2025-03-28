@@ -51,3 +51,7 @@ Now we have implementations based on:
 | V4L2_CID_HUE | V4L2_CID_USER_CLASS | Array of uint8_t | Read/Write | Picture hue. |
 |  V4L2_CID_CAMERA_STATS | V4L2_CID_CAMERA_CLASS | Array of uint8_t | Read | Camera sensor statistics. |
 | V4L2_CID_CAMERA_AE_LEVEL | V4L2_CID_CAMERA_CLASS | Integer | Read/Write | Camera sensor AE target level. |
+| V4L2_CID_CAMERA_GROUP | V4L2_CID_CAMERA_CLASS | Array of uint8_t | Read/Write | Camera exposure and gain group parameters |
+| V4L2_CID_USER_ESP_ISP_AWB | V4L2_CID_USER_CLASS | Array of uint8_t | Read/Write | ISP auto white balance statistics parameters |
+| V4L2_CID_USER_ESP_ISP_LSC | V4L2_CID_USER_CLASS | Array of uint8_t | Read/Write | ISP lens shading correction parameters |
+| V4L2_CID_USER_ESP_ISP_AF | V4L2_CID_USER_CLASS | Array of uint8_t | Read/Write | ISP auto focus(AF) parameters |

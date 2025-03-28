@@ -1,5 +1,5 @@
 dependencies:
   idf: ">=5.3"
   esp_video:
-    version: "0.8.*"
+    version: "0.9.*"
     override_path: "../../../"

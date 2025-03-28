@@ -1,3 +1,18 @@
+## 0.9.0
+
+- Add esp_video_deinit to free esp_video resource
+- Add option ISP_PIPELINE_CONTROLLER_TASK_STACK_USE_PSRAM to make ISP controller task use PSRAM as task stack
+- Add LSC auto-configuration in the ISP controller
+- Add sensor AE target auto-configuration in the ISP controller
+- Add autofocus(AF) ioctl command
+- Add auto white balance(AWB) statistics ioctl command
+- Add video owner to free video buffer when CSI video device is closed by users
+- Add I2C initialization in the capture example
+- Add image storage examples, including SD card and USB MSC device
+- Add short data swapping feature for ESP32-P4 MIPI-CSI video device
+- ISP supports output RAW10 and RAW12 stream
+- esp_video v0.9.x is fixed to using esp_cam_sensor v1.0.x and esp_ipa v0.3.x
+
 ## 0.8.0~1
 
 - esp-video v0.8.x is fixed to using esp_cam_sensor v0.8.x and esp_ipa v0.2.x
