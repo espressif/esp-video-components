@@ -42,6 +42,8 @@ struct esp_video_stream {
 
     struct esp_video_buffer *buffer;        /*!< Video stream buffer */
     SemaphoreHandle_t ready_sem;            /*!< Video stream buffer element ready semaphore */
+
+    struct v4l2_rect rect;                  /*!< Selection rectangles */
 };
 
 /**
@@ -578,6 +580,30 @@ esp_err_t esp_video_query_menu(struct esp_video *video, struct v4l2_querymenu *q
  *      - Others if failed
  */
 esp_err_t esp_video_set_owner(struct esp_video *video, int owner);
+
+/**
+ * @brief Set V4L2 selection rectangles
+ *
+ * @param video     Video object
+ * @param selection Selection rectangles buffer pointer
+ *
+ * @return
+ *      - ESP_OK on success
+ *      - Others if failed
+ */
+esp_err_t esp_video_set_selection(struct esp_video *video, struct v4l2_selection *selection);
+
+/**
+ * @brief Get V4L2 selection rectangles
+ *
+ * @param video     Video object
+ * @param selection Selection rectangles buffer pointer
+ *
+ * @return
+ *      - ESP_OK on success
+ *      - Others if failed
+ */
+esp_err_t esp_video_get_selection(struct esp_video *video, struct v4l2_selection *selection);
 
 #ifdef __cplusplus
 }

@@ -244,6 +244,16 @@ static inline esp_err_t esp_video_ioctl_set_owner(struct esp_video *video, int *
     return esp_video_set_owner(video, *value);
 }
 
+static inline esp_err_t esp_video_ioctl_set_selection(struct esp_video *video, struct v4l2_selection *selection)
+{
+    return esp_video_set_selection(video, selection);
+}
+
+static inline esp_err_t esp_video_ioctl_get_selection(struct esp_video *video, struct v4l2_selection *selection)
+{
+    return esp_video_get_selection(video, selection);
+}
+
 esp_err_t esp_video_ioctl(struct esp_video *video, int cmd, va_list args)
 {
     esp_err_t ret = ESP_OK;
@@ -310,6 +320,12 @@ esp_err_t esp_video_ioctl(struct esp_video *video, int cmd, va_list args)
         break;
     case VIDIOC_SET_OWNER:
         ret = esp_video_ioctl_set_owner(video, (int *)arg_ptr);
+        break;
+    case VIDIOC_S_SELECTION:
+        ret = esp_video_ioctl_set_selection(video, (struct v4l2_selection *)arg_ptr);
+        break;
+    case VIDIOC_G_SELECTION:
+        ret = esp_video_ioctl_get_selection(video, (struct v4l2_selection *)arg_ptr);
         break;
     default:
         ret = ESP_ERR_INVALID_ARG;
