@@ -1,3 +1,13 @@
+
+## 1.0.0
+
+- Changed test pattern regs for GC2145 camera sensor.
+- Changed the GC2145 driver to output RGB565 format by default.
+- Changed the OV2710 driver for anti-flicker.
+- Added support for BF3A03 DVP camera sensor driver.
+- Added support for SC031IOT MIPI camera sensor driver.
+- Added WB algorithm parameters based on color temperature prediction algorithm to the SC2336 camera.
+
 ## 0.9.0
 
 - Added APIs to generate XCLK needed by camera sensor.

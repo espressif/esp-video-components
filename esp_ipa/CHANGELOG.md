@@ -1,3 +1,15 @@
+## 0.3.0
+
+- Add ATC to configure sensor AE target level by JSON configuration
+- AGC different directions of gain and exposure adjustment support different speed parameters
+- AGC supports the all exposure range in the part anti-flicker mode
+- ACC supports LSC JSON configuration
+- ACC adds CCM model 1 to calculate CCM by interpolation algorithm
+- ADN JSON configuration supports to generate Gaussian matrix by sigma parameter
+- AWB supports to configure statistics parameters
+- Pipeline global variables support buffer pointer
+- Pipeline supports to add customized IPA node
+
 ## 0.2.0
 
 - Added auto color correction algorithm for ISP image color management module
