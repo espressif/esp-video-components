@@ -46,5 +46,4 @@ build_test:
     - .rules:build:test_apps
   parallel:
     matrix:
-      # Due to limitation of esp_sccb_intf, now only IDF v5.3 is built
-      - IMAGE: espressif/idf:latest
+      - IMAGE: [espressif/idf:release-v5.4, espressif/idf:latest]

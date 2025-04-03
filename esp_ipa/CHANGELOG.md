@@ -1,3 +1,7 @@
+## 0.3.0~1
+
+- Fix the compiling error with esp-idf v5.4-
+
 ## 0.3.0
 
 - Add ATC to configure sensor AE target level by JSON configuration
