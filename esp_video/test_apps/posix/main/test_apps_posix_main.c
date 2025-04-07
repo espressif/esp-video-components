@@ -30,6 +30,12 @@
 
 #define VIDEO_BUFFER_NUM 2
 
+#if CONFIG_TEST_APPS_ENABLE_MIPI_CSI_CAM_SENSOR
+#define TEST_APP_VIDEO_DEVICE ESP_VIDEO_MIPI_CSI_DEVICE_NAME
+#elif CONFIG_TEST_APPS_ENABLE_DVP_CAM_SENSOR
+#define TEST_APP_VIDEO_DEVICE ESP_VIDEO_DVP_DEVICE_NAME
+#endif
+
 void setUp(void);
 
 #if CONFIG_TEST_APPS_ENABLE_MIPI_CSI_CAM_SENSOR
@@ -101,6 +107,62 @@ static void ut_init(void)
         s_ut_inited = true;
     }
 }
+
+#if !CONFIG_TEST_APPS_DISABLE_ALL_SENSORS
+TEST_CASE("V4L2 Command", "[video]")
+{
+    int fd;
+    int ret;
+    uint16_t width;
+    uint16_t height;
+    struct v4l2_format format;
+    struct v4l2_capability cap;
+
+    ut_init();
+
+    fd = open(TEST_APP_VIDEO_DEVICE, O_RDWR);
+    TEST_ASSERT_GREATER_OR_EQUAL(0, fd);
+
+    memset(&cap, 0, sizeof(cap));
+    ret = ioctl(fd, VIDIOC_QUERYCAP, &cap);
+    TEST_ESP_OK(ret);
+    TEST_ASSERT_EQUAL_INT(V4L2_CAP_VIDEO_CAPTURE, cap.capabilities & V4L2_CAP_VIDEO_CAPTURE);
+
+    memset(&format, 0, sizeof(format));
+    format.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
+    ret = ioctl(fd, VIDIOC_G_FMT, &format);
+    TEST_ESP_OK(ret);
+
+    width = format.fmt.pix.width;
+    height = format.fmt.pix.height;
+
+    memset(&format, 0, sizeof(format));
+    format.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
+    format.fmt.pix.width = width;
+    format.fmt.pix.height = height;
+    format.fmt.pix.pixelformat = V4L2_PIX_FMT_RGB565;
+    ret = ioctl(fd, VIDIOC_S_FMT, &format);
+    TEST_ESP_OK(ret);
+
+    memset(&format, 0, sizeof(format));
+    format.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
+    format.fmt.pix.width = width - 1;
+    format.fmt.pix.height = height;
+    format.fmt.pix.pixelformat = V4L2_PIX_FMT_RGB565;
+    ret = ioctl(fd, VIDIOC_S_FMT, &format);
+    TEST_ASSERT_EQUAL_INT(-1, ret);
+
+    memset(&format, 0, sizeof(format));
+    format.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
+    format.fmt.pix.width = width;
+    format.fmt.pix.height = height - 1;
+    format.fmt.pix.pixelformat = V4L2_PIX_FMT_RGB565;
+    ret = ioctl(fd, VIDIOC_S_FMT, &format);
+    TEST_ASSERT_EQUAL_INT(-1, ret);
+
+    close(fd);
+}
+#endif
 
 TEST_CASE("V4L2 M2M device", "[video]")
 {
@@ -250,11 +312,11 @@ TEST_CASE("V4L2 set/get selection", "[video]")
 
     memset(&in_selection, 0, sizeof(in_selection));
     in_selection.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
-    TEST_ASSERT_NOT_EQUAL_HEX32(-1, ioctl(fd, VIDIOC_G_SELECTION, &in_selection));
+    TEST_ASSERT_EQUAL_INT(-1, ioctl(fd, VIDIOC_G_SELECTION, &in_selection));
 
     memset(&in_selection, 0, sizeof(in_selection));
     in_selection.type = V4L2_BUF_TYPE_VIDEO_OUTPUT;
-    TEST_ASSERT_NOT_EQUAL_HEX32(-1, ioctl(fd, VIDIOC_S_SELECTION, &in_selection));
+    TEST_ASSERT_EQUAL_INT(-1, ioctl(fd, VIDIOC_S_SELECTION, &in_selection));
 
     memset(&in_selection, 0, sizeof(in_selection));
     in_selection.type = V4L2_BUF_TYPE_META_CAPTURE;

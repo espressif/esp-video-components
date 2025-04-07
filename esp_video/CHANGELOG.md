@@ -1,6 +1,7 @@
-## Unreleased
+## 0.9.1
 
 - Add a new port for stream url in simple web example
+- V4L2 command VIDIOC_S_FMT returns -1 when the APP sets an invalid resolution(width or height is invalid)
 
 ## 0.9.0
 
