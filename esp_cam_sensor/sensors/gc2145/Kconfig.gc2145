@@ -94,4 +94,18 @@ if CAMERA_GC2145
         config CAMERA_GC2145_MIPI_DATA_NONE_SWAPPED
             bool "None swap"
     endchoice # CAMERA_SC2336_MIPI_DEFAULT_FMT
+
+    config CAMERA_GC2145_WRITE_REGS_DELAY_ENABLE
+        bool "Enable delay between each register write"
+        default y if CAMERA_GC2145_AUTO_DETECT_MIPI_INTERFACE_SENSOR
+        default n
+        help
+            When using the MIPI interface, a delay should be introduced between each register write in the register array to ensure proper initialization.
+
+    config CAMERA_GC2145_WRITE_REGS_DELAY_US
+        int "Delay in us between each register write"
+        range 100 1000
+        default 300
+        help
+            Set the delay time between each register write.
 endif

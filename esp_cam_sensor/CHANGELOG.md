@@ -1,4 +1,8 @@
 
+## Unreleased
+
+- Added delay for normal initialization of GC2145 MIPI driver.
+
 ## 1.0.0
 
 - Changed test pattern regs for GC2145 camera sensor.

@@ -206,6 +206,9 @@ static esp_err_t gc2145_write_array(esp_sccb_io_handle_t sccb_handle, gc2145_reg
     while ((ret == ESP_OK) && (i < regs_size)) {
         if (regarray[i].reg != GC2145_REG_DELAY) {
             ret = gc2145_write(sccb_handle, regarray[i].reg, regarray[i].val);
+#if CONFIG_CAMERA_GC2145_WRITE_REGS_DELAY_ENABLE
+            esp_rom_delay_us(CONFIG_CAMERA_GC2145_WRITE_REGS_DELAY_US);
+#endif
         } else {
             delay_ms(regarray[i].val);
         }
