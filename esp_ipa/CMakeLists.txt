@@ -12,7 +12,13 @@ idf_component_register(SRCS ${srcs}
 include(package_manager)
 cu_pkg_define_version(${CMAKE_CURRENT_LIST_DIR})
 
-add_prebuilt_library(prebuilt "lib/${idf_target}/libesp_ipa.a"
+if("${IDF_VERSION_MAJOR}.${IDF_VERSION_MINOR}" VERSION_GREATER_EQUAL "5.5")
+    set(ipa_lib_version "v5.5+")
+else()
+    set(ipa_lib_version "v5.4-")
+endif()
+
+add_prebuilt_library(prebuilt "lib/${idf_target}/${ipa_lib_version}/libesp_ipa.a"
                      PRIV_REQUIRES esp_timer)
 target_link_libraries(${COMPONENT_LIB} PRIVATE prebuilt)
 
