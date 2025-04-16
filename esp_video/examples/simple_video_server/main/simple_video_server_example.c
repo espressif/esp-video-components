@@ -28,7 +28,15 @@
 // video frame buffer count, too large value may cause memory allocation fails.
 #define EXAMPLE_VIDEO_BUFFER_COUNT   2
 #define MEMORY_TYPE                  V4L2_MEMORY_MMAP
+
+#if CONFIG_EXAMPLE_ENABLE_MIPI_CSI_CAM_SENSOR
 #define CAM_DEV_PATH                 ESP_VIDEO_MIPI_CSI_DEVICE_NAME
+#elif CONFIG_EXAMPLE_ENABLE_DVP_CAM_SENSOR
+#define CAM_DEV_PATH                 ESP_VIDEO_DVP_DEVICE_NAME
+#else
+#error "No camera sensor selected"
+#endif
+
 #define JPEG_ENC_QUALITY             (80)
 #define PART_BOUNDARY                "123456789000000000000987654321"
 #ifndef ARRAY_SIZE

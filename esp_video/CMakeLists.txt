@@ -16,6 +16,10 @@ if(CONFIG_IDF_TARGET_ESP32P4)
         list(APPEND srcs "src/data_reprocessing/esp32p4/esp_video_swap_short.c")
         list(APPEND srcs "src/data_reprocessing/esp32p4/esp_video_swap_short.S")
     endif()
+
+    if(CONFIG_ESP_VIDEO_ENABLE_SWAP_BYTE)
+        list(APPEND srcs "src/data_reprocessing/esp32p4/esp_video_swap_byte.c")
+    endif()
 endif()
 
 if(CONFIG_ESP_VIDEO_ENABLE_MIPI_CSI_VIDEO_DEVICE)
@@ -65,6 +69,10 @@ if(CONFIG_IDF_TARGET_ESP32P4)
 
         if(CONFIG_ESP_VIDEO_ENABLE_SWAP_SHORT)
             target_bitscrambler_add_src("src/data_reprocessing/esp32p4/esp_video_swap_short.bsasm")
+        endif()
+
+        if(CONFIG_ESP_VIDEO_ENABLE_SWAP_BYTE)
+            target_bitscrambler_add_src("src/data_reprocessing/esp32p4/esp_video_swap_byte.bsasm")
         endif()
     endif()
 endif()

@@ -55,7 +55,7 @@ extern void esp_video_swap_short_pie(void *src, uint32_t src_size, void *dst, ui
 #endif /* CONFIG_ESP_VIDEO_ENABLE_SWAP_SHORT_BITSCRAMBLER */
 #endif /* CONFIG_ESP_VIDEO_ENABLE_SWAP_SHORT */
 
-static const char *TAG = "esp_video_swap_short";
+static const char *TAG = "swap_short";
 
 /**
  * @brief Create video swap short

@@ -45,7 +45,26 @@ typedef enum {
      *  Swapped data:  0x0302, 0x0100, 0x0706, 0x0504
      */
     ESP_CAM_SENSOR_DATA_SEQ_SHORT_SWAPPED = 1,
-    ESP_CAM_SENSOR_DATA_SEQ_WORD_INTERNAL_SWAPPED = 2
+
+    /**
+     * Swap word endian, for example:
+     *
+     *  Data address:         0x0         0x4
+     *
+     *  Original data: 0x03020100, 0x07060504
+     *  Swapped data:  0x00010203, 0x04050607
+     */
+    ESP_CAM_SENSOR_DATA_SEQ_WORD_INTERNAL_SWAPPED = 2,
+
+    /**
+     * Swap byte data, for example:
+     *
+     *  Data address:     0x0     0x1     0x2     0x3
+     *
+     *  Original data:   0x00,   0x01,   0x02,   0x03
+     *  Swapped data:    0x01,   0x00,   0x03,   0x02
+     */
+    ESP_CAM_SENSOR_DATA_SEQ_BYTE_SWAPPED = 3
 } esp_cam_sensor_data_seq_t;
 
 #define ESP_CAM_SENSOR_STATS_FLAG_WB_GAIN           (1 <<  0)
