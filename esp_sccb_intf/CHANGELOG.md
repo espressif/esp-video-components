@@ -1,3 +1,8 @@
+## 0.0.5
+
+- Added support for transmitting / receiving 16-bit value
+- Changed `transmit_reg_a16v16()`, `transmit_reg_a8v16()`, `transmit_receive_reg_a8v16()`, `transmit_receive_reg_a16v16()` default return value to `ESP_OK`
+
 ## 0.0.4
 
 - Added timeout option in Kconfig

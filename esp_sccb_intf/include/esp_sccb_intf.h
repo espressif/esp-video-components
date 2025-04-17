@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2024 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2024-2025 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -110,6 +110,28 @@ esp_err_t esp_sccb_transmit_receive_reg_a8v16(esp_sccb_io_handle_t io_handle, ui
  *      - ESP_ERR_INVALID_ARG: sccb transmit parameter invalid.
  */
 esp_err_t esp_sccb_transmit_receive_reg_a16v16(esp_sccb_io_handle_t io_handle, uint16_t reg_addr, uint16_t *reg_val);
+
+/**
+ * @brief Perform a write transaction for 16-bit val.
+ *
+ * @param[in]  handle   SCCB IO handle
+ * @param[in] val  Data to send on the sccb bus.
+ * @return
+ *      - ESP_OK: sccb transmit success
+ *      - ESP_ERR_INVALID_ARG: sccb transmit parameter invalid.
+ */
+esp_err_t esp_sccb_transmit_v16(esp_sccb_io_handle_t io_handle, uint16_t val);
+
+/**
+ * @brief Perform a read transaction for 16-bit val.
+ *
+ * @param[in] handle SCCB IO handle
+ * @param[out] val Data bytes received from sccb bus.
+ * @return
+ *      - ESP_OK: sccb receive success
+ *      - ESP_ERR_INVALID_ARG: sccb transmit parameter invalid.
+ */
+esp_err_t esp_sccb_receive_v16(esp_sccb_io_handle_t io_handle, uint16_t *val);
 
 /**
  * @brief Delete sccb I2C IO handle
