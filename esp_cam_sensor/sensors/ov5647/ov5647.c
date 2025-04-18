@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2024 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2024-2025 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -255,6 +255,23 @@ static esp_err_t ov5647_get_sensor_id(esp_cam_sensor_device_t *dev, esp_cam_sens
     return ret;
 }
 
+#if CONFIG_CAMERA_OV5647_ENABLE_MOTOR_BY_GPIO0
+static esp_err_t ov5647_gpio0_en_af(esp_cam_sensor_device_t *dev, int enable)
+{
+    esp_err_t ret = ESP_OK;
+    ret = ov5647_write(dev->sccb_handle, 0x3002, enable ? 0x01 : 0x00);
+    ESP_RETURN_ON_FALSE(ret == ESP_OK, ret, TAG, "write pad out failed");
+
+    ret |= ov5647_write(dev->sccb_handle, 0x3010, enable ? 0x01 : 0x00);
+    ESP_RETURN_ON_FALSE(ret == ESP_OK, ret, TAG, "write pad out failed");
+
+    ret |= ov5647_write(dev->sccb_handle, 0x300D, enable ? 0x01 : 0x00);
+    ESP_RETURN_ON_FALSE(ret == ESP_OK, ret, TAG, "write pad out failed");
+    delay_ms(12);
+    return ret;
+}
+#endif
+
 static esp_err_t ov5647_set_stream(esp_cam_sensor_device_t *dev, int enable)
 {
     esp_err_t ret;
@@ -270,15 +287,8 @@ static esp_err_t ov5647_set_stream(esp_cam_sensor_device_t *dev, int enable)
     ret = ov5647_write(dev->sccb_handle, 0x4800, CONFIG_CAMERA_OV5647_CSI_LINESYNC_ENABLE ? 0x14 : 0x00);
     ESP_RETURN_ON_FALSE(ret == ESP_OK, ret, TAG, "write pad out failed");
 
-#if CONFIG_CAMERA_OV5647_ISP_AF_ENABLE
-    ret = ov5647_write(dev->sccb_handle, 0x3002, enable ? 0x01 : 0x00);
-    ESP_RETURN_ON_FALSE(ret == ESP_OK, ret, TAG, "write pad out failed");
-
-    ret = ov5647_write(dev->sccb_handle, 0x3010, enable ? 0x01 : 0x00);
-    ESP_RETURN_ON_FALSE(ret == ESP_OK, ret, TAG, "write pad out failed");
-
-    ret = ov5647_write(dev->sccb_handle, 0x300D, enable ? 0x01 : 0x00);
-    ESP_RETURN_ON_FALSE(ret == ESP_OK, ret, TAG, "write pad out failed");
+#if CONFIG_CAMERA_OV5647_ENABLE_MOTOR_BY_GPIO0
+    ret = ov5647_gpio0_en_af(dev, enable);
 #endif
 
     ret = ov5647_write(dev->sccb_handle, 0x0100, enable ? 0x01 : 0x00);
@@ -759,6 +769,12 @@ esp_cam_sensor_device_t *ov5647_detect(esp_cam_sensor_config_t *config)
         goto err_free_handler;
     }
     ESP_LOGI(TAG, "Detected Camera sensor PID=0x%x", dev->id.pid);
+
+#if CONFIG_CAMERA_OV5647_ENABLE_MOTOR_BY_GPIO0
+    if (ov5647_gpio0_en_af(dev, true) != ESP_OK) {
+        ESP_LOGE(TAG, "AF gpio en failed");
+    }
+#endif
 
     return dev;
 

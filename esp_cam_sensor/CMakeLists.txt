@@ -1,8 +1,8 @@
-set(srcs "src/esp_cam_sensor.c" "src/esp_cam_sensor_xclk.c")
+set(srcs "src/esp_cam_sensor.c" "src/esp_cam_sensor_xclk.c" "src/esp_cam_motor.c")
 
 set(include_dirs "include")
 set(requires "driver" "esp_sccb_intf")
-set(priv_requires "esp_driver_gpio")
+set(priv_requires "esp_driver_gpio" "esp_timer")
 
 if(CONFIG_CAMERA_XCLK_USE_LEDC)
     list(APPEND requires "esp_driver_ledc")
@@ -86,6 +86,12 @@ if(CONFIG_CAMERA_BF3A03)
     list(APPEND priv_include_dirs "sensors/bf3a03/private_include")
 endif()
 
+if(CONFIG_CAM_MOTOR_DW9714)
+    list(APPEND srcs "motors/dw9714/dw9714.c")
+    list(APPEND include_dirs "motors/dw9714/include")
+    list(APPEND priv_include_dirs "motors/dw9714/private_include")
+endif()
+
 idf_component_register(SRCS ${srcs}
                        INCLUDE_DIRS ${include_dirs}
                        PRIV_INCLUDE_DIRS ${priv_include_dirs}
@@ -143,6 +149,10 @@ endif()
 
 if(CONFIG_CAMERA_BF3A03_AUTO_DETECT)
     target_link_libraries(${COMPONENT_LIB} INTERFACE "-u bf3a03_detect")
+endif()
+
+if(CONFIG_CAM_MOTOR_DW9714_AUTO_DETECT)
+    target_link_libraries(${COMPONENT_LIB} INTERFACE "-u dw9714_detect")
 endif()
 
 include(package_manager)

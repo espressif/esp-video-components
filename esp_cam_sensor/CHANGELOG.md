@@ -1,6 +1,7 @@
 
-## Unreleased
+## ## 1.1.0
 
+- Added AF motor dw9714 driver.
 - Added delay for normal initialization of GC2145 MIPI driver.
 - Added RAW8 support for SC035HGS MIPI driver.
 - Changed default CCM paras for OV2710 camera sensor.

@@ -110,6 +110,24 @@
                     }   
                 ]
             }
+        },
+        "af":
+        {
+            "windows":
+            [
+                {
+                    "left": 680,
+                    "top": 200,
+                    "width": 390,
+                    "height": 410
+                }
+            ],
+            "edge_thresh": 32,
+            "high_threshold_ratio": 1.4,
+            "low_threshold_ratio": 0.6,
+            "l1_scan_points_num": 10,
+            "l2_scan_points_num": 10,
+            "max_change_time": 3000000
         }
     }
 }
