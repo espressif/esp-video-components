@@ -2,6 +2,7 @@
 ## Unreleased
 
 - Added delay for normal initialization of GC2145 MIPI driver.
+- Added RAW8 support for SC035HGS MIPI driver.
 
 ## 1.0.0
 
