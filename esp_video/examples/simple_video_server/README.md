@@ -7,7 +7,7 @@
 
 ## Overview
 
-The example starts a HTTP server on a local network. You can use a browser to access this local server.
+The example starts two HTTP servers on a local network by using different ports. You can use a browser to access the servers.
 This example designs several APIs to fetch resources as follows:
 
 | URL     | Method | Description                                                  |
@@ -17,8 +17,6 @@ This example designs several APIs to fetch resources as follows:
 | /stream | GET    | Used for clients to get continuous MJPEG stream. The server continuously pushes JPEG images from the background to the client. So when you save images on the webpage, the saved images may not be in real-time. |
 
 By default, the example will start an MDNS domain name system. Therefore, the server can be accessed by domain name. For example, accessing the URL for obtaining images by entering URL `http://esp-web.local/pic` in the browser. Also, accessing URLs through the use of IP addresses is also allowed.
-
-Note that this is a single-threaded simple server. When `/stream` is opened, other URLs will not be available. Therefore, please close the `/stream` webpage before using other URLs.
 
 ## How to use example
 
@@ -145,7 +143,9 @@ I (8996) app_web: jpeg size = 50560
 ...
 ```
 
-Enter `http://esp-web.local/pic` or `192.168.47.100/pic` in the browser to access the image. Similar methods can also be used to access other URLs.
+Enter `http://esp-web.local/pic` or `192.168.47.100/pic` in the browser to access the image.
+Enter `http://esp-web.local/record` or `192.168.47.100/record` in the browser to download the original binary file.
+Enter `http://esp-web.local:81/stream` or `192.168.47.100:81/stream` in the browser to access the video stream.
 
 ## Troubleshooting
 

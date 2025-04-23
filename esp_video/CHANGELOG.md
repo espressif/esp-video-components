@@ -1,3 +1,7 @@
+## Unreleased
+
+- Add a new port for stream url in simple web example
+
 ## 0.9.0
 
 - Add esp_video_deinit to free esp_video resource
