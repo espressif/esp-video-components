@@ -657,8 +657,28 @@ static void config_awb(esp_video_isp_t *isp, esp_ipa_metadata_t *metadata)
     }
 }
 
+static void config_statistics_region(esp_video_isp_t *isp, esp_ipa_metadata_t *metadata)
+{
+    if (metadata->flags & IPA_METADATA_FLAGS_SR) {
+        esp_ipa_region_t *sr = &metadata->stats_region;
+        struct v4l2_selection selection;
+
+        memset(&selection, 0, sizeof(selection));
+        selection.type = V4L2_BUF_TYPE_META_CAPTURE;
+        selection.r.left = sr->left;
+        selection.r.width = sr->width;
+        selection.r.top = sr->top;
+        selection.r.height = sr->height;
+        if (ioctl(isp->isp_fd, VIDIOC_S_SELECTION, &selection) != 0) {
+            ESP_LOGE(TAG, "failed to set selection");
+        }
+    }
+}
+
 static void config_isp_and_camera(esp_video_isp_t *isp, esp_ipa_metadata_t *metadata)
 {
+    config_statistics_region(isp, metadata);
+
     if (!isp->sensor_attr.awb) {
         config_white_balance(isp, metadata);
     }

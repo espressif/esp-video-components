@@ -1262,6 +1262,30 @@ TEST_CASE("Auto sensor target control test", "[IPA]")
     TEST_ESP_OK(esp_ipa_pipeline_destroy(handle));
 }
 
+TEST_CASE("Extended configuration test", "[IPA]")
+{
+    esp_ipa_pipeline_handle_t handle = NULL;
+    esp_ipa_metadata_t metadata = {0};
+    const esp_ipa_config_t *ipa_config = esp_ipa_pipeline_get_config(IPA_TARGET_NAME);
+
+    TEST_ESP_OK(esp_ipa_pipeline_create(ipa_config, &handle));
+    TEST_ESP_OK(esp_ipa_pipeline_init(handle, &s_esp_ipa_sensor, &metadata));
+
+    TEST_ASSERT_EQUAL_HEX32(IPA_METADATA_FLAGS_HUE, metadata.flags & IPA_METADATA_FLAGS_HUE);
+    TEST_ASSERT_EQUAL_INT32(1, metadata.hue);
+
+    TEST_ASSERT_EQUAL_HEX32(IPA_METADATA_FLAGS_BR, metadata.flags & IPA_METADATA_FLAGS_BR);
+    TEST_ASSERT_EQUAL_INT32(2, metadata.brightness);
+
+    TEST_ASSERT_EQUAL_HEX32(IPA_METADATA_FLAGS_SR, metadata.flags & IPA_METADATA_FLAGS_SR);
+    TEST_ASSERT_EQUAL_INT32(3, metadata.stats_region.left);
+    TEST_ASSERT_EQUAL_INT32(4, metadata.stats_region.top);
+    TEST_ASSERT_EQUAL_INT32(5, metadata.stats_region.width);
+    TEST_ASSERT_EQUAL_INT32(6, metadata.stats_region.height);
+
+    TEST_ESP_OK(esp_ipa_pipeline_destroy(handle));
+}
+
 TEST_CASE("Set/Get IPAs global variable", "[IPA]")
 {
     const esp_ipa_config_t *ipa_config = esp_ipa_pipeline_get_config(IPA_TARGET_NAME);

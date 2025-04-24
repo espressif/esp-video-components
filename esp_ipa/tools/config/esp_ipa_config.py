@@ -34,6 +34,16 @@ class awb_default():
         self.green_luma_init = 200
         self.green_luma_step_ratio = 0.3
 
+class ext_default():
+    def __init__(self, name):
+        self.hue = 0
+        self.brightness = 0
+        self.stats_region = base_default()
+        self.stats_region.left = 0
+        self.stats_region.top = 0
+        self.stats_region.width = 0
+        self.stats_region.height = 0
+
 class ipa_unit_c():
     __metaclass__ = ABCMeta
 
@@ -863,6 +873,38 @@ class ipa_unit_atc_c(ipa_unit_c):
     def decode(self, obj):
         self.text = self.decode_atc(self.name, obj)
 
+class ipa_unit_ext_c(ipa_unit_c):
+    @staticmethod
+    def decode_ext(name, obj):
+        ext = ext_default(name)
+        if hasattr(obj, 'hue'):
+            ext.hue = obj.hue
+        if hasattr(obj, 'brightness'):
+            ext.brightness = obj.brightness
+        if hasattr(obj, 'stats_region'):
+            ext.stats_region = obj.stats_region
+
+        ext_code = cfmt_string('''
+            static const esp_ipa_ext_config_t s_ipa_ext_%s_config = {
+                .hue = %d,
+                .brightness = %d,
+                .stats_region = {
+                    .top = %d,
+                    .left = %d,
+                    .width = %d,
+                    .height = %d
+                }
+            };
+            '''%(name, obj.hue, obj.brightness, obj.stats_region.top,
+                 obj.stats_region.left, obj.stats_region.width,
+                 obj.stats_region.height)
+        )
+
+        return ext_code
+
+    def decode(self, obj):
+        self.text = self.decode_ext(self.name, obj)
+
 class ipa_c(object):
     def __init__(self, name, version):
         self.name = name
@@ -877,7 +919,8 @@ class ipa_c(object):
             'aen': ipa_unit_aen_c,
             'adn': ipa_unit_adn_c,
             'agc': ipa_unit_agc_c,
-            'atc': ipa_unit_atc_c
+            'atc': ipa_unit_atc_c,
+            'ext': ipa_unit_ext_c
         }
 
         if type in ipa_unit_lut:

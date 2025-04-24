@@ -31,4 +31,8 @@ menu "Espressif Image Process Algorithm Configuration"
     config ESP_IPA_ATC_ALGORITHM
         bool "Auto Sensor AE Target Level Control Algorithm"
         default y
+
+    config ESP_IPA_EXT_CONFIG
+        bool "Extended Configuration"
+        default y
 endmenu
