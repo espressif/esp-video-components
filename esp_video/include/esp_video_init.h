@@ -70,12 +70,24 @@ typedef struct esp_video_init_jpeg_config {
 } esp_video_init_jpeg_config_t;
 
 /**
+ * @brief Camera motor connection configuration
+ */
+typedef struct esp_video_init_cam_motor_config {
+    esp_video_init_sccb_config_t sccb_config;   /*!< Camera motor SCCB configuration */
+
+    int8_t  reset_pin;                          /*!< Camera motor reset pin, if hardware has no reset pin, set reset_pin to be -1 */
+    int8_t  pwdn_pin;                           /*!< Camera motor power down pin, if hardware has no power down pin, set pwdn_pin to be -1 */
+    int8_t  signal_pin;                         /*!< Camera motor enable signal pin, if hardware has no signal pin, set signal to be -1 */
+} esp_video_init_cam_motor_config_t;
+
+/**
  * @brief Video hardware initialization configuration
  */
 typedef struct esp_video_init_config {
     const esp_video_init_csi_config_t *csi;     /*!< MIPI CSI initialization configuration */
     const esp_video_init_dvp_config_t *dvp;     /*!< DVP initialization configuration array */
     const esp_video_init_jpeg_config_t *jpeg;   /*!< JPEG initialization configuration */
+    const esp_video_init_cam_motor_config_t *cam_motor;     /*!< Camera motor initialization configuration */
 } esp_video_init_config_t;
 
 /**

@@ -605,6 +605,32 @@ esp_err_t esp_video_set_selection(struct esp_video *video, struct v4l2_selection
  */
 esp_err_t esp_video_get_selection(struct esp_video *video, struct v4l2_selection *selection);
 
+#if CONFIG_ESP_VIDEO_ENABLE_CAMERA_MOTOR_CONTROLLER
+/**
+ * @brief Set format to motor
+ *
+ * @param video  Video object
+ * @param format Motor format pointer
+ *
+ * @return
+ *      - ESP_OK on success
+ *      - Others if failed
+ */
+esp_err_t esp_video_set_motor_format(struct esp_video *video, const esp_cam_motor_format_t *format);
+
+/**
+ * @brief Get format from motor
+ *
+ * @param video  Video object
+ * @param format Motor format pointer
+ *
+ * @return
+ *      - ESP_OK on success
+ *      - Others if failed
+ */
+esp_err_t esp_video_get_motor_format(struct esp_video *video, esp_cam_motor_format_t *format);
+#endif
+
 #ifdef __cplusplus
 }
 #endif

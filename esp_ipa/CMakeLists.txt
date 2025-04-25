@@ -54,6 +54,10 @@ if(CONFIG_ESP_IPA_EXT_CONFIG)
     target_link_libraries(${COMPONENT_LIB} INTERFACE "-u __esp_ipa_detect_fn_esp_ipa_ext")
 endif()
 
+if(CONFIG_ESP_IPA_AF_ALGORITHM)
+    target_link_libraries(${COMPONENT_LIB} INTERFACE "-u __esp_ipa_detect_fn_esp_ipa_af")
+endif()
+
 idf_build_get_property(python PYTHON)
 idf_build_get_property(sdkconfig_header SDKCONFIG_HEADER)
 set(ipa_config_py_script ${COMPONENT_DIR}/tools/config/esp_ipa_config.py)

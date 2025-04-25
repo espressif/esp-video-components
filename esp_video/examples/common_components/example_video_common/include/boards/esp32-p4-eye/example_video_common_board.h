@@ -25,6 +25,10 @@ extern "C" {
 #define EXAMPLE_MIPI_CSI_CAM_SENSOR_PWDN_PIN            12
 #define EXAMPLE_MIPI_CSI_XCLK_PIN                       11
 #define EXAMPLE_MIPI_CSI_XCLK_FREQ                      24000000
+
+#if CONFIG_EXAMPLE_ENABLE_MIPI_CSI_CAM_MOTOR
+#error "MIPI-CSI camera motor is not supported on ESP32-P4-EYE by default"
+#endif /* CONFIG_EXAMPLE_ENABLE_MIPI_CSI_CAM_MOTOR */
 #endif
 
 #if CONFIG_EXAMPLE_ENABLE_DVP_CAM_SENSOR

@@ -22,6 +22,16 @@ static size_t before_free_8bit;
 static size_t before_free_32bit;
 static const char *TAG = "dummy";
 
+static esp_ipa_sensor_focus_t s_esp_ipa_sensor_info = {
+    .max_pos = 1000,
+    .min_pos = 0,
+    .cur_pos = 0,
+    .step_pos = 1,
+    .start_time = 0,
+    .period_in_us = 1000,
+    .codes_per_step = 1,
+};
+
 static const esp_ipa_sensor_t s_esp_ipa_sensor = {
     .width = 1080,
     .height = 720,
@@ -30,7 +40,8 @@ static const esp_ipa_sensor_t s_esp_ipa_sensor = {
     .min_exposure = 10e3,
     .cur_gain = 1.0,
     .max_gain = 16.0,
-    .min_gain = 1.0
+    .min_gain = 1.0,
+    .focus_info = &s_esp_ipa_sensor_info,
 };
 
 static void check_leak(size_t before_free, size_t after_free, const char *type)
@@ -1384,6 +1395,78 @@ TEST_CASE("Customized IPA Process", "[IPA]")
         TEST_ASSERT_EQUAL_INT32(esp_ipa_get_int32(handle->ipa_array[0], "esp_ipa_customized_0_val"), int_val);
         TEST_ASSERT_EQUAL_FLOAT(esp_ipa_get_float(handle->ipa_array[0], "esp_ipa_customized_1_val"), float_val);
     }
+
+    TEST_ESP_OK(esp_ipa_pipeline_destroy(handle));
+}
+
+
+TEST_CASE("Auto focus test", "[IPA]")
+{
+    esp_ipa_pipeline_handle_t handle = NULL;
+    esp_ipa_metadata_t metadata = {0};
+    const esp_ipa_config_t *ipa_config;
+
+    ipa_config = esp_ipa_pipeline_get_config(IPA_TARGET_NAME);
+    TEST_ESP_OK(esp_ipa_pipeline_create(ipa_config, &handle));
+    TEST_ESP_OK(esp_ipa_pipeline_init(handle, &s_esp_ipa_sensor, &metadata));
+
+    TEST_ASSERT_EQUAL_HEX32(IPA_METADATA_FLAGS_AF, metadata.flags & IPA_METADATA_FLAGS_AF);
+    TEST_ASSERT_EQUAL_INT32(11,  metadata.af.edge_thresh);
+    TEST_ASSERT_EQUAL_INT32(11,  ipa_config->af->l1_scan_points_num);
+    TEST_ASSERT_EQUAL_INT32(12,  ipa_config->af->l2_scan_points_num);
+    TEST_ASSERT_EQUAL_FLOAT(1.6,  ipa_config->af->definition_high_threshold_ratio);
+    TEST_ASSERT_EQUAL_FLOAT(0.6,  ipa_config->af->definition_low_threshold_ratio);
+    TEST_ASSERT_EQUAL_FLOAT(1.6,  ipa_config->af->luminance_high_threshold_ratio);
+    TEST_ASSERT_EQUAL_FLOAT(0.6,  ipa_config->af->luminance_low_threshold_ratio);
+    TEST_ASSERT_EQUAL_INT32(500,  ipa_config->af->max_change_time);
+    TEST_ASSERT_EQUAL_INT32(500,  ipa_config->af->max_pos);
+    TEST_ASSERT_EQUAL_INT32(50,  metadata.af.windows[0].top_left.x);
+    TEST_ASSERT_EQUAL_INT32(100, metadata.af.windows[0].top_left.y);
+    TEST_ASSERT_EQUAL_INT32(149, metadata.af.windows[0].btm_right.x);
+    TEST_ASSERT_EQUAL_INT32(199, metadata.af.windows[0].btm_right.y);
+    TEST_ASSERT_EQUAL_INT32(150, metadata.af.windows[1].top_left.x);
+    TEST_ASSERT_EQUAL_INT32(200, metadata.af.windows[1].top_left.y);
+    TEST_ASSERT_EQUAL_INT32(249, metadata.af.windows[1].btm_right.x);
+    TEST_ASSERT_EQUAL_INT32(299, metadata.af.windows[1].btm_right.y);
+    TEST_ASSERT_EQUAL_INT32(250, metadata.af.windows[2].top_left.x);
+    TEST_ASSERT_EQUAL_INT32(300, metadata.af.windows[2].top_left.y);
+    TEST_ASSERT_EQUAL_INT32(349, metadata.af.windows[2].btm_right.x);
+    TEST_ASSERT_EQUAL_INT32(399, metadata.af.windows[2].btm_right.y);
+    TEST_ASSERT_EQUAL_INT32(1, ipa_config->af->weight_table[0]);
+    TEST_ASSERT_EQUAL_INT32(10, ipa_config->af->weight_table[1]);
+    TEST_ASSERT_EQUAL_INT32(100, ipa_config->af->weight_table[2]);
+
+    TEST_ESP_OK(esp_ipa_pipeline_destroy(handle));
+
+    ipa_config = esp_ipa_pipeline_get_config(IPA_TARGET_NAME_2);
+    TEST_ESP_OK(esp_ipa_pipeline_create(ipa_config, &handle));
+    TEST_ESP_OK(esp_ipa_pipeline_init(handle, &s_esp_ipa_sensor, &metadata));
+
+    TEST_ASSERT_EQUAL_HEX32(IPA_METADATA_FLAGS_AF, metadata.flags & IPA_METADATA_FLAGS_AF);
+    TEST_ASSERT_EQUAL_INT32(12,  metadata.af.edge_thresh);
+    TEST_ASSERT_EQUAL_INT32(11,  ipa_config->af->l1_scan_points_num);
+    TEST_ASSERT_EQUAL_INT32(12,  ipa_config->af->l2_scan_points_num);
+    TEST_ASSERT_EQUAL_FLOAT(1.6,  ipa_config->af->definition_high_threshold_ratio);
+    TEST_ASSERT_EQUAL_FLOAT(0.6,  ipa_config->af->definition_low_threshold_ratio);
+    TEST_ASSERT_EQUAL_FLOAT(1.6,  ipa_config->af->luminance_high_threshold_ratio);
+    TEST_ASSERT_EQUAL_FLOAT(0.6,  ipa_config->af->luminance_low_threshold_ratio);
+    TEST_ASSERT_EQUAL_INT32(500,  ipa_config->af->max_change_time);
+    TEST_ASSERT_EQUAL_INT32(500,  ipa_config->af->max_pos);
+    TEST_ASSERT_EQUAL_INT32(50,  metadata.af.windows[0].top_left.x);
+    TEST_ASSERT_EQUAL_INT32(100, metadata.af.windows[0].top_left.y);
+    TEST_ASSERT_EQUAL_INT32(149, metadata.af.windows[0].btm_right.x);
+    TEST_ASSERT_EQUAL_INT32(199, metadata.af.windows[0].btm_right.y);
+    TEST_ASSERT_EQUAL_INT32(2, metadata.af.windows[1].top_left.x);
+    TEST_ASSERT_EQUAL_INT32(2, metadata.af.windows[1].top_left.y);
+    TEST_ASSERT_EQUAL_INT32(5, metadata.af.windows[1].btm_right.x);
+    TEST_ASSERT_EQUAL_INT32(5, metadata.af.windows[1].btm_right.y);
+    TEST_ASSERT_EQUAL_INT32(2, metadata.af.windows[2].top_left.x);
+    TEST_ASSERT_EQUAL_INT32(2, metadata.af.windows[2].top_left.y);
+    TEST_ASSERT_EQUAL_INT32(5, metadata.af.windows[2].btm_right.x);
+    TEST_ASSERT_EQUAL_INT32(5, metadata.af.windows[2].btm_right.y);
+    TEST_ASSERT_EQUAL_INT32(1, ipa_config->af->weight_table[0]);
+    TEST_ASSERT_EQUAL_INT32(0, ipa_config->af->weight_table[1]);
+    TEST_ASSERT_EQUAL_INT32(0, ipa_config->af->weight_table[2]);
 
     TEST_ESP_OK(esp_ipa_pipeline_destroy(handle));
 }

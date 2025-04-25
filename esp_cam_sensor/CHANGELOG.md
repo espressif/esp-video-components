@@ -5,6 +5,7 @@
 - Added delay for normal initialization of GC2145 MIPI driver.
 - Added RAW8 support for SC035HGS MIPI driver.
 - Added IPA cfg for SC035HGS.
+- Added AF control parameters to OV5647 default JSON configuration file.
 - Changed default AE sample point to AFTER_DEMOSAIC.
 - Changed IPA cfg for SC2336 according to the default AE sample point.
 - Changed default CCM paras for OV2710 camera sensor.

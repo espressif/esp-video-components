@@ -254,6 +254,18 @@ static inline esp_err_t esp_video_ioctl_get_selection(struct esp_video *video, s
     return esp_video_get_selection(video, selection);
 }
 
+#if CONFIG_ESP_VIDEO_ENABLE_CAMERA_MOTOR_CONTROLLER
+static inline esp_err_t esp_video_ioctl_set_motor_format(struct esp_video *video, const esp_cam_motor_format_t *format)
+{
+    return esp_video_set_motor_format(video, format);
+}
+
+static inline esp_err_t esp_video_ioctl_get_motor_format(struct esp_video *video, esp_cam_motor_format_t *format)
+{
+    return esp_video_get_motor_format(video, format);
+}
+#endif
+
 esp_err_t esp_video_ioctl(struct esp_video *video, int cmd, va_list args)
 {
     esp_err_t ret = ESP_OK;
@@ -327,6 +339,14 @@ esp_err_t esp_video_ioctl(struct esp_video *video, int cmd, va_list args)
     case VIDIOC_G_SELECTION:
         ret = esp_video_ioctl_get_selection(video, (struct v4l2_selection *)arg_ptr);
         break;
+#if CONFIG_ESP_VIDEO_ENABLE_CAMERA_MOTOR_CONTROLLER
+    case VIDIOC_S_MOTOR_FMT:
+        ret = esp_video_ioctl_set_motor_format(video, (const esp_cam_motor_format_t *)arg_ptr);
+        break;
+    case VIDIOC_G_MOTOR_FMT:
+        ret = esp_video_ioctl_get_motor_format(video, (esp_cam_motor_format_t *)arg_ptr);
+        break;
+#endif
     default:
         ret = ESP_ERR_INVALID_ARG;
         break;

@@ -905,6 +905,118 @@ class ipa_unit_ext_c(ipa_unit_c):
     def decode(self, obj):
         self.text = self.decode_ext(self.name, obj)
 
+class ipa_unit_af_c(ipa_unit_c):
+    @staticmethod
+    def decode_af(name, obj):
+        class af_window():
+            def __init__(self, left, top, width, height, weight):
+                self.top_left_x = left
+                self.top_left_y = top
+                self.btm_right_x = left + width - 1
+                self.btm_right_y = top + height - 1
+                self.weight = weight
+        if not hasattr(obj, 'max_pos'):
+            obj.max_pos = 0
+        if not hasattr(obj, 'min_pos'):
+            obj.min_pos = 0
+        if not hasattr(obj, 'l1_scan_points_num'):
+            obj.l1_scan_points_num = 10
+        if not hasattr(obj, 'l2_scan_points_num'):
+            obj.l2_scan_points_num = 10
+        if not hasattr(obj, 'definition_high_threshold_ratio'):
+            obj.definition_high_threshold_ratio = 1.5
+        if not hasattr(obj, 'definition_low_threshold_ratio'):
+            obj.definition_low_threshold_ratio = 0.5
+        if not hasattr(obj, 'luminance_high_threshold_ratio'):
+            obj.luminance_high_threshold_ratio = 1.5
+        if not hasattr(obj, 'luminance_low_threshold_ratio'):
+            obj.luminance_low_threshold_ratio = 0.5
+        if not hasattr(obj, 'max_change_time'):
+            obj.max_change_time = 1000000
+
+        af_windows = list()
+        if not hasattr(obj, 'windows'):
+            fatal_error('AF has no windows')
+        else:
+            if len(obj.windows) > 3 or len(obj.windows) == 0:
+                fatal_error('AF windows number must <= 3 and not 0')
+            else:
+                for w in obj.windows:
+                    if not hasattr(w, 'weight'):
+                        w.weight = 1
+                    af_windows.append(af_window(w.left, w.top, w.width, w.height, w.weight))
+
+                null_windows = 3 - len(obj.windows)
+                for i in range(0, null_windows):
+                    af_windows.append(af_window(2, 2, 4, 4, 0))
+
+        af_code = cfmt_string('''
+            static const esp_ipa_af_config_t s_ipa_af_%s_config = {
+                .windows = {
+                    [0] = {
+                        .top_left = {
+                            .x = %d,
+                            .y = %d,
+                        },
+                        .btm_right = {
+                            .x = %d,
+                            .y = %d,
+                        },
+                    },
+                    [1] = {
+                        .top_left = {
+                            .x = %d,
+                            .y = %d,
+                        },
+                        .btm_right = {
+                            .x = %d,
+                            .y = %d,
+                        },
+                    },
+                    [2] = {
+                        .top_left = {
+                            .x = %d,
+                            .y = %d,
+                        },
+                        .btm_right = {
+                            .x = %d,
+                            .y = %d,
+                        },
+                    },
+                },
+                .weight_table = {
+                    %d, %d, %d
+                },
+                .edge_thresh = %d,
+                .l1_scan_points_num = %d,
+                .l2_scan_points_num = %d,
+                .max_pos = %d,
+                .min_pos = %d,
+                .definition_high_threshold_ratio = %0.4f,
+                .definition_low_threshold_ratio = %0.4f,
+                .luminance_high_threshold_ratio = %0.4f,
+                .luminance_low_threshold_ratio = %0.4f,
+                .max_change_time = %d
+            };
+            '''%(name, af_windows[0].top_left_x, af_windows[0].top_left_y,
+                 af_windows[0].btm_right_x, af_windows[0].btm_right_y,
+                 af_windows[1].top_left_x, af_windows[1].top_left_y,
+                 af_windows[1].btm_right_x, af_windows[1].btm_right_y,
+                 af_windows[2].top_left_x, af_windows[2].top_left_y,
+                 af_windows[2].btm_right_x, af_windows[2].btm_right_y,
+                 af_windows[0].weight, af_windows[1].weight, af_windows[2].weight,
+                 obj.edge_thresh, obj.l1_scan_points_num, obj.l2_scan_points_num,
+                 obj.max_pos, obj.min_pos,
+                 obj.definition_high_threshold_ratio, obj.definition_low_threshold_ratio,
+                 obj.luminance_high_threshold_ratio, obj.luminance_low_threshold_ratio,
+                 obj.max_change_time)
+        )
+
+        return af_code
+
+    def decode(self, obj):
+        self.text = self.decode_af(self.name, obj)
+
 class ipa_c(object):
     def __init__(self, name, version):
         self.name = name
@@ -920,7 +1032,8 @@ class ipa_c(object):
             'adn': ipa_unit_adn_c,
             'agc': ipa_unit_agc_c,
             'atc': ipa_unit_atc_c,
-            'ext': ipa_unit_ext_c
+            'ext': ipa_unit_ext_c,
+            'af':  ipa_unit_af_c
         }
 
         if type in ipa_unit_lut:
@@ -1121,4 +1234,3 @@ def _main():
 
 if __name__ == '__main__':
     _main()
-

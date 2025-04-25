@@ -113,21 +113,25 @@
         },
         "af":
         {
+            "model": 0,
             "windows":
             [
                 {
                     "left": 680,
-                    "top": 200,
+                    "top": 300,
                     "width": 390,
                     "height": 410
                 }
             ],
             "edge_thresh": 32,
-            "high_threshold_ratio": 1.4,
-            "low_threshold_ratio": 0.6,
+            "definition_high_threshold_ratio": 1.3,
+            "definition_low_threshold_ratio": 0.7,
+            "luminance_high_threshold_ratio": 1.1,
+            "luminance_low_threshold_ratio": 0.9,
             "l1_scan_points_num": 10,
             "l2_scan_points_num": 10,
-            "max_change_time": 3000000
+            "max_pos": 500,
+            "max_change_time": 2000000
         }
     }
 }

@@ -29,6 +29,7 @@ extern "C" {
 #define IPA_STATS_FLAGS_AE          (1 << 1)    /*!< ISP statistics has auto exposure */
 #define IPA_STATS_FLAGS_HIST        (1 << 2)    /*!< ISP statistics has histogram */
 #define IPA_STATS_FLAGS_SHARPEN     (1 << 3)    /*!< ISP statistics has sharpen */
+#define IPA_STATS_FLAGS_AF          (1 << 4)    /*!< ISP statistics has auto focus */
 
 /**
  * @brief IPA meta data flags.
@@ -50,6 +51,8 @@ extern "C" {
 #define IPA_METADATA_FLAGS_LSC      (1 << 14)   /*!< Meta data has LSC */
 #define IPA_METADATA_FLAGS_AETL     (1 << 15)   /*!< Meta data has sensor AE target level */
 #define IPA_METADATA_FLAGS_SR       (1 << 16)   /*!< Meta data has statistics region */
+#define IPA_METADATA_FLAGS_AF       (1 << 17)   /*!< Meta data has AF */
+#define IPA_METADATA_FLAGS_FP       (1 << 18)   /*!< Meta data has focus position */
 
 /**
  * @brief Auto gain control metering mode
@@ -87,8 +90,29 @@ typedef enum esp_ipa_agc_anti_flicker_mode {
     ESP_IPA_AGC_ANTI_FLICKER_NONE,
 } esp_ipa_agc_anti_flicker_mode_t;
 
+/**
+ * @brief AF data model type
+ */
+typedef enum esp_ipa_af_model {
+    ESP_IPA_AF_MODEL_0 = 0,                     /*!< AF data process model type 0 */
+} esp_ipa_af_model_t;
+
 struct esp_ipa;
 struct esp_ipa_pipeline;
+
+/**
+ * @brief Sensor focus information.
+ */
+typedef struct esp_ipa_sensor_focus {
+    uint32_t max_pos;                           /*!< Maximum focus position */
+    uint32_t min_pos;                           /*!< Minimum focus position */
+    uint32_t cur_pos;                           /*!< Current focus position */
+    uint32_t step_pos;                          /*!< Step focus position */
+
+    int64_t start_time;                         /*!< Absolute time of focus starts moving */
+    uint16_t period_in_us;                      /*!< Period in microseconds per code */
+    uint16_t codes_per_step;                    /*!< Codes number per step */
+} esp_ipa_sensor_focus_t;
 
 /**
  * @brief Camera sensor information.
@@ -111,6 +135,8 @@ typedef struct esp_ipa_sensor {
     uint32_t min_ae_target_level;           /*!< Minimum Sensor AE target level */
     uint32_t cur_ae_target_level;           /*!< Current Sensor AE target level */
     uint32_t step_ae_target_level;          /*!< Step Sensor AE target level */
+
+    esp_ipa_sensor_focus_t *focus_info;     /*!< Sensor focus information, if sensor does not support setting focus, set to NULL */
 } esp_ipa_sensor_t;
 
 /**
@@ -155,6 +181,14 @@ typedef struct esp_ipa_stats_sharpen {
 } esp_ipa_stats_sharpen_t;
 
 /**
+ * @brief ISP auto focus statistics.
+ */
+typedef struct esp_ipa_stats_af {
+    uint32_t definition;                    /*!< Definition value of auto focus statistics region */
+    uint32_t luminance;                     /*!< Luma value of auto focus statistics region */
+} esp_ipa_stats_af_t;
+
+/**
  * @brief ISP statistics for IPA.
  */
 typedef struct esp_ipa_stats {
@@ -177,6 +211,10 @@ typedef struct esp_ipa_stats {
     /*!< ISP sharpen statistics */
 
     esp_ipa_stats_sharpen_t sharpen_stats;
+
+    /*!< ISP auto focus statistics */
+
+    esp_ipa_stats_af_t af_stats[ISP_AF_WINDOW_NUM];
 } esp_ipa_stats_t;
 
 
@@ -247,6 +285,15 @@ typedef struct esp_ipa_awb_range {
 } esp_ipa_awb_range_t;
 
 /**
+ * @brief AF(auto focus) meta data.
+ */
+typedef struct esp_ipa_af {
+    isp_window_t windows[ISP_AF_WINDOW_NUM];    /*!< The sampling windows coordinate configuration of AF */
+
+    uint32_t edge_thresh;                       /*!< AF edge threshold, definition higher than this value will be counted as a valid pixel for calculating AF result */
+} esp_ipa_af_t;
+
+/**
  * @brief IPA meta data, these data are calculated by IPA and configured to ISP hardware
  */
 typedef struct esp_ipa_metadata {
@@ -280,6 +327,10 @@ typedef struct esp_ipa_metadata {
     uint32_t ae_target_level;               /*!< Sensor AE target level */
 
     esp_ipa_region_t stats_region;          /*!< Statistics region */
+
+    esp_ipa_af_t af;                        /*!< AF parameters */
+
+    uint32_t focus_pos;                     /*!< Focus position parameter */
 } esp_ipa_metadata_t;
 
 /**
@@ -612,6 +663,35 @@ typedef struct esp_ipa_ext_config {
 } esp_ipa_ext_config_t;
 
 /**
+ * @brief AF(auto focus) algorithm configuration.
+ */
+typedef struct esp_ipa_af_config {
+    esp_ipa_af_model_t model;                   /*!< AF data model type */
+
+    isp_window_t windows[ISP_AF_WINDOW_NUM];    /*!< The sampling windows coordinate configuration of AF */
+
+    uint8_t weight_table[ISP_AF_WINDOW_NUM];    /*!< The weight table of AF windows */
+
+    uint32_t edge_thresh;                       /*!< AF edge threshold, definition higher than this value will be counted as a valid pixel for calculating AF result */
+
+    uint32_t max_pos;                           /*!< Maximum focus position */
+    uint32_t min_pos;                           /*!< Minimum focus position */
+
+    uint8_t l1_scan_points_num;                 /*!< Number of 1st level scanning points */
+    uint8_t l2_scan_points_num;                 /*!< Number of 2nd level scanning points */
+
+    /* Model 0 parameters */
+
+    float definition_high_threshold_ratio;      /*!< High definition threshold ratio, when the current definition increase rate is higher than this value, the autofocus will restart */
+    float definition_low_threshold_ratio;       /*!< Low definition threshold ratio, when the current definition decrease rate is higher than this value, the autofocus will restart */
+    float luminance_high_threshold_ratio;       /*!< High luminance threshold ratio, when the current luminance increase rate is higher than this value, the autofocus will restart */
+    float luminance_low_threshold_ratio;        /*!< Low luminance threshold ratio, when the current luminance decrease rate is higher than this value, the autofocus will restart */
+    uint32_t max_change_time;                   /*!< Maximum definition change time in microseconds, when the definition change time is longer than this value, the autofocus will restart */
+
+    bool enable_log;                            /*!< Enable AF algorithm log */
+} esp_ipa_af_config_t;
+
+/**
  * @brief IPA initialize configuration
  */
 typedef struct esp_ipa_config {
@@ -627,6 +707,7 @@ typedef struct esp_ipa_config {
     const esp_ipa_acc_config_t *acc;            /*!< Auto color correct algorithm configuration */
     const esp_ipa_adn_config_t *adn;            /*!< Auto denoising algorithm configuration */
     const esp_ipa_aen_config_t *aen;            /*!< Auto enhancement algorithm configuration */
+    const esp_ipa_af_config_t  *af;             /*!< Auto focus algorithm configuration */
     const esp_ipa_atc_config_t *atc;            /*!< Auto sensor AE target level control algorithm configuration */
 
     const esp_ipa_ext_config_t *ext;            /*!< Image extended configuration */

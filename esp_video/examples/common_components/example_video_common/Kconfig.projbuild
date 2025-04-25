@@ -49,6 +49,26 @@ menu "Example Video Initialization Configuration"
             help
                 Increasing this value can reduce the initialization time of the camera sensor.
                 Please refer to the relevant instructions for the camera sensor to adjust the value.
+    
+        config EXAMPLE_ENABLE_MIPI_CSI_CAM_MOTOR
+            bool "Enable MIPI CSI Camera Motor"
+            default y
+            depends on ESP_VIDEO_ENABLE_CAMERA_MOTOR_CONTROLLER
+
+        if EXAMPLE_ENABLE_MIPI_CSI_CAM_MOTOR
+            config EXAMPLE_MIPI_CSI_CAM_MOTOR_SCCB_I2C_PORT
+                int "MIPI CSI Camera Motor SCCB I2C Port Number"
+                default 0
+                range 0 1
+
+            config EXAMPLE_MIPI_CSI_CAM_MOTOR_SCCB_I2C_FREQ
+                int "MIPI CSI Camera Motor SCCB I2C Frequency"
+                default 100000
+                range 100000 400000
+                help
+                    Increasing this value can reduce the initialization and configuration time of the camera motor.
+                    Please refer to the relevant instructions of the camera motor to adjust the value.
+        endif  
     endif
 
     if EXAMPLE_ENABLE_DVP_CAM_SENSOR
@@ -101,6 +121,33 @@ menu "Example Video Initialization Configuration"
                 config EXAMPLE_MIPI_CSI_XCLK_FREQ
                     int "MIPI-CSI XLCK Frequency"
                     default 24000000
+            endif
+
+            if EXAMPLE_ENABLE_MIPI_CSI_CAM_MOTOR
+                config EXAMPLE_MIPI_CSI_CAM_MOTOR_SCCB_I2C_SCL_PIN
+                    int "MIPI CSI Camera Motor SCCB I2C SCL Pin"
+                    default 8
+                    range -1 56
+
+                config EXAMPLE_MIPI_CSI_CAM_MOTOR_SCCB_I2C_SDA_PIN
+                    int "MIPI CSI Camera Motor SCCB I2C SDA Pin"
+                    default 7
+                    range -1 56
+
+                config EXAMPLE_MIPI_CSI_CAM_MOTOR_RESET_PIN
+                    int "MIPI CSI Camera Motor Reset Pin"
+                    default -1
+                    range -1 56
+
+                config EXAMPLE_MIPI_CSI_CAM_MOTOR_PWDN_PIN
+                    int "MIPI CSI Camera Motor Power Down Pin"
+                    default -1
+                    range -1 56
+
+                config EXAMPLE_MIPI_CSI_CAM_MOTOR_SIGNAL_PIN
+                    int "MIPI CSI Camera Motor Power Down Pin"
+                    default -1
+                    range -1 56
             endif
         endif
 

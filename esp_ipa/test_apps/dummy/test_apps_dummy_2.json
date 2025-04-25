@@ -582,6 +582,28 @@
                     "weight_offset": 25
                 }
             ]
+        },
+        "af":
+        {
+            "windows":
+            [
+                {
+                    "left": 50,
+                    "top": 100,
+                    "width": 100,
+                    "height": 100,
+                    "weight": 1
+                }
+            ],
+            "edge_thresh": 12,
+            "definition_high_threshold_ratio": 1.6,
+            "definition_low_threshold_ratio": 0.6,
+            "luminance_high_threshold_ratio": 1.6,
+            "luminance_low_threshold_ratio": 0.6,
+            "l1_scan_points_num": 11,
+            "l2_scan_points_num": 12,
+            "max_pos": 500,
+            "max_change_time": 500
         }
     }
 }
