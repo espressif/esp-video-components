@@ -1,5 +1,9 @@
 # Espressif Camera Sensors Component
 
+[![alt text][doc-latest]](https://docs.espressif.com/projects/esp-video-components/en/latest/)
+
+[doc-latest]: https://img.shields.io/badge/docs-latest-blue
+
 This component provides drivers for camera sensors that can be used on the ESP32 series chips.  
 
 It is highly recommended that users use it in the [esp-video](https://github.com/espressif/esp-video-components/tree/master/esp_video) component.

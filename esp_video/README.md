@@ -1,5 +1,9 @@
 # Espressif Video Component
 
+[![alt text][doc-latest]](https://docs.espressif.com/projects/esp-video-components/en/latest/)
+
+[doc-latest]: https://img.shields.io/badge/docs-latest-blue
+
 Espressif video component provides a solution to call POSIX API plus Linux V4L2 commands to capture data streams from multi camera sensors, and transform stream data pixel format according to Linux V4L2 M2M codec device.
 
 [![Component Registry](https://components.espressif.com/components/espressif/esp_video/badge.svg)](https://components.espressif.com/components/espressif/esp_video)

@@ -1,5 +1,9 @@
 # Espressif Image Process Algorithm for ISP
 
+[![alt text][doc-latest]](https://docs.espressif.com/projects/esp-video-components/en/latest/)
+
+[doc-latest]: https://img.shields.io/badge/docs-latest-blue
+
 Espressif image process algorithm component provides a suit of image process algorithms.[![Component Registry](https://components.espressif.com/components/espressif/esp_ipa/badge.svg)](https://components.espressif.com/components/espressif/esp_ipa)
 
 ## 1. Supported Algorithms

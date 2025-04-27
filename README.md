@@ -1,5 +1,9 @@
 # esp-video-components
 
+[![alt text][doc-latest]](https://docs.espressif.com/projects/esp-video-components/en/latest/)
+
+[doc-latest]: https://img.shields.io/badge/docs-latest-blue
+
 This is the repository for a some video related components, which aims to be uploaded to [IDF Component Registry](https://components.espressif.com/).
 
 ## Component list in this project

@@ -1,7 +1,9 @@
 stages:
   - pre_check
   - build
-  #- test_deploy
+  - deploy
+  - deploy_docs
+  - post_deploy
 
 variables:
 # System environment
@@ -53,5 +55,7 @@ include:
   - '.gitlab/ci/rules.yml'
   - '.gitlab/ci/pre_check.yml'
   - '.gitlab/ci/build.yml'
+  - '.gitlab/ci/build_docs.yml'
+  - '.gitlab/ci/deploy.yml'
   #- '.gitlab/ci/test_deploy.yml'
 

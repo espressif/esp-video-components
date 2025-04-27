@@ -10,11 +10,23 @@
 .if-idf-latest: &if-idf-latest
   if: '$CI_BUILD_IDF_LATEST == "enable"'
 
+.if-protected-or-web-trigger: &if-protected-or-web-trigger
+  if: '($CI_COMMIT_REF_NAME == "master" || $CI_COMMIT_BRANCH =~ /^release\/v/ || $CI_COMMIT_TAG =~ /^v\d+\.\d+\.\d+(\.\d+)?($|-)/ || $CI_PIPELINE_SOURCE == "web")'
+
 ##################
 # Auto Generated #
 ##################
 .if_label-deploy: &if-label-deploy
   if: '$CI_MERGE_REQUEST_LABELS =~ /^(?:[^,\n\r]+,)*deploy(?:,[^,\n\r]+)*$/i'
+
+############
+# Patterns #
+############
+.patterns-docs: &patterns-docs
+  - "docs/**/*"
+  - ".gitlab/ci/build_docs.yml"
+  - ".gitlab/ci/deploy.yml"
+  - ".gitlab/ci/post_deploy.yml"
 
 # rules for examples
 .rules:build:examples:
@@ -28,10 +40,16 @@
     - <<: *if-dev-push
 
 # For others
-.rules:build:docs:
+.rules:build:build_doc:
   rules:
     - <<: *if-protected
     - <<: *if-dev-push
+      changes: *patterns-docs
+      
+.rules:deploy:docs_preview:
+  rules:
+    - <<: *if-dev-push
+      changes: *patterns-docs
 
 .rules:deploy:docs_production:
   rules:
