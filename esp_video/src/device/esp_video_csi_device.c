@@ -472,6 +472,12 @@ static esp_err_t csi_video_set_format(struct esp_video *video, const struct v4l2
     const struct v4l2_pix_format *pix = &format->fmt.pix;
     struct csi_video *csi_video = VIDEO_PRIV_DATA(struct csi_video *, video);
 
+    if ((CAPTURE_VIDEO_GET_FORMAT_WIDTH(video) != pix->width) ||
+            (CAPTURE_VIDEO_GET_FORMAT_HEIGHT(video) != pix->height)) {
+        ESP_LOGE(TAG, "format width or height is invalid");
+        return ESP_ERR_INVALID_ARG;
+    }
+
     ESP_RETURN_ON_ERROR(csi_get_output_frame_type_from_v4l2(pix->pixelformat, &out_color, &out_bpp),
                         TAG, "CSI does not support format=%" PRIx32, pix->pixelformat);
 

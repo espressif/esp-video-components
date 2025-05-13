@@ -2,7 +2,7 @@ menu "Example Configuration"
 
     choice TEST_APPS_CAM_SENSOR_INTERFACE
         prompt "Camera sensor interface"
-        default TEST_APPS_DISABLE_ALL_SENSORS
+        default TEST_APPS_ENABLE_MIPI_CSI_CAM_SENSOR
         help
             Select camera sensor interface based on development board.
 
@@ -26,12 +26,12 @@ menu "Example Configuration"
 
         config TEST_APPS_MIPI_CSI_SCCB_I2C_SCL_PIN
             int "MIPI CSI SCCB I2C SCL Pin"
-            default 34
+            default 8
             range -1 56
 
         config TEST_APPS_MIPI_CSI_SCCB_I2C_SDA_PIN
             int "MIPI CSI SCCB I2C SDA Pin"
-            default 31
+            default 7
             range -1 56
 
         config TEST_APPS_MIPI_CSI_SCCB_I2C_FREQ
