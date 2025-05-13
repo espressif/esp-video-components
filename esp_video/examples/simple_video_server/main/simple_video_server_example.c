@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2024 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2024-2025 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: ESPRESSIF MIT
  */
@@ -69,6 +69,7 @@ static const char *STREAM_CONTENT_TYPE = "multipart/x-mixed-replace;boundary=" P
 static const char *STREAM_BOUNDARY = "\r\n--" PART_BOUNDARY "\r\n";
 static const char *STREAM_PART = "Content-Type: image/jpeg\r\nContent-Length: %u\r\nX-Timestamp: %d.%06d\r\n\r\n";
 const int s_queue_buf_type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
+static uint16_t server_port_offset;
 static const char *TAG = "example";
 
 #if CONFIG_EXAMPLE_ENABLE_MIPI_CSI_CAM_SENSOR
@@ -510,11 +511,13 @@ errout:
 static esp_err_t http_server_init(int index, web_cam_t *web_cam)
 {
     esp_err_t ret;
-    httpd_handle_t video_web_httpd;
+    httpd_handle_t camera_httpd;
+    httpd_handle_t stream_httpd;
     httpd_config_t config = HTTPD_DEFAULT_CONFIG();
-    config.stack_size = 1024 * 8;
-    config.server_port += index;
-    config.ctrl_port += index;
+    server_port_offset += index;
+    config.stack_size = 1024 * 6;
+    config.server_port += server_port_offset;
+    config.ctrl_port += server_port_offset;
 
     httpd_uri_t pic_get_uri = {
         .uri = "/pic",
@@ -535,17 +538,23 @@ static esp_err_t http_server_init(int index, web_cam_t *web_cam)
         .user_ctx = (void *)web_cam
     };
 
-    ret = httpd_start(&video_web_httpd, &config);
+    ret = httpd_start(&camera_httpd, &config);
     if (ret != ESP_OK) {
         ESP_LOGE(TAG, "Failed to start HTTP server");
         return ret;
+    } else {
+        ESP_LOGI(TAG, "Starting camera HTTP server on port: '%d'", config.server_port);
+        ESP_ERROR_CHECK(httpd_register_uri_handler(camera_httpd, &pic_get_uri));
+        ESP_ERROR_CHECK(httpd_register_uri_handler(camera_httpd, &record_file_get_uri));
     }
 
-    ESP_ERROR_CHECK(httpd_register_uri_handler(video_web_httpd, &pic_get_uri));
-    ESP_ERROR_CHECK(httpd_register_uri_handler(video_web_httpd, &record_file_get_uri));
-    ESP_ERROR_CHECK((httpd_register_uri_handler(video_web_httpd, &stream_get_uri)));
-
-    ESP_LOGI(TAG, "Starting stream HTTP server on port: '%d'", config.server_port);
+    server_port_offset++;
+    config.server_port += 1;
+    config.ctrl_port += 1;
+    ESP_LOGI(TAG, "Starting stream server on port: '%d'", config.server_port);
+    if (httpd_start(&stream_httpd, &config) == ESP_OK) {
+        httpd_register_uri_handler(stream_httpd, &stream_get_uri);
+    }
 
     return ESP_OK;
 }
