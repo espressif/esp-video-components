@@ -6,6 +6,8 @@ import typing as t
 from pathlib import Path
 from idf_build_apps.constants import SUPPORTED_TARGETS
 
+DEFAULT_IGNORE_WARNING_FILEPATH = [os.path.join('tools', 'ci', 'ignore_build_warnings.txt')]
+
 def get_mr_files(modified_files: str) -> str:
     if modified_files is None:
         return ''
@@ -48,7 +50,7 @@ if __name__ == '__main__':
         '--size-file',
         'size.json',
         '--recursive',
-        #'--check-warnings',
+        '--check-warnings',
         # Build args
         '--collect-size-info',
         'size_info.txt',
@@ -64,6 +66,8 @@ if __name__ == '__main__':
     args += ['--modified-files'] + modified_files
 
     args += ['--default-build-targets'] + SUPPORTED_TARGETS + preview_targets
+
+    args += ['--ignore-warning-file'] + DEFAULT_IGNORE_WARNING_FILEPATH
 
     manifests = [str(p) for p in Path(root).glob('**/.build-test-rules.yml')]
     if manifests:
