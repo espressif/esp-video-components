@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2024 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2024-2025 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -260,6 +260,28 @@ static const esp_cam_sensor_isp_info_t sc035hgs_isp_info[] = {
             .exp_def = 0x18f,
             .bayer_type = ESP_CAM_SENSOR_BAYER_BGGR,
         },
+    },
+    {
+        .isp_v1_info = {
+            .version = SENSOR_ISP_INFO_VERSION_DEFAULT,
+            .pclk = 72000000,
+            .vts = 0x470,
+            .hts = 0x4f3,
+            .gain_def = 0,
+            .exp_def = 0x18f,
+            .bayer_type = ESP_CAM_SENSOR_BAYER_BGGR,
+        },
+    },
+    {
+        .isp_v1_info = {
+            .version = SENSOR_ISP_INFO_VERSION_DEFAULT,
+            .pclk = 72000000,
+            .vts = 0x470,
+            .hts = 0x27a,
+            .gain_def = 0,
+            .exp_def = 0x18f,
+            .bayer_type = ESP_CAM_SENSOR_BAYER_BGGR,
+        },
     }
 };
 
@@ -300,6 +322,42 @@ static const esp_cam_sensor_format_t sc035hgs_format_info[] = {
         },
         .reserved = NULL,
     },
+    {
+        .name = "MIPI_2lane_24Minput_raw8_640x480_50fps",
+        .format = ESP_CAM_SENSOR_PIXFORMAT_RAW8,
+        .port = ESP_CAM_SENSOR_MIPI_CSI,
+        .xclk = 24000000,
+        .width = 640,
+        .height = 480,
+        .regs = mipi_24Minput_2lane_640x480_raw8_linear_50fps,
+        .regs_size = ARRAY_SIZE(mipi_24Minput_2lane_640x480_raw8_linear_50fps),
+        .fps = 50,
+        .isp_info = &sc035hgs_isp_info[2],
+        .mipi_info = {
+            .mipi_clk = 288000000,
+            .lane_num = 2,
+            .line_sync_en = false,
+        },
+        .reserved = NULL,
+    },
+    {
+        .name = "MIPI_2lane_24Minput_raw8_640x480_100fps",
+        .format = ESP_CAM_SENSOR_PIXFORMAT_RAW8,
+        .port = ESP_CAM_SENSOR_MIPI_CSI,
+        .xclk = 24000000,
+        .width = 640,
+        .height = 480,
+        .regs = mipi_24Minput_2lane_640x480_raw8_linear_100fps,
+        .regs_size = ARRAY_SIZE(mipi_24Minput_2lane_640x480_raw8_linear_100fps),
+        .fps = 100,
+        .isp_info = &sc035hgs_isp_info[3],
+        .mipi_info = {
+            .mipi_clk = 288000000,
+            .lane_num = 2,
+            .line_sync_en = false,
+        },
+        .reserved = NULL,
+    }
 };
 
 static esp_err_t sc035hgs_read(esp_sccb_io_handle_t sccb_handle, uint16_t reg, uint8_t *read_buf)

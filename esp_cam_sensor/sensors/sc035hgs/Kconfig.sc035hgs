@@ -33,12 +33,18 @@ if CAMERA_SC035HGS
             bool "RAW10 640x480 48fps, MIPI 1lane 20M input"
         config CAMERA_SC035HGS_MIPI_RAW10_640X480_120FPS
             bool "RAW10 640x480 120fps, MIPI 1lane 24M input"
+        config CAMERA_SC035HGS_MIPI_RAW8_640X480_50FPS
+            bool "RAW8 640x480 50fps, MIPI 2lane 24M input"
+        config CAMERA_SC035HGS_MIPI_RAW8_640X480_100FPS
+            bool "RAW8 640x480 100fps, MIPI 2lane 24M input"
     endchoice # CAMERA_SC035HGS_MIPI_DEFAULT_FMT
 
     config CAMERA_SC035HGS_MIPI_IF_FORMAT_INDEX_DAFAULT
         int
         default 0 if CAMERA_SC035HGS_MIPI_RAW10_640X480_48FPS
         default 1 if CAMERA_SC035HGS_MIPI_RAW10_640X480_120FPS
+        default 2 if CAMERA_SC035HGS_MIPI_RAW8_640X480_50FPS
+        default 3 if CAMERA_SC035HGS_MIPI_RAW8_640X480_100FPS
         help
             Set the configuration loaded by default for the MIPI interface.
             More information can be obtained by calling the query_support_formats().
