@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2024 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2024-2025 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: ESPRESSIF MIT
  */
@@ -63,6 +63,9 @@ static const struct esp_video_format_desc_map esp_video_format_desc_maps[] = {
     },
     {
         V4L2_PIX_FMT_YUV422P, "YVU 4:2:2 planar"
+    },
+    {
+        V4L2_PIX_FMT_YUYV,  "YUV 4:2:2 packed",
     },
     {
         V4L2_PIX_FMT_JPEG,   "JPEG"

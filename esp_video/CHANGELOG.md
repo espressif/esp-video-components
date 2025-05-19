@@ -16,6 +16,7 @@
 - Fix video buffer sequence error
 - Fix esp_video_deinit error when using a sensor that has an internal ISP
 - Enhance the clarity and readability of prompt and help descriptions in Kconfig file
+- Add support for USB UVC streams
 
 ### Enhancements
 

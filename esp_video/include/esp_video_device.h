@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2024 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2024-2025 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: ESPRESSIF MIT
  */
@@ -24,6 +24,9 @@ extern "C" {
 
 #define ESP_VIDEO_SPI_DEVICE_ID             3
 #define ESP_VIDEO_SPI_DEVICE_NAME           "/dev/video3"
+
+#define ESP_VIDEO_USB_UVC_DEVICE_ID         40             // USB UVC devices 40-49
+#define ESP_VIDEO_USB_UVC_DEVICE_NAME       "/dev/video40"
 
 /**
  * @brief Codec video device

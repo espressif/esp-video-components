@@ -15,6 +15,7 @@
 #include "esp_timer.h"
 #include "esp_check.h"
 #include "example_video_common.h"
+#include "usb/usb_host.h"
 #if CONFIG_EXAMPLE_VIDEO_BUFFER_TYPE_USER
 #include "esp_heap_caps.h"
 
@@ -25,7 +26,7 @@
 #endif
 
 #define BUFFER_COUNT 2
-#define CAPTURE_SECONDS 3
+#define CAPTURE_SECONDS 10
 
 static const char *TAG = "example";
 
@@ -50,7 +51,8 @@ static esp_err_t camera_capture_stream(void)
 #endif
     const int type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
 
-    fd = open(EXAMPLE_CAM_DEV_PATH, O_RDONLY);
+    vTaskDelay(3000 / portTICK_PERIOD_MS); // Give user some time to plug in the camera
+    fd = open(ESP_VIDEO_USB_UVC_DEVICE_NAME, O_RDONLY);
     if (fd < 0) {
         ESP_LOGE(TAG, "failed to open device");
         return ESP_FAIL;
@@ -84,6 +86,9 @@ static esp_err_t camera_capture_stream(void)
     if (capability.capabilities & V4L2_CAP_META_OUTPUT) {
         ESP_LOGI(TAG, "\tMETA_OUTPUT");
     }
+    if (capability.capabilities & V4L2_CAP_TIMEPERFRAME) {
+        ESP_LOGI(TAG, "\tTIMEPERFRAME");
+    }
     if (capability.capabilities & V4L2_CAP_DEVICE_CAPS) {
         ESP_LOGI(TAG, "device capabilities:");
         if (capability.device_caps & V4L2_CAP_VIDEO_CAPTURE) {
@@ -100,6 +105,9 @@ static esp_err_t camera_capture_stream(void)
         }
         if (capability.device_caps & V4L2_CAP_META_OUTPUT) {
             ESP_LOGI(TAG, "\tMETA_OUTPUT");
+        }
+        if (capability.device_caps & V4L2_CAP_TIMEPERFRAME) {
+            ESP_LOGI(TAG, "\tTIMEPERFRAME");
         }
     }
 
@@ -145,8 +153,8 @@ static esp_err_t camera_capture_stream(void)
 
         struct v4l2_format format = {
             .type = type,
-            .fmt.pix.width = init_format.fmt.pix.width,
-            .fmt.pix.height = init_format.fmt.pix.height,
+            .fmt.pix.width = 160,
+            .fmt.pix.height = 120,
             .fmt.pix.pixelformat = fmtdesc.pixelformat,
         };
 
@@ -278,18 +286,49 @@ exit_0:
     return ret;
 }
 
+esp_err_t esp_video_install_usb_uvc_driver(size_t task_stack, unsigned task_priority, int task_affinity);
+static void usb_lib_task(void *arg)
+{
+    // Install USB Host driver. Should only be called once in entire application
+    ESP_LOGI(TAG, "Installing USB Host");
+    const usb_host_config_t host_config = {
+        .skip_phy_setup = false,
+        .intr_flags = ESP_INTR_FLAG_LEVEL1,
+    };
+    ESP_ERROR_CHECK(usb_host_install(&host_config));
+    ESP_ERROR_CHECK(esp_video_install_usb_uvc_driver(4096, 10, 0));
+
+    ESP_LOGI(TAG, "USB Host and UVC driver installed");
+    while (1) {
+        // Start handling system events
+        uint32_t event_flags;
+        usb_host_lib_handle_events(portMAX_DELAY, &event_flags);
+        if (event_flags & USB_HOST_LIB_EVENT_FLAGS_NO_CLIENTS) {
+            usb_host_device_free_all();
+        }
+        if (event_flags & USB_HOST_LIB_EVENT_FLAGS_ALL_FREE) {
+            ESP_LOGI(TAG, "USB: All devices freed");
+            // Continue handling USB events to allow device reconnection
+        }
+    }
+}
+
 void app_main(void)
 {
+    // Create a task that will handle USB library events
+    BaseType_t task_created = xTaskCreatePinnedToCore(usb_lib_task, "usb_lib", 4096, NULL, 11, NULL, tskNO_AFFINITY);
+    assert(task_created == pdTRUE);
+
     esp_err_t ret = ESP_OK;
 
-    ret = example_video_init();
-    ESP_GOTO_ON_ERROR(ret, clean1, TAG, "Camera init failed");
+    // ret = example_video_init();
+    // ESP_GOTO_ON_ERROR(ret, clean1, TAG, "Camera init failed");
 
     ret = camera_capture_stream();
     ESP_GOTO_ON_ERROR(ret, clean0, TAG, "Camera capture stream failed");
 
 clean0:
-    ESP_ERROR_CHECK(example_video_deinit());
-clean1:
+//     ESP_ERROR_CHECK(example_video_deinit());
+// clean1:
     return;
 }
