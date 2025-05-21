@@ -3,6 +3,9 @@
 - Add statistics region configuration to ISP pipeline controller
 - Add byte swap functionality for DVP video device to swap RGB565 pixel byte sequence
 - Add example common component to simplify the esp_video board-level configuration and initialization
+- Fix the esp_video_deinit function issue when esp_video initialize with application I2C handle
+- Fix the esp_video close issue when one video device is open and closed multiple times
+- Fix the issue that the V4L2 command VIDIOC_ENUM_FMT can't get the correct value by input index when the sensor output format is RAW10
 
 ## 0.9.1
 

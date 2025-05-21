@@ -32,16 +32,21 @@
 
 void setUp(void);
 
-static bool s_ut_inited;
 static size_t before_free_8bit;
 static size_t before_free_32bit;
 
-static void ut_init(void)
+TEST_CASE("V4L2 init/deinit", "[video]")
 {
-    if (!s_ut_inited) {
+    int count = 20;
+
+    for (int i = 0; i < count; i++) {
         TEST_ESP_OK(example_video_init());
-        setUp();
-        s_ut_inited = true;
+
+        int fd = open(TEST_APP_VIDEO_DEVICE, O_RDWR);
+        TEST_ASSERT_GREATER_OR_EQUAL(0, fd);
+        close(fd);
+
+        TEST_ESP_OK(example_video_deinit());
     }
 }
 
@@ -54,7 +59,9 @@ TEST_CASE("V4L2 Command", "[video]")
     struct v4l2_format format;
     struct v4l2_capability cap;
 
-    ut_init();
+    setUp();
+
+    TEST_ESP_OK(example_video_init());
 
     fd = open(TEST_APP_VIDEO_DEVICE, O_RDWR);
     TEST_ASSERT_GREATER_OR_EQUAL(0, fd);
@@ -97,6 +104,8 @@ TEST_CASE("V4L2 Command", "[video]")
     TEST_ASSERT_EQUAL_INT(-1, ret);
 
     close(fd);
+
+    TEST_ESP_OK(example_video_deinit());
 }
 
 TEST_CASE("V4L2 M2M device", "[video]")
@@ -113,7 +122,9 @@ TEST_CASE("V4L2 M2M device", "[video]")
     uint8_t *out_buf[VIDEO_BUFFER_NUM];
     uint8_t *cap_buf[VIDEO_BUFFER_NUM];
 
-    ut_init();
+    setUp();
+
+    TEST_ESP_OK(example_video_init());
 
     fd = open(ESP_VIDEO_JPEG_DEVICE_NAME, O_RDWR);
     TEST_ASSERT_GREATER_OR_EQUAL(0, fd);
@@ -232,6 +243,8 @@ TEST_CASE("V4L2 M2M device", "[video]")
 
     ret = close(fd);
     TEST_ESP_OK(ret);
+
+    TEST_ESP_OK(example_video_deinit());
 }
 
 TEST_CASE("V4L2 set/get selection", "[video]")
@@ -240,7 +253,9 @@ TEST_CASE("V4L2 set/get selection", "[video]")
     struct v4l2_selection in_selection;
     struct v4l2_selection out_selection;
 
-    ut_init();
+    setUp();
+
+    TEST_ESP_OK(example_video_init());
 
     fd = open(ESP_VIDEO_ISP1_DEVICE_NAME, O_RDWR);
     TEST_ASSERT_GREATER_OR_EQUAL(0, fd);
@@ -272,6 +287,8 @@ TEST_CASE("V4L2 set/get selection", "[video]")
     TEST_ESP_OK(memcmp(&out_selection, &in_selection, sizeof(out_selection)));
 
     TEST_ESP_OK(close(fd));
+
+    TEST_ESP_OK(example_video_deinit());
 }
 
 static void check_leak(size_t before_free, size_t after_free, const char *type)
