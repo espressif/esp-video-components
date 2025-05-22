@@ -17,18 +17,13 @@ This example demonstrates the following:
 
 ### Configure the Project
 
-Configure camera hardware data interface based on development kit:
+Please refer to the example video initialization configuration [document](../common_components/example_video_common/README.md) for more details about the board-level configuration, including the camera sensor interface, GPIO pins, clock frequency, and so on.
+
+Select and configure camera sensor based on development kit:
 
 #### MIPI-CSI Development Kit
 
 ```
-Example Configuration  --->
-    Camera sensor interface (MIPI-CSI)  --->
-        (X) MIPI-CSI
-    (0) MIPI CSI SCCB I2C Port Number
-    (8) MIPI CSI SCCB I2C SCL Pin
-    (7) MIPI CSI SCCB I2C SDA Pin
-
 Component config  --->
     Espressif Camera Sensors Configurations  --->
         [*] SC2336  ---->
@@ -43,18 +38,10 @@ Component config  --->
             (1280) Cam1 Frame Width
             (720) Cam1 Frame Height
 ```
-Note: For custom development boards, please update the I2C pins configuration in the `Example Configuration` menu.
 
 #### DVP Development Kit
 
 ```
-Example Configuration  --->
-    Camera sensor interface (DVP)  --->
-        (X) DVP
-    (1) DVP SCCB I2C Port Number (NEW)
-    (33) DVP SCCB I2C SCL Pin (NEW)
-    (32) DVP SCCB I2C SDA Pin (NEW)
-
 Component config  --->
     Espressif Camera Sensors Configurations  --->
         [*] OV2640  --->

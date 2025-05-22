@@ -22,78 +22,15 @@
 #include "unity_test_utils_memory.h"
 #include "unity.h"
 
-#include "linux/videodev2.h"
-#include "esp_video_init.h"
-#include "esp_video_device.h"
+#include "example_video_common.h"
 
 #define TEST_MEMORY_LEAK_THRESHOLD (-300)
 
 #define VIDEO_BUFFER_NUM 2
 
-#if CONFIG_TEST_APPS_ENABLE_MIPI_CSI_CAM_SENSOR
-#define TEST_APP_VIDEO_DEVICE ESP_VIDEO_MIPI_CSI_DEVICE_NAME
-#elif CONFIG_TEST_APPS_ENABLE_DVP_CAM_SENSOR
-#define TEST_APP_VIDEO_DEVICE ESP_VIDEO_DVP_DEVICE_NAME
-#endif
+#define TEST_APP_VIDEO_DEVICE EXAMPLE_CAM_DEV_PATH
 
 void setUp(void);
-
-#if CONFIG_TEST_APPS_ENABLE_MIPI_CSI_CAM_SENSOR
-static const esp_video_init_csi_config_t csi_config[] = {
-    {
-        .sccb_config = {
-            .init_sccb = true,
-            .i2c_config = {
-                .port      = CONFIG_TEST_APPS_MIPI_CSI_SCCB_I2C_PORT,
-                .scl_pin   = CONFIG_TEST_APPS_MIPI_CSI_SCCB_I2C_SCL_PIN,
-                .sda_pin   = CONFIG_TEST_APPS_MIPI_CSI_SCCB_I2C_SDA_PIN,
-            },
-            .freq = CONFIG_TEST_APPS_MIPI_CSI_SCCB_I2C_FREQ,
-        },
-        .reset_pin = CONFIG_TEST_APPS_MIPI_CSI_CAM_SENSOR_RESET_PIN,
-        .pwdn_pin  = CONFIG_TEST_APPS_MIPI_CSI_CAM_SENSOR_PWDN_PIN,
-    },
-};
-#endif
-
-#if CONFIG_TEST_APPS_ENABLE_DVP_CAM_SENSOR
-static const esp_video_init_dvp_config_t dvp_config[] = {
-    {
-        .sccb_config = {
-            .init_sccb = true,
-            .i2c_config = {
-                .port      = CONFIG_TEST_APPS_DVP_SCCB_I2C_PORT,
-                .scl_pin   = CONFIG_TEST_APPS_DVP_SCCB_I2C_SCL_PIN,
-                .sda_pin   = CONFIG_TEST_APPS_DVP_SCCB_I2C_SDA_PIN,
-            },
-            .freq      = CONFIG_TEST_APPS_DVP_SCCB_I2C_FREQ,
-        },
-        .reset_pin = CONFIG_TEST_APPS_DVP_CAM_SENSOR_RESET_PIN,
-        .pwdn_pin  = CONFIG_TEST_APPS_DVP_CAM_SENSOR_PWDN_PIN,
-        .dvp_pin = {
-            .data_width = CAM_CTLR_DATA_WIDTH_8,
-            .data_io = {
-                CONFIG_TEST_APPS_DVP_D0_PIN, CONFIG_TEST_APPS_DVP_D1_PIN, CONFIG_TEST_APPS_DVP_D2_PIN, CONFIG_TEST_APPS_DVP_D3_PIN,
-                CONFIG_TEST_APPS_DVP_D4_PIN, CONFIG_TEST_APPS_DVP_D5_PIN, CONFIG_TEST_APPS_DVP_D6_PIN, CONFIG_TEST_APPS_DVP_D7_PIN,
-            },
-            .vsync_io = CONFIG_TEST_APPS_DVP_VSYNC_PIN,
-            .de_io = CONFIG_TEST_APPS_DVP_DE_PIN,
-            .pclk_io = CONFIG_TEST_APPS_DVP_PCLK_PIN,
-            .xclk_io = CONFIG_TEST_APPS_DVP_XCLK_PIN,
-        },
-        .xclk_freq = CONFIG_TEST_APPS_DVP_XCLK_FREQ,
-    },
-};
-#endif
-
-static const esp_video_init_config_t cam_config = {
-#if CONFIG_TEST_APPS_ENABLE_MIPI_CSI_CAM_SENSOR
-    .csi      = csi_config,
-#endif
-#if CONFIG_TEST_APPS_ENABLE_DVP_CAM_SENSOR
-    .dvp      = dvp_config,
-#endif
-};
 
 static bool s_ut_inited;
 static size_t before_free_8bit;
@@ -102,13 +39,12 @@ static size_t before_free_32bit;
 static void ut_init(void)
 {
     if (!s_ut_inited) {
-        TEST_ESP_OK(esp_video_init(&cam_config));
+        TEST_ESP_OK(example_video_init());
         setUp();
         s_ut_inited = true;
     }
 }
 
-#if !CONFIG_TEST_APPS_DISABLE_ALL_SENSORS
 TEST_CASE("V4L2 Command", "[video]")
 {
     int fd;
@@ -162,7 +98,6 @@ TEST_CASE("V4L2 Command", "[video]")
 
     close(fd);
 }
-#endif
 
 TEST_CASE("V4L2 M2M device", "[video]")
 {

@@ -2,6 +2,7 @@
 
 - Add statistics region configuration to ISP pipeline controller
 - Add byte swap functionality for DVP video device to swap RGB565 pixel byte sequence
+- Add example common component to simplify the esp_video board-level configuration and initialization
 
 ## 0.9.1
 

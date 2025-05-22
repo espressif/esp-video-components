@@ -19,17 +19,9 @@
 #include "sd_test_io.h"
 #include "esp_err.h"
 #include "esp_log.h"
-#include "linux/videodev2.h"
-#include "esp_video_init.h"
-#include "esp_video_device.h"
+#include "example_video_common.h"
 #if SOC_SDMMC_IO_POWER_EXTERNAL
 #include "sd_pwr_ctrl_by_on_chip_ldo.h"
-#endif
-
-#if CONFIG_EXAMPLE_CAM_SENSOR_MIPI_CSI
-#define CAM_DEV_PATH        ESP_VIDEO_MIPI_CSI_DEVICE_NAME
-#elif CONFIG_EXAMPLE_CAM_SENSOR_DVP
-#define CAM_DEV_PATH        ESP_VIDEO_DVP_DEVICE_NAME
 #endif
 
 #if CONFIG_EXAMPLE_FORMAT_MJPEG
@@ -86,63 +78,6 @@ typedef struct image_sd_card {
 } image_sd_card_t;
 
 static const char *TAG = "example";
-
-#if CONFIG_EXAMPLE_CAM_SENSOR_MIPI_CSI
-static const esp_video_init_csi_config_t csi_config[] = {
-    {
-        .sccb_config = {
-            .init_sccb = true,
-            .i2c_config = {
-                .port      = CONFIG_EXAMPLE_MIPI_CSI_SCCB_I2C_PORT,
-                .scl_pin   = CONFIG_EXAMPLE_MIPI_CSI_SCCB_I2C_SCL_PIN,
-                .sda_pin   = CONFIG_EXAMPLE_MIPI_CSI_SCCB_I2C_SDA_PIN,
-            },
-            .freq = CONFIG_EXAMPLE_MIPI_CSI_SCCB_I2C_FREQ,
-        },
-        .reset_pin = CONFIG_EXAMPLE_MIPI_CSI_CAM_SENSOR_RESET_PIN,
-        .pwdn_pin  = CONFIG_EXAMPLE_MIPI_CSI_CAM_SENSOR_PWDN_PIN,
-    },
-};
-#endif
-
-#if CONFIG_EXAMPLE_CAM_SENSOR_DVP
-static const esp_video_init_dvp_config_t dvp_config[] = {
-    {
-        .sccb_config = {
-            .init_sccb = true,
-            .i2c_config = {
-                .port      = CONFIG_EXAMPLE_DVP_SCCB_I2C_PORT,
-                .scl_pin   = CONFIG_EXAMPLE_DVP_SCCB_I2C_SCL_PIN,
-                .sda_pin   = CONFIG_EXAMPLE_DVP_SCCB_I2C_SDA_PIN,
-            },
-            .freq      = CONFIG_EXAMPLE_DVP_SCCB_I2C_FREQ,
-        },
-        .reset_pin = CONFIG_EXAMPLE_DVP_CAM_SENSOR_RESET_PIN,
-        .pwdn_pin  = CONFIG_EXAMPLE_DVP_CAM_SENSOR_PWDN_PIN,
-        .dvp_pin = {
-            .data_width = CAM_CTLR_DATA_WIDTH_8,
-            .data_io = {
-                CONFIG_EXAMPLE_DVP_D0_PIN, CONFIG_EXAMPLE_DVP_D1_PIN, CONFIG_EXAMPLE_DVP_D2_PIN, CONFIG_EXAMPLE_DVP_D3_PIN,
-                CONFIG_EXAMPLE_DVP_D4_PIN, CONFIG_EXAMPLE_DVP_D5_PIN, CONFIG_EXAMPLE_DVP_D6_PIN, CONFIG_EXAMPLE_DVP_D7_PIN,
-            },
-            .vsync_io = CONFIG_EXAMPLE_DVP_VSYNC_PIN,
-            .de_io = CONFIG_EXAMPLE_DVP_DE_PIN,
-            .pclk_io = CONFIG_EXAMPLE_DVP_PCLK_PIN,
-            .xclk_io = CONFIG_EXAMPLE_DVP_XCLK_PIN,
-        },
-        .xclk_freq = CONFIG_EXAMPLE_DVP_XCLK_FREQ,
-    },
-};
-#endif
-
-static const esp_video_init_config_t cam_config = {
-#if CONFIG_EXAMPLE_CAM_SENSOR_MIPI_CSI
-    .csi      = csi_config,
-#endif
-#if CONFIG_EXAMPLE_CAM_SENSOR_DVP
-    .dvp      = dvp_config,
-#endif
-};
 
 #ifdef CONFIG_EXAMPLE_DEBUG_PIN_CONNECTIONS
 const char *names[] = {"CLK", "CMD", "D0", "D1", "D2", "D3"};
@@ -228,7 +163,7 @@ static esp_err_t init_capture_video(image_sd_card_t *sd)
     int fd;
     struct v4l2_capability capability;
 
-    fd = open(CAM_DEV_PATH, O_RDONLY);
+    fd = open(EXAMPLE_CAM_DEV_PATH, O_RDONLY);
     assert(fd >= 0);
 
     ESP_ERROR_CHECK(ioctl(fd, VIDIOC_QUERYCAP, &capability));
@@ -745,7 +680,7 @@ void app_main(void)
     image_sd_card_t *sdc = calloc(1, sizeof(image_sd_card_t));
     assert(sdc);
 
-    ESP_ERROR_CHECK(esp_video_init(&cam_config));
+    ESP_ERROR_CHECK(example_video_init());
     ESP_ERROR_CHECK(init_capture_video(sdc));
     ESP_ERROR_CHECK(init_codec_video(sdc));
     ESP_ERROR_CHECK(init_sd_card(sdc));
