@@ -3,6 +3,8 @@
 
 - Added delay for normal initialization of GC2145 MIPI driver.
 - Added RAW8 support for SC035HGS MIPI driver.
+- Changed default CCM paras for OV2710 camera sensor.
+- Changed AEC adjustment speed filter coefficient for SC2336 camera sensor.
 
 ## 1.0.0
 
