@@ -49,6 +49,7 @@ extern "C" {
 #define IPA_METADATA_FLAGS_DM       (1 << 13)   /*!< Meta data has demosaic */
 #define IPA_METADATA_FLAGS_LSC      (1 << 14)   /*!< Meta data has LSC */
 #define IPA_METADATA_FLAGS_AETL     (1 << 15)   /*!< Meta data has sensor AE target level */
+#define IPA_METADATA_FLAGS_SR       (1 << 16)   /*!< Meta data has statistics region */
 
 /**
  * @brief Auto gain control metering mode
@@ -111,6 +112,16 @@ typedef struct esp_ipa_sensor {
     uint32_t cur_ae_target_level;           /*!< Current Sensor AE target level */
     uint32_t step_ae_target_level;          /*!< Step Sensor AE target level */
 } esp_ipa_sensor_t;
+
+/**
+ * @brief The selected image region.
+ */
+typedef struct esp_ipa_region {
+    uint32_t left;                          /*!< The left coordinate of the selected image region */
+    uint32_t top;                           /*!< The top coordinate of the selected image region */
+    uint32_t width;                         /*!< The width of the selected image region */
+    uint32_t height;                        /*!< The height of the selected image region */
+} esp_ipa_region_t;
 
 /**
  * @brief ISP auto white balance statistics.
@@ -267,6 +278,8 @@ typedef struct esp_ipa_metadata {
     esp_ipa_awb_range_t awb;                /*!< AWB statistics range parameters */
 
     uint32_t ae_target_level;               /*!< Sensor AE target level */
+
+    esp_ipa_region_t stats_region;          /*!< Statistics region */
 } esp_ipa_metadata_t;
 
 /**
@@ -589,6 +602,16 @@ typedef struct esp_ipa_atc_config {
 } esp_ipa_atc_config_t;
 
 /**
+ * @brief IPA extended configuration
+ */
+typedef struct esp_ipa_ext_config {
+    uint32_t hue;                               /*!< Color hue */
+    uint32_t brightness;                        /*!< Color brightness */
+
+    esp_ipa_region_t stats_region;              /*!< ISP statistics region */
+} esp_ipa_ext_config_t;
+
+/**
  * @brief IPA initialize configuration
  */
 typedef struct esp_ipa_config {
@@ -605,6 +628,8 @@ typedef struct esp_ipa_config {
     const esp_ipa_adn_config_t *adn;            /*!< Auto denoising algorithm configuration */
     const esp_ipa_aen_config_t *aen;            /*!< Auto enhancement algorithm configuration */
     const esp_ipa_atc_config_t *atc;            /*!< Auto sensor AE target level control algorithm configuration */
+
+    const esp_ipa_ext_config_t *ext;            /*!< Image extended configuration */
 } esp_ipa_config_t;
 
 /**

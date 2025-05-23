@@ -1,3 +1,7 @@
+## Unreleased
+
+- Add statistics region configuration to ISP pipeline controller
+
 ## 0.9.1
 
 - Add a new port for stream url in simple web example

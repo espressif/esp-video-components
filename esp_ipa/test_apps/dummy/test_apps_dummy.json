@@ -2,6 +2,18 @@
     "version": 1,
     "test_apps_dummy":
     {
+        "ext":
+        {
+            "hue": 1,
+            "brightness": 2,
+            "stats_region":
+            {
+                "left": 3,
+                "top": 4,
+                "width": 5,
+                "height": 6
+            }
+        },
         "customized_ipa_0":
         {
             "name": "esp_ipa_customized_0"

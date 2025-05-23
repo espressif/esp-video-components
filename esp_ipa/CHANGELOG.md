@@ -1,3 +1,7 @@
+## unReleased
+
+- Add extended configuration to set hue, brightness and statistics window
+
 ## 0.3.0~1
 
 - Fix the compiling error with esp-idf v5.4-
