@@ -15,6 +15,9 @@
 #include "esp_video.h"
 #include "esp_video_sensor.h"
 #include "esp_video_device_internal.h"
+#if CONFIG_ESP_VIDEO_ENABLE_SWAP_BYTE
+#include "esp_video_swap_byte.h"
+#endif
 
 #define DVP_NAME                    "DVP"
 
@@ -30,6 +33,10 @@ struct dvp_video {
     esp_cam_ctlr_handle_t cam_ctrl_handle;
 
     esp_cam_sensor_device_t *cam_dev;
+
+#if CONFIG_ESP_VIDEO_ENABLE_SWAP_BYTE
+    esp_video_swap_byte_t *swap_byte;
+#endif
 };
 
 static const char *TAG = "dvp_video";
@@ -94,7 +101,7 @@ static bool IRAM_ATTR dvp_video_on_trans_finished(esp_cam_ctlr_handle_t handle, 
 {
     struct esp_video *video = (struct esp_video *)user_data;
 
-    ESP_LOGD(TAG, "size=%zu", trans->received_size);
+    ESP_EARLY_LOGD(TAG, "size=%d", (int)trans->received_size);
 
     CAPTURE_VIDEO_DONE_BUF(video, trans->buffer, trans->received_size);
 
@@ -105,6 +112,17 @@ static bool IRAM_ATTR dvp_video_on_get_new_trans(esp_cam_ctlr_handle_t handle, e
 {
     struct esp_video_buffer_element *element;
     struct esp_video *video = (struct esp_video *)user_data;
+
+#if CONFIG_ESP_VIDEO_ENABLE_SWAP_BYTE
+    struct dvp_video *dvp_video = VIDEO_PRIV_DATA(struct dvp_video *, video);
+
+    if (dvp_video->swap_byte) {
+        esp_err_t ret = esp_video_swap_byte_start(dvp_video->swap_byte);
+        if (ret != ESP_OK) {
+            ESP_EARLY_LOGE(TAG, "Failed to start swap byte");
+        }
+    }
+#endif
 
     element = CAPTURE_VIDEO_GET_QUEUED_ELEMENT(video);
     if (!element) {
@@ -167,6 +185,19 @@ static esp_err_t dvp_video_start(struct esp_video *video, uint32_t type)
     struct dvp_video *dvp_video = VIDEO_PRIV_DATA(struct dvp_video *, video);
     esp_cam_sensor_device_t *cam_dev = dvp_video->cam_dev;
 
+#if CONFIG_ESP_VIDEO_ENABLE_SWAP_BYTE
+    uint32_t data_seq;
+
+    dvp_video->swap_byte = NULL;
+    ret = esp_cam_sensor_get_para_value(cam_dev, ESP_CAM_SENSOR_DATA_SEQ, &data_seq, sizeof(data_seq));
+    if (ret == ESP_OK && (data_seq == ESP_CAM_SENSOR_DATA_SEQ_BYTE_SWAPPED)) {
+        dvp_video->swap_byte = esp_video_swap_byte_create();
+        if (!dvp_video->swap_byte) {
+            return ESP_ERR_NO_MEM;
+        }
+    }
+#endif
+
     esp_cam_ctlr_dvp_config_t dvp_config = {
         .ctlr_id = DVP_CTLR_ID,
         .clk_src = CAM_CLK_SRC_DEFAULT,
@@ -180,7 +211,7 @@ static esp_err_t dvp_video_start(struct esp_video *video, uint32_t type)
     ret = esp_cam_new_dvp_ctlr(&dvp_config, &dvp_video->cam_ctrl_handle);
     if (ret != ESP_OK) {
         ESP_LOGE(TAG, "failed to create DVP");
-        return ret;
+        goto exit_0;
     }
 
     esp_cam_ctlr_evt_cbs_t cam_ctrl_cbs = {
@@ -190,37 +221,54 @@ static esp_err_t dvp_video_start(struct esp_video *video, uint32_t type)
     ret = esp_cam_ctlr_register_event_callbacks(dvp_video->cam_ctrl_handle, &cam_ctrl_cbs, video);
     if (ret != ESP_OK) {
         ESP_LOGE(TAG, "failed to register CAM ctlr event callback");
-        goto exit_0;
+        goto exit_1;
     }
 
     ret = esp_cam_ctlr_enable(dvp_video->cam_ctrl_handle);
     if (ret != ESP_OK) {
         ESP_LOGE(TAG, "failed to enable CAM ctlr");
-        goto exit_0;
+        goto exit_1;
     }
+
+#if CONFIG_ESP_VIDEO_ENABLE_SWAP_BYTE
+    if (dvp_video->swap_byte) {
+        ret = esp_video_swap_byte_start(dvp_video->swap_byte);
+        if (ret) {
+            ESP_LOGE(TAG, "Failed to start swap byte");
+            goto exit_2;
+        }
+    }
+#endif
 
     ret = esp_cam_ctlr_start(dvp_video->cam_ctrl_handle);
     if (ret != ESP_OK) {
         ESP_LOGE(TAG, "failed to start CAM ctlr");
-        goto exit_1;
+        goto exit_2;
     }
 
     int flags = 1;
     ret = esp_cam_sensor_ioctl(cam_dev, ESP_CAM_SENSOR_IOC_S_STREAM, &flags);
     if (ret != ESP_OK) {
         ESP_LOGE(TAG, "failed to start sensor");
-        goto exit_2;
+        goto exit_3;
     }
 
     return ESP_OK;
 
-exit_2:
+exit_3:
     esp_cam_ctlr_stop(dvp_video->cam_ctrl_handle);
-exit_1:
+exit_2:
     esp_cam_ctlr_disable(dvp_video->cam_ctrl_handle);
-exit_0:
+exit_1:
     esp_cam_ctlr_del(dvp_video->cam_ctrl_handle);
     dvp_video->cam_ctrl_handle = NULL;
+exit_0:
+#if CONFIG_ESP_VIDEO_ENABLE_SWAP_BYTE
+    if (dvp_video->swap_byte) {
+        esp_video_swap_byte_free(dvp_video->swap_byte);
+        dvp_video->swap_byte = NULL;
+    }
+#endif
     return ret;
 }
 
@@ -236,6 +284,13 @@ static esp_err_t dvp_video_stop(struct esp_video *video, uint32_t type)
         ESP_LOGE(TAG, "failed to disable sensor");
         return ret;
     }
+
+#if CONFIG_ESP_VIDEO_ENABLE_SWAP_BYTE
+    if (dvp_video->swap_byte) {
+        esp_video_swap_byte_free(dvp_video->swap_byte);
+        dvp_video->swap_byte = NULL;
+    }
+#endif
 
     ret = esp_cam_ctlr_stop(dvp_video->cam_ctrl_handle);
     if (ret != ESP_OK) {

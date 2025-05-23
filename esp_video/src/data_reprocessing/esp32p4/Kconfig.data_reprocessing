@@ -4,6 +4,7 @@ config ESP_VIDEO_ENABLE_SWAP_SHORT
     bool "Enable Swapping Short"
     default y
     select ESP_VIDEO_ENABLE_DATA_PREPROCESSING
+    depends on ESP_VIDEO_ENABLE_MIPI_CSI_VIDEO_DEVICE
     help
         Select this option, enable swapping short data,
         for example:
@@ -103,4 +104,19 @@ config ESP_VIDEO_SWAP_SHORT_PERF_LOG_INTERVAL_US
         and the unit is a microsecond.
 
 endif # ESP_VIDEO_ENABLE_SWAP_SHORT
+
+config ESP_VIDEO_ENABLE_SWAP_BYTE
+    bool "Enable Swapping Byte"
+    default y
+    select ESP_VIDEO_ENABLE_DATA_PREPROCESSING
+    select ESP_VIDEO_ENABLE_BITSCRAMBLER
+    depends on SOC_BITSCRAMBLER_SUPPORTED && ESP_VIDEO_ENABLE_DVP_VIDEO_DEVICE
+    help
+        Select this option, enable swapping byte data,
+        for example:
+        
+            Data address:     0x0     0x1     0x2     0x3
+
+            Original data:   0x00,   0x01,   0x02,   0x03
+            Swapped data:    0x01,   0x00,   0x03,   0x02
 endmenu

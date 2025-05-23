@@ -380,9 +380,6 @@ esp_err_t esp_video_init(const esp_video_init_config_t *config)
  */
 esp_err_t esp_video_deinit(void)
 {
-    bool csi_deinited = false;
-    bool dvp_deinited = false;
-
 #if CONFIG_ESP_VIDEO_ENABLE_HW_JPEG_VIDEO_DEVICE
     ESP_RETURN_ON_ERROR(esp_video_destroy_jpeg_video_device(), TAG, "Failed to destroy JPEG video device");
 #endif
@@ -391,6 +388,12 @@ esp_err_t esp_video_deinit(void)
     ESP_RETURN_ON_ERROR(esp_video_destroy_h264_video_device(true), TAG, "Failed to destroy H.264 video device");
 #endif
 
+#if CONFIG_ESP_VIDEO_ENABLE_MIPI_CSI_VIDEO_DEVICE
+    bool csi_deinited = false;
+#endif
+#if CONFIG_ESP_VIDEO_ENABLE_DVP_VIDEO_DEVICE
+    bool dvp_deinited = false;
+#endif
     for (esp_cam_sensor_detect_fn_t *p = &__esp_cam_sensor_detect_fn_array_start; p < &__esp_cam_sensor_detect_fn_array_end; ++p) {
 #if CONFIG_ESP_VIDEO_ENABLE_MIPI_CSI_VIDEO_DEVICE
         if (!csi_deinited && p->port == ESP_CAM_SENSOR_MIPI_CSI) {
