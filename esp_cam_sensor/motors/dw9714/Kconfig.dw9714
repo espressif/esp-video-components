@@ -1,0 +1,36 @@
+menuconfig CAM_MOTOR_DW9714
+    bool "DW9714"
+    default n
+    select CAMERA_MOTOR_DEVICE_USED
+    help
+        Enabling this option will add the support for DW9714 camera motor.
+
+if CAM_MOTOR_DW9714
+    config CAM_MOTOR_DW9714_AUTO_DETECT
+        bool "Auto detect DW9714"
+        default y
+        help
+            When enabled, it provides the ability in application layer to automatically
+            detect camera motors one by one.
+
+    choice CAM_MOTOR_DW9714_DEFAULT_FMT
+        prompt "Default format select"
+        default CAM_MOTOR_DW9714_DLC_MCLK02_SRC17
+        help
+            We define a "format" structure in the software to store the initialization information of the motor device.
+            Here, the default format is selected for loading when the motor is detected.
+    
+        config CAM_MOTOR_DW9714_LSC_MCLK01_SRC03
+            bool "LSC mode with mclk01 src03"
+        config CAM_MOTOR_DW9714_DLC_MCLK02_SRC17
+            bool "DLC mode with mclk02 src17"
+    endchoice # CAM_MOTOR_DW9714_DEFAULT_FMT
+
+    config DW9714_FORMAT_INDEX_DEFAULT
+        int
+        default 0 if CAM_MOTOR_DW9714_LSC_MCLK01_SRC03
+        default 1 if CAM_MOTOR_DW9714_DLC_MCLK02_SRC17
+        help
+            Set the configuration loaded by default.
+            More information can be obtained by calling the query_support_formats().
+endif

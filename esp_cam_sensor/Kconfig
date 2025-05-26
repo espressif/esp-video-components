@@ -32,4 +32,16 @@ menu "Espressif Camera Sensors Configurations"
                 `https://docs.espressif.com/projects/esp-idf/en/latest/esp32p4/api-reference/peripherals/clk_tree.html`
     endmenu
 
+    menu "Camera Motor Configuration"
+        rsource "motors/dw9714/Kconfig.dw9714"
+
+        config CAMERA_MOTOR_DEVICE_USED
+            bool 
+            default n
+            help
+                This option indicates whether any camera motor driver is enabled in the configuration.
+                It is automatically set when any of the motor drivers are enabled.
+
+    endmenu
+
 endmenu

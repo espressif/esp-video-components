@@ -58,11 +58,12 @@ if CAMERA_OV5647
         help
             If enabled, send line short packet for each line.
 
-    config CAMERA_OV5647_ISP_AF_ENABLE
-        bool "AF(auto focus) enable"
-        default y
+    config CAMERA_OV5647_ENABLE_MOTOR_BY_GPIO0
+        bool "Activate the autofocus (AF) motor by OV5647's IO0"
+        default y if CAMERA_MOTOR_DEVICE_USED
+        default n
         help
-            If enabled, the camera module will enable some IO pins to drive the
+            If enabled, the camera module will enable IO0 pin to drive the
             VCM motor.
 
     choice CAMERA_OV5647_IPA_JSON_CONFIGURATION_FILE

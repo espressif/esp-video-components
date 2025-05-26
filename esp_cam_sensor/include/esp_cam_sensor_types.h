@@ -108,6 +108,7 @@ typedef enum {
 #define ESP_CAM_SENSOR_CID_CLASS_3A                 3   /*!< Camera sensor 3A control ID class */
 #define ESP_CAM_SENSOR_CID_CLASS_LENS               4   /*!< Camera sensor lens control ID class */
 #define ESP_CAM_SENSOR_CID_CLASS_LED                5   /*!< Camera sensor flash LED control ID class */
+#define ESP_CAM_SENSOR_CID_CLASS_MOTOR              6   /*!< Camera sensor (AF)motor control ID class */
 
 /**
  * @brief Camera sensor default class's control ID
@@ -161,8 +162,12 @@ typedef enum {
 
 /**
  * @brief Camera sensor lens class's control ID
+ *
+ * @note ESP_CAM_MOTOR uses ESP_CAM_SENSOR_LENS as the base command.
+ *
  */
 #define ESP_CAM_SENSOR_LENS                         ESP_CAM_SENSOR_CLASS_ID(ESP_CAM_SENSOR_CID_CLASS_LENS, 0x01)
+#define ESP_CAM_SENSOR_LENS_MAX_OFFSET              0x10
 
 /**
  * @brief Camera sensor flash LED class's control ID
@@ -181,6 +186,7 @@ typedef enum {
 #define ESP_CAM_SENSOR_IOC_S_REG                    ESP_CAM_SENSOR_IOC(0x07, sizeof(esp_cam_sensor_reg_val_t))
 #define ESP_CAM_SENSOR_IOC_G_REG                    ESP_CAM_SENSOR_IOC(0x08, sizeof(esp_cam_sensor_reg_val_t))
 #define ESP_CAM_SENSOR_IOC_S_GAIN                   ESP_CAM_SENSOR_IOC(0x09, sizeof(uint8_t))
+#define ESP_CAM_SENSOR_IOC_MAX                      ESP_CAM_SENSOR_IOC(0x20, 0)
 
 /*
  * @biref Camera sensor parameter description
