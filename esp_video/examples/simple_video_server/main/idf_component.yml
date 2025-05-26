@@ -3,8 +3,6 @@ dependencies:
   esp_video:
     version: "0.*"
     override_path: "../../../"
-  example_video_common:
-    path: "../../common_components/example_video_common"
   protocol_examples_common:
     path: ${IDF_PATH}/examples/common_components/protocol_examples_common
   espressif/mdns: "^1.0.3"
