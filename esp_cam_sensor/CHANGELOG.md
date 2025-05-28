@@ -1,5 +1,4 @@
-
-## Unreleased
+## 1.1.0
 
 - Added AF motor dw9714 driver.
 - Added delay for normal initialization of GC2145 MIPI driver.
@@ -10,6 +9,7 @@
 - Changed IPA cfg for SC2336 according to the default AE sample point.
 - Changed default CCM paras for OV2710 camera sensor.
 - Changed AEC adjustment speed filter coefficient for SC2336 camera sensor.
+- Changed the byte order of OV2640 according to the chip model.
 
 ## 1.0.0
 
