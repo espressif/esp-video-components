@@ -24,11 +24,9 @@ By default, the example will start an MDNS domain name system. Therefore, the se
 
 Open the project configuration menu (`idf.py menuconfig`).
 
-#### Pin Assignment:
-In the `Example Configuration` menu:
+#### Configure the hardware
 
-* Choose the I2C Port and I2C pins connected to the sensor.
-* Choose the reset pin and powerdown pin connected to the sensor(Set to -1 if not used).
+Please refer to the example video initialization configuration [document](../common_components/example_video_common/README.md) for more details about the board-level configuration, including the camera sensor interface, GPIO pins, clock frequency, and so on.
 
 #### Connection Configuration:
 In the `Example Connection Configuration` menu:
@@ -51,44 +49,11 @@ In the `Espressif Camera Sensors Configurations` menu:
 The default format of the camera sensor determines the data format that can be used in the program. Therefore, when the camera sensor is selected to work in `YUV422` format in the configuration menu, the format that should be configured in the `app_main.c` is `V4L2_PIX_FMT_YUV422P`:
 
 ```c
-app_video_init(video_cam_fd0, V4L2_PIX_FMT_YUV422P);
+app_video_open(EXAMPLE_CAM_DEV_PATH, V4L2_PIX_FMT_YUV422P);
 ```
 
 If the default format selected in the configuration menu is `RAW8`, the ISP can automatically generate interpolated data formats(e.g., RGB888, RGB565, YUV422, YUV420, etc). You can configure the output format to RAW8 or YUV422, etc.
 
-Note that the MIPI-CSI interface is selected to connect the camera sensor by default, so there are:
-
-```c
-#define CAM_DEV_PATH                 ESP_VIDEO_MIPI_CSI_DEVICE_NAME
-```
-
-Refer [video-device](https://github.com/espressif/esp-video-components/tree/master/esp_video) can be used to query the names of various devices. If the DVP interface is selected to connect to the camera, this code is:
-
-```c
-#define CAM_DEV_PATH                 ESP_VIDEO_DVP_DEVICE_NAME
-```
-
-In addition, this example allows you to build two web servers to display images from two cameras respectively. For related codes, please refer to:
-
-```c
-int video_cam_fd = app_video_open(ESP_VIDEO_MIPI_CSI_DEVICE_NAME, EXAMPLE_VIDEO_FMT_RGB565);
-if (video_cam_fd < 0) {
-    ESP_LOGE(TAG, "video cam open failed");
-    return;
-}
-
-ESP_ERROR_CHECK(start_cam_web_server(index, video_cam_fd));
-
-index++;
-
-video_cam_fd = app_video_open(ESP_VIDEO_DVP_DEVICE_NAME, EXAMPLE_VIDEO_FMT_RGB565);
-if (video_cam_fd < 0) {
-    ESP_LOGE(TAG, "video cam open failed");
-    return;
-}
-
-ESP_ERROR_CHECK(start_cam_web_server(index, video_cam_fd));
-```
 For devices that do not support native WiFi, [esp_wifi_remote](https://github.com/espressif/esp-protocols/tree/master/components/esp_wifi_remote) is used to provide an additional wifi interface by default. In the `Wi-Fi Remote` menu:
 
 * Choose the slave target connect to the MCU.

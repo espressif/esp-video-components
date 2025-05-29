@@ -1,4 +1,4 @@
-set(priv_requires fatfs esp_timer)
+set(priv_requires fatfs esp_timer example_video_common)
 
 if(CONFIG_EXAMPLE_STORAGE_MEDIA_SPIFLASH)
     list(APPEND priv_requires wear_levelling esp_partition)

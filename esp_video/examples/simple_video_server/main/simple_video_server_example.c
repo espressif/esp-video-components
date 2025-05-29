@@ -18,30 +18,22 @@
 #include "esp_http_server.h"
 #include "sdkconfig.h"
 #include "protocol_examples_common.h"
-#include "linux/videodev2.h"
-#include "esp_video_init.h"
-#include "esp_video_device.h"
 #include "driver/jpeg_encode.h"
 #include "mdns.h"
 #include "lwip/apps/netbiosns.h"
+#include "example_video_common.h"
 
 // video frame buffer count, too large value may cause memory allocation fails.
 #define EXAMPLE_VIDEO_BUFFER_COUNT   2
-#define MEMORY_TYPE                  V4L2_MEMORY_MMAP
 
-#if CONFIG_EXAMPLE_ENABLE_MIPI_CSI_CAM_SENSOR
-#define CAM_DEV_PATH                 ESP_VIDEO_MIPI_CSI_DEVICE_NAME
-#elif CONFIG_EXAMPLE_ENABLE_DVP_CAM_SENSOR
-#define CAM_DEV_PATH                 ESP_VIDEO_DVP_DEVICE_NAME
-#else
-#error "No camera sensor selected"
-#endif
+#define MEMORY_TYPE                  V4L2_MEMORY_MMAP
 
 #define JPEG_ENC_QUALITY             (80)
 #define PART_BOUNDARY                "123456789000000000000987654321"
 #ifndef ARRAY_SIZE
 #define ARRAY_SIZE(arr) (sizeof(arr) / sizeof(arr[0]))
 #endif
+
 #define EXAMPLE_MDNS_INSTANCE "simple video web"
 #define EXAMPLE_MDNS_HOST_NAME "esp-web"
 
@@ -79,63 +71,6 @@ static const char *STREAM_PART = "Content-Type: image/jpeg\r\nContent-Length: %u
 const int s_queue_buf_type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
 static uint16_t server_port_offset;
 static const char *TAG = "example";
-
-#if CONFIG_EXAMPLE_ENABLE_MIPI_CSI_CAM_SENSOR
-static const esp_video_init_csi_config_t csi_config[] = {
-    {
-        .sccb_config = {
-            .init_sccb = true,
-            .i2c_config = {
-                .port      = CONFIG_EXAMPLE_MIPI_CSI_SCCB_I2C_PORT,
-                .scl_pin   = CONFIG_EXAMPLE_MIPI_CSI_SCCB_I2C_SCL_PIN,
-                .sda_pin   = CONFIG_EXAMPLE_MIPI_CSI_SCCB_I2C_SDA_PIN,
-            },
-            .freq = CONFIG_EXAMPLE_MIPI_CSI_SCCB_I2C_FREQ,
-        },
-        .reset_pin = CONFIG_EXAMPLE_MIPI_CSI_CAM_SENSOR_RESET_PIN,
-        .pwdn_pin  = CONFIG_EXAMPLE_MIPI_CSI_CAM_SENSOR_PWDN_PIN,
-    },
-};
-#endif
-
-#if CONFIG_EXAMPLE_ENABLE_DVP_CAM_SENSOR
-static const esp_video_init_dvp_config_t dvp_config[] = {
-    {
-        .sccb_config = {
-            .init_sccb = true,
-            .i2c_config = {
-                .port      = CONFIG_EXAMPLE_DVP_SCCB_I2C_PORT,
-                .scl_pin   = CONFIG_EXAMPLE_DVP_SCCB_I2C_SCL_PIN,
-                .sda_pin   = CONFIG_EXAMPLE_DVP_SCCB_I2C_SDA_PIN,
-            },
-            .freq      = CONFIG_EXAMPLE_DVP_SCCB_I2C_FREQ,
-        },
-        .reset_pin = CONFIG_EXAMPLE_DVP_CAM_SENSOR_RESET_PIN,
-        .pwdn_pin  = CONFIG_EXAMPLE_DVP_CAM_SENSOR_PWDN_PIN,
-        .dvp_pin = {
-            .data_width = CAM_CTLR_DATA_WIDTH_8,
-            .data_io = {
-                CONFIG_EXAMPLE_DVP_D0_PIN, CONFIG_EXAMPLE_DVP_D1_PIN, CONFIG_EXAMPLE_DVP_D2_PIN, CONFIG_EXAMPLE_DVP_D3_PIN,
-                CONFIG_EXAMPLE_DVP_D4_PIN, CONFIG_EXAMPLE_DVP_D5_PIN, CONFIG_EXAMPLE_DVP_D6_PIN, CONFIG_EXAMPLE_DVP_D7_PIN,
-            },
-            .vsync_io = CONFIG_EXAMPLE_DVP_VSYNC_PIN,
-            .de_io = CONFIG_EXAMPLE_DVP_DE_PIN,
-            .pclk_io = CONFIG_EXAMPLE_DVP_PCLK_PIN,
-            .xclk_io = CONFIG_EXAMPLE_DVP_XCLK_PIN,
-        },
-        .xclk_freq = CONFIG_EXAMPLE_DVP_XCLK_FREQ,
-    },
-};
-#endif
-
-static const esp_video_init_config_t cam_config = {
-#if CONFIG_EXAMPLE_ENABLE_MIPI_CSI_CAM_SENSOR
-    .csi      = csi_config,
-#endif
-#if CONFIG_EXAMPLE_ENABLE_DVP_CAM_SENSOR
-    .dvp      = dvp_config,
-#endif
-};
 
 /**
  * @brief   Open the video device and initialize the video device to use `init_fmt` as the output format.
@@ -627,9 +562,9 @@ void app_main(void)
      */
     ESP_ERROR_CHECK(example_connect());
 
-    ESP_ERROR_CHECK(esp_video_init(&cam_config));
+    ESP_ERROR_CHECK(example_video_init());
 
-    int video_cam_fd = app_video_open(CAM_DEV_PATH, EXAMPLE_VIDEO_FMT_RGB565);
+    int video_cam_fd = app_video_open(EXAMPLE_CAM_DEV_PATH, EXAMPLE_VIDEO_FMT_RGB565);
     if (video_cam_fd < 0) {
         ESP_LOGE(TAG, "video cam open failed");
         return;

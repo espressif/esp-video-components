@@ -21,6 +21,19 @@ jobs:
           submodules: 'recursive'
       - run: |
           echo "${{ ( github.ref_name != 'master' || github.repository_owner != 'espressif' ) && 'Checking' || 'Uploading' }} components"
+      - name: Copy example_video_common to examples
+        run: |
+          # Create components directories and copy example_video_common to each example
+          # Remove existing symlinks first, then copy the actual directory
+          for dir in capture_stream simple_video_server uvc video_custom_format "image_storage/sd_card" "image_storage/usb_msc"; do
+            mkdir -p "esp_video/examples/$dir/components"
+            # Remove existing symlink if it exists
+            if [ -L "esp_video/examples/$dir/components/example_video_common" ]; then
+              rm "esp_video/examples/$dir/components/example_video_common"
+            fi
+            # Copy the actual directory
+            cp -r esp_video/examples/common_components/example_video_common "esp_video/examples/$dir/components/"
+          done
       - name: Upload components to component service
         uses: espressif/upload-components-ci-action@v1
         with:

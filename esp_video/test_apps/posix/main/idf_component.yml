@@ -3,3 +3,5 @@ dependencies:
   esp_video:
     version: "0.9.*"
     override_path: "../../../"
+  example_video_common:
+    override_path: "../../../examples/common_components/example_video_common"
