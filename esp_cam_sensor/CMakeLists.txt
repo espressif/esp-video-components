@@ -14,6 +14,12 @@ if(CONFIG_CAMERA_OV2640)
     list(APPEND priv_include_dirs "sensors/ov2640/private_include")
 endif()
 
+if(CONFIG_CAMERA_OV5640)
+    list(APPEND srcs "sensors/ov5640/ov5640.c")
+    list(APPEND include_dirs "sensors/ov5640/include")
+    list(APPEND priv_include_dirs "sensors/ov5640/private_include")
+endif()
+
 if(CONFIG_CAMERA_OV5645)
     list(APPEND srcs "sensors/ov5645/ov5645.c")
     list(APPEND include_dirs "sensors/ov5645/include")
@@ -101,6 +107,10 @@ idf_component_register(SRCS ${srcs}
 
 if(CONFIG_CAMERA_OV2640_AUTO_DETECT)
     target_link_libraries(${COMPONENT_LIB} INTERFACE "-u ov2640_detect")
+endif()
+
+if(CONFIG_CAMERA_OV5640_AUTO_DETECT)
+    target_link_libraries(${COMPONENT_LIB} INTERFACE "-u ov5640_detect")
 endif()
 
 if(CONFIG_CAMERA_OV5645_AUTO_DETECT)

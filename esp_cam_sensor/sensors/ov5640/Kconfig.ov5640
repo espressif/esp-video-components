@@ -1,0 +1,74 @@
+menuconfig CAMERA_OV5640
+    bool "OV5640"
+    default n
+    help
+        Enabling this option will add the support for OV5640.
+
+if CAMERA_OV5640
+    menuconfig CAMERA_OV5640_AUTO_DETECT
+        bool "Auto detect OV5640"
+        default y
+        help
+            When enabled, it provides the ability in application layer to automatically
+            detect camera sensors one by one.
+
+    if CAMERA_OV5640_AUTO_DETECT
+        config CAMERA_OV5640_AUTO_DETECT_MIPI_INTERFACE_SENSOR
+            bool "Detect for MIPI interface sensor"
+            default y
+            help
+                When enabled, you don't need to call ov5640_detect manaually, OV5640
+                will be automatically detected and connected to the MIPI CSI interface
+                when the application starts.
+    
+        config CAMERA_OV5640_AUTO_DETECT_DVP_INTERFACE_SENSOR
+            bool "Detect for DVP interface sensor"
+            default n
+            help
+                When enabled, you don't need to call ov5640_detect manaually, OV5640 will
+                be automatically detected and connected to the DVP interface when the
+                application starts.
+    endif
+
+    choice CAMERA_OV5640_MIPI_DEFAULT_FMT
+        prompt "Default format select"
+        default CAMERA_OV5640_MIPI_RGB565_1280X720_14FPS
+        help
+            Select the default format to load when the sensor is detected.
+            When the sensor is in stream off state, the format can be changed.
+    
+        config CAMERA_OV5640_MIPI_RGB565_1280X720_14FPS
+            bool "RGB565 1280x760 14fps, MIPI 2lane 24M input"
+    endchoice # CAMERA_OV5640_MIPI_DEFAULT_FMT
+
+    config CAMERA_OV5640_MIPI_IF_FORMAT_INDEX_DAFAULT
+        int
+        default 0 if CAMERA_OV5640_MIPI_RGB565_1280X720_14FPS
+        help
+            Set the configuration loaded by default for the MIPI interface.
+            More information can be obtained by calling the query_support_formats().
+
+    choice CAMERA_OV5640_DVP_DEFAULT_FMT
+        prompt "Default format select for DVP"
+        default CAMERA_OV5640_DVP_YUV422_800X600_10FPS
+        help
+            Select the default format to load when the sensor is detected.
+            When the sensor is in stream off state, the format can be changed.
+    
+        config CAMERA_OV5640_DVP_YUV422_800X600_10FPS
+            bool "YUV422 800x600 10fps, DVP 8bit 24M input"
+    endchoice # CAMERA_OV5640_DVP_DEFAULT_FMT
+
+    config CAMERA_OV5640_DVP_IF_FORMAT_INDEX_DAFAULT
+        int
+        default 1 if CAMERA_OV5640_DVP_YUV422_800X600_10FPS
+        help
+            Set the configuration loaded by default for the DVP interface.
+            More information can be obtained by calling the query_support_formats().
+
+    config CAMERA_OV5640_CSI_LINESYNC_ENABLE
+        bool "CSI Line sync enable"
+        default y
+        help
+            If enabled, send line short packet for each line.
+endif
