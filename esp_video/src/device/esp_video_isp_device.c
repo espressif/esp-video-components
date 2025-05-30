@@ -2066,12 +2066,28 @@ exit:
 esp_err_t esp_video_isp_enum_format(esp_video_csi_state_t *state, uint32_t index, uint32_t *pixel_format)
 {
     if (state->bypass_isp) {
-        *pixel_format = state->in_fmt;
+        if (COLOR_SPACE_TYPE(state->in_color) == COLOR_SPACE_RAW) {
+            if (index == s_isp_isp_format_nums) {
+                *pixel_format = state->in_fmt;
+            } else {
+                return ESP_ERR_INVALID_ARG;
+            }
+        } else {
+            if (index == 0) {
+                *pixel_format = state->in_fmt;
+            } else {
+                return ESP_ERR_INVALID_ARG;
+            }
+        }
     } else {
         if (index < s_isp_isp_format_nums) {
             *pixel_format = s_isp_isp_format[index];
         } else if (index == s_isp_isp_format_nums) {
-            *pixel_format = state->in_fmt;
+            if (state->in_color != CAM_CTLR_COLOR_RAW8) {
+                *pixel_format = state->in_fmt;
+            } else {
+                return ESP_ERR_INVALID_ARG;
+            }
         } else {
             return ESP_ERR_INVALID_ARG;
         }

@@ -505,7 +505,11 @@ esp_err_t esp_video_close(struct esp_video *video)
 
     xSemaphoreTake(video->mutex, portMAX_DELAY);
 
-    assert(video->reference > 0);
+    if (!video->reference) {
+        ESP_LOGD(TAG, "video->reference=0");
+        goto exit_0;
+    }
+
     video->reference--;
     if (video->reference > 0) {
         goto exit_0;
