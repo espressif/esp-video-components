@@ -4,6 +4,8 @@
 - Add byte swap functionality for DVP video device to swap RGB565 pixel byte sequence
 - Add example common component to simplify the esp_video board-level configuration and initialization
 - Add camera motor control to ISP pipeline controller to implement auto-focus
+- Add V4L2 command VIDIOC_S_PARM and VIDIOC_G_PARM
+- Add software frame skipping to MIPI-CSI video device
 - Fix the esp_video_deinit function issue when esp_video initialize with application I2C handle
 - Fix the esp_video close issue when one video device is open and closed multiple times
 - Fix the issue that the V4L2 command VIDIOC_ENUM_FMT can't get the correct value by input index when the sensor output format is RAW10

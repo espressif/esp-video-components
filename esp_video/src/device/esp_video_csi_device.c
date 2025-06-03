@@ -236,16 +236,33 @@ static esp_err_t csi_get_input_bayer_order(const esp_cam_sensor_isp_info_t *isp_
 static bool IRAM_ATTR csi_video_on_trans_finished(esp_cam_ctlr_handle_t handle, esp_cam_ctlr_trans_t *trans, void *user_data)
 {
     struct esp_video *video = (struct esp_video *)user_data;
+    struct esp_video_param *param = CAPTURE_VIDEO_PARAM(video);
 
     ESP_EARLY_LOGD(TAG, "size=%zu", trans->received_size);
 
 #if CONFIG_ESP_VIDEO_DISABLE_MIPI_CSI_DRIVER_BACKUP_BUFFER
     struct csi_video *csi_video = VIDEO_PRIV_DATA(struct csi_video *, video);
     if (trans->buffer != csi_video->element->buffer) {
-        CAPTURE_VIDEO_DONE_BUF(video, trans->buffer, trans->received_size);
+        if (!param->skip_count) {
+            CAPTURE_VIDEO_DONE_BUF(video, trans->buffer, trans->received_size);
+        } else {
+            CAPTURE_VIDEO_SKIP_BUF(video, trans->buffer);
+        }
+
+        if (param->skip_frames) {
+            param->skip_count = (param->skip_count + 1) % param->skip_frames;
+        }
     }
 #else
-    CAPTURE_VIDEO_DONE_BUF(video, trans->buffer, trans->received_size);
+    if (!param->skip_count) {
+        CAPTURE_VIDEO_DONE_BUF(video, trans->buffer, trans->received_size);
+    } else {
+        CAPTURE_VIDEO_SKIP_BUF(video, trans->buffer);
+    }
+
+    if (param->skip_frames) {
+        param->skip_count = (param->skip_count + 1) % param->skip_frames;
+    }
 #endif
 
     return true;
@@ -586,6 +603,54 @@ static esp_err_t csi_video_get_motor_format(struct esp_video *video, esp_cam_mot
     return esp_cam_motor_get_format(csi_video->cam.motor, format);
 }
 
+static esp_err_t csi_video_get_parm(struct esp_video *video, struct v4l2_streamparm *stream_parm, struct esp_video_stream *stream)
+{
+    struct csi_video *csi_video = VIDEO_PRIV_DATA(struct csi_video *, video);
+    struct v4l2_captureparm *cp = &stream_parm->parm.capture;
+    esp_cam_sensor_format_t sensor_format;
+    struct esp_video_param *param = &stream->param;
+
+    ESP_RETURN_ON_ERROR(esp_cam_sensor_get_format(csi_video->cam.sensor, &sensor_format), TAG, "failed to get sensor format");
+    cp->capability |= V4L2_CAP_TIMEPERFRAME;
+    cp->timeperframe.numerator = 1;
+    cp->timeperframe.denominator = sensor_format.fps;
+    if (param->skip_frames > 0) {
+        cp->timeperframe.denominator /= param->skip_frames;
+    }
+
+    return ESP_OK;
+}
+
+static esp_err_t csi_video_set_parm(struct esp_video *video, struct v4l2_streamparm *stream_parm, struct esp_video_stream *stream)
+{
+    esp_err_t ret = ESP_ERR_INVALID_ARG;
+    struct csi_video *csi_video = VIDEO_PRIV_DATA(struct csi_video *, video);
+    struct v4l2_captureparm *cp = &stream_parm->parm.capture;
+    esp_cam_sensor_format_t sensor_format;
+    struct esp_video_param *param = &stream->param;
+
+    if (cp->capability & V4L2_CAP_TIMEPERFRAME) {
+        if (cp->timeperframe.numerator != 1) {
+            ESP_LOGE(TAG, "numerator=%" PRIu32 " is invalid", cp->timeperframe.numerator);
+            return ESP_ERR_INVALID_ARG;
+        }
+
+        ESP_RETURN_ON_ERROR(esp_cam_sensor_get_format(csi_video->cam.sensor, &sensor_format), TAG, "failed to get sensor format");
+
+        if ((cp->timeperframe.denominator > sensor_format.fps) ||
+                (sensor_format.fps % cp->timeperframe.denominator != 0)) {
+            ESP_LOGE(TAG, "denominator=%" PRIu32 " is invalid", cp->timeperframe.denominator);
+            return ESP_ERR_INVALID_ARG;
+        }
+
+        param->skip_frames = sensor_format.fps / cp->timeperframe.denominator;
+        ESP_LOGD(TAG, "skip_frames=%d", param->skip_frames);
+        ret = ESP_OK;
+    }
+
+    return ret;
+}
+
 static const struct esp_video_ops s_csi_video_ops = {
     .init          = csi_video_init,
     .deinit        = csi_video_deinit,
@@ -602,6 +667,8 @@ static const struct esp_video_ops s_csi_video_ops = {
     .query_menu    = csi_video_query_menu,
     .set_motor_format = csi_video_set_motor_format,
     .get_motor_format = csi_video_get_motor_format,
+    .set_parm      = csi_video_set_parm,
+    .get_parm      = csi_video_get_parm,
 };
 
 /**

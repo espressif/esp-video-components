@@ -29,6 +29,14 @@ struct esp_video_format_desc {
 };
 
 /**
+ * @brief Video stream parameters.
+ */
+struct esp_video_param {
+    uint16_t skip_frames;                   /*!< Skip frame numbers */
+    uint16_t skip_count;                    /*!< Skip frame count */
+};
+
+/**
  * @brief Video stream object.
  */
 struct esp_video_stream {
@@ -44,6 +52,8 @@ struct esp_video_stream {
     SemaphoreHandle_t ready_sem;            /*!< Video stream buffer element ready semaphore */
 
     struct v4l2_rect rect;                  /*!< Selection rectangles */
+
+    struct esp_video_param param;           /*!< Video stream parameters */
 };
 
 /**
@@ -630,6 +640,41 @@ esp_err_t esp_video_set_motor_format(struct esp_video *video, const esp_cam_moto
  */
 esp_err_t esp_video_get_motor_format(struct esp_video *video, esp_cam_motor_format_t *format);
 #endif
+
+/**
+ * @brief Set V4L2 stream parameters
+ *
+ * @param video         Video object
+ * @param stream_parm   Stream parameters buffer pointer
+ *
+ * @return
+ *      - ESP_OK on success
+ *      - Others if failed
+ */
+esp_err_t esp_video_set_parm(struct esp_video *video, struct v4l2_streamparm *stream_parm);
+
+/**
+ * @brief Get V4L2 stream parameters
+ *
+ * @param video         Video object
+ * @param stream_parm   Stream parameters buffer pointer
+ *
+ * @return
+ *      - ESP_OK on success
+ *      - Others if failed
+ */
+esp_err_t esp_video_get_parm(struct esp_video *video, struct v4l2_streamparm *stream_parm);
+
+/**
+ * @brief Skip video buffer
+ *
+ * @param video  Video object
+ * @param type   Video stream type
+ * @param buffer Video buffer pointer
+ *
+ * @return None
+ */
+void esp_video_skip_buffer(struct esp_video *video, uint32_t type, uint8_t *buffer);
 
 #ifdef __cplusplus
 }
