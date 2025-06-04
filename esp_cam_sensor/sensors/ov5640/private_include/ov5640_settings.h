@@ -43,6 +43,7 @@ extern "C" {
     {FORMAT_CTRL0, 0x25}, \
     {FORMAT_MUX_CTRL, 0x00}
 
+#if CONFIG_SOC_MIPI_CSI_SUPPORTED
 static const ov5640_reginfo_t ov5640_mipi_reset_regs[] = {
     {0x3103, 0x11},
     // Comment this out if want AF to work
@@ -51,14 +52,6 @@ static const ov5640_reginfo_t ov5640_mipi_reset_regs[] = {
     {0x4800, 0x05},
     {OV5640_REG_DELAY, 0x10},
     {0x3008, OV5640_SOFT_POWER_DOWN_EN}, // bit[6]=1: software power down default
-    {OV5640_REG_END, 0x00},
-};
-
-static const ov5640_reginfo_t ov5640_dvp_reset_regs[] = {
-    {0x3103, 0x11},
-    {0x3008, 0x82},
-    {OV5640_REG_DELAY, 0x05},
-    {0x3008, OV5640_SOFT_POWER_DOWN_EN},
     {OV5640_REG_END, 0x00},
 };
 
@@ -226,6 +219,16 @@ static const ov5640_reginfo_t ov5640_MIPI_2lane_rgb565_720p_14fps[] = {
     {0x5184, 0x20},
     {0x5182, 0x11},
     {0x5183, 0x00},
+    {OV5640_REG_END, 0x00},
+};
+#endif
+
+#if CONFIG_SOC_LCDCAM_CAM_SUPPORTED
+static const ov5640_reginfo_t ov5640_dvp_reset_regs[] = {
+    {0x3103, 0x11},
+    {0x3008, 0x82},
+    {OV5640_REG_DELAY, 0x05},
+    {0x3008, OV5640_SOFT_POWER_DOWN_EN},
     {OV5640_REG_END, 0x00},
 };
 
@@ -569,6 +572,7 @@ static const ov5640_reginfo_t ov5640_dvp_yuv422_svga_10fps[] = {
     {0x5001, 0xa3},
     {OV5640_REG_END, 0x00},
 };
+#endif
 
 #ifdef __cplusplus
 }

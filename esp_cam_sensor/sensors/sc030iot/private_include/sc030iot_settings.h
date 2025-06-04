@@ -16,6 +16,7 @@
 extern "C" {
 #endif
 
+#if CONFIG_SOC_LCDCAM_CAM_SUPPORTED
 static const sc030iot_reginfo_t DVP_8bit_20Minput_640x480_yuv422_26fps[] = {
     {0xf0, 0x30},
     {0x01, 0xff},
@@ -411,7 +412,9 @@ static const sc030iot_reginfo_t DVP_8bit_20Minput_640x480_raw8_26fps[] = {
     {0xf0, 0x31},
     {0x00, 0x00}, // sleep mode enable
 };
+#endif
 
+#if CONFIG_SOC_MIPI_CSI_SUPPORTED
 static const sc030iot_reginfo_t MIPI_1lane_24Minput_480p_yuv422_25fps[] = {
     {0xf0, 0x30},
     {0x01, 0x00},
@@ -957,6 +960,7 @@ static const sc030iot_reginfo_t MIPI_1lane_24Minput_480p_raw8_60fps[] = {
     {0xf0, 0x31},
     {0x00, 0x00}, // sleep mode enable
 };
+#endif
 
 #ifdef __cplusplus
 }

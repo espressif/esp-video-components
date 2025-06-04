@@ -951,7 +951,8 @@ static const sc2336_gain_t sc2336_gain_map[] = {
 };
 #endif
 
-static const esp_cam_sensor_isp_info_t sc2336_isp_info[] = {
+#if CONFIG_SOC_MIPI_CSI_SUPPORTED
+static const esp_cam_sensor_isp_info_t sc2336_isp_info_mipi[] = {
     /* For MIPI */
     {
         .isp_v1_info = {
@@ -1085,21 +1086,9 @@ static const esp_cam_sensor_isp_info_t sc2336_isp_info[] = {
             .bayer_type = ESP_CAM_SENSOR_BAYER_BGGR,
         }
     },
-    /* For DVP */
-    {
-        .isp_v1_info = {
-            .version = SENSOR_ISP_INFO_VERSION_DEFAULT,
-            .pclk = 42000000,
-            .vts = 525,
-            .hts = 1600,
-            .gain_def = 0,
-            .exp_def = 0x219,
-            .bayer_type = ESP_CAM_SENSOR_BAYER_BGGR,
-        }
-    },
 };
 
-static const esp_cam_sensor_format_t sc2336_format_info[] = {
+static const esp_cam_sensor_format_t sc2336_format_info_mipi[] = {
     /* For MIPI */
     {
         .name = "MIPI_2lane_24Minput_RAW10_1280x720_30fps",
@@ -1111,7 +1100,7 @@ static const esp_cam_sensor_format_t sc2336_format_info[] = {
         .regs = init_reglist_MIPI_2lane_720p_30fps,
         .regs_size = ARRAY_SIZE(init_reglist_MIPI_2lane_720p_30fps),
         .fps = 30,
-        .isp_info = &sc2336_isp_info[0],
+        .isp_info = &sc2336_isp_info_mipi[0],
         .mipi_info = {
             .mipi_clk = 405000000,
             .lane_num = 2,
@@ -1129,7 +1118,7 @@ static const esp_cam_sensor_format_t sc2336_format_info[] = {
         .regs = init_reglist_MIPI_2lane_720p_50fps,
         .regs_size = ARRAY_SIZE(init_reglist_MIPI_2lane_720p_50fps),
         .fps = 50,
-        .isp_info = &sc2336_isp_info[1],
+        .isp_info = &sc2336_isp_info_mipi[1],
         .mipi_info = {
             .mipi_clk = 405000000,
             .lane_num = 2,
@@ -1147,7 +1136,7 @@ static const esp_cam_sensor_format_t sc2336_format_info[] = {
         .regs = init_reglist_MIPI_2lane_720p_60fps,
         .regs_size = ARRAY_SIZE(init_reglist_MIPI_2lane_720p_60fps),
         .fps = 60,
-        .isp_info = &sc2336_isp_info[2],
+        .isp_info = &sc2336_isp_info_mipi[2],
         .mipi_info = {
             .mipi_clk = 405000000,
             .lane_num = 2,
@@ -1165,7 +1154,7 @@ static const esp_cam_sensor_format_t sc2336_format_info[] = {
         .regs = init_reglist_MIPI_1lane_1080p_25fps,
         .regs_size = ARRAY_SIZE(init_reglist_MIPI_1lane_1080p_25fps),
         .fps = 25,
-        .isp_info = &sc2336_isp_info[3],
+        .isp_info = &sc2336_isp_info_mipi[3],
         .mipi_info = {
             .mipi_clk = 660000000,
             .lane_num = 1,
@@ -1183,7 +1172,7 @@ static const esp_cam_sensor_format_t sc2336_format_info[] = {
         .regs = init_reglist_MIPI_2lane_1080p_25fps,
         .regs_size = ARRAY_SIZE(init_reglist_MIPI_2lane_1080p_25fps),
         .fps = 25,
-        .isp_info = &sc2336_isp_info[4],
+        .isp_info = &sc2336_isp_info_mipi[4],
         .mipi_info = {
             .mipi_clk = 330000000,
             .lane_num = 2,
@@ -1201,7 +1190,7 @@ static const esp_cam_sensor_format_t sc2336_format_info[] = {
         .regs = init_reglist_MIPI_2lane_1080p_30fps,
         .regs_size = ARRAY_SIZE(init_reglist_MIPI_2lane_1080p_30fps),
         .fps = 30,
-        .isp_info = &sc2336_isp_info[5],
+        .isp_info = &sc2336_isp_info_mipi[5],
         .mipi_info = {
             .mipi_clk = 405000000,
             .lane_num = 2,
@@ -1219,7 +1208,7 @@ static const esp_cam_sensor_format_t sc2336_format_info[] = {
         .regs = init_reglist_MIPI_2lane_10bit_800x800_30fps,
         .regs_size = ARRAY_SIZE(init_reglist_MIPI_2lane_10bit_800x800_30fps),
         .fps = 30,
-        .isp_info = &sc2336_isp_info[6],
+        .isp_info = &sc2336_isp_info_mipi[6],
         .mipi_info = {
             .mipi_clk = 336000000,
             .lane_num = 2,
@@ -1237,7 +1226,7 @@ static const esp_cam_sensor_format_t sc2336_format_info[] = {
         .regs = init_reglist_MIPI_2lane_10bit_640x480_50fps,
         .regs_size = ARRAY_SIZE(init_reglist_MIPI_2lane_10bit_640x480_50fps),
         .fps = 50,
-        .isp_info = &sc2336_isp_info[7],
+        .isp_info = &sc2336_isp_info_mipi[7],
         .mipi_info = {
             .mipi_clk = 210000000,
             .lane_num = 2,
@@ -1255,7 +1244,7 @@ static const esp_cam_sensor_format_t sc2336_format_info[] = {
         .regs = init_reglist_MIPI_2lane_1080p_raw8_30fps,
         .regs_size = ARRAY_SIZE(init_reglist_MIPI_2lane_1080p_raw8_30fps),
         .fps = 30,
-        .isp_info = &sc2336_isp_info[8],
+        .isp_info = &sc2336_isp_info_mipi[8],
         .mipi_info = {
             .mipi_clk = 336000000,
             .lane_num = 2,
@@ -1273,7 +1262,7 @@ static const esp_cam_sensor_format_t sc2336_format_info[] = {
         .regs = init_reglist_MIPI_2lane_720p_raw8_30fps,
         .regs_size = ARRAY_SIZE(init_reglist_MIPI_2lane_720p_raw8_30fps),
         .fps = 30,
-        .isp_info = &sc2336_isp_info[9],
+        .isp_info = &sc2336_isp_info_mipi[9],
         .mipi_info = {
             .mipi_clk = 336000000,
             .lane_num = 2,
@@ -1291,7 +1280,7 @@ static const esp_cam_sensor_format_t sc2336_format_info[] = {
         .regs = init_reglist_MIPI_2lane_800x800_raw8_30fps,
         .regs_size = ARRAY_SIZE(init_reglist_MIPI_2lane_800x800_raw8_30fps),
         .fps = 30,
-        .isp_info = &sc2336_isp_info[10],
+        .isp_info = &sc2336_isp_info_mipi[10],
         .mipi_info = {
             .mipi_clk = 336000000,
             .lane_num = 2,
@@ -1309,7 +1298,7 @@ static const esp_cam_sensor_format_t sc2336_format_info[] = {
         .regs = init_reglist_MIPI_2lane_1024x600_raw8_30fps,
         .regs_size = ARRAY_SIZE(init_reglist_MIPI_2lane_1024x600_raw8_30fps),
         .fps = 30,
-        .isp_info = &sc2336_isp_info[11],
+        .isp_info = &sc2336_isp_info_mipi[11],
         .mipi_info = {
             .mipi_clk = 288000000,
             .lane_num = 2,
@@ -1317,6 +1306,26 @@ static const esp_cam_sensor_format_t sc2336_format_info[] = {
         },
         .reserved = NULL,
     },
+};
+#endif
+
+#if CONFIG_SOC_LCDCAM_CAM_SUPPORTED
+static const esp_cam_sensor_isp_info_t sc2336_isp_info_dvp[] = {
+    /* For DVP */
+    {
+        .isp_v1_info = {
+            .version = SENSOR_ISP_INFO_VERSION_DEFAULT,
+            .pclk = 42000000,
+            .vts = 525,
+            .hts = 1600,
+            .gain_def = 0,
+            .exp_def = 0x219,
+            .bayer_type = ESP_CAM_SENSOR_BAYER_BGGR,
+        }
+    },
+};
+
+static const esp_cam_sensor_format_t sc2336_format_info_dvp[] = {
     /* For DVP */
     {
         .name = "DVP_8bit_24Minput_RAW10_1280x720_30fps",
@@ -1328,11 +1337,12 @@ static const esp_cam_sensor_format_t sc2336_format_info[] = {
         .regs = init_reglist_DVP_720p_30fps,
         .regs_size = ARRAY_SIZE(init_reglist_DVP_720p_30fps),
         .fps = 30,
-        .isp_info = &sc2336_isp_info[12],
+        .isp_info = &sc2336_isp_info_dvp[0],
         .mipi_info = {0},
         .reserved = NULL,
     },
 };
+#endif
 
 static esp_err_t sc2336_read(esp_sccb_io_handle_t sccb_handle, uint16_t reg, uint8_t *read_buf)
 {
@@ -1602,9 +1612,18 @@ static esp_err_t sc2336_query_support_formats(esp_cam_sensor_device_t *dev, esp_
 {
     ESP_CAM_SENSOR_NULL_POINTER_CHECK(TAG, dev);
     ESP_CAM_SENSOR_NULL_POINTER_CHECK(TAG, formats);
-
-    formats->count = ARRAY_SIZE(sc2336_format_info);
-    formats->format_array = &sc2336_format_info[0];
+#if CONFIG_SOC_MIPI_CSI_SUPPORTED
+    if (dev->sensor_port == ESP_CAM_SENSOR_MIPI_CSI) {
+        formats->count = ARRAY_SIZE(sc2336_format_info_mipi);
+        formats->format_array = &sc2336_format_info_mipi[0];
+    }
+#endif
+#if CONFIG_SOC_LCDCAM_CAM_SUPPORTED
+    if (dev->sensor_port == ESP_CAM_SENSOR_DVP) {
+        formats->count = ARRAY_SIZE(sc2336_format_info_dvp);
+        formats->format_array = &sc2336_format_info_dvp[0];
+    }
+#endif
     return ESP_OK;
 }
 
@@ -1625,11 +1644,16 @@ static esp_err_t sc2336_set_format(esp_cam_sensor_device_t *dev, const esp_cam_s
     /* Depending on the interface type, an available configuration is automatically loaded.
     You can set the output format of the sensor without using query_format().*/
     if (format == NULL) {
-        if (dev->sensor_port != ESP_CAM_SENSOR_DVP) {
-            format = &sc2336_format_info[CONFIG_CAMERA_SC2336_MIPI_IF_FORMAT_INDEX_DAFAULT];
-        } else {
-            format = &sc2336_format_info[CONFIG_CAMERA_SC2336_DVP_IF_FORMAT_INDEX_DAFAULT];
+#if CONFIG_SOC_MIPI_CSI_SUPPORTED
+        if (dev->sensor_port == ESP_CAM_SENSOR_MIPI_CSI) {
+            format = &sc2336_format_info_mipi[CONFIG_CAMERA_SC2336_MIPI_IF_FORMAT_INDEX_DAFAULT];
         }
+#endif
+#if CONFIG_SOC_LCDCAM_CAM_SUPPORTED
+        if (dev->sensor_port == ESP_CAM_SENSOR_DVP) {
+            format = &sc2336_format_info_dvp[CONFIG_CAMERA_SC2336_DVP_IF_FORMAT_INDEX_DAFAULT];
+        }
+#endif
     }
 
     ret = sc2336_write_array(dev->sccb_handle, (sc2336_reginfo_t *)format->regs);
@@ -1828,12 +1852,16 @@ esp_cam_sensor_device_t *sc2336_detect(esp_cam_sensor_config_t *config)
             break;
         }
     }
-    if (config->sensor_port != ESP_CAM_SENSOR_DVP) {
-        dev->cur_format = &sc2336_format_info[CONFIG_CAMERA_SC2336_MIPI_IF_FORMAT_INDEX_DAFAULT];
-    } else {
-        dev->cur_format = &sc2336_format_info[CONFIG_CAMERA_SC2336_DVP_IF_FORMAT_INDEX_DAFAULT];
+#if CONFIG_SOC_MIPI_CSI_SUPPORTED
+    if (config->sensor_port == ESP_CAM_SENSOR_MIPI_CSI) {
+        dev->cur_format = &sc2336_format_info_mipi[CONFIG_CAMERA_SC2336_MIPI_IF_FORMAT_INDEX_DAFAULT];
     }
-
+#endif
+#if CONFIG_SOC_LCDCAM_CAM_SUPPORTED
+    if (config->sensor_port == ESP_CAM_SENSOR_DVP) {
+        dev->cur_format = &sc2336_format_info_dvp[CONFIG_CAMERA_SC2336_DVP_IF_FORMAT_INDEX_DAFAULT];
+    }
+#endif
     // Configure sensor power, clock, and SCCB port
     if (sc2336_power_on(dev) != ESP_OK) {
         ESP_LOGE(TAG, "Camera power on failed");

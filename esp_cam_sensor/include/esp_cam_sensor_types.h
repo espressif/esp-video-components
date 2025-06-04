@@ -17,6 +17,10 @@ extern "C" {
 #define ARRAY_SIZE(arr) (sizeof(arr) / sizeof(arr[0]))
 #endif
 
+#ifndef MAX
+#define MAX(a, b)       (((a) > (b)) ? (a) : (b))
+#endif
+
 typedef enum {
     ESP_CAM_SENSOR_PIXFORMAT_RGB565 = 1,
     ESP_CAM_SENSOR_PIXFORMAT_YUV422,

@@ -1,6 +1,5 @@
 menu "Espressif Camera Sensors Configurations"
     menu "Camera Sensor Configuration"
-        depends on IDF_TARGET_ESP32P4
         rsource "sensors/bf3925/Kconfig.bf3925"
         rsource "sensors/bf3a03/Kconfig.bf3a03"
         rsource "sensors/gc0308/Kconfig.gc0308"
@@ -15,19 +14,6 @@ menu "Espressif Camera Sensors Configurations"
         rsource "sensors/sc101iot/Kconfig.sc101iot"
         rsource "sensors/sc202cs/Kconfig.sc202cs"
         rsource "sensors/sc2336/Kconfig.sc2336"
-    endmenu
-
-    menu "Camera Sensor Configuration"
-        depends on IDF_TARGET_ESP32S3
-        rsource "sensors/bf3925/Kconfig.bf3925"
-        rsource "sensors/bf3a03/Kconfig.bf3a03"
-        rsource "sensors/gc0308/Kconfig.gc0308"
-        rsource "sensors/gc2145/Kconfig.gc2145"
-        rsource "sensors/ov2640/Kconfig.ov2640"
-        rsource "sensors/ov5640/Kconfig.ov5640"
-        rsource "sensors/sc030iot/Kconfig.sc030iot"
-        rsource "sensors/sc035hgs/Kconfig.sc035hgs"
-        rsource "sensors/sc101iot/Kconfig.sc101iot"
     endmenu
     
     menu "Camera XCLK generator Configuration"

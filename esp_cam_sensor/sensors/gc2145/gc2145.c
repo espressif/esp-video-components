@@ -89,7 +89,8 @@ typedef enum {
 
 static const char *TAG = "gc2145";
 
-static const esp_cam_sensor_format_t gc2145_format_info[] = {
+#if CONFIG_SOC_MIPI_CSI_SUPPORTED
+static const esp_cam_sensor_format_t gc2145_format_info_mipi[] = {
     {
         .name = "MIPI_1lane_24Minput_RGB565_1600x1200_7fps",
         .format = ESP_CAM_SENSOR_PIXFORMAT_RGB565,
@@ -143,7 +144,12 @@ static const esp_cam_sensor_format_t gc2145_format_info[] = {
             .line_sync_en = false,
         },
         .reserved = NULL,
-    },
+    }
+};
+#endif
+
+#if CONFIG_SOC_LCDCAM_CAM_SUPPORTED
+static const esp_cam_sensor_format_t gc2145_format_info_dvp[] = {
     {
         .name = "DVP_8bit_20Minput_RGB565_640x480_15fps",
         .format = ESP_CAM_SENSOR_PIXFORMAT_RGB565,
@@ -187,6 +193,7 @@ static const esp_cam_sensor_format_t gc2145_format_info[] = {
         .reserved = NULL,
     },
 };
+#endif
 
 static esp_err_t gc2145_read(esp_sccb_io_handle_t sccb_handle, uint8_t reg, uint8_t *read_buf)
 {
@@ -707,9 +714,19 @@ static esp_err_t gc2145_query_support_formats(esp_cam_sensor_device_t *dev, esp_
 {
     ESP_CAM_SENSOR_NULL_POINTER_CHECK(TAG, dev);
     ESP_CAM_SENSOR_NULL_POINTER_CHECK(TAG, formats);
+#if CONFIG_SOC_LCDCAM_CAM_SUPPORTED
+    if (dev->sensor_port == ESP_CAM_SENSOR_DVP) {
+        formats->count = ARRAY_SIZE(gc2145_format_info_dvp);
+        formats->format_array = &gc2145_format_info_dvp[0];
+    }
+#endif
 
-    formats->count = ARRAY_SIZE(gc2145_format_info);
-    formats->format_array = &gc2145_format_info[0];
+#if CONFIG_SOC_MIPI_CSI_SUPPORTED
+    if (dev->sensor_port == ESP_CAM_SENSOR_MIPI_CSI) {
+        formats->count = ARRAY_SIZE(gc2145_format_info_mipi);
+        formats->format_array = &gc2145_format_info_mipi[0];
+    }
+#endif
     return ESP_OK;
 }
 
@@ -731,13 +748,17 @@ static esp_err_t gc2145_set_format(esp_cam_sensor_device_t *dev, const esp_cam_s
     /* Depending on the interface type, an available configuration is automatically loaded.
     You can set the output format of the sensor without using query_format().*/
     if (format == NULL) {
-        if (dev->sensor_port != ESP_CAM_SENSOR_DVP) {
-            format = &gc2145_format_info[CONFIG_CAMERA_GC2145_MIPI_IF_FORMAT_INDEX_DAFAULT];
-        } else {
-            format = &gc2145_format_info[CONFIG_CAMERA_GC2145_DVP_IF_FORMAT_INDEX_DAFAULT];
+#if CONFIG_SOC_MIPI_CSI_SUPPORTED
+        if (dev->sensor_port == ESP_CAM_SENSOR_MIPI_CSI) {
+            format = &gc2145_format_info_mipi[CONFIG_CAMERA_GC2145_MIPI_IF_FORMAT_INDEX_DAFAULT];
         }
+#endif
+#if CONFIG_SOC_LCDCAM_CAM_SUPPORTED
+        if (dev->sensor_port == ESP_CAM_SENSOR_DVP) {
+            format = &gc2145_format_info_dvp[CONFIG_CAMERA_GC2145_DVP_IF_FORMAT_INDEX_DAFAULT];
+        }
+#endif
     }
-
     ret = gc2145_write_array(dev->sccb_handle, (gc2145_reginfo_t *)format->regs, format->regs_size);
 
     if (ret != ESP_OK) {
@@ -910,11 +931,17 @@ esp_cam_sensor_device_t *gc2145_detect(esp_cam_sensor_config_t *config)
     dev->pwdn_pin = config->pwdn_pin;
     dev->sensor_port = config->sensor_port;
     dev->ops = &gc2145_ops;
-    if (config->sensor_port != ESP_CAM_SENSOR_DVP) {
-        dev->cur_format = &gc2145_format_info[CONFIG_CAMERA_GC2145_MIPI_IF_FORMAT_INDEX_DAFAULT];
-    } else {
-        dev->cur_format = &gc2145_format_info[CONFIG_CAMERA_GC2145_DVP_IF_FORMAT_INDEX_DAFAULT];
+#if CONFIG_SOC_MIPI_CSI_SUPPORTED
+    if (config->sensor_port == ESP_CAM_SENSOR_MIPI_CSI) {
+        dev->cur_format = &gc2145_format_info_mipi[CONFIG_CAMERA_GC2145_MIPI_IF_FORMAT_INDEX_DAFAULT];
     }
+#endif
+
+#if CONFIG_SOC_LCDCAM_CAM_SUPPORTED
+    if (config->sensor_port == ESP_CAM_SENSOR_DVP) {
+        dev->cur_format = &gc2145_format_info_dvp[CONFIG_CAMERA_GC2145_DVP_IF_FORMAT_INDEX_DAFAULT];
+    }
+#endif
 
     // Configure sensor power, clock, and SCCB port
     if (gc2145_power_on(dev) != ESP_OK) {

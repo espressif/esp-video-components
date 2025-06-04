@@ -1,21 +1,16 @@
 menuconfig CAMERA_SC2336
     bool "SC2336"
     default n
+    depends on SOC_MIPI_CSI_SUPPORTED || SOC_LCDCAM_CAM_SUPPORTED
     help
         Enabling this option will add the support for SC2336.
 
 if CAMERA_SC2336
-    menuconfig CAMERA_SC2336_AUTO_DETECT
-        bool "Auto detect SC2336"
-        default y
-        help
-            When enabled, it provides the ability in application layer to automatically
-            detect camera sensors one by one.
-
-    if CAMERA_SC2336_AUTO_DETECT
+    menu "Auto detect SC2336"
         config CAMERA_SC2336_AUTO_DETECT_MIPI_INTERFACE_SENSOR
             bool "Detect for MIPI interface sensor"
             default y
+            depends on SOC_MIPI_CSI_SUPPORTED
             help
                 When enabled, you don't need to call sc2336_detect manaually, SC2336 will
                 be automatically detected and connected to the MIPI CSI interface when
@@ -24,15 +19,17 @@ if CAMERA_SC2336
         config CAMERA_SC2336_AUTO_DETECT_DVP_INTERFACE_SENSOR
             bool "Detect for DVP interface sensor"
             default n
+            depends on SOC_LCDCAM_CAM_SUPPORTED
             help
                 When enabled, you don't need to call sc2336_detect manaually, SC2336 will
                 be automatically detected and connected to the DVP interface when the
                 application starts.
-    endif
+    endmenu
 
     choice CAMERA_SC2336_MIPI_DEFAULT_FMT
         prompt "Default format select for MIPI"
         default CAMERA_SC2336_MIPI_RAW8_1280X720_30FPS
+        depends on SOC_MIPI_CSI_SUPPORTED
         help
             Select the default format to load when the sensor is detected.
             When the sensor is in stream off state, the format can be changed.
@@ -65,6 +62,7 @@ if CAMERA_SC2336
 
     config CAMERA_SC2336_MIPI_IF_FORMAT_INDEX_DAFAULT
         int
+        depends on SOC_MIPI_CSI_SUPPORTED
         default 0 if CAMERA_SC2336_MIPI_RAW10_1280X720_30FPS
         default 1 if CAMERA_SC2336_MIPI_RAW10_1280X720_50FPS
         default 2 if CAMERA_SC2336_MIPI_RAW10_1280X720_60FPS
@@ -87,6 +85,7 @@ if CAMERA_SC2336
     choice CAMERA_SC2336_DVP_DEFAULT_FMT
         prompt "Default format select for DVP"
         default CAMERA_SC2336_DVP_RAW10_1280X720_30FPS
+        depends on SOC_LCDCAM_CAM_SUPPORTED
         help
             Select the default format to load when the sensor is detected.
             When the sensor is in stream off state, the format can be changed.
@@ -97,7 +96,8 @@ if CAMERA_SC2336
 
     config CAMERA_SC2336_DVP_IF_FORMAT_INDEX_DAFAULT
         int
-        default 12 if CAMERA_SC2336_DVP_RAW10_1280X720_30FPS
+        depends on SOC_LCDCAM_CAM_SUPPORTED
+        default 0 if CAMERA_SC2336_DVP_RAW10_1280X720_30FPS
         help
             Set the configuration loaded by default for the DVP interface.
             More information can be obtained by calling the query_support_formats().

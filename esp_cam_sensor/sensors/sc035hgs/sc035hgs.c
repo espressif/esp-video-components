@@ -253,7 +253,8 @@ static const sc035hgs_gain_t sc035hgs_gain_map[] = {
     {0x1f, 0x07, 0x88, 0x01}, // 32.9375
 };
 
-static const esp_cam_sensor_isp_info_t sc035hgs_isp_info[] = {
+#if CONFIG_SOC_MIPI_CSI_SUPPORTED
+static const esp_cam_sensor_isp_info_t sc035hgs_isp_info_mipi[] = {
     {
         .isp_v1_info = {
             .version = SENSOR_ISP_INFO_VERSION_DEFAULT,
@@ -300,7 +301,7 @@ static const esp_cam_sensor_isp_info_t sc035hgs_isp_info[] = {
     }
 };
 
-static const esp_cam_sensor_format_t sc035hgs_format_info[] = {
+static const esp_cam_sensor_format_t sc035hgs_format_info_mipi[] = {
     {
         .name = "MIPI_1lane_20Minput_raw10_640x480_48fps",
         .format = ESP_CAM_SENSOR_PIXFORMAT_RAW10,
@@ -311,7 +312,7 @@ static const esp_cam_sensor_format_t sc035hgs_format_info[] = {
         .regs = mipi_20Minput_1lane_640x480_raw10_48fps,
         .regs_size = ARRAY_SIZE(mipi_20Minput_1lane_640x480_raw10_48fps),
         .fps = 48,
-        .isp_info = &sc035hgs_isp_info[0],
+        .isp_info = &sc035hgs_isp_info_mipi[0],
         .mipi_info = {
             .mipi_clk = 500000000,
             .lane_num = 1,
@@ -329,7 +330,7 @@ static const esp_cam_sensor_format_t sc035hgs_format_info[] = {
         .regs = mipi_24Minput_1lane_640x480_raw10_linear_120fps,
         .regs_size = ARRAY_SIZE(mipi_24Minput_1lane_640x480_raw10_linear_120fps),
         .fps = 120,
-        .isp_info = &sc035hgs_isp_info[1],
+        .isp_info = &sc035hgs_isp_info_mipi[1],
         .mipi_info = {
             .mipi_clk = 425000000,
             .lane_num = 1,
@@ -347,7 +348,7 @@ static const esp_cam_sensor_format_t sc035hgs_format_info[] = {
         .regs = mipi_24Minput_2lane_640x480_raw8_linear_50fps,
         .regs_size = ARRAY_SIZE(mipi_24Minput_2lane_640x480_raw8_linear_50fps),
         .fps = 50,
-        .isp_info = &sc035hgs_isp_info[2],
+        .isp_info = &sc035hgs_isp_info_mipi[2],
         .mipi_info = {
             .mipi_clk = 288000000,
             .lane_num = 2,
@@ -365,7 +366,7 @@ static const esp_cam_sensor_format_t sc035hgs_format_info[] = {
         .regs = mipi_24Minput_2lane_640x480_raw8_linear_100fps,
         .regs_size = ARRAY_SIZE(mipi_24Minput_2lane_640x480_raw8_linear_100fps),
         .fps = 100,
-        .isp_info = &sc035hgs_isp_info[3],
+        .isp_info = &sc035hgs_isp_info_mipi[3],
         .mipi_info = {
             .mipi_clk = 288000000,
             .lane_num = 2,
@@ -374,6 +375,7 @@ static const esp_cam_sensor_format_t sc035hgs_format_info[] = {
         .reserved = NULL,
     }
 };
+#endif
 
 static esp_err_t sc035hgs_read(esp_sccb_io_handle_t sccb_handle, uint16_t reg, uint8_t *read_buf)
 {
@@ -654,9 +656,13 @@ static esp_err_t sc035hgs_query_support_formats(esp_cam_sensor_device_t *dev, es
 {
     ESP_CAM_SENSOR_NULL_POINTER_CHECK(TAG, dev);
     ESP_CAM_SENSOR_NULL_POINTER_CHECK(TAG, formats);
+#if CONFIG_SOC_MIPI_CSI_SUPPORTED
+    if (dev->sensor_port == ESP_CAM_SENSOR_MIPI_CSI) {
+        formats->count = ARRAY_SIZE(sc035hgs_format_info_mipi);
+        formats->format_array = &sc035hgs_format_info_mipi[0];
+    }
+#endif
 
-    formats->count = ARRAY_SIZE(sc035hgs_format_info);
-    formats->format_array = &sc035hgs_format_info[0];
     return ESP_OK;
 }
 
@@ -678,7 +684,11 @@ static esp_err_t sc035hgs_set_format(esp_cam_sensor_device_t *dev, const esp_cam
     /* Depending on the interface type, an available configuration is automatically loaded.
     You can set the output format of the sensor without using query_format().*/
     if (format == NULL) {
-        format = &sc035hgs_format_info[CONFIG_CAMERA_SC035HGS_MIPI_IF_FORMAT_INDEX_DAFAULT];
+#if CONFIG_SOC_MIPI_CSI_SUPPORTED
+        if (dev->sensor_port == ESP_CAM_SENSOR_MIPI_CSI) {
+            format = &sc035hgs_format_info_mipi[CONFIG_CAMERA_SC035HGS_MIPI_IF_FORMAT_INDEX_DAFAULT];
+        }
+#endif
     }
 
     ret = sc035hgs_write_array(dev->sccb_handle, (sc035hgs_reginfo_t *)format->regs, format->regs_size);
@@ -870,7 +880,11 @@ esp_cam_sensor_device_t *sc035hgs_detect(esp_cam_sensor_config_t *config)
     dev->sensor_port = config->sensor_port;
     dev->ops = &sc035hgs_ops;
     dev->priv = cam_sc035hgs;
-    dev->cur_format = &sc035hgs_format_info[CONFIG_CAMERA_SC035HGS_MIPI_IF_FORMAT_INDEX_DAFAULT];
+#if CONFIG_SOC_MIPI_CSI_SUPPORTED
+    if (config->sensor_port == ESP_CAM_SENSOR_MIPI_CSI) {
+        dev->cur_format = &sc035hgs_format_info_mipi[CONFIG_CAMERA_SC035HGS_MIPI_IF_FORMAT_INDEX_DAFAULT];
+    }
+#endif
 
     // Configure sensor power, clock, and SCCB port
     if (sc035hgs_power_on(dev) != ESP_OK) {

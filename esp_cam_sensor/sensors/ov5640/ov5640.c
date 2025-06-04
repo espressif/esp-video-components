@@ -31,7 +31,8 @@
 
 static const char *TAG = "ov5640";
 
-static const esp_cam_sensor_format_t ov5640_format_info[] = {
+#if CONFIG_SOC_MIPI_CSI_SUPPORTED
+static const esp_cam_sensor_format_t ov5640_format_info_mipi[] = {
     {
         .name = "MIPI_2lane_24Minput_RGB565_1280x720_14fps",
         .format = ESP_CAM_SENSOR_PIXFORMAT_RGB565,
@@ -49,7 +50,12 @@ static const esp_cam_sensor_format_t ov5640_format_info[] = {
             .line_sync_en = CONFIG_CAMERA_OV5640_CSI_LINESYNC_ENABLE ? true : false,
         },
         .reserved = NULL,
-    },
+    }
+};
+#endif
+
+#if CONFIG_SOC_LCDCAM_CAM_SUPPORTED
+static const esp_cam_sensor_format_t ov5640_format_info_dvp[] = {
     /* For DVP */
     {
         .name = "DVP_8bit_24Minput_YUV422_800x600_10fps",
@@ -66,6 +72,7 @@ static const esp_cam_sensor_format_t ov5640_format_info[] = {
         .reserved = NULL,
     },
 };
+#endif
 
 static esp_err_t ov5640_read(esp_sccb_io_handle_t sccb_handle, uint16_t reg, uint8_t *read_buf)
 {
@@ -270,9 +277,19 @@ static esp_err_t ov5640_query_support_formats(esp_cam_sensor_device_t *dev, esp_
 {
     ESP_CAM_SENSOR_NULL_POINTER_CHECK(TAG, dev);
     ESP_CAM_SENSOR_NULL_POINTER_CHECK(TAG, formats);
+#if CONFIG_SOC_MIPI_CSI_SUPPORTED
+    if (dev->sensor_port == ESP_CAM_SENSOR_MIPI_CSI) {
+        formats->count = ARRAY_SIZE(ov5640_format_info_mipi);
+        formats->format_array = &ov5640_format_info_mipi[0];
+    }
+#endif
 
-    formats->count = ARRAY_SIZE(ov5640_format_info);
-    formats->format_array = &ov5640_format_info[0];
+#if CONFIG_SOC_LCDCAM_CAM_SUPPORTED
+    if (dev->sensor_port == ESP_CAM_SENSOR_DVP) {
+        formats->count = ARRAY_SIZE(ov5640_format_info_dvp);
+        formats->format_array = &ov5640_format_info_dvp[0];
+    }
+#endif
     return ESP_OK;
 }
 
@@ -293,12 +310,19 @@ static esp_err_t ov5640_set_format(esp_cam_sensor_device_t *dev, const esp_cam_s
     ov5640_reginfo_t *reset_regs_list = NULL;
     /* Depending on the interface type, an available configuration is automatically loaded.
     You can set the output format of the sensor without using query_format().*/
-    if (dev->sensor_port != ESP_CAM_SENSOR_DVP) {
-        reset_regs_list = (ov5640_reginfo_t *)ov5640_mipi_reset_regs;
-        format = &ov5640_format_info[CONFIG_CAMERA_OV5640_MIPI_IF_FORMAT_INDEX_DAFAULT];
-    } else {
-        reset_regs_list = (ov5640_reginfo_t *)ov5640_dvp_reset_regs;
-        format = &ov5640_format_info[CONFIG_CAMERA_OV5640_DVP_IF_FORMAT_INDEX_DAFAULT];
+    if (format == NULL) {
+#if CONFIG_SOC_MIPI_CSI_SUPPORTED
+        if (dev->sensor_port == ESP_CAM_SENSOR_MIPI_CSI) {
+            reset_regs_list = (ov5640_reginfo_t *)ov5640_mipi_reset_regs;
+            format = &ov5640_format_info_mipi[CONFIG_CAMERA_OV5640_MIPI_IF_FORMAT_INDEX_DAFAULT];
+        }
+#endif
+#if CONFIG_SOC_LCDCAM_CAM_SUPPORTED
+        if (dev->sensor_port == ESP_CAM_SENSOR_DVP) {
+            reset_regs_list = (ov5640_reginfo_t *)ov5640_dvp_reset_regs;
+            format = &ov5640_format_info_dvp[CONFIG_CAMERA_OV5640_DVP_IF_FORMAT_INDEX_DAFAULT];
+        }
+#endif
     }
 
     ret = ov5640_write_array(dev->sccb_handle, reset_regs_list);
@@ -475,11 +499,18 @@ esp_cam_sensor_device_t *ov5640_detect(esp_cam_sensor_config_t *config)
     dev->reset_pin = config->reset_pin;
     dev->pwdn_pin = config->pwdn_pin;
     dev->sensor_port = config->sensor_port;
+
+#if CONFIG_SOC_MIPI_CSI_SUPPORTED
     if (config->sensor_port == ESP_CAM_SENSOR_MIPI_CSI) {
-        dev->cur_format = &ov5640_format_info[CONFIG_CAMERA_OV5640_MIPI_IF_FORMAT_INDEX_DAFAULT];
-    } else {
-        dev->cur_format = &ov5640_format_info[CONFIG_CAMERA_OV5640_DVP_IF_FORMAT_INDEX_DAFAULT];
+        dev->cur_format = &ov5640_format_info_mipi[CONFIG_CAMERA_OV5640_MIPI_IF_FORMAT_INDEX_DAFAULT];
     }
+#endif
+
+#if CONFIG_SOC_LCDCAM_CAM_SUPPORTED
+    if (config->sensor_port == ESP_CAM_SENSOR_DVP) {
+        dev->cur_format = &ov5640_format_info_dvp[CONFIG_CAMERA_OV5640_DVP_IF_FORMAT_INDEX_DAFAULT];
+    }
+#endif
 
     // Configure sensor power, clock, and SCCB port
     if (ov5640_power_on(dev) != ESP_OK) {
