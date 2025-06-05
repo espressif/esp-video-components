@@ -46,4 +46,13 @@ menu "Espressif Camera Sensors Configurations"
 
     endmenu
 
+    menu "Camera Controller SPI Configuration"
+        config CAM_CTLR_SPI_ISR_CACHE_SAFE
+            bool "Camera Controller SPI ISR Cache-Safe"
+            default y
+            select SPI_SLAVE_ISR_IN_IRAM
+            help
+                Ensure the camera controller SPI ISR is Cache-Safe. When enabled, the ISR handler
+                will be available when the cache is disabled.
+    endmenu
 endmenu
