@@ -71,12 +71,13 @@ esp_err_t esp_cam_new_spi_ctlr(const esp_cam_ctlr_spi_config_t *config, esp_cam_
  * @param src_len Source buffer length
  * @param dst Destination buffer pointer
  * @param dst_len Destination buffer length
+ * @param decoded_size Decoded size pointer
  *
  * @return
  *      - ESP_OK on success
  *      - Others if failed
  */
-esp_err_t esp_cam_spi_decode_frame(esp_cam_ctlr_handle_t handle, uint8_t *src, uint32_t src_len, uint8_t *dst, uint32_t dst_len);
+esp_err_t esp_cam_spi_decode_frame(esp_cam_ctlr_handle_t handle, uint8_t *src, uint32_t src_len, uint8_t *dst, uint32_t dst_len, uint32_t *decoded_size);
 
 #ifdef __cplusplus
 }

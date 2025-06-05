@@ -25,7 +25,7 @@ static const esp_video_init_csi_config_t s_csi_config = {
 };
 
 #if EXAMPLE_ENABLE_MIPI_CSI_CAM_MOTOR
-static const esp_video_init_cam_motor_config_t cam_motor_config = {
+static const esp_video_init_cam_motor_config_t s_cam_motor_config = {
     .sccb_config = {
         .init_sccb = true,
         .i2c_config = {
@@ -70,16 +70,43 @@ static const esp_video_init_dvp_config_t s_dvp_config = {
 };
 #endif /* EXAMPLE_ENABLE_DVP_CAM_SENSOR */
 
+#if EXAMPLE_ENABLE_SPI_CAM_SENSOR
+static const esp_video_init_spi_config_t s_spi_config = {
+    .sccb_config = {
+        .init_sccb = true,
+        .i2c_config = {
+            .port      = EXAMPLE_SPI_SCCB_I2C_PORT,
+            .scl_pin   = EXAMPLE_SPI_SCCB_I2C_SCL_PIN,
+            .sda_pin   = EXAMPLE_SPI_SCCB_I2C_SDA_PIN,
+        },
+        .freq      = EXAMPLE_SPI_SCCB_I2C_FREQ,
+    },
+    .reset_pin = EXAMPLE_SPI_CAM_SENSOR_RESET_PIN,
+    .pwdn_pin  = EXAMPLE_SPI_CAM_SENSOR_PWDN_PIN,
+
+    .spi_port = EXAMPLE_SPI_CAM_SPI_PORT,
+    .spi_cs_pin = EXAMPLE_SPI_CAM_CS_PIN,
+    .spi_sclk_pin = EXAMPLE_SPI_CAM_SCLK_PIN,
+    .spi_data0_io_pin = EXAMPLE_SPI_CAM_DATA0_IO_PIN,
+
+    .xclk_source = EXAMPLE_SPI_CAM_XCLK_RESOURCE,
+    .xclk_pin = EXAMPLE_SPI_CAM_XCLK_PIN,
+    .xclk_freq = EXAMPLE_SPI_CAM_XCLK_FREQ,
+};
+#endif /* EXAMPLE_ENABLE_SPI_CAM_SENSOR */
 static const esp_video_init_config_t s_cam_config = {
 #if EXAMPLE_ENABLE_MIPI_CSI_CAM_SENSOR
     .csi      = &s_csi_config,
 #if EXAMPLE_ENABLE_MIPI_CSI_CAM_MOTOR
-    .cam_motor = &cam_motor_config,
+    .cam_motor = &s_cam_motor_config,
 #endif /* EXAMPLE_ENABLE_MIPI_CSI_CAM_MOTOR */
 #endif /* EXAMPLE_ENABLE_MIPI_CSI_CAM_SENSOR */
 #if EXAMPLE_ENABLE_DVP_CAM_SENSOR
     .dvp      = &s_dvp_config,
 #endif /* EXAMPLE_ENABLE_DVP_CAM_SENSOR */
+#if EXAMPLE_ENABLE_SPI_CAM_SENSOR
+    .spi      = &s_spi_config,
+#endif /* EXAMPLE_ENABLE_SPI_CAM_SENSOR */
 };
 
 #if CONFIG_EXAMPLE_SCCB_I2C_INIT_BY_APP
@@ -130,20 +157,37 @@ esp_err_t example_video_init(void)
     esp_video_init_csi_config_t csi_config = s_csi_config;
     csi_config.sccb_config.init_sccb = false;
     csi_config.sccb_config.i2c_handle = s_i2cbus_handle;
+
+#if EXAMPLE_ENABLE_MIPI_CSI_CAM_MOTOR
+    esp_video_init_cam_motor_config_t cam_motor_config = s_cam_motor_config;
+    cam_motor_config.sccb_config.init_sccb = false;
+    cam_motor_config.sccb_config.i2c_handle = s_i2cbus_handle;
+#endif /* EXAMPLE_ENABLE_MIPI_CSI_CAM_MOTOR */
 #endif /* EXAMPLE_ENABLE_MIPI_CSI_CAM_SENSOR */
 #if EXAMPLE_ENABLE_DVP_CAM_SENSOR
     esp_video_init_dvp_config_t dvp_config = s_dvp_config;
     dvp_config.sccb_config.init_sccb = false;
     dvp_config.sccb_config.i2c_handle = s_i2cbus_handle;
 #endif /* EXAMPLE_ENABLE_DVP_CAM_SENSOR */
+#if EXAMPLE_ENABLE_SPI_CAM_SENSOR
+    esp_video_init_spi_config_t spi_config = s_spi_config;
+    spi_config.sccb_config.init_sccb = false;
+    spi_config.sccb_config.i2c_handle = s_i2cbus_handle;
+#endif /* EXAMPLE_ENABLE_SPI_CAM_SENSOR */
 
     esp_video_init_config_t cam_config = {
 #if EXAMPLE_ENABLE_MIPI_CSI_CAM_SENSOR
         .csi      = &csi_config,
+#if EXAMPLE_ENABLE_MIPI_CSI_CAM_MOTOR
+        .cam_motor = &cam_motor_config,
+#endif /* EXAMPLE_ENABLE_MIPI_CSI_CAM_MOTOR */
 #endif /* EXAMPLE_ENABLE_MIPI_CSI_CAM_SENSOR */
 #if EXAMPLE_ENABLE_DVP_CAM_SENSOR
         .dvp      = &dvp_config,
 #endif /* EXAMPLE_ENABLE_DVP_CAM_SENSOR */
+#if EXAMPLE_ENABLE_SPI_CAM_SENSOR
+        .spi      = &spi_config,
+#endif /* EXAMPLE_ENABLE_SPI_CAM_SENSOR */
     };
 
     cam_config_ptr = &cam_config;
@@ -178,6 +222,14 @@ esp_err_t example_video_init(void)
              EXAMPLE_DVP_SCCB_I2C_SDA_PIN,
              EXAMPLE_DVP_SCCB_I2C_FREQ);
 #endif /* EXAMPLE_ENABLE_DVP_CAM_SENSOR */
+
+#if EXAMPLE_ENABLE_SPI_CAM_SENSOR
+    ESP_LOGI(TAG, "SPI camera sensor I2C port=%d, scl_pin=%d, sda_pin=%d, freq=%d",
+             EXAMPLE_SPI_SCCB_I2C_PORT,
+             EXAMPLE_SPI_SCCB_I2C_SCL_PIN,
+             EXAMPLE_SPI_SCCB_I2C_SDA_PIN,
+             EXAMPLE_SPI_SCCB_I2C_FREQ);
+#endif /* EXAMPLE_ENABLE_SPI_CAM_SENSOR */
 
     ESP_GOTO_ON_ERROR(esp_video_init(cam_config_ptr), failed_2, TAG, "failed to initialize video");
 

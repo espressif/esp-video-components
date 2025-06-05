@@ -56,6 +56,14 @@ menu "Espressif Video Configuration"
         help
             Select this option, enable DVP based video device.
 
+    menuconfig ESP_VIDEO_ENABLE_SPI_VIDEO_DEVICE
+        bool "Enable SPI based Video Device"
+        depends on SOC_GPSPI_SUPPORTED
+        select ESP_VIDEO_ENABLE_DATA_PREPROCESSING
+        default n
+        help
+            Select this option, enable SPI based video device.
+
     menuconfig ESP_VIDEO_ENABLE_HW_H264_VIDEO_DEVICE
         bool "Enable Hardware H.264 based Video Device"
         depends on IDF_TARGET_ESP32P4

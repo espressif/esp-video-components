@@ -434,7 +434,7 @@ fail_0:
  */
 struct esp_video *esp_video_open(const char *name)
 {
-    esp_err_t ret;
+    esp_err_t ret = ESP_OK;
     bool found = false;
     struct esp_video *video;
 
@@ -466,7 +466,7 @@ struct esp_video *esp_video_open(const char *name)
         ret = video->ops->init(video);
         if (ret != ESP_OK) {
             ESP_LOGE(TAG, "video->ops->init=%x", ret);
-            video = NULL;
+            goto exit_0;
         } else {
             int stream_count = video->caps & V4L2_CAP_VIDEO_M2M ? 2 : 1;
 
@@ -482,11 +482,15 @@ struct esp_video *esp_video_open(const char *name)
         }
     } else {
         ESP_LOGD(TAG, "video->ops->init=NULL");
+        ret = ESP_ERR_NOT_SUPPORTED;
     }
 
 exit_0:
+    if (ret != ESP_OK) {
+        video->reference--;
+    }
     xSemaphoreGive(video->mutex);
-    return video;
+    return ret == ESP_OK ? video : NULL;
 }
 
 /**

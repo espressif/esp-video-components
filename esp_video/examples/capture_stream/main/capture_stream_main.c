@@ -229,7 +229,14 @@ static esp_err_t camera_capture_stream(void)
                 goto exit_0;
             }
 
-            frame_size += buf.bytesused;
+            /**
+             * If no error, the flags has V4L2_BUF_FLAG_DONE. If error, the flags has V4L2_BUF_FLAG_ERROR.
+             * We need to skip these frames, but we also need queue the buffer.
+             */
+            if (buf.flags & V4L2_BUF_FLAG_DONE) {
+                frame_size += buf.bytesused;
+                frame_count++;
+            }
 
 #if CONFIG_EXAMPLE_VIDEO_BUFFER_TYPE_USER
             buf.m.userptr = (unsigned long)buffer[buf.index];
@@ -240,8 +247,6 @@ static esp_err_t camera_capture_stream(void)
                 ret = ESP_FAIL;
                 goto exit_0;
             }
-
-            frame_count++;
         }
 
         if (ioctl(fd, VIDIOC_STREAMOFF, &type) != 0) {

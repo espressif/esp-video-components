@@ -34,6 +34,10 @@ menu "Example Video Initialization Configuration"
         config EXAMPLE_ENABLE_DVP_CAM_SENSOR
             bool "DVP"
             depends on ESP_VIDEO_ENABLE_DVP_VIDEO_DEVICE
+
+        config EXAMPLE_ENABLE_SPI_CAM_SENSOR
+            bool "SPI"
+            depends on ESP_VIDEO_ENABLE_SPI_VIDEO_DEVICE
     endchoice
 
     if EXAMPLE_ENABLE_MIPI_CSI_CAM_SENSOR
@@ -88,6 +92,45 @@ menu "Example Video Initialization Configuration"
         config EXAMPLE_DVP_XCLK_FREQ
             int "DVP XCLK Frequency"
             default 20000000    
+    endif
+
+    if EXAMPLE_ENABLE_SPI_CAM_SENSOR
+        config EXAMPLE_SPI_SCCB_I2C_PORT
+            int "SPI SCCB I2C Port Number"
+            default 1
+            range 0 1
+
+        config EXAMPLE_SPI_SCCB_I2C_FREQ
+            int "SPI SCCB I2C Frequency"
+            default 100000
+            range 100000 400000
+            help
+                Increasing this value can reduce the initialization time of the camera sensor.
+                Please refer to the relevant instructions for the camera sensor to adjust the value.
+    
+        config EXAMPLE_SPI_CAM_SPI_PORT
+            int "SPI Camera Sensor SPI Port Number"
+            default 2
+
+        choice EXAMPLE_SPI_CAM_XCLK_RESOURCE
+            prompt "SPI Camera Sensor Clock Resource"
+            default EXAMPLE_SPI_CAM_XCLK_USE_LEDC if CAMERA_XCLK_USE_LEDC
+            default EXAMPLE_SPI_CAM_XCLK_USE_CLOCK_ROUTER if CAMERA_XCLK_USE_ESP_CLOCK_ROUTER
+            help
+                Select SPI camera sensor clock resource.
+
+            config EXAMPLE_SPI_CAM_XCLK_USE_LEDC
+                bool "LEDC"
+                depends on CAMERA_XCLK_USE_LEDC
+            
+            config EXAMPLE_SPI_CAM_XCLK_USE_CLOCK_ROUTER
+                bool "Clock Router"
+                depends on CAMERA_XCLK_USE_ESP_CLOCK_ROUTER
+        endchoice
+
+        config EXAMPLE_SPI_CAM_XCLK_FREQ
+            int "SPI XCLK Frequency"
+            default 24000000
     endif
 
     if EXAMPLE_SELECT_CUSTOMIZED_DEV_BOARD
@@ -231,6 +274,48 @@ menu "Example Video Initialization Configuration"
                 int "DVP D7 Pin"
                 range 0 56
                 default 47
+        endif
+
+        if EXAMPLE_ENABLE_SPI_CAM_SENSOR
+            config EXAMPLE_SPI_SCCB_I2C_SCL_PIN
+                int "SPI SCCB I2C SCL Pin"
+                default 8
+                range -1 56
+
+            config EXAMPLE_SPI_SCCB_I2C_SDA_PIN
+                int "SPI SCCB I2C SDA Pin"
+                default 7
+                range -1 56
+
+            config EXAMPLE_SPI_CAM_SENSOR_RESET_PIN
+                int "SPI Camera Sensor Reset Pin"
+                default -1
+                range -1 56
+
+            config EXAMPLE_SPI_CAM_SENSOR_PWDN_PIN
+                int "SPI Camera Sensor Power Down Pin"
+                default -1
+                range -1 56
+
+            config EXAMPLE_SPI_CAM_XCLK_PIN
+                int "Output XCLK Pin for SPI Sensor"
+                range 0 56
+                default 20
+
+            config EXAMPLE_SPI_CAM_CS_PIN
+                int "SPI Camera Sensor CS Pin"
+                default 37
+                range 0 56
+            
+            config EXAMPLE_SPI_CAM_SCLK_PIN
+                int "SPI Camera Sensor SCLK Pin"
+                default 4
+                range 0 56
+
+            config EXAMPLE_SPI_CAM_DATA0_IO_PIN
+                int "SPI Camera Sensor Data0 I/O Pin"
+                default 21
+                range 0 56
         endif
     endif
 

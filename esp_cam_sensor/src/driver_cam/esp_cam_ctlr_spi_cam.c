@@ -105,6 +105,15 @@ static void SPI_CAM_ISR_ATTR spi_cam_post_trans_cb(spi_slave_transaction_t *spi_
 {
     esp_cam_ctlr_spi_cam_t *ctlr = (esp_cam_ctlr_spi_cam_t *)spi_trans->user;
 
+    /**
+     * Due to SPI slave does not support stop function,
+     * we need to check if the controller is started,
+     * if not started, we need to return immediately.
+     */
+    if (ctlr->fsm != ESP_CAM_CTLR_SPI_CAM_FSM_STARTED) {
+        return;
+    }
+
     if ((spi_trans->rx_buffer != ctlr->frame_buffer) || ctlr->bk_buffer_exposed) {
         if (!ctlr->auto_decode_dis) {
             spi_cam_msg_t msg;
@@ -206,12 +215,13 @@ static esp_err_t spi_cam_deinit_intf(esp_cam_ctlr_spi_cam_t *ctlr)
  * @param ctlr ESP CAM controller handle
  * @param src Source buffer pointer
  * @param dst Destination buffer pointer
+ * @param decoded_size Decoded size pointer
  *
  * @return
  *      - ESP_OK on success
  *      - Others if failed
  */
-static esp_err_t spi_cam_decode(esp_cam_ctlr_spi_cam_t *ctlr, uint8_t *src, uint8_t *dst)
+static esp_err_t spi_cam_decode(esp_cam_ctlr_spi_cam_t *ctlr, uint8_t *src, uint8_t *dst, uint32_t *decoded_size)
 {
     bool decode_check_dis = ctlr->decode_check_dis;
 
@@ -236,6 +246,8 @@ static esp_err_t spi_cam_decode(esp_cam_ctlr_spi_cam_t *ctlr, uint8_t *src, uint
         dst += line_data_size;
     }
 
+    *decoded_size = ctlr->bf_size_in_bytes;
+
     return ESP_OK;
 }
 
@@ -257,12 +269,13 @@ static void spi_cam_task(void *arg)
                 esp_err_t ret;
                 uint8_t *decoded_buffer;
                 uint8_t *rx_buffer = msg.recved_frame.buffer;
+                uint32_t decoded_size;
 
                 if (rx_buffer == ctlr->frame_buffer) {
-                    ret = spi_cam_decode(ctlr, rx_buffer, ctlr->backup_buffer);
+                    ret = spi_cam_decode(ctlr, rx_buffer, ctlr->backup_buffer, &decoded_size);
                     decoded_buffer = ctlr->backup_buffer;
                 } else {
-                    ret = spi_cam_decode(ctlr, rx_buffer, rx_buffer);
+                    ret = spi_cam_decode(ctlr, rx_buffer, rx_buffer, &decoded_size);
                     decoded_buffer = rx_buffer;
                 }
 
@@ -270,7 +283,7 @@ static void spi_cam_task(void *arg)
                     esp_cam_ctlr_trans_t trans = {0};
 
                     trans.buffer = decoded_buffer;
-                    trans.buflen = ctlr->bf_size_in_bytes;
+                    trans.buflen = decoded_size;
                     trans.received_size = trans.buflen;
                     if (ctlr->cbs.on_trans_finished) {
                         ctlr->cbs.on_trans_finished(&(ctlr->base), &trans, ctlr->cbs_user_data);
@@ -368,17 +381,15 @@ static esp_err_t spi_cam_start(esp_cam_ctlr_handle_t handle)
  */
 static esp_err_t spi_cam_stop(esp_cam_ctlr_handle_t handle)
 {
-    esp_err_t ret;
     esp_cam_ctlr_spi_cam_t *ctlr = (esp_cam_ctlr_spi_cam_t *)handle;
     ESP_RETURN_ON_FALSE(ctlr, ESP_ERR_INVALID_ARG, TAG, "invalid argument: handle is null");
     ESP_RETURN_ON_FALSE(ctlr->fsm == ESP_CAM_CTLR_SPI_CAM_FSM_STARTED, ESP_ERR_INVALID_STATE, TAG, "processor isn't in started state");
 
-    ret = esp_cam_spi_slave_disable(ctlr->spi_port);
-    if (ret == ESP_OK) {
-        ctlr->fsm = ESP_CAM_CTLR_SPI_CAM_FSM_ENABLED;
-    }
+    /* SPI slave does not support stop function */
 
-    return ret;
+    ctlr->fsm = ESP_CAM_CTLR_SPI_CAM_FSM_ENABLED;
+
+    return ESP_OK;
 }
 
 /**
@@ -615,12 +626,13 @@ fail0:
  * @param src_len Source buffer length
  * @param dst Destination buffer pointer
  * @param dst_len Destination buffer length
+ * @param decoded_size Decoded size pointer
  *
  * @return
  *      - ESP_OK on success
  *      - Others if failed
  */
-esp_err_t esp_cam_spi_decode_frame(esp_cam_ctlr_handle_t handle, uint8_t *src, uint32_t src_len, uint8_t *dst, uint32_t dst_len)
+esp_err_t esp_cam_spi_decode_frame(esp_cam_ctlr_handle_t handle, uint8_t *src, uint32_t src_len, uint8_t *dst, uint32_t dst_len, uint32_t *decoded_size)
 {
     esp_cam_ctlr_spi_cam_t *ctlr = (esp_cam_ctlr_spi_cam_t *)handle;
     ESP_RETURN_ON_FALSE(ctlr, ESP_ERR_INVALID_ARG, TAG, "invalid argument: handle is null");
@@ -628,5 +640,5 @@ esp_err_t esp_cam_spi_decode_frame(esp_cam_ctlr_handle_t handle, uint8_t *src, u
     ESP_RETURN_ON_FALSE(src && dst, ESP_ERR_INVALID_ARG, TAG, "invalid argument: src or dst is null");
     ESP_RETURN_ON_FALSE(src_len == ctlr->fb_size_in_bytes && dst_len >= ctlr->bf_size_in_bytes, ESP_ERR_INVALID_ARG, TAG, "invalid argument: src_len or dst_len is invalid");
 
-    return spi_cam_decode(ctlr, src, dst);
+    return spi_cam_decode(ctlr, src, dst, decoded_size);
 }

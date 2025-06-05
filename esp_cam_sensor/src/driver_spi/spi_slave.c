@@ -93,6 +93,9 @@ typedef struct {
 #ifdef CONFIG_PM_ENABLE
     esp_pm_lock_handle_t pm_lock;
 #endif
+#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(6, 0, 0)
+    uint64_t gpio_reserve;
+#endif
 } spi_slave_t;
 
 static spi_slave_t *spihost[SOC_SPI_PERIPH_NUM];
@@ -230,7 +233,7 @@ esp_err_t esp_cam_spi_slave_initialize(spi_host_device_t host, const spi_bus_con
 
     err = spicommon_bus_initialize_io(host, bus_config, SPICOMMON_BUSFLAG_SLAVE | bus_config->flags, &spihost[host]->flags
 #if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(6, 0, 0)
-                                      , NULL
+                                      , &spihost[host]->gpio_reserve
 #endif
                                      );
     if (err != ESP_OK) {
@@ -240,7 +243,7 @@ esp_err_t esp_cam_spi_slave_initialize(spi_host_device_t host, const spi_bus_con
     if (slave_config->spics_io_num >= 0) {
         spicommon_cs_initialize(host, slave_config->spics_io_num, 0, !bus_is_iomux(spihost[host])
 #if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(6, 0, 0)
-                                , NULL
+                                , &spihost[host]->gpio_reserve
 #endif
                                );
         // check and save where cs line really route through
@@ -362,7 +365,7 @@ esp_err_t esp_cam_spi_slave_free(spi_host_device_t host)
     }
     spicommon_bus_free_io_cfg(&spihost[host]->bus_config
 #if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(6, 0, 0)
-                              , NULL
+                              , &spihost[host]->gpio_reserve
 #endif
                              );
     esp_intr_free(spihost[host]->intr);

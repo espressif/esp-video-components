@@ -18,6 +18,7 @@
 #include "esp_cam_motor.h"
 #include "esp_cam_motor_detect.h"
 #endif
+#include "esp_cam_sensor_xclk.h"
 
 #include "esp_video_init.h"
 #include "esp_video_device_internal.h"
@@ -32,13 +33,14 @@
 
 #define ESP_VIDEO_INIT_DVP_SCCB     0
 #define ESP_VIDEO_INIT_CSI_SCCB     1
+#define ESP_VIDEO_INIT_SPI_SCCB     2
 
 #if CONFIG_ESP_VIDEO_ENABLE_CAMERA_MOTOR_CONTROLLER
-#define ESP_VIDEO_INIT_MOTOR_SCCB   2
+#define ESP_VIDEO_INIT_MOTOR_SCCB   3
 
-#define SCCB_DEV_NUM                3
+#define SCCB_DEV_NUM                4
 #else
-#define SCCB_DEV_NUM                2
+#define SCCB_DEV_NUM                3
 #endif
 
 #define INTF_PORT_NAME(port)        (((port) == ESP_CAM_SENSOR_DVP) ? "DVP" : "CSI")
@@ -59,6 +61,9 @@ typedef struct sensor_sccb_mask {
     esp_sccb_io_handle_t sccb_io[SCCB_DEV_NUM]; /*!< SCCB I/O handle */
 } sensor_sccb_mask_t;
 
+#if CONFIG_ESP_VIDEO_ENABLE_SPI_VIDEO_DEVICE
+static esp_cam_sensor_xclk_handle_t s_spi_xclk_handle; /*!< SPI XCLK handle */
+#endif
 static sensor_sccb_mask_t s_sensor_sccb_mask[SCCB_NUM_MAX];
 static const char *TAG = "esp_video_init";
 
@@ -253,12 +258,14 @@ esp_err_t esp_video_init(const esp_video_init_config_t *config)
     esp_err_t ret;
     bool csi_inited = false;
     bool dvp_inited = false;
+    bool spi_inited = false;
     esp_video_init_sccb_mark_t sccb_mark[SCCB_NUM_MAX] = {0};
 
     if (config == NULL) {
         UNUSED(ret);
         UNUSED(csi_inited);
         UNUSED(dvp_inited);
+        UNUSED(spi_inited);
         UNUSED(sccb_mark);
 
         ESP_LOGW(TAG, "Please validate camera config");
@@ -396,6 +403,71 @@ esp_err_t esp_video_init(const esp_video_init_config_t *config)
             dvp_inited = true;
         }
 #endif
+
+#if CONFIG_ESP_VIDEO_ENABLE_SPI_VIDEO_DEVICE
+        if (!spi_inited && p->port == ESP_CAM_SENSOR_SPI && config->spi != NULL) {
+            esp_cam_sensor_config_t cfg;
+            esp_cam_sensor_device_t *cam_dev;
+            esp_cam_sensor_xclk_handle_t xclk_handle = NULL;
+            const esp_video_init_spi_config_t *spi_config = config->spi;
+
+            if (spi_config->xclk_pin >= 0 && spi_config->xclk_freq > 0) {
+                esp_cam_sensor_xclk_config_t cam_xclk_config = {
+                    .esp_clock_router_cfg = {
+                        .xclk_pin = spi_config->xclk_pin,
+                        .xclk_freq_hz = spi_config->xclk_freq,
+                    }
+                };
+                if (esp_cam_sensor_xclk_allocate(spi_config->xclk_source, &xclk_handle) != ESP_OK) {
+                    ESP_LOGE(TAG, "SPI xclk allocate failed.");
+                    return ESP_FAIL;
+                }
+
+                if (esp_cam_sensor_xclk_start(xclk_handle, &cam_xclk_config) != ESP_OK) {
+                    ESP_LOGE(TAG, "SPI xclk start failed.");
+                    esp_cam_sensor_xclk_free(xclk_handle);
+                    return ESP_FAIL;
+                }
+            }
+
+            cfg.sccb_handle = create_sccb_device(sccb_mark, ESP_VIDEO_INIT_SPI_SCCB, &spi_config->sccb_config, p->sccb_addr);
+            if (!cfg.sccb_handle) {
+                if (xclk_handle) {
+                    esp_cam_sensor_xclk_stop(xclk_handle);
+                    esp_cam_sensor_xclk_free(xclk_handle);
+                }
+                return ESP_FAIL;
+            }
+
+            cfg.reset_pin = spi_config->reset_pin;
+            cfg.pwdn_pin = spi_config->pwdn_pin;
+            cam_dev = (*(p->detect))((void *)&cfg);
+            if (!cam_dev) {
+                destroy_sccb_device(cfg.sccb_handle, sccb_mark, &spi_config->sccb_config);
+                if (xclk_handle) {
+                    esp_cam_sensor_xclk_stop(xclk_handle);
+                    esp_cam_sensor_xclk_free(xclk_handle);
+                }
+                ESP_LOGE(TAG, "failed to detect SPI camera with address=%x", p->sccb_addr);
+                continue;
+            }
+
+            esp_video_spi_device_config_t spi_dev_config = {
+                .spi_port = spi_config->spi_port,
+                .spi_cs_pin = spi_config->spi_cs_pin,
+                .spi_sclk_pin = spi_config->spi_sclk_pin,
+                .spi_data0_io_pin = spi_config->spi_data0_io_pin
+            };
+            ret = esp_video_create_spi_video_device(cam_dev, &spi_dev_config);
+            if (ret != ESP_OK) {
+                ESP_LOGE(TAG, "failed to create SPI video device");
+                return ret;
+            }
+
+            s_spi_xclk_handle = xclk_handle;
+            spi_inited = true;
+        }
+#endif
     }
 
 #if CONFIG_ESP_VIDEO_ENABLE_HW_H264_VIDEO_DEVICE
@@ -439,6 +511,9 @@ esp_err_t esp_video_deinit(void)
 #endif
 #if CONFIG_ESP_VIDEO_ENABLE_DVP_VIDEO_DEVICE
     bool dvp_deinited = false;
+#endif
+#if CONFIG_ESP_VIDEO_ENABLE_SPI_VIDEO_DEVICE
+    bool spi_deinited = false;
 #endif
 
 #if CONFIG_ESP_VIDEO_ENABLE_HW_JPEG_VIDEO_DEVICE
@@ -500,6 +575,31 @@ esp_err_t esp_video_deinit(void)
             ESP_RETURN_ON_ERROR(esp_cam_ctlr_dvp_deinit(dvp_ctlr_id), TAG, "Failed to deinit DVP port");
 
             dvp_deinited = true;
+        }
+#endif
+
+#if CONFIG_ESP_VIDEO_ENABLE_SPI_VIDEO_DEVICE
+        if (!spi_deinited && p->port == ESP_CAM_SENSOR_SPI) {
+            esp_cam_sensor_device_t *cam_dev;
+
+            cam_dev = esp_video_get_spi_video_device_sensor();
+            if (!cam_dev) {
+                continue;
+            }
+
+            if (!sensor_is_detected(p, cam_dev)) {
+                continue;
+            }
+
+            ESP_RETURN_ON_ERROR(esp_video_destroy_spi_video_device(), TAG, "Failed to destroy SPI video device");
+            ESP_RETURN_ON_ERROR(esp_cam_sensor_del_dev(cam_dev), TAG, "Failed to delete SPI sensor");
+            if (s_spi_xclk_handle) {
+                ESP_RETURN_ON_ERROR(esp_cam_sensor_xclk_stop(s_spi_xclk_handle), TAG, "Failed to stop SPI XCLK");
+                ESP_RETURN_ON_ERROR(esp_cam_sensor_xclk_free(s_spi_xclk_handle), TAG, "Failed to free SPI XCLK");
+                s_spi_xclk_handle = NULL;
+            }
+
+            spi_deinited = true;
         }
 #endif
     }

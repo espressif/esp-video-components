@@ -12,6 +12,7 @@
 #include "driver/jpeg_encode.h"
 #include "esp_video_device.h"
 #include "hal/cam_ctlr_types.h"
+#include "esp_cam_ctlr_spi.h"
 #include "linux/videodev2.h"
 
 #ifdef __cplusplus
@@ -39,6 +40,18 @@ typedef struct esp_video_csi_state {
     bool bypass_isp;                        /*!< true: ISP directly output data from input port with processing. false: ISP output processed data by pipeline  */
     color_raw_element_order_t bayer_order;  /*!< Bayer order of raw data */
 } esp_video_csi_state_t;
+
+#ifdef CONFIG_ESP_VIDEO_ENABLE_SPI_VIDEO_DEVICE
+/**
+ * @brief SPI video device configuration
+ */
+typedef struct esp_video_spi_device_config {
+    spi_host_device_t spi_port;             /*!< SPI port */
+    int8_t spi_cs_pin;                      /*!< SPI CS pin */
+    int8_t spi_sclk_pin;                    /*!< SPI SCLK pin */
+    int8_t spi_data0_io_pin;                /*!< SPI data0 I/O pin */
+} esp_video_spi_device_config_t;
+#endif
 
 #if CONFIG_ESP_VIDEO_ENABLE_MIPI_CSI_VIDEO_DEVICE
 /**
@@ -255,6 +268,42 @@ esp_err_t esp_video_create_isp_video_device(void);
  */
 esp_err_t esp_video_destroy_isp_video_device(void);
 #endif
+#endif
+
+#ifdef CONFIG_ESP_VIDEO_ENABLE_SPI_VIDEO_DEVICE
+/**
+ * @brief Create SPI video device
+ *
+ * @param cam_dev       Camera sensor device
+ * @param config        SPI video device configuration
+ *
+ * @return
+ *      - ESP_OK on success
+ *      - Others if failed
+ */
+esp_err_t esp_video_create_spi_video_device(esp_cam_sensor_device_t *cam_dev, const esp_video_spi_device_config_t *config);
+
+/**
+ * @brief Destroy SPI video device
+ *
+ * @param None
+ *
+ * @return
+ *      - ESP_OK on success
+ *      - Others if failed
+ */
+esp_err_t esp_video_destroy_spi_video_device(void);
+
+/**
+ * @brief Get the sensor connected to SPI video device
+ *
+ * @param None
+ *
+ * @return
+ *      - Sensor pointer on success
+ *      - NULL if failed
+ */
+esp_cam_sensor_device_t *esp_video_get_spi_video_device_sensor(void);
 #endif
 
 #ifdef __cplusplus

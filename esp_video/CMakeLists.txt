@@ -30,6 +30,10 @@ if(CONFIG_ESP_VIDEO_ENABLE_DVP_VIDEO_DEVICE)
     list(APPEND srcs "src/device/esp_video_dvp_device.c")
 endif()
 
+if(CONFIG_ESP_VIDEO_ENABLE_SPI_VIDEO_DEVICE)
+    list(APPEND srcs "src/device/esp_video_spi_device.c")
+endif()
+
 if(CONFIG_ESP_VIDEO_ENABLE_H264_VIDEO_DEVICE)
     list(APPEND srcs "src/device/esp_video_h264_device.c")
 endif()
