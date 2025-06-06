@@ -1,9 +1,12 @@
 
-## ## 1.1.0
+## Unreleased
 
 - Added AF motor dw9714 driver.
 - Added delay for normal initialization of GC2145 MIPI driver.
 - Added RAW8 support for SC035HGS MIPI driver.
+- Added IPA cfg for SC035HGS.
+- Changed default AE sample point to AFTER_DEMOSAIC.
+- Changed IPA cfg for SC2336 according to the default AE sample point.
 - Changed default CCM paras for OV2710 camera sensor.
 - Changed AEC adjustment speed filter coefficient for SC2336 camera sensor.
 

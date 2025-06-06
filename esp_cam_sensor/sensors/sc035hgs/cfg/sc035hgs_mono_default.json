@@ -1,35 +1,7 @@
 {
     "version": 1,
-    "SC2336":
+    "SC035HGS":
     {
-        "awb":
-        {
-            "model": 0,
-            "min_red_gain_step": 0.34,
-            "min_blue_gain_step": 0.40,
-            "min_counted": 2000,
-            "range":
-            {
-                "green":
-                {
-                    "max": 190,
-                    "min": 81
-                },
-                "rg":
-                {
-                    "max": 0.9096,
-                    "min": 0.573
-                },
-                "bg":
-                {
-                    "max": 0.9634,
-                    "min": 0.5368
-                }
-            },
-            "green_luma_env": "dummy_awb_luma",
-            "green_luma_init": 91,
-            "green_luma_step_ratio": 0.3
-        },
         "agc":
         {
             "exposure":
@@ -44,19 +16,19 @@
             },
             "anti_flicker":
             {
-                "mode": "part",
+                "mode": "none",
                 "ac_freq": 50
             },
             "f_n0": 0.32,
             "f_m0": 0.42,
             "luma_adjust":
             {
-                "target_low": 62,
+                "target_low": 58,
                 "target_high": 69,
-                "target": 65,
+                "target": 63,
                 "low_threshold": 14,
                 "low_regions": 5,
-                "high_threshold": 239,
+                "high_threshold": 226,
                 "high_regions": 3,
                 "weight":
                 [
@@ -70,15 +42,15 @@
             "mode": "high_light_priority",
             "high_light_priority":
             {
-                "low_threshold": 119,
-                "high_threshold": 202,
+                "low_threshold": 129,
+                "high_threshold": 210,
                 "weight_offset": 5,
                 "luma_offset": -3
             },
             "low_light_priority":
             {
-                "low_threshold": 49,
-                "high_threshold": 64,
+                "low_threshold": 46,
+                "high_threshold": 55,
                 "weight_offset": 5,
                 "luma_offset": 1
             },
@@ -129,7 +101,7 @@
             [
                 {
                     "color_temp": 0,
-                    "value": 136
+                    "value": 0
                 }
             ],
             "ccm":
@@ -137,7 +109,7 @@
                 "low_luma":
                 {
                     "luma_env": "ae.luma.avg",
-                    "threshold": 28,
+                    "threshold": 26,
                     "matrix":
                     [
                         1.00,  0.00, 0.00,
@@ -151,9 +123,9 @@
                         "color_temp": 0,
                         "matrix":
                         [
-                            1.408,  -0.094, -0.314,
-                            -0.13,    1.28,  -0.15,
-                            -0.072,  -0.173,  1.245
+                            1.00,  0.00, 0.00,
+                            0.00,    1.00,  0.00,
+                            0.00,  0.00,  1.00
                         ]
                     }
                 ]
@@ -278,7 +250,7 @@
                 [
                     {
                         "luma": 71.1,
-                        "gamma_param": 0.518
+                        "gamma_param": 0.612
                     }
                 ]
             },    

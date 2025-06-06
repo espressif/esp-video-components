@@ -800,7 +800,7 @@ static bool isp_ae_stats_done(isp_ae_ctlr_t ae_ctlr, const esp_isp_ae_env_detect
 static esp_err_t isp_start_ae(struct isp_video *isp_video)
 {
     esp_isp_ae_config_t ae_config = {
-        .sample_point = ISP_AE_SAMPLE_POINT_AFTER_GAMMA,
+        .sample_point = ISP_AE_SAMPLE_POINT_AFTER_DEMOSAIC,
         .intr_priority = 0,
     };
     esp_isp_ae_env_detector_evt_cbs_t cbs = {

@@ -6,6 +6,7 @@
 - Fix the esp_video_deinit function issue when esp_video initialize with application I2C handle
 - Fix the esp_video close issue when one video device is open and closed multiple times
 - Fix the issue that the V4L2 command VIDIOC_ENUM_FMT can't get the correct value by input index when the sensor output format is RAW10
+- Change AE sample point to AFTER_DEMOSAIC
 
 ## 0.9.1
 

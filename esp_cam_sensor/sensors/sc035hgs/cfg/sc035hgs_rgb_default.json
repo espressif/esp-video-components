@@ -1,19 +1,19 @@
 {
     "version": 1,
-    "SC2336":
+    "SC035HGS":
     {
         "awb":
         {
             "model": 0,
-            "min_red_gain_step": 0.34,
-            "min_blue_gain_step": 0.40,
-            "min_counted": 2000,
+            "min_red_gain_step": 0.35,
+            "min_blue_gain_step": 0.45,
+            "min_counted": 1000,
             "range":
             {
                 "green":
                 {
                     "max": 190,
-                    "min": 81
+                    "min": 91
                 },
                 "rg":
                 {
@@ -44,19 +44,19 @@
             },
             "anti_flicker":
             {
-                "mode": "part",
+                "mode": "none",
                 "ac_freq": 50
             },
             "f_n0": 0.32,
             "f_m0": 0.42,
             "luma_adjust":
             {
-                "target_low": 62,
-                "target_high": 69,
-                "target": 65,
+                "target_low": 54,
+                "target_high": 68,
+                "target": 62,
                 "low_threshold": 14,
                 "low_regions": 5,
-                "high_threshold": 239,
+                "high_threshold": 231,
                 "high_regions": 3,
                 "weight":
                 [
@@ -70,15 +70,15 @@
             "mode": "high_light_priority",
             "high_light_priority":
             {
-                "low_threshold": 119,
-                "high_threshold": 202,
+                "low_threshold": 129,
+                "high_threshold": 200,
                 "weight_offset": 5,
                 "luma_offset": -3
             },
             "low_light_priority":
             {
-                "low_threshold": 49,
-                "high_threshold": 64,
+                "low_threshold": 44,
+                "high_threshold": 53,
                 "weight_offset": 5,
                 "luma_offset": 1
             },
@@ -129,7 +129,7 @@
             [
                 {
                     "color_temp": 0,
-                    "value": 136
+                    "value": 128
                 }
             ],
             "ccm":
@@ -137,7 +137,7 @@
                 "low_luma":
                 {
                     "luma_env": "ae.luma.avg",
-                    "threshold": 28,
+                    "threshold": 26,
                     "matrix":
                     [
                         1.00,  0.00, 0.00,
@@ -151,9 +151,9 @@
                         "color_temp": 0,
                         "matrix":
                         [
-                            1.408,  -0.094, -0.314,
-                            -0.13,    1.28,  -0.15,
-                            -0.072,  -0.173,  1.245
+                            1.4800,  -0.1250, -0.3550,
+                            -0.1255,    1.3517,  -0.2262,
+                            -0.0558,  -0.3478,  1.4037
                         ]
                     }
                 ]
@@ -278,7 +278,7 @@
                 [
                     {
                         "luma": 71.1,
-                        "gamma_param": 0.518
+                        "gamma_param": 0.612
                     }
                 ]
             },    

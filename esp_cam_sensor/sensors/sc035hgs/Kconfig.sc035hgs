@@ -48,4 +48,29 @@ if CAMERA_SC035HGS
         help
             Set the configuration loaded by default for the MIPI interface.
             More information can be obtained by calling the query_support_formats().
+    
+    choice CAMERA_SC035HGS_IPA_JSON_CONFIGURATION_FILE
+        prompt "IPA JSON Configuration File"
+        default CAMERA_SC035HGS_DEFAULT_IPA_JSON_CONFIGURATION_FILE
+        help
+            Select SC035HGS JSON configuration file.
+
+        config CAMERA_SC035HGS_DEFAULT_IPA_JSON_CONFIGURATION_FILE
+            bool "Default"
+            help
+                Use the "esp_cam_sensor/sensors/sc035hgs/cfg/sc035hgs_mono_default.json".
+
+        config CAMERA_SC035HGS_CUSTOMIZED_IPA_JSON_CONFIGURATION_FILE
+            bool "Customized"
+            help
+                Use a customized SC035HGS JSON configuration file. Users should configure
+                the file's path using the option "CAMERA_SC035HGS_CUSTOMIZED_IPA_JSON_CONFIGURATION_FILE_PATH."
+    endchoice
+
+    config CAMERA_SC035HGS_CUSTOMIZED_IPA_JSON_CONFIGURATION_FILE_PATH
+        string "SC035HGS Customized JSON Configuration File Path"
+        depends on CAMERA_SC035HGS_CUSTOMIZED_IPA_JSON_CONFIGURATION_FILE
+        help
+            Customized SC035HGS JSON configuration file's path and this path is evaluated
+            relative to the project root directory by default.
 endif
