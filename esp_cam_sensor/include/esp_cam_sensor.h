@@ -82,7 +82,7 @@ esp_err_t esp_cam_sensor_query_format(esp_cam_sensor_device_t *dev, esp_cam_sens
  * @brief Set the output format of the camera sensor.
  *
  * @note  If format is NULL, the camera sensor will load the default configuration based on the configured interface.
- *        See MIPI_IF_FORMAT_INDEX_DAFAULT and DVP_IF_FORMAT_INDEX_DAFAULT.
+ *        See MIPI_IF_FORMAT_INDEX_DEFAULT and DVP_IF_FORMAT_INDEX_DEFAULT.
  *
  * @note  Query the currently supported output formats by calling esp_cam_sensor_query_format.
  *

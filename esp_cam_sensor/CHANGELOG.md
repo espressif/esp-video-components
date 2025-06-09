@@ -1,3 +1,7 @@
+## Unreleased
+
+- Added support for BF3901 SPI camera sensor driver.
+
 ## 1.1.0
 
 - Added AF motor dw9714 driver.

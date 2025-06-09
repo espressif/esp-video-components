@@ -80,6 +80,12 @@ if(CONFIG_CAMERA_SC035HGS)
     list(APPEND priv_include_dirs "sensors/sc035hgs/private_include")
 endif()
 
+if(CONFIG_CAMERA_BF3901)
+    list(APPEND srcs "sensors/bf3901/bf3901.c")
+    list(APPEND include_dirs "sensors/bf3901/include")
+    list(APPEND priv_include_dirs "sensors/bf3901/private_include")
+endif()
+
 if(CONFIG_CAMERA_BF3925)
     list(APPEND srcs "sensors/bf3925/bf3925.c")
     list(APPEND include_dirs "sensors/bf3925/include")
@@ -151,6 +157,10 @@ endif()
 
 if(CONFIG_CAMERA_SC035HGS_AUTO_DETECT_MIPI_INTERFACE_SENSOR)
     target_link_libraries(${COMPONENT_LIB} INTERFACE "-u sc035hgs_detect")
+endif()
+
+if(CONFIG_CAMERA_BF3901_AUTO_DETECT_SPI_INTERFACE_SENSOR)
+    target_link_libraries(${COMPONENT_LIB} INTERFACE "-u bf3901_detect")
 endif()
 
 if(CONFIG_CAMERA_BF3925_AUTO_DETECT_DVP_INTERFACE_SENSOR)

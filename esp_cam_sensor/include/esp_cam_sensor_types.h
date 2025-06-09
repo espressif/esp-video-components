@@ -260,6 +260,7 @@ typedef enum {
 typedef enum {
     ESP_CAM_SENSOR_DVP,      /*!< LCD_CAM DVP or Parally DVP(ISP-connected) port */
     ESP_CAM_SENSOR_MIPI_CSI, /*!< MIPI-CSI port */
+    ESP_CAM_SENSOR_SPI,      /*!< SPI port */
 } esp_cam_sensor_port_t;
 
 /**
@@ -271,6 +272,35 @@ typedef struct {
     uint32_t lane_num;     /*!< data lane num */
     bool line_sync_en;     /*!< Send line short packet for each line */
 } esp_cam_sensor_mipi_info_t;
+
+/**
+ * @brief Description of the data structure of one frame in a serial protocol.
+ * The structure of the frame is as follows:
+ * frame header = sync code + frame info
+ * line header = sync code + line info
+ * frame = frame header + line header + line data packet + line end(Optional) + frame end(Optional)
+ */
+typedef struct _cam_sensor_spi_frame_info_t {
+    uint32_t frame_size;                  /*!< Length of the data contained in one frame during transmission */
+    uint32_t line_size;                   /*!< Length of the data contained in one line during transmission */
+
+    uint8_t const *frame_header_check;    /*!< Contents of frame header sync code */
+    uint8_t const *line_header_check;     /*!< Contents of line header sync code */
+
+    uint8_t frame_header_check_size;      /*!< Length of the data in the frame header used to detect the frame sync code */
+    uint8_t line_header_check_size;       /*!< Length of the data in the line header used to detect the line sync code */
+
+    uint8_t frame_header_size;            /*!< Length of the data in the frame header(sync code + frame info) */
+    uint8_t line_header_size;             /*!< Length of the data in the line header(sync code + line info) */
+} esp_cam_sensor_spi_frame_info;
+
+/**
+ * @brief Structure to store parameters required to initialize SPI RX.
+ */
+typedef struct {
+    uint8_t rx_lines;                                 /*!< Number of SPI lines used to RX data */
+    const esp_cam_sensor_spi_frame_info *frame_info;  /*!< Info of the transmitted frame */
+} esp_cam_sensor_spi_info_t;
 
 /**
  * @brief Description of ISP related parameters corresponding to the specified format.
@@ -299,19 +329,22 @@ typedef union _cam_sensor_isp_info {
  * @brief Description of camera sensor output format
  */
 typedef struct _cam_sensor_format_struct {
-    const char *name;                           /*!< String description for output format */
-    esp_cam_sensor_output_format_t format;      /*!< Sensor output format */
-    esp_cam_sensor_port_t port;                 /*!< Sensor output port type */
-    int xclk;                                   /*!< Sensor input clock frequency */
-    uint16_t width;                             /*!< Output windows width */
-    uint16_t height;                            /*!< Output windows height */
+    const char *name;                             /*!< String description for output format */
+    esp_cam_sensor_output_format_t format;        /*!< Sensor output format */
+    esp_cam_sensor_port_t port;                   /*!< Sensor output port type */
+    int xclk;                                     /*!< Sensor input clock frequency */
+    uint16_t width;                               /*!< Output windows width */
+    uint16_t height;                              /*!< Output windows height */
 
-    const void *regs;                           /*!< Regs to enable this format */
+    const void *regs;                             /*!< Regs to enable this format */
     int regs_size;
-    uint8_t fps;                                /*!< frames per second */
-    const esp_cam_sensor_isp_info_t *isp_info;  /*!< For sensor without internal ISP, set NULL if the sensor‘s internal ISP used. */
-    esp_cam_sensor_mipi_info_t mipi_info;       /*!< MIPI RX init cfg */
-    void *reserved;                             /*!< can be used to provide AE\AF\AWB info or Parameters of some related accessories（VCM、LED、IR）*/
+    uint8_t fps;                                  /*!< frames per second */
+    const esp_cam_sensor_isp_info_t *isp_info;    /*!< For sensor without internal ISP, set NULL if the sensor‘s internal ISP used. */
+    union {
+        esp_cam_sensor_mipi_info_t mipi_info;     /*!< MIPI RX init cfg */
+        esp_cam_sensor_spi_info_t spi_info;       /*!< SPI RX init cfg */
+    };
+    void *reserved;                               /*!< can be used to provide AE\AF\AWB info or Parameters of some related accessories（VCM、LED、IR）*/
 } esp_cam_sensor_format_t;
 
 /**
