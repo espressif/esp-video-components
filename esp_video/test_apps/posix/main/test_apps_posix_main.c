@@ -17,7 +17,7 @@
 #ifdef CONFIG_HEAP_TRACING
 #include "esp_heap_trace.h"
 #endif
-
+#include "esp_timer.h"
 #include "memory_checks.h"
 #include "unity_test_utils_memory.h"
 #include "unity.h"
@@ -287,6 +287,110 @@ TEST_CASE("V4L2 set/get selection", "[video]")
     TEST_ESP_OK(memcmp(&out_selection, &in_selection, sizeof(out_selection)));
 
     TEST_ESP_OK(close(fd));
+
+    TEST_ESP_OK(example_video_deinit());
+}
+
+TEST_CASE("V4L2 set/get param", "[video]")
+{
+    int fd;
+    int fps;
+    int ret;
+    struct v4l2_buffer buf;
+    struct v4l2_streamparm sparm;
+    struct v4l2_captureparm *cparam = &sparm.parm.capture;
+    struct v4l2_fract *timeperframe = &cparam->timeperframe;
+    struct v4l2_requestbuffers req;
+    int buf_count = 3;
+    int capture_seconds = 3;
+
+    setUp();
+
+    TEST_ESP_OK(example_video_init());
+
+    fd = open(TEST_APP_VIDEO_DEVICE, O_RDWR);
+    TEST_ASSERT_GREATER_OR_EQUAL(0, fd);
+
+    memset(&sparm, 0, sizeof(sparm));
+    sparm.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
+    ret = ioctl(fd, VIDIOC_G_PARM, &sparm);
+    TEST_ESP_OK(ret);
+
+    TEST_ASSERT_EQUAL_INT(cparam->capability, V4L2_CAP_TIMEPERFRAME);
+    TEST_ASSERT_GREATER_OR_EQUAL(1, timeperframe->numerator);
+    TEST_ASSERT_GREATER_OR_EQUAL(1, timeperframe->denominator);
+    printf("fps=%0.4f\n", (float)timeperframe->denominator / timeperframe->numerator);
+
+    fps = timeperframe->denominator / timeperframe->numerator;
+    for (int i = 2; i <= fps; i++) {
+        if (fps % i != 0) {
+            continue;
+        }
+        int div_fps = fps / i;
+
+        memset(&sparm, 0, sizeof(sparm));
+        sparm.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
+        cparam->capability = V4L2_CAP_TIMEPERFRAME;
+        timeperframe->numerator = 1;
+        timeperframe->denominator = div_fps;
+        ret = ioctl(fd, VIDIOC_S_PARM, &sparm);
+        TEST_ESP_OK(ret);
+
+        memset(&req, 0, sizeof(req));
+        req.count  = buf_count;
+        req.type   = V4L2_BUF_TYPE_VIDEO_CAPTURE;
+        req.memory = V4L2_MEMORY_MMAP;
+        ret = ioctl(fd, VIDIOC_REQBUFS, &req);
+        TEST_ESP_OK(ret);
+
+        for (int i = 0; i < buf_count; i++) {
+            memset(&buf, 0, sizeof(buf));
+            buf.type        = V4L2_BUF_TYPE_VIDEO_CAPTURE;
+            buf.memory      = V4L2_MEMORY_MMAP;
+            buf.index       = i;
+            ret = ioctl(fd, VIDIOC_QUERYBUF, &buf);
+            TEST_ESP_OK(ret);
+
+            ret = ioctl(fd, VIDIOC_QBUF, &buf);
+            TEST_ESP_OK(ret);
+        }
+
+        int val = V4L2_BUF_TYPE_VIDEO_CAPTURE;
+        ret = ioctl(fd, VIDIOC_STREAMON, &val);
+        TEST_ESP_OK(ret);
+
+        int frame_count = 0;
+        int64_t start_time_us = esp_timer_get_time();
+        while (esp_timer_get_time() - start_time_us < (capture_seconds * 1000 * 1000)) {
+            memset(&buf, 0, sizeof(buf));
+            buf.type   = V4L2_BUF_TYPE_VIDEO_CAPTURE;
+            buf.memory = V4L2_MEMORY_MMAP;
+            ret = ioctl(fd, VIDIOC_DQBUF, &buf);
+            TEST_ESP_OK(ret);
+
+            frame_count++;
+
+            ret = ioctl(fd, VIDIOC_QBUF, &buf);
+            TEST_ESP_OK(ret);
+        }
+
+        val = V4L2_BUF_TYPE_VIDEO_CAPTURE;
+        ret = ioctl(fd, VIDIOC_STREAMOFF, &val);
+        TEST_ESP_OK(ret);
+
+        TEST_ASSERT_EQUAL_INT(div_fps, frame_count / capture_seconds);
+
+        memset(&sparm, 0, sizeof(sparm));
+        sparm.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
+        ret = ioctl(fd, VIDIOC_G_PARM, &sparm);
+        TEST_ESP_OK(ret);
+
+        TEST_ASSERT_EQUAL_INT(cparam->capability, V4L2_CAP_TIMEPERFRAME);
+        TEST_ASSERT_EQUAL_INT(timeperframe->numerator, 1);
+        TEST_ASSERT_EQUAL_INT(timeperframe->denominator, div_fps);
+    }
+
+    close(fd);
 
     TEST_ESP_OK(example_video_deinit());
 }

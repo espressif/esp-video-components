@@ -19,6 +19,7 @@ extern "C" {
 #define STREAM_FORMAT(s)                    (&(s)->format)
 #define STREAM_BUF_INFO(s)                  (&(s)->buf_info)
 #define STREAM_RECT(s)                      (&(s)->rect)
+#define STREAM_PARAM(s)                     (&(s)->param)
 
 #define STREAM_BUFFER_SIZE(s)               (STREAM_BUF_INFO(s)->size)
 
@@ -80,6 +81,9 @@ extern "C" {
 #define CAPTURE_VIDEO_BUF_SIZE(v)           STREAM_BUFFER_SIZE(CAPTURE_VIDEO_STREAM(v))
 
 #define CAPTURE_VIDEO_DONE_BUF(v, b, n)     esp_video_done_buffer(v, V4L2_BUF_TYPE_VIDEO_CAPTURE, b, n)
+#define CAPTURE_VIDEO_SKIP_BUF(v, b)        esp_video_skip_buffer(v, V4L2_BUF_TYPE_VIDEO_CAPTURE, b)
+
+#define CAPTURE_VIDEO_PARAM(v)              STREAM_PARAM(CAPTURE_VIDEO_STREAM(v))
 
 #define CAPTURE_VIDEO_SET_FORMAT_WIDTH(v, w)                            \
     SET_STREAM_FORMAT_WIDTH(CAPTURE_VIDEO_STREAM(v), w)
@@ -263,6 +267,7 @@ enum esp_video_event {
 };
 
 struct esp_video;
+struct esp_video_stream;
 
 /**
  * @brief M2M video device process function
@@ -348,6 +353,14 @@ struct esp_video_ops {
     /*!< Get format from sensor */
 
     esp_err_t (*get_motor_format)(struct esp_video *video, esp_cam_motor_format_t *format);
+
+    /*!< Set V4L2 stream parameters */
+
+    esp_err_t (*set_parm)(struct esp_video *video, struct v4l2_streamparm *stream_parm, struct esp_video_stream *stream);
+
+    /*!< Get V4L2 stream parameters */
+
+    esp_err_t (*get_parm)(struct esp_video *video, struct v4l2_streamparm *stream_parm, struct esp_video_stream *stream);
 };
 
 #ifdef __cplusplus

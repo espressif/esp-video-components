@@ -475,6 +475,7 @@ struct esp_video *esp_video_open(const char *name)
                 struct esp_video_stream *stream = &video->stream[i];
 
                 stream->buffer = NULL;
+                memset(&stream->param, 0, sizeof(struct esp_video_param));
                 SLIST_INIT(&stream->queued_list);
                 SLIST_INIT(&stream->done_list);
             }
@@ -572,6 +573,13 @@ esp_err_t esp_video_start_capture(struct esp_video *video, uint32_t type)
     }
 
     if (video->ops->start) {
+        int stream_count = video->caps & V4L2_CAP_VIDEO_M2M ? 2 : 1;
+
+        for (int i = 0; i < stream_count; i++) {
+            struct esp_video_stream *stream = &video->stream[i];
+            stream->param.skip_count = 0;
+        }
+
         ret = video->ops->start(video, type);
         if (ret != ESP_OK) {
             ESP_LOGE(TAG, "video->ops->start=%x", ret);
@@ -1799,6 +1807,10 @@ esp_err_t esp_video_set_motor_format(struct esp_video *video, const esp_cam_moto
  *
  * @param video  Video object
  * @param format Motor format pointer
+ * @brief Get V4L2 stream parameters
+ *
+ * @param video         Video object
+ * @param stream_parm   Stream parameters buffer pointer
  *
  * @return
  *      - ESP_OK on success
@@ -1824,3 +1836,102 @@ esp_err_t esp_video_get_motor_format(struct esp_video *video, esp_cam_motor_form
     return ESP_OK;
 }
 #endif
+
+/**
+ * @brief Set V4L2 stream parameters
+ *
+ * @param video         Video object
+ * @param stream_parm   Stream parameters buffer pointer
+ *
+ * @return
+ *      - ESP_OK on success
+ *      - Others if failed
+ */
+esp_err_t esp_video_set_parm(struct esp_video *video, struct v4l2_streamparm *stream_parm)
+{
+    esp_err_t ret;
+    struct esp_video_stream *stream;
+
+    CHECK_VIDEO_OBJ(video);
+
+    stream = esp_video_get_stream(video, stream_parm->type);
+    if (!stream) {
+        return ESP_ERR_INVALID_ARG;
+    }
+
+    if (video->ops->set_parm) {
+        ret = video->ops->set_parm(video, stream_parm, stream);
+        if (ret != ESP_OK) {
+            ESP_LOGE(TAG, "video->ops->set_parm=%x", ret);
+            return ret;
+        }
+
+        /* Reset skip count after setting stream parameters */
+        stream->param.skip_count = 0;
+    } else {
+        ESP_LOGD(TAG, "video->ops->set_parm=NULL");
+        return ESP_ERR_NOT_SUPPORTED;
+    }
+
+    return ESP_OK;
+}
+
+/**
+ * @brief Get V4L2 stream parameters
+ *
+ * @param video         Video object
+ * @param stream_parm   Stream parameters buffer pointer
+ *
+ * @return
+ *      - ESP_OK on success
+ *      - Others if failed
+ */
+esp_err_t esp_video_get_parm(struct esp_video *video, struct v4l2_streamparm *stream_parm)
+{
+    esp_err_t ret;
+    struct esp_video_stream *stream;
+
+    CHECK_VIDEO_OBJ(video);
+
+    stream = esp_video_get_stream(video, stream_parm->type);
+    if (!stream) {
+        return ESP_ERR_INVALID_ARG;
+    }
+
+    if (video->ops->get_parm) {
+        ret = video->ops->get_parm(video, stream_parm, stream);
+        if (ret != ESP_OK) {
+            ESP_LOGE(TAG, "video->ops->get_parm=%x", ret);
+            return ret;
+        }
+    } else {
+        ESP_LOGD(TAG, "video->ops->get_parm=NULL");
+        return ESP_ERR_NOT_SUPPORTED;
+    }
+
+    return ESP_OK;
+}
+
+/**
+ * @brief Skip video buffer
+ *
+ * @param video  Video object
+ * @param type   Video stream type
+ * @param buffer Video buffer pointer
+ *
+ * @return None
+ */
+void IRAM_ATTR esp_video_skip_buffer(struct esp_video *video, uint32_t type, uint8_t *buffer)
+{
+    struct esp_video_stream *stream;
+    struct esp_video_buffer_element *element;
+
+    stream = esp_video_get_stream(video, type);
+
+    element = esp_video_buffer_get_element_by_buffer(stream->buffer, buffer);
+
+    portENTER_CRITICAL_SAFE(&video->stream_lock);
+    ELEMENT_SET_ALLOCATED(element);
+    SLIST_INSERT_HEAD(&stream->queued_list, element, node);
+    portEXIT_CRITICAL_SAFE(&video->stream_lock);
+}

@@ -266,6 +266,16 @@ static inline esp_err_t esp_video_ioctl_get_motor_format(struct esp_video *video
 }
 #endif
 
+static inline esp_err_t esp_video_ioctl_set_parm(struct esp_video *video, struct v4l2_streamparm *stream_parm)
+{
+    return esp_video_set_parm(video, stream_parm);
+}
+
+static inline esp_err_t esp_video_ioctl_get_parm(struct esp_video *video, struct v4l2_streamparm *stream_parm)
+{
+    return esp_video_get_parm(video, stream_parm);
+}
+
 esp_err_t esp_video_ioctl(struct esp_video *video, int cmd, va_list args)
 {
     esp_err_t ret = ESP_OK;
@@ -347,6 +357,12 @@ esp_err_t esp_video_ioctl(struct esp_video *video, int cmd, va_list args)
         ret = esp_video_ioctl_get_motor_format(video, (esp_cam_motor_format_t *)arg_ptr);
         break;
 #endif
+    case VIDIOC_S_PARM:
+        ret = esp_video_ioctl_set_parm(video, (struct v4l2_streamparm *)arg_ptr);
+        break;
+    case VIDIOC_G_PARM:
+        ret = esp_video_ioctl_get_parm(video, (struct v4l2_streamparm *)arg_ptr);
+        break;
     default:
         ret = ESP_ERR_INVALID_ARG;
         break;
