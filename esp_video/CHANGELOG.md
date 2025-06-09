@@ -1,4 +1,4 @@
-## Unreleased
+## 1.0.0
 
 - Add statistics region configuration to ISP pipeline controller
 - Add byte swap functionality for DVP video device to swap RGB565 pixel byte sequence
