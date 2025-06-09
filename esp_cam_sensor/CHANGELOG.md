@@ -1,15 +1,20 @@
-
-## Unreleased
+## 1.1.0
 
 - Added AF motor dw9714 driver.
 - Added delay for normal initialization of GC2145 MIPI driver.
 - Added RAW8 support for SC035HGS MIPI driver.
-- Added IPA cfg for SC035HGS.
 - Added AF control parameters to OV5647 default JSON configuration file.
-- Changed default AE sample point to AFTER_DEMOSAIC.
-- Changed IPA cfg for SC2336 according to the default AE sample point.
+- Added support for OV5640 MIPI & DVP driver.
+- Added the definition of auto exposure parameters for SC035HGS.
+- Added IPA cfg for SC035HGS.
+- Added AF support in OV5647 driver.
 - Changed default CCM paras for OV2710 camera sensor.
 - Changed AEC adjustment speed filter coefficient for SC2336 camera sensor.
+- Changed the byte order of OV2640 according to the chip model.
+- Changed the Kconfig file to select supported sensors based on the IDF_TARGET.
+- Changed default AE sample point to AFTER_DEMOSAIC.
+- Changed IPA cfg for SC2336 according to the default AE sample point.
+- Changed the Kconfig file to select supported sensors based on the SOC_MIPI_CSI_SUPPORTED.
 
 ## 1.0.0
 

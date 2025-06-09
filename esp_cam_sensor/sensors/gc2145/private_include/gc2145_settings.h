@@ -121,6 +121,7 @@ static const gc2145_reginfo_t gc2145_antibanding[4][GC2145_ANTI_BANDING_REG_SIZE
     }, /*ANTIBANDING AUTO*/
 };
 
+#if CONFIG_SOC_MIPI_CSI_SUPPORTED
 static const gc2145_reginfo_t gc2145_mipi_1lane_24Minput_800x600_rgb565_30fps[] = {
     {0xfe, 0xf0},
     {GC2145_REG_DELAY, 0x09},
@@ -2270,7 +2271,9 @@ static const gc2145_reginfo_t gc2145_mipi_1lane_24Minput_1600x1200_rgb565_7fps[]
     {0x05, 0x00},
     {0xfe, 0x00},
 };
+#endif
 
+#if CONFIG_SOC_LCDCAM_CAM_SUPPORTED
 static const gc2145_reginfo_t gc2145_DVP_8bit_20Minput_640x480_rgb565_15fps_windowing[] = {
     {GC2145_REG_RESET_RELATED, 0xf0},
     {GC2145_REG_DELAY, 0x10},
@@ -4533,6 +4536,7 @@ static const gc2145_reginfo_t gc2145_DVP_8bit_20Minput_800x600_rgb565_20fps[] = 
     {0x21, 0x14},
     {0xfe, 0x00},
 };
+#endif
 
 #ifdef __cplusplus
 }

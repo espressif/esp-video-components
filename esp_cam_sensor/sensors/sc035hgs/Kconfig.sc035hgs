@@ -1,30 +1,26 @@
 menuconfig CAMERA_SC035HGS
     bool "SC035HGS"
     default n
+    depends on SOC_MIPI_CSI_SUPPORTED
     help
         Enabling this option will add the support for SC035HGS.
 
 if CAMERA_SC035HGS
-    menuconfig CAMERA_SC035HGS_AUTO_DETECT
-        bool "Auto detect SC035HGS"
-        default y
-        help
-            When enabled, it provides the ability in application layer to automatically
-            detect camera sensors one by one.
-
-    if CAMERA_SC035HGS_AUTO_DETECT
+    menu "Auto detect SC035HGS"
         config CAMERA_SC035HGS_AUTO_DETECT_MIPI_INTERFACE_SENSOR
             bool "Detect for MIPI interface sensor"
             default y
+            depends on SOC_MIPI_CSI_SUPPORTED
             help
                 When enabled, you don't need to call sc035hgs_detect manaually, SC035HGS will
                 be automatically detected and connected to the MIPI interface when the
                 application starts.
-    endif
+    endmenu
 
     choice CAMERA_SC035HGS_MIPI_DEFAULT_FMT
         prompt "Default format select"
         default CAMERA_SC035HGS_MIPI_RAW10_640X480_48FPS
+        depends on SOC_MIPI_CSI_SUPPORTED
         help
             Select the default format to load when the sensor is detected.
             When the sensor is in stream off state, the format can be changed.
@@ -41,6 +37,7 @@ if CAMERA_SC035HGS
 
     config CAMERA_SC035HGS_MIPI_IF_FORMAT_INDEX_DAFAULT
         int
+        depends on SOC_MIPI_CSI_SUPPORTED
         default 0 if CAMERA_SC035HGS_MIPI_RAW10_640X480_48FPS
         default 1 if CAMERA_SC035HGS_MIPI_RAW10_640X480_120FPS
         default 2 if CAMERA_SC035HGS_MIPI_RAW8_640X480_50FPS

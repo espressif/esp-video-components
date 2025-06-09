@@ -1,18 +1,12 @@
 menuconfig CAMERA_BF3925
     bool "BF3925"
     default n
+    depends on SOC_LCDCAM_CAM_SUPPORTED
     help
         Enabling this option will add the support for BF3925.
 
 if CAMERA_BF3925
-    menuconfig CAMERA_BF3925_AUTO_DETECT
-        bool "Auto detect BF3925"
-        default y
-        help
-            When enabled, it provides the ability in application layer to automatically
-            detect camera sensors one by one.
-
-    if CAMERA_BF3925_AUTO_DETECT
+    menu "Auto detect BF3925"
         config CAMERA_BF3925_AUTO_DETECT_DVP_INTERFACE_SENSOR
             bool "Detect for DVP interface sensor"
             default y
@@ -20,7 +14,7 @@ if CAMERA_BF3925
                 When enabled, you don't need to call bf3925_detect manaually, BF3925 will
                 be automatically detected and connected to the DVP interface when the
                 application starts.
-    endif
+    endmenu
 
     choice CAMERA_BF3925_DVP_DEFAULT_FMT
         prompt "Default format select"

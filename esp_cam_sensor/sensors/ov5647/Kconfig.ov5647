@@ -1,18 +1,12 @@
 menuconfig CAMERA_OV5647
     bool "OV5647"
     default n
+    depends on SOC_MIPI_CSI_SUPPORTED
     help
         Enabling this option will add the support for OV5647.
 
 if CAMERA_OV5647
-    menuconfig CAMERA_OV5647_AUTO_DETECT
-        bool "Auto detect OV5647"
-        default y
-        help
-            When enabled, it provides the ability in application layer to automatically
-            detect camera sensors one by one.
-
-    if CAMERA_OV5647_AUTO_DETECT
+    menu "Auto detect OV5647"
         config CAMERA_OV5647_AUTO_DETECT_MIPI_INTERFACE_SENSOR
             bool "Detect for MIPI interface sensor"
             default y
@@ -20,7 +14,7 @@ if CAMERA_OV5647
                 When enabled, you don't need to call ov5647_detect manaually, ov5647
                 will be automatically detected and connected to the MIPI CSI interface
                 when the application starts.
-    endif
+    endmenu
 
     choice CAMERA_OV5647_MIPI_DEFAULT_FMT
         prompt "Default format select"
