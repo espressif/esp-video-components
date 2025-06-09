@@ -17,7 +17,7 @@
 #include "esp_cam_ctlr_csi.h"
 
 #include "esp_video.h"
-#include "esp_video_sensor.h"
+#include "esp_video_cam.h"
 #include "esp_video_device_internal.h"
 #if CONFIG_ESP_VIDEO_ENABLE_SWAP_SHORT
 #include "esp_video_swap_short.h"
@@ -48,7 +48,6 @@ struct csi_video {
     esp_cam_ctlr_handle_t cam_ctrl_handle;
     esp_ldo_channel_handle_t ldo_handle;
 
-    esp_cam_sensor_device_t *cam_dev;
 #if CONFIG_ESP_VIDEO_DISABLE_MIPI_CSI_DRIVER_BACKUP_BUFFER
     struct esp_video_buffer_element *element;
 #endif
@@ -56,6 +55,8 @@ struct csi_video {
 #if CONFIG_ESP_VIDEO_ENABLE_SWAP_SHORT
     esp_video_swap_short_t *swap_short;
 #endif
+
+    esp_video_cam_t cam;
 };
 
 static const char *TAG = "csi_video";
@@ -282,9 +283,9 @@ static esp_err_t init_config(struct esp_video *video)
     uint32_t v4l2_format;
     esp_cam_sensor_format_t sensor_format;
     struct csi_video *csi_video = VIDEO_PRIV_DATA(struct csi_video *, video);
-    esp_cam_sensor_device_t *cam_dev = csi_video->cam_dev;
+    esp_cam_sensor_device_t *sensor = csi_video->cam.sensor;
 
-    ESP_RETURN_ON_ERROR(esp_cam_sensor_get_format(cam_dev, &sensor_format), TAG, "failed to get sensor format");
+    ESP_RETURN_ON_ERROR(esp_cam_sensor_get_format(sensor, &sensor_format), TAG, "failed to get sensor format");
     ESP_RETURN_ON_FALSE(sensor_format.mipi_info.mipi_clk, ESP_ERR_NOT_SUPPORTED, TAG, "camera sensor mipi_clk is 0");
     ESP_RETURN_ON_ERROR(csi_get_data_lane(sensor_format.mipi_info.lane_num, &csi_video->state.lane_num), TAG, "failed to get CSI data lane number");
     ESP_RETURN_ON_ERROR(csi_get_input_frame_type(sensor_format.format, &csi_video->state.in_color, &csi_in_bpp, &csi_video->state.in_fmt), TAG, "failed to get CSI input frame format");
@@ -336,7 +337,7 @@ static esp_err_t csi_video_init(struct esp_video *video)
 
     ESP_RETURN_ON_ERROR(esp_ldo_acquire_channel(&ldo_cfg, &csi_video->ldo_handle), TAG, "failed to init LDO");
 
-    ESP_GOTO_ON_ERROR(esp_cam_sensor_set_format(csi_video->cam_dev, NULL), fail_0, TAG, "failed to set basic format");
+    ESP_GOTO_ON_ERROR(esp_cam_sensor_set_format(csi_video->cam.sensor, NULL), fail_0, TAG, "failed to set basic format");
     ESP_GOTO_ON_ERROR(init_config(video), fail_0, TAG, "failed to initialize config");
 
     return ESP_OK;
@@ -355,7 +356,7 @@ static esp_err_t csi_video_start(struct esp_video *video, uint32_t type)
 #if CONFIG_ESP_VIDEO_ENABLE_SWAP_SHORT
     uint32_t data_seq;
 
-    ret = esp_cam_sensor_get_para_value(csi_video->cam_dev, ESP_CAM_SENSOR_DATA_SEQ, &data_seq, sizeof(data_seq));
+    ret = esp_cam_sensor_get_para_value(csi_video->cam.sensor, ESP_CAM_SENSOR_DATA_SEQ, &data_seq, sizeof(data_seq));
     if (ret == ESP_OK && (data_seq == ESP_CAM_SENSOR_DATA_SEQ_SHORT_SWAPPED)) {
         csi_video->swap_short = esp_video_swap_short_create(CAPTURE_VIDEO_BUF_SIZE(video));
         if (!csi_video->swap_short) {
@@ -395,7 +396,7 @@ static esp_err_t csi_video_start(struct esp_video *video, uint32_t type)
                       exit_3, TAG, "failed to start ISP");
 
     int flags = 1;
-    ESP_GOTO_ON_ERROR(esp_cam_sensor_ioctl(csi_video->cam_dev, ESP_CAM_SENSOR_IOC_S_STREAM, &flags),
+    ESP_GOTO_ON_ERROR(esp_cam_sensor_ioctl(csi_video->cam.sensor, ESP_CAM_SENSOR_IOC_S_STREAM, &flags),
                       exit_4, TAG, "failed to start sensor stream");
 
     return ESP_OK;
@@ -424,7 +425,7 @@ static esp_err_t csi_video_stop(struct esp_video *video, uint32_t type)
     struct csi_video *csi_video = VIDEO_PRIV_DATA(struct csi_video *, video);
 
     int flags = 0;
-    ESP_RETURN_ON_ERROR(esp_cam_sensor_ioctl(csi_video->cam_dev, ESP_CAM_SENSOR_IOC_S_STREAM, &flags),
+    ESP_RETURN_ON_ERROR(esp_cam_sensor_ioctl(csi_video->cam.sensor, ESP_CAM_SENSOR_IOC_S_STREAM, &flags),
                         TAG, "failed to stop sensor stream");
 
     ESP_RETURN_ON_ERROR(esp_video_isp_stop(&csi_video->state), TAG, "failed to stop ISP");
@@ -530,28 +531,28 @@ static esp_err_t csi_video_set_ext_ctrl(struct esp_video *video, const struct v4
 {
     struct csi_video *csi_video = VIDEO_PRIV_DATA(struct csi_video *, video);
 
-    return esp_video_set_ext_ctrls_to_sensor(csi_video->cam_dev, ctrls);
+    return esp_video_cam_set_ext_ctrls(&csi_video->cam, ctrls);
 }
 
 static esp_err_t csi_video_get_ext_ctrl(struct esp_video *video, struct v4l2_ext_controls *ctrls)
 {
     struct csi_video *csi_video = VIDEO_PRIV_DATA(struct csi_video *, video);
 
-    return esp_video_get_ext_ctrls_from_sensor(csi_video->cam_dev, ctrls);
+    return esp_video_cam_get_ext_ctrls(&csi_video->cam, ctrls);
 }
 
 static esp_err_t csi_video_query_ext_ctrl(struct esp_video *video, struct v4l2_query_ext_ctrl *qctrl)
 {
     struct csi_video *csi_video = VIDEO_PRIV_DATA(struct csi_video *, video);
 
-    return esp_video_query_ext_ctrls_from_sensor(csi_video->cam_dev, qctrl);
+    return esp_video_cam_query_ext_ctrls(&csi_video->cam, qctrl);
 }
 
 static esp_err_t csi_video_set_sensor_format(struct esp_video *video, const esp_cam_sensor_format_t *format)
 {
     struct csi_video *csi_video = VIDEO_PRIV_DATA(struct csi_video *, video);
 
-    ESP_RETURN_ON_ERROR(esp_cam_sensor_set_format(csi_video->cam_dev, format), TAG, "failed to set customer format");
+    ESP_RETURN_ON_ERROR(esp_cam_sensor_set_format(csi_video->cam.sensor, format), TAG, "failed to set customer format");
     ESP_RETURN_ON_ERROR(init_config(video), TAG, "failed to initialize config");
 
     return ESP_OK;
@@ -561,14 +562,28 @@ static esp_err_t csi_video_get_sensor_format(struct esp_video *video, esp_cam_se
 {
     struct csi_video *csi_video = VIDEO_PRIV_DATA(struct csi_video *, video);
 
-    return esp_cam_sensor_get_format(csi_video->cam_dev, format);
+    return esp_cam_sensor_get_format(csi_video->cam.sensor, format);
 }
 
 static esp_err_t csi_video_query_menu(struct esp_video *video, struct v4l2_querymenu *qmenu)
 {
     struct csi_video *csi_video = VIDEO_PRIV_DATA(struct csi_video *, video);
 
-    return esp_video_query_menu_from_sensor(csi_video->cam_dev, qmenu);
+    return esp_video_cam_query_menu(&csi_video->cam, qmenu);
+}
+
+static esp_err_t csi_video_set_motor_format(struct esp_video *video, const esp_cam_motor_format_t *format)
+{
+    struct csi_video *csi_video = VIDEO_PRIV_DATA(struct csi_video *, video);
+
+    return esp_cam_motor_set_format(csi_video->cam.motor, format);
+}
+
+static esp_err_t csi_video_get_motor_format(struct esp_video *video, esp_cam_motor_format_t *format)
+{
+    struct csi_video *csi_video = VIDEO_PRIV_DATA(struct csi_video *, video);
+
+    return esp_cam_motor_get_format(csi_video->cam.motor, format);
 }
 
 static const struct esp_video_ops s_csi_video_ops = {
@@ -585,18 +600,20 @@ static const struct esp_video_ops s_csi_video_ops = {
     .set_sensor_format = csi_video_set_sensor_format,
     .get_sensor_format = csi_video_get_sensor_format,
     .query_menu    = csi_video_query_menu,
+    .set_motor_format = csi_video_set_motor_format,
+    .get_motor_format = csi_video_get_motor_format,
 };
 
 /**
  * @brief Create MIPI CSI video device
  *
- * @param cam_dev camera sensor device
+ * @param sensor camera sensor device
  *
  * @return
  *      - ESP_OK on success
  *      - Others if failed
  */
-esp_err_t esp_video_create_csi_video_device(esp_cam_sensor_device_t *cam_dev)
+esp_err_t esp_video_create_csi_video_device(esp_cam_sensor_device_t *sensor)
 {
     struct esp_video *video;
     struct csi_video *csi_video;
@@ -608,13 +625,43 @@ esp_err_t esp_video_create_csi_video_device(esp_cam_sensor_device_t *cam_dev)
         return ESP_ERR_NO_MEM;
     }
 
-    csi_video->cam_dev = cam_dev;
+    csi_video->cam.sensor = sensor;
 
     video = esp_video_create(CSI_NAME, ESP_VIDEO_MIPI_CSI_DEVICE_ID, &s_csi_video_ops, csi_video, caps, device_caps);
     if (!video) {
         heap_caps_free(csi_video);
         return ESP_FAIL;
     }
+
+    return ESP_OK;
+}
+
+/**
+ * @brief Add camera motor device to MIPI-CSI video device
+ *
+ * @param motor_dev camera motor device
+ *
+ * @return
+ *      - ESP_OK on success
+ *      - Others if failed
+ */
+esp_err_t esp_video_csi_video_device_add_motor(esp_cam_motor_device_t *motor_dev)
+{
+    struct esp_video *video;
+    struct csi_video *csi_video;
+
+    video = esp_video_device_get_object(CSI_NAME);
+    if (!video) {
+        return ESP_ERR_NOT_FOUND;
+    }
+
+    csi_video = VIDEO_PRIV_DATA(struct csi_video *, video);
+
+    if (csi_video->cam.motor) {
+        return ESP_ERR_INVALID_STATE;
+    }
+
+    csi_video->cam.motor = motor_dev;
 
     return ESP_OK;
 }
@@ -672,5 +719,29 @@ esp_cam_sensor_device_t *esp_video_get_csi_video_device_sensor(void)
 
     csi_video = VIDEO_PRIV_DATA(struct csi_video *, video);
 
-    return csi_video->cam_dev;
+    return csi_video->cam.sensor;
+}
+
+/**
+ * @brief Get the motor connected to MIPI-CSI video device
+ *
+ * @param None
+ *
+ * @return
+ *      - Motor pointer on success
+ *      - NULL if failed
+ */
+esp_cam_motor_device_t *esp_video_get_csi_video_device_motor(void)
+{
+    struct esp_video *video;
+    struct csi_video *csi_video;
+
+    video = esp_video_device_get_object(CSI_NAME);
+    if (!video) {
+        return NULL;
+    }
+
+    csi_video = VIDEO_PRIV_DATA(struct csi_video *, video);
+
+    return csi_video->cam.motor;
 }

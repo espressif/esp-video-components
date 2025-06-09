@@ -13,5 +13,5 @@ dependencies:
     version: "1.0.*"
     override_path: ../esp_cam_sensor
   esp_ipa:
-    version: "0.3.*"
+    version: "~1.0.0"
     override_path: ../esp_ipa

@@ -1,6 +1,7 @@
-## unReleased
+## 1.0.0
 
 - Add extended configuration to set hue, brightness and statistics window
+- Add an autofocus control algorithm to set the sensor focus position by controlling the sensor motor
 
 ## 0.3.0~1
 

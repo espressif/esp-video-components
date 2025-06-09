@@ -8,6 +8,7 @@
 
 #include "esp_err.h"
 #include "esp_cam_sensor_types.h"
+#include "esp_cam_motor_types.h"
 #include "driver/jpeg_encode.h"
 #include "esp_video_device.h"
 #include "hal/cam_ctlr_types.h"
@@ -72,6 +73,28 @@ esp_err_t esp_video_destroy_csi_video_device(void);
  *      - NULL if failed
  */
 esp_cam_sensor_device_t *esp_video_get_csi_video_device_sensor(void);
+
+/**
+ * @brief Add camera motor device to MIPI-CSI video device
+ *
+ * @param motor_dev camera motor device
+ *
+ * @return
+ *      - ESP_OK on success
+ *      - Others if failed
+ */
+esp_err_t esp_video_csi_video_device_add_motor(esp_cam_motor_device_t *motor_dev);
+
+/**
+ * @brief Get the motor connected to MIPI-CSI video device
+ *
+ * @param None
+ *
+ * @return
+ *      - Motor pointer on success
+ *      - NULL if failed
+ */
+esp_cam_motor_device_t *esp_video_get_csi_video_device_motor(void);
 #endif
 
 #if CONFIG_ESP_VIDEO_ENABLE_DVP_VIDEO_DEVICE

@@ -103,8 +103,22 @@ menu "Espressif Video Configuration"
                     Select this option to use PSRAM for the ISP controller task stack instead of DRAM.
                     Default is 'n' because using DRAM provides better performance and avoids potential
                     issues with PSRAM availability or access speed.
+        
+            config ESP_VIDEO_ISP_PIPELINE_CONTROL_CAMERA_MOTOR
+                bool "ISP Pipeline Control Camera Motor"
+                default y
+                depends on ESP_VIDEO_ENABLE_CAMERA_MOTOR_CONTROLLER && ESP_IPA_AF_ALGORITHM
+                help
+                    Select this option, ISP pipeline controller will control the camera motor by IPA AF algorithm.
         endif
     endif
+
+    config ESP_VIDEO_ENABLE_CAMERA_MOTOR_CONTROLLER
+        bool "Enable Camera Motor Controller"
+        default y
+        depends on CAMERA_MOTOR_DEVICE_USED
+        help
+            Select this option, enable camera motor controller to set the focus of the camera.
 
     if IDF_TARGET_ESP32P4
         rsource "./src/data_reprocessing/$IDF_TARGET/Kconfig.data_reprocessing"

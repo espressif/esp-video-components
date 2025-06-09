@@ -8,6 +8,7 @@
 
 #include "esp_err.h"
 #include "esp_cam_sensor.h"
+#include "esp_cam_motor.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -339,6 +340,14 @@ struct esp_video_ops {
     /*< Set Selection */
 
     esp_err_t (*set_selection)(struct esp_video *video, struct v4l2_selection *selection);
+
+    /*!< Set format to sensor */
+
+    esp_err_t (*set_motor_format)(struct esp_video *video, const esp_cam_motor_format_t *format);
+
+    /*!< Get format from sensor */
+
+    esp_err_t (*get_motor_format)(struct esp_video *video, esp_cam_motor_format_t *format);
 };
 
 #ifdef __cplusplus

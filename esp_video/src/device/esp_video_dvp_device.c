@@ -13,7 +13,7 @@
 #include "esp_cam_ctlr_dvp.h"
 
 #include "esp_video.h"
-#include "esp_video_sensor.h"
+#include "esp_video_cam.h"
 #include "esp_video_device_internal.h"
 #if CONFIG_ESP_VIDEO_ENABLE_SWAP_BYTE
 #include "esp_video_swap_byte.h"
@@ -32,11 +32,10 @@ struct dvp_video {
 
     esp_cam_ctlr_handle_t cam_ctrl_handle;
 
-    esp_cam_sensor_device_t *cam_dev;
-
 #if CONFIG_ESP_VIDEO_ENABLE_SWAP_BYTE
     esp_video_swap_byte_t *swap_byte;
 #endif
+    esp_video_cam_t cam;
 };
 
 static const char *TAG = "dvp_video";
@@ -142,9 +141,9 @@ static esp_err_t init_config(struct esp_video *video)
     uint32_t v4l2_format;
     esp_cam_sensor_format_t sensor_format;
     struct dvp_video *dvp_video = VIDEO_PRIV_DATA(struct dvp_video *, video);
-    esp_cam_sensor_device_t *cam_dev = dvp_video->cam_dev;
+    esp_cam_sensor_device_t *sensor = dvp_video->cam.sensor;
 
-    ret = esp_cam_sensor_get_format(cam_dev, &sensor_format);
+    ret = esp_cam_sensor_get_format(sensor, &sensor_format);
     if (ret != ESP_OK) {
         return ret;
     }
@@ -173,7 +172,7 @@ static esp_err_t dvp_video_init(struct esp_video *video)
 {
     struct dvp_video *dvp_video = VIDEO_PRIV_DATA(struct dvp_video *, video);
 
-    ESP_RETURN_ON_ERROR(esp_cam_sensor_set_format(dvp_video->cam_dev, NULL), TAG, "failed to set basic format");
+    ESP_RETURN_ON_ERROR(esp_cam_sensor_set_format(dvp_video->cam.sensor, NULL), TAG, "failed to set basic format");
     ESP_RETURN_ON_ERROR(init_config(video), TAG, "failed to initialize config");
 
     return ESP_OK;
@@ -183,13 +182,13 @@ static esp_err_t dvp_video_start(struct esp_video *video, uint32_t type)
 {
     esp_err_t ret;
     struct dvp_video *dvp_video = VIDEO_PRIV_DATA(struct dvp_video *, video);
-    esp_cam_sensor_device_t *cam_dev = dvp_video->cam_dev;
+    esp_cam_sensor_device_t *sensor = dvp_video->cam.sensor;
 
 #if CONFIG_ESP_VIDEO_ENABLE_SWAP_BYTE
     uint32_t data_seq;
 
     dvp_video->swap_byte = NULL;
-    ret = esp_cam_sensor_get_para_value(cam_dev, ESP_CAM_SENSOR_DATA_SEQ, &data_seq, sizeof(data_seq));
+    ret = esp_cam_sensor_get_para_value(sensor, ESP_CAM_SENSOR_DATA_SEQ, &data_seq, sizeof(data_seq));
     if (ret == ESP_OK && (data_seq == ESP_CAM_SENSOR_DATA_SEQ_BYTE_SWAPPED)) {
         dvp_video->swap_byte = esp_video_swap_byte_create();
         if (!dvp_video->swap_byte) {
@@ -247,7 +246,7 @@ static esp_err_t dvp_video_start(struct esp_video *video, uint32_t type)
     }
 
     int flags = 1;
-    ret = esp_cam_sensor_ioctl(cam_dev, ESP_CAM_SENSOR_IOC_S_STREAM, &flags);
+    ret = esp_cam_sensor_ioctl(sensor, ESP_CAM_SENSOR_IOC_S_STREAM, &flags);
     if (ret != ESP_OK) {
         ESP_LOGE(TAG, "failed to start sensor");
         goto exit_3;
@@ -277,9 +276,9 @@ static esp_err_t dvp_video_stop(struct esp_video *video, uint32_t type)
     esp_err_t ret;
     int flags = 0;
     struct dvp_video *dvp_video = VIDEO_PRIV_DATA(struct dvp_video *, video);
-    esp_cam_sensor_device_t *cam_dev = dvp_video->cam_dev;
+    esp_cam_sensor_device_t *sensor = dvp_video->cam.sensor;
 
-    ret = esp_cam_sensor_ioctl(cam_dev, ESP_CAM_SENSOR_IOC_S_STREAM, &flags);
+    ret = esp_cam_sensor_ioctl(sensor, ESP_CAM_SENSOR_IOC_S_STREAM, &flags);
     if (ret != ESP_OK) {
         ESP_LOGE(TAG, "failed to disable sensor");
         return ret;
@@ -354,28 +353,28 @@ static esp_err_t dvp_video_set_ext_ctrl(struct esp_video *video, const struct v4
 {
     struct dvp_video *dvp_video = VIDEO_PRIV_DATA(struct dvp_video *, video);
 
-    return esp_video_set_ext_ctrls_to_sensor(dvp_video->cam_dev, ctrls);
+    return esp_video_cam_set_ext_ctrls(&dvp_video->cam, ctrls);
 }
 
 static esp_err_t dvp_video_get_ext_ctrl(struct esp_video *video, struct v4l2_ext_controls *ctrls)
 {
     struct dvp_video *dvp_video = VIDEO_PRIV_DATA(struct dvp_video *, video);
 
-    return esp_video_get_ext_ctrls_from_sensor(dvp_video->cam_dev, ctrls);
+    return esp_video_cam_get_ext_ctrls(&dvp_video->cam, ctrls);
 }
 
 static esp_err_t dvp_video_query_ext_ctrl(struct esp_video *video, struct v4l2_query_ext_ctrl *qctrl)
 {
     struct dvp_video *dvp_video = VIDEO_PRIV_DATA(struct dvp_video *, video);
 
-    return esp_video_query_ext_ctrls_from_sensor(dvp_video->cam_dev, qctrl);
+    return esp_video_cam_query_ext_ctrls(&dvp_video->cam, qctrl);
 }
 
 static esp_err_t dvp_video_set_sensor_format(struct esp_video *video, const esp_cam_sensor_format_t *format)
 {
     struct dvp_video *dvp_video = VIDEO_PRIV_DATA(struct dvp_video *, video);
 
-    ESP_RETURN_ON_ERROR(esp_cam_sensor_set_format(dvp_video->cam_dev, format), TAG, "failed to set customer format");
+    ESP_RETURN_ON_ERROR(esp_cam_sensor_set_format(dvp_video->cam.sensor, format), TAG, "failed to set customer format");
     ESP_RETURN_ON_ERROR(init_config(video), TAG, "failed to initialize config");
 
     return ESP_OK;
@@ -385,14 +384,14 @@ static esp_err_t dvp_video_get_sensor_format(struct esp_video *video, esp_cam_se
 {
     struct dvp_video *dvp_video = VIDEO_PRIV_DATA(struct dvp_video *, video);
 
-    return esp_cam_sensor_get_format(dvp_video->cam_dev, format);
+    return esp_cam_sensor_get_format(dvp_video->cam.sensor, format);
 }
 
 static esp_err_t dvp_video_query_menu(struct esp_video *video, struct v4l2_querymenu *qmenu)
 {
     struct dvp_video *dvp_video = VIDEO_PRIV_DATA(struct dvp_video *, video);
 
-    return esp_video_query_menu_from_sensor(dvp_video->cam_dev, qmenu);
+    return esp_video_cam_query_menu(&dvp_video->cam, qmenu);
 }
 
 static const struct esp_video_ops s_dvp_video_ops = {
@@ -414,13 +413,13 @@ static const struct esp_video_ops s_dvp_video_ops = {
 /**
  * @brief Create DVP video device
  *
- * @param cam_dev camera sensor device
+ * @param sensor camera sensor device
  *
  * @return
  *      - ESP_OK on success
  *      - Others if failed
  */
-esp_err_t esp_video_create_dvp_video_device(esp_cam_sensor_device_t *cam_dev)
+esp_err_t esp_video_create_dvp_video_device(esp_cam_sensor_device_t *sensor)
 {
     struct esp_video *video;
     struct dvp_video *dvp_video;
@@ -432,7 +431,7 @@ esp_err_t esp_video_create_dvp_video_device(esp_cam_sensor_device_t *cam_dev)
         return ESP_ERR_NO_MEM;
     }
 
-    dvp_video->cam_dev = cam_dev;
+    dvp_video->cam.sensor = sensor;
 
     video = esp_video_create(DVP_NAME, ESP_VIDEO_DVP_DEVICE_ID, &s_dvp_video_ops, dvp_video, caps, device_caps);
     if (!video) {
@@ -496,5 +495,5 @@ esp_cam_sensor_device_t *esp_video_get_dvp_video_device_sensor(void)
 
     dvp_video = VIDEO_PRIV_DATA(struct dvp_video *, video);
 
-    return dvp_video->cam_dev;
+    return dvp_video->cam.sensor;
 }

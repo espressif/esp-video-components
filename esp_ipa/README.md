@@ -747,3 +747,107 @@ Developers can refer to the configuration files in [esp_cam_sensor](https://gith
 | init_value | Integer | >0 | Auto sensor AE target control initialization value |
 
 ---
+
+#### 3.2.7 Auto Focus Control
+
+---
+
+```json
+"OV5647":
+{
+    "af": {}
+}
+```
+
+| Parameter | Type | Range | Description |
+|:-:|:-:|:-:|:-|
+| af | Object | / | Auto focus control configuration parameters |
+
+---
+
+```json
+"af":
+{
+    "model": 0,
+    "windows":
+ [
+ {
+            "left": 680,
+            "top": 300,
+            "width": 390,
+            "height": 410
+ }
+ ],
+    "edge_thresh": 32,
+    "definition_high_threshold_ratio": 1.3,
+    "definition_low_threshold_ratio": 0.7,
+    "luminance_high_threshold_ratio": 1.1,
+    "luminance_low_threshold_ratio": 0.9,
+    "max_change_time": 2000000,
+    "l1_scan_points_num": 10,
+    "l2_scan_points_num": 10,
+    "max_pos": 500
+}
+```
+
+| Parameter | Type | Range | Description |
+|:-:|:-:|:-:|:-|
+| model | Integer | 0 | AF data process model |
+| windows | Array | / | AF statistics window region, ESP32-P4 supports 3 windows |
+| left | Integer | / | Window Left coordinate  |
+| top | Integer | / | Window Top coordinate |
+| width | Integer | / | Window width |
+| height | Integer | / | Window height |
+| edge_thresh | Integer | / | AF statistics threshold, and value less will be dropped |
+| definition_high_threshold_ratio | Float | >1.0 | When the (current definition statistics)/(previous focus definition) ratio is larger than this value, a new AF process will trigger |
+| definition_low_threshold_ratio | Float | <1.0 | When the (current definition statistics)/(previous focus definition) ratio is less than this value, a new AF process will trigger |
+| luminance_high_threshold_ratio | Float | >1.0 | When the (current luminance statistics)/(previous focus luminance) ratio is larger than this value, a new AF process will trigger |
+| luminance_low_threshold_ratio | Float | <1.0 | When the (current luminance statistics)/(previous focus luminance) ratio is less than this value, a new AF process will trigger |
+| max_change_time | Integer | >0 | The time how long the AF statistics definition or luminance keeps out of the threshold, the unit is microsecond |
+| l1_scan_points_num | Integer | >0 | Level 1 scanning point numbers |
+| l2_scan_points_num | Integer | >0 | Level 2 scanning point numbers |
+| max_pos | Integer | >0 | Maximum focus position, less value can reduce scanning time cost, but also shorten the focus distance |
+
+---
+
+#### 3.2.8 Extended Control
+
+---
+
+```json
+"OV5647":
+{
+    "ext": {}
+}
+```
+
+| Parameter | Type | Range | Description |
+|:-:|:-:|:-:|:-|
+| ext | Object | / | Extended control configuration parameters |
+
+---
+
+```json
+"ext":
+{
+    "hue": 0,
+    "brightness": 0,
+    "stats_region":
+    {
+        "left": 100,
+        "top": 100,
+        "width": 400,
+        "height": 400
+    }
+}
+```
+
+| Parameter | Type | Range | Description |
+|:-:|:-:|:-:|:-|
+| hue | Integer | [0,360] | ISP color HUE  |
+| brightness | Integer | [-128,127] | ISP color brightness |
+| stats_region | Object | / | ISP statistics region |
+| left | Integer | / | Window Left coordinate  |
+| top | Integer | / | Window Top coordinate |
+| width | Integer | / | Window width |
+| height | Integer | / | Window height |

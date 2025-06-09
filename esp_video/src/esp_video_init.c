@@ -14,6 +14,10 @@
 #include "esp_sccb_i2c.h"
 #include "esp_cam_sensor.h"
 #include "esp_cam_sensor_detect.h"
+#if CONFIG_ESP_VIDEO_ENABLE_CAMERA_MOTOR_CONTROLLER
+#include "esp_cam_motor.h"
+#include "esp_cam_motor_detect.h"
+#endif
 
 #include "esp_video_init.h"
 #include "esp_video_device_internal.h"
@@ -25,7 +29,17 @@
 #define UNUSED(a)                   ((void)(a))
 
 #define SCCB_NUM_MAX                I2C_NUM_MAX
+
+#define ESP_VIDEO_INIT_DVP_SCCB     0
+#define ESP_VIDEO_INIT_CSI_SCCB     1
+
+#if CONFIG_ESP_VIDEO_ENABLE_CAMERA_MOTOR_CONTROLLER
+#define ESP_VIDEO_INIT_MOTOR_SCCB   2
+
+#define SCCB_DEV_NUM                3
+#else
 #define SCCB_DEV_NUM                2
+#endif
 
 #define INTF_PORT_NAME(port)        (((port) == ESP_CAM_SENSOR_DVP) ? "DVP" : "CSI")
 
@@ -144,7 +158,7 @@ static esp_sccb_io_handle_t create_sccb_device(esp_video_init_sccb_mark_t *mark,
     sccb_i2c_config_t sccb_config = {0};
     i2c_master_bus_handle_t bus_handle;
     int i2c_port = init_sccb_config->i2c_config.port;
-    int sccb_io_num = port == ESP_CAM_SENSOR_DVP ? 0 : 1;
+    int sccb_io_num = port;
 
     if (init_sccb_config->init_sccb) {
         bus_handle = create_i2c_master_bus(mark, port, init_sccb_config, dev_addr);
@@ -265,7 +279,7 @@ esp_err_t esp_video_init(const esp_video_init_config_t *config)
             esp_cam_sensor_config_t cfg;
             esp_cam_sensor_device_t *cam_dev;
 
-            cfg.sccb_handle = create_sccb_device(sccb_mark, ESP_CAM_SENSOR_MIPI_CSI, &config->csi->sccb_config, p->sccb_addr);
+            cfg.sccb_handle = create_sccb_device(sccb_mark, ESP_VIDEO_INIT_CSI_SCCB, &config->csi->sccb_config, p->sccb_addr);
             if (!cfg.sccb_handle) {
                 return ESP_FAIL;
             }
@@ -284,6 +298,37 @@ esp_err_t esp_video_init(const esp_video_init_config_t *config)
                 ESP_LOGE(TAG, "failed to create MIPI-CSI video device");
                 return ret;
             }
+
+#if CONFIG_ESP_VIDEO_ENABLE_CAMERA_MOTOR_CONTROLLER
+            if (config->cam_motor) {
+                for (esp_cam_motor_detect_fn_t *p = &__esp_cam_motor_detect_fn_array_start; p < &__esp_cam_motor_detect_fn_array_end; p++) {
+                    esp_cam_motor_config_t cfg = {0};
+                    esp_cam_motor_device_t *motor_dev;
+                    const esp_video_init_cam_motor_config_t *cm = config->cam_motor;
+                    cfg.sccb_handle = create_sccb_device(sccb_mark, ESP_VIDEO_INIT_MOTOR_SCCB, &cm->sccb_config, p->sccb_addr);
+                    if (!cfg.sccb_handle) {
+                        return ESP_FAIL;
+                    }
+
+                    cfg.reset_pin = cm->reset_pin,
+                    cfg.pwdn_pin = cm->pwdn_pin,
+                    cfg.signal_pin = cm->signal_pin,
+                    motor_dev = (*(p->detect))((void *)&cfg);
+                    if (!motor_dev) {
+                        destroy_sccb_device(cfg.sccb_handle, sccb_mark, &config->csi->sccb_config);
+                        ESP_LOGE(TAG, "failed to detect sensor motor with address=%x", p->sccb_addr);
+                        continue;
+                    }
+
+                    ret = esp_video_csi_video_device_add_motor(motor_dev);
+                    if (ret != ESP_OK) {
+                        ESP_LOGE(TAG, "failed to add motor device to CSI video device");
+                        return ret;
+                    }
+                    break;
+                }
+            }
+#endif
 
 #if CONFIG_ESP_VIDEO_ENABLE_ISP_PIPELINE_CONTROLLER
             if (cam_dev->cur_format && cam_dev->cur_format->isp_info) {
@@ -327,7 +372,7 @@ esp_err_t esp_video_init(const esp_video_init_config_t *config)
                 }
             }
 
-            cfg.sccb_handle = create_sccb_device(sccb_mark, ESP_CAM_SENSOR_DVP, &config->dvp->sccb_config, p->sccb_addr);
+            cfg.sccb_handle = create_sccb_device(sccb_mark, ESP_VIDEO_INIT_DVP_SCCB, &config->dvp->sccb_config, p->sccb_addr);
             if (!cfg.sccb_handle) {
                 return ESP_FAIL;
             }
@@ -418,6 +463,13 @@ esp_err_t esp_video_deinit(void)
                 continue;
             }
 
+#if CONFIG_ESP_VIDEO_ENABLE_CAMERA_MOTOR_CONTROLLER
+            esp_cam_motor_device_t *motor_dev = esp_video_get_csi_video_device_motor();
+            if (motor_dev) {
+                ESP_RETURN_ON_ERROR(esp_cam_motor_del_dev(motor_dev), TAG, "Failed to delete CSI motor");
+            }
+#endif
+
 #if CONFIG_ESP_VIDEO_ENABLE_ISP_PIPELINE_CONTROLLER
             ESP_RETURN_ON_ERROR(esp_video_isp_pipeline_deinit(), TAG, "Failed to destroy ISP controller");
 #endif
@@ -466,7 +518,6 @@ esp_err_t esp_video_deinit(void)
         }
     }
     memset(s_sensor_sccb_mask, 0, sizeof(s_sensor_sccb_mask));
-
 #if CONFIG_ESP_VIDEO_ENABLE_ISP_VIDEO_DEVICE
     ESP_RETURN_ON_ERROR(esp_video_destroy_isp_video_device(), TAG, "Failed to destroy ISP video device");
 #endif

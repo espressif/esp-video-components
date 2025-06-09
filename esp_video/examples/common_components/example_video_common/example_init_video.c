@@ -23,6 +23,23 @@ static const esp_video_init_csi_config_t s_csi_config = {
     .reset_pin = EXAMPLE_MIPI_CSI_CAM_SENSOR_RESET_PIN,
     .pwdn_pin  = EXAMPLE_MIPI_CSI_CAM_SENSOR_PWDN_PIN,
 };
+
+#if EXAMPLE_ENABLE_MIPI_CSI_CAM_MOTOR
+static const esp_video_init_cam_motor_config_t cam_motor_config = {
+    .sccb_config = {
+        .init_sccb = true,
+        .i2c_config = {
+            .port      = EXAMPLE_MIPI_CSI_CAM_MOTOR_SCCB_I2C_PORT,
+            .scl_pin   = EXAMPLE_MIPI_CSI_CAM_MOTOR_SCCB_I2C_SCL_PIN,
+            .sda_pin   = EXAMPLE_MIPI_CSI_CAM_MOTOR_SCCB_I2C_SDA_PIN,
+        },
+        .freq      = EXAMPLE_MIPI_CSI_CAM_MOTOR_SCCB_I2C_FREQ,
+    },
+    .reset_pin = EXAMPLE_MIPI_CSI_CAM_MOTOR_RESET_PIN,
+    .pwdn_pin  = EXAMPLE_MIPI_CSI_CAM_MOTOR_PWDN_PIN,
+    .signal_pin = EXAMPLE_MIPI_CSI_CAM_MOTOR_SIGNAL_PIN,
+};
+#endif /* EXAMPLE_ENABLE_MIPI_CSI_CAM_MOTOR */
 #endif /* EXAMPLE_ENABLE_MIPI_CSI_CAM_SENSOR */
 
 #if EXAMPLE_ENABLE_DVP_CAM_SENSOR
@@ -56,6 +73,9 @@ static const esp_video_init_dvp_config_t s_dvp_config = {
 static const esp_video_init_config_t s_cam_config = {
 #if EXAMPLE_ENABLE_MIPI_CSI_CAM_SENSOR
     .csi      = &s_csi_config,
+#if EXAMPLE_ENABLE_MIPI_CSI_CAM_MOTOR
+    .cam_motor = &cam_motor_config,
+#endif /* EXAMPLE_ENABLE_MIPI_CSI_CAM_MOTOR */
 #endif /* EXAMPLE_ENABLE_MIPI_CSI_CAM_SENSOR */
 #if EXAMPLE_ENABLE_DVP_CAM_SENSOR
     .dvp      = &s_dvp_config,

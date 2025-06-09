@@ -40,11 +40,19 @@ typedef struct esp_video_isp {
     int isp_fd;
     esp_video_isp_stats_t *isp_stats[ISP_METADATA_BUFFER_COUNT];
 
+    esp_ipa_stats_t ipa_stats;
+    esp_ipa_metadata_t metadata;
+
     int cam_fd;
 
     esp_ipa_pipeline_handle_t ipa_pipeline;
 
     esp_ipa_sensor_t sensor;
+#if CONFIG_ESP_IPA_AF_ALGORITHM
+    /* Focus information for IPA */
+    esp_ipa_sensor_focus_t focus_info;
+#endif
+
     int32_t prev_gain_index;
     uint32_t sensor_stats_seq;
     struct {
@@ -54,6 +62,7 @@ typedef struct esp_video_isp {
         uint8_t awb         : 1;
         uint8_t group       : 1;
         uint8_t ae_level    : 1;
+        uint8_t af_stime    : 1;
     } sensor_attr;
 
     TaskHandle_t task_handler;
@@ -123,6 +132,16 @@ static void print_stats_info(const esp_ipa_stats_t *stats)
 
     if (stats->flags & IPA_STATS_FLAGS_SHARPEN) {
         ESP_LOGD(TAG, "Sharpen high frequency pixel maximum value: %d", stats->sharpen_stats.value);
+    }
+
+    if (stats->flags & IPA_STATS_FLAGS_AF) {
+        const esp_ipa_stats_af_t *af_stats = stats->af_stats;
+
+        ESP_LOGD(TAG, "AF:");
+        for (int i = 0; i < ISP_AF_WINDOW_NUM; i++) {
+            ESP_LOGD(TAG, "  definition[%2d]: %"PRIu32, i, af_stats[i].definition);
+            ESP_LOGD(TAG, "  luminance[%2d]:  %"PRIu32, i, af_stats[i].luminance);
+        }
     }
 
     ESP_LOGD(TAG, "");
@@ -675,6 +694,66 @@ static void config_statistics_region(esp_video_isp_t *isp, esp_ipa_metadata_t *m
     }
 }
 
+static void config_af(esp_video_isp_t *isp, esp_ipa_metadata_t *metadata)
+{
+    struct v4l2_ext_controls controls;
+    struct v4l2_ext_control control[1];
+    esp_video_isp_af_t af;
+
+    if (metadata->flags & IPA_METADATA_FLAGS_AF) {
+        esp_ipa_af_t *ipa_af = &metadata->af;
+
+        af.enable = true;
+        af.edge_thresh = ipa_af->edge_thresh;
+        memcpy(af.windows, ipa_af->windows, sizeof(isp_window_t) * ISP_AF_WINDOW_NUM);
+
+        controls.ctrl_class = V4L2_CID_USER_CLASS;
+        controls.count      = 1;
+        controls.controls   = control;
+        control[0].id       = V4L2_CID_USER_ESP_ISP_AF;
+        control[0].p_u8     = (uint8_t *)&af;
+        if (ioctl(isp->isp_fd, VIDIOC_S_EXT_CTRLS, &controls) != 0) {
+            ESP_LOGE(TAG, "failed to set AF");
+        }
+    }
+}
+
+#if CONFIG_ESP_VIDEO_ISP_PIPELINE_CONTROL_CAMERA_MOTOR
+static void config_motor_position(esp_video_isp_t *isp, esp_ipa_metadata_t *metadata)
+{
+    struct v4l2_ext_controls controls;
+    struct v4l2_ext_control control[1];
+
+    if (metadata->flags & IPA_METADATA_FLAGS_FP) {
+        controls.ctrl_class = V4L2_CID_CAMERA_CLASS;
+        controls.count      = 1;
+        controls.controls   = control;
+        control[0].id       = V4L2_CID_FOCUS_ABSOLUTE;
+        control[0].value    = metadata->focus_pos;
+        if (ioctl(isp->cam_fd, VIDIOC_S_EXT_CTRLS, &controls) != 0) {
+            ESP_LOGE(TAG, "failed to set motor position");
+            isp->focus_info.start_time = 0;
+        } else {
+            int64_t strat_time;
+
+            controls.ctrl_class = V4L2_CID_CAMERA_CLASS;
+            controls.count      = 1;
+            controls.controls   = control;
+            control[0].id       = V4L2_CID_MOTOR_START_TIME;
+            control[0].p_u8     = (uint8_t *)&strat_time;
+            control[0].size     = sizeof(strat_time);
+            if (ioctl(isp->cam_fd, VIDIOC_G_EXT_CTRLS, &controls) != 0) {
+                ESP_LOGE(TAG, "failed to get motor start time");
+                isp->focus_info.start_time = 0;
+            } else {
+                isp->focus_info.start_time = strat_time;
+                isp->focus_info.cur_pos = metadata->focus_pos;
+            }
+        }
+    }
+}
+#endif
+
 static void config_isp_and_camera(esp_video_isp_t *isp, esp_ipa_metadata_t *metadata)
 {
     config_statistics_region(isp, metadata);
@@ -693,9 +772,13 @@ static void config_isp_and_camera(esp_video_isp_t *isp, esp_ipa_metadata_t *meta
     config_lsc(isp, metadata);
 #endif
     config_awb(isp, metadata);
+    config_af(isp, metadata);
 
     config_sensor_ae_target_level(isp, metadata);
     config_exposure_and_gain(isp, metadata);
+#if CONFIG_ESP_VIDEO_ISP_PIPELINE_CONTROL_CAMERA_MOTOR
+    config_motor_position(isp, metadata);
+#endif
 }
 
 static void isp_stats_to_ipa_stats(esp_video_isp_stats_t *isp_stat, esp_ipa_stats_t *ipa_stats)
@@ -742,6 +825,17 @@ static void isp_stats_to_ipa_stats(esp_video_isp_stats_t *isp_stat, esp_ipa_stat
 
         ipa_sharpen->value = isp_sharpen->high_freq_pixel_max;
         ipa_stats->flags |= IPA_STATS_FLAGS_SHARPEN;
+    }
+
+    if (isp_stat->flags & ESP_VIDEO_ISP_STATS_FLAG_AF) {
+        esp_ipa_stats_af_t *ipa_af = ipa_stats->af_stats;
+        isp_af_result_t *isp_af = &isp_stat->af.af_result;
+
+        for (int i = 0; i < ISP_AF_WINDOW_NUM; i++) {
+            ipa_af[i].definition = isp_af->definition[i];
+            ipa_af[i].luminance = isp_af->luminance[i];
+        }
+        ipa_stats->flags |= IPA_STATS_FLAGS_AF;
     }
 }
 
@@ -800,8 +894,6 @@ static void isp_task(void *p)
 {
     esp_err_t ret;
     struct v4l2_buffer buf;
-    esp_ipa_stats_t ipa_stats;
-    esp_ipa_metadata_t metadata;
     esp_video_isp_t *isp = (esp_video_isp_t *)p;
 
     while (1) {
@@ -815,20 +907,20 @@ static void isp_task(void *p)
 
         get_sensor_state(isp, buf.index);
 
-        isp_stats_to_ipa_stats(isp->isp_stats[buf.index], &ipa_stats);
+        isp_stats_to_ipa_stats(isp->isp_stats[buf.index], &isp->ipa_stats);
         if (ioctl(isp->isp_fd, VIDIOC_QBUF, &buf) != 0) {
             ESP_LOGE(TAG, "failed to queue video frame");
         }
-        print_stats_info(&ipa_stats);
+        print_stats_info(&isp->ipa_stats);
 
-        metadata.flags = 0;
-        ret = esp_ipa_pipeline_process(isp->ipa_pipeline, &ipa_stats, &isp->sensor, &metadata);
+        isp->metadata.flags = 0;
+        ret = esp_ipa_pipeline_process(isp->ipa_pipeline, &isp->ipa_stats, &isp->sensor, &isp->metadata);
         if (ret != ESP_OK) {
             ESP_LOGE(TAG, "failed to process image algorithm");
             continue;
         }
 
-        config_isp_and_camera(isp, &metadata);
+        config_isp_and_camera(isp, &isp->metadata);
     }
 
     vTaskDelete(NULL);
@@ -843,6 +935,9 @@ static esp_err_t init_cam_dev(const esp_video_isp_config_t *config, esp_video_is
     struct v4l2_query_ext_ctrl qctrl;
     struct v4l2_ext_controls controls;
     struct v4l2_ext_control control[1];
+#if CONFIG_ESP_VIDEO_ISP_PIPELINE_CONTROL_CAMERA_MOTOR
+    esp_cam_motor_format_t motor_format;
+#endif
 
     fd = open(config->cam_dev, O_RDWR);
     ESP_RETURN_ON_FALSE(fd > 0, ESP_ERR_INVALID_ARG, TAG, "failed to open %s", config->cam_dev);
@@ -985,6 +1080,58 @@ static esp_err_t init_cam_dev(const esp_video_isp_config_t *config, esp_video_is
     } else {
         ESP_LOGD(TAG, "V4L2_CID_CAMERA_AE_LEVEL is not supported");
     }
+
+#if CONFIG_ESP_VIDEO_ISP_PIPELINE_CONTROL_CAMERA_MOTOR
+    qctrl.id = V4L2_CID_MOTOR_START_TIME;
+    ret = ioctl(fd, VIDIOC_QUERY_EXT_CTRL, &qctrl);
+    if (ret == 0) {
+        isp->sensor_attr.af_stime = 1;
+    } else {
+        ESP_LOGD(TAG, "V4L2_CID_MOTOR_START_TIME is not supported");
+    }
+
+    qctrl.id = V4L2_CID_FOCUS_ABSOLUTE;
+    ret = ioctl(fd, VIDIOC_QUERY_EXT_CTRL, &qctrl);
+    if (ret == 0) {
+        controls.ctrl_class = V4L2_CID_CAMERA_CLASS;
+        controls.count      = 1;
+        controls.controls   = control;
+        control[0].id       = V4L2_CID_FOCUS_ABSOLUTE;
+        control[0].value    = 0;
+        ret = ioctl(fd, VIDIOC_G_EXT_CTRLS, &controls);
+        ESP_GOTO_ON_FALSE(ret == 0, ESP_ERR_NOT_SUPPORTED, fail_0, TAG, "failed to get AF absolute position code");
+
+        isp->sensor.focus_info = &isp->focus_info;
+
+        isp->focus_info.min_pos = qctrl.minimum;
+        isp->focus_info.max_pos = qctrl.maximum;
+        isp->focus_info.step_pos = qctrl.step;
+        isp->focus_info.cur_pos = control[0].value;
+
+        ESP_LOGD(TAG, "AF absolute position code:");
+        ESP_LOGD(TAG, "  min:     %"PRIi64, qctrl.minimum);
+        ESP_LOGD(TAG, "  max:     %"PRIi64, qctrl.maximum);
+        ESP_LOGD(TAG, "  step:    %"PRIu64, qctrl.step);
+        ESP_LOGD(TAG, "  current: %"PRIi32, control[0].value);
+    } else {
+        ESP_LOGD(TAG, "V4L2_CID_FOCUS_ABSOLUTE is not supported");
+    }
+
+    ret = ioctl(fd, VIDIOC_G_MOTOR_FMT, &motor_format);
+    if (ret == 0) {
+        isp->focus_info.period_in_us = motor_format.step_period.period_in_us;
+        isp->focus_info.codes_per_step = motor_format.step_period.codes_per_step;
+    } else {
+        ESP_LOGE(TAG, "VIDIOC_G_MOTOR_FMT is not supported");
+    }
+#elif CONFIG_ESP_IPA_AF_ALGORITHM
+    isp->sensor.focus_info = &isp->focus_info;
+
+    isp->focus_info.min_pos = 0;
+    isp->focus_info.max_pos = 1;
+    isp->focus_info.step_pos = 1;
+    isp->focus_info.cur_pos = 0;
+#endif
 
     memset(&format, 0, sizeof(struct v4l2_format));
     format.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
