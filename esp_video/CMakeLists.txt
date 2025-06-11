@@ -9,7 +9,7 @@ set(srcs "src/esp_video_buffer.c"
 set(include_dirs "include")
 set(priv_include_dirs "private_include")
 set(priv_requires "vfs")
-set(requires "esp_driver_cam" "esp_driver_isp" "esp_cam_sensor" "esp_h264" "esp_driver_jpeg")
+set(requires "esp_driver_cam" "esp_cam_sensor")
 
 if(CONFIG_IDF_TARGET_ESP32P4)
     if(CONFIG_ESP_VIDEO_ENABLE_SWAP_SHORT)
@@ -63,7 +63,21 @@ if(CONFIG_ESP_VIDEO_ENABLE_ISP_PIPELINE_CONTROLLER)
     idf_component_optional_requires(PRIVATE "esp_ipa")
 endif()
 
-if(CONFIG_IDF_TARGET_ESP32P4)
+ if(CONFIG_IDF_TARGET_ESP32P4)
+    if(CONFIG_ESP_VIDEO_ENABLE_ISP)
+        # Supply the header files to applications
+        idf_component_optional_requires(PUBLIC "esp_driver_isp")
+    endif()
+
+    if(CONFIG_ESP_VIDEO_ENABLE_HW_JPEG_VIDEO_DEVICE)
+        # Supply the header files to applications
+        idf_component_optional_requires(PUBLIC "esp_driver_jpeg")
+    endif()
+
+    if(CONFIG_ESP_VIDEO_ENABLE_H264_VIDEO_DEVICE)
+        idf_component_optional_requires(PRIVATE "esp_h264")
+    endif()
+
     if(CONFIG_ESP_VIDEO_ENABLE_SWAP_SHORT_PERF_LOG)
         idf_component_optional_requires(PRIVATE "esp_timer")
     endif()

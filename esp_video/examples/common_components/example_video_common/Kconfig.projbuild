@@ -10,12 +10,19 @@ menu "Example Video Initialization Configuration"
 
         config EXAMPLE_SELECT_ESP32P4_FUNCTION_EV_BOARD_V1_4
             bool "ESP32-P4-Function-EV-Board V1.4"
+            depends on IDF_TARGET_ESP32P4
 
         config EXAMPLE_SELECT_ESP32P4_FUNCTION_EV_BOARD_V1_5
             bool "ESP32-P4-Function-EV-Board V1.5"
+            depends on IDF_TARGET_ESP32P4
 
         config EXAMPLE_SELECT_ESP32P4_EYE
             bool "ESP32-P4-EYE"
+            depends on IDF_TARGET_ESP32P4
+        
+        config EXAMPLE_SELECT_ESP32S3_EYE
+            bool "ESP32-S3-EYE"
+            depends on IDF_TARGET_ESP32S3
 
         config EXAMPLE_SELECT_CUSTOMIZED_DEV_BOARD
             bool "Customized Development Board"
@@ -44,7 +51,7 @@ menu "Example Video Initialization Configuration"
         config EXAMPLE_MIPI_CSI_SCCB_I2C_PORT
             int "MIPI-CSI SCCB I2C Port Number"
             default 0
-            range 0 1
+            range 0 2 if IDF_TARGET_ESP32P4
 
         config EXAMPLE_MIPI_CSI_SCCB_I2C_FREQ
             int "MIPI-CSI SCCB I2C Frequency"
@@ -63,7 +70,7 @@ menu "Example Video Initialization Configuration"
             config EXAMPLE_MIPI_CSI_CAM_MOTOR_SCCB_I2C_PORT
                 int "MIPI CSI Camera Motor SCCB I2C Port Number"
                 default 0
-                range 0 1
+                range 0 2 if IDF_TARGET_ESP32P4
 
             config EXAMPLE_MIPI_CSI_CAM_MOTOR_SCCB_I2C_FREQ
                 int "MIPI CSI Camera Motor SCCB I2C Frequency"
@@ -79,7 +86,8 @@ menu "Example Video Initialization Configuration"
         config EXAMPLE_DVP_SCCB_I2C_PORT
             int "DVP SCCB I2C Port Number"
             default 1
-            range 0 1
+            range 0 1 if IDF_TARGET_ESP32S3
+            range 0 2 if IDF_TARGET_ESP32P4
 
         config EXAMPLE_DVP_SCCB_I2C_FREQ
             int "DVP SCCB I2C Frequency"
@@ -98,7 +106,8 @@ menu "Example Video Initialization Configuration"
         config EXAMPLE_SPI_SCCB_I2C_PORT
             int "SPI SCCB I2C Port Number"
             default 1
-            range 0 1
+            range 0 1 if IDF_TARGET_ESP32S3
+            range 0 2 if IDF_TARGET_ESP32P4
 
         config EXAMPLE_SPI_SCCB_I2C_FREQ
             int "SPI SCCB I2C Frequency"
@@ -111,6 +120,7 @@ menu "Example Video Initialization Configuration"
         config EXAMPLE_SPI_CAM_SPI_PORT
             int "SPI Camera Sensor SPI Port Number"
             default 2
+            range 0 2 if IDF_TARGET_ESP32P4 || IDF_TARGET_ESP32S3
 
         choice EXAMPLE_SPI_CAM_XCLK_RESOURCE
             prompt "SPI Camera Sensor Clock Resource"
@@ -131,6 +141,18 @@ menu "Example Video Initialization Configuration"
         config EXAMPLE_SPI_CAM_XCLK_FREQ
             int "SPI XCLK Frequency"
             default 24000000
+
+        if EXAMPLE_SPI_CAM_XCLK_USE_LEDC
+            config EXAMPLE_SPI_CAM_XCLK_TIMER
+                int "SPI XCLK Timer Number"
+                default 0
+                range 0 3 if IDF_TARGET_ESP32P4 || IDF_TARGET_ESP32S3
+
+            config EXAMPLE_SPI_CAM_XCLK_TIMER_CHANNEL
+                int "SPI XCLK Timer Channel"
+                default 0
+                range 0 7 if IDF_TARGET_ESP32P4 || IDF_TARGET_ESP32S3
+        endif
     endif
 
     if EXAMPLE_SELECT_CUSTOMIZED_DEV_BOARD
@@ -138,27 +160,32 @@ menu "Example Video Initialization Configuration"
             config EXAMPLE_MIPI_CSI_SCCB_I2C_SCL_PIN
                 int "MIPI-CSI SCCB I2C SCL Pin"
                 default 8
-                range -1 56
+                range 0 54 if IDF_TARGET_ESP32P4
+                range 0 48 if IDF_TARGET_ESP32S3
 
             config EXAMPLE_MIPI_CSI_SCCB_I2C_SDA_PIN
                 int "MIPI-CSI SCCB I2C SDA Pin"
                 default 7
-                range -1 56
+                range 0 54 if IDF_TARGET_ESP32P4
+                range 0 48 if IDF_TARGET_ESP32S3
 
             config EXAMPLE_MIPI_CSI_CAM_SENSOR_RESET_PIN
                 int "MIPI-CSI Camera Sensor Reset Pin"
                 default -1
-                range -1 56
+                range -1 54 if IDF_TARGET_ESP32P4
+                range -1 48 if IDF_TARGET_ESP32S3
 
             config EXAMPLE_MIPI_CSI_CAM_SENSOR_PWDN_PIN
                 int "MIPI-CSI Camera Sensor Power Down Pin"
                 default -1
-                range -1 56
+                range -1 54 if IDF_TARGET_ESP32P4
+                range -1 48 if IDF_TARGET_ESP32S3
 
             config EXAMPLE_MIPI_CSI_XCLK_PIN
                 int "MIPI-CSI XLCK"
                 default -1
-                range -1 56
+                range -1 54 if IDF_TARGET_ESP32P4
+                range -1 48 if IDF_TARGET_ESP32S3
             
             if EXAMPLE_MIPI_CSI_XCLK_PIN >= 0
                 config EXAMPLE_MIPI_CSI_XCLK_FREQ
@@ -170,27 +197,32 @@ menu "Example Video Initialization Configuration"
                 config EXAMPLE_MIPI_CSI_CAM_MOTOR_SCCB_I2C_SCL_PIN
                     int "MIPI CSI Camera Motor SCCB I2C SCL Pin"
                     default 8
-                    range -1 56
+                    range 0 54 if IDF_TARGET_ESP32P4
+                    range 0 48 if IDF_TARGET_ESP32S3
 
                 config EXAMPLE_MIPI_CSI_CAM_MOTOR_SCCB_I2C_SDA_PIN
                     int "MIPI CSI Camera Motor SCCB I2C SDA Pin"
                     default 7
-                    range -1 56
+                    range 0 54 if IDF_TARGET_ESP32P4
+                    range 0 48 if IDF_TARGET_ESP32S3
 
                 config EXAMPLE_MIPI_CSI_CAM_MOTOR_RESET_PIN
                     int "MIPI CSI Camera Motor Reset Pin"
                     default -1
-                    range -1 56
+                    range -1 54 if IDF_TARGET_ESP32P4
+                    range -1 48 if IDF_TARGET_ESP32S3
 
                 config EXAMPLE_MIPI_CSI_CAM_MOTOR_PWDN_PIN
                     int "MIPI CSI Camera Motor Power Down Pin"
                     default -1
-                    range -1 56
+                    range -1 54 if IDF_TARGET_ESP32P4
+                    range -1 48 if IDF_TARGET_ESP32S3
 
                 config EXAMPLE_MIPI_CSI_CAM_MOTOR_SIGNAL_PIN
-                    int "MIPI CSI Camera Motor Power Down Pin"
+                    int "MIPI CSI Camera Motor Signal Pin"
                     default -1
-                    range -1 56
+                    range -1 54 if IDF_TARGET_ESP32P4
+                    range -1 48 if IDF_TARGET_ESP32S3
             endif
         endif
 
@@ -198,124 +230,148 @@ menu "Example Video Initialization Configuration"
             config EXAMPLE_DVP_SCCB_I2C_SCL_PIN
                 int "DVP SCCB I2C SCL Pin"
                 default 33
-                range -1 56
+                range 0 54 if IDF_TARGET_ESP32P4
+                range 0 48 if IDF_TARGET_ESP32S3
 
             config EXAMPLE_DVP_SCCB_I2C_SDA_PIN
                 int "DVP SCCB I2C SDA Pin"
                 default 32
-                range -1 56
+                range 0 54 if IDF_TARGET_ESP32P4
+                range 0 48 if IDF_TARGET_ESP32S3
 
             config EXAMPLE_DVP_CAM_SENSOR_RESET_PIN
                 int "DVP Camera Sensor Reset Pin"
                 default -1
-                range -1 56
+                range -1 54 if IDF_TARGET_ESP32P4
+                range -1 48 if IDF_TARGET_ESP32S3
 
             config EXAMPLE_DVP_CAM_SENSOR_PWDN_PIN
                 int "DVP Camera Sensor Power Down Pin"
                 default -1
-                range -1 56
+                range -1 54 if IDF_TARGET_ESP32P4
+                range -1 48 if IDF_TARGET_ESP32S3
 
             config EXAMPLE_DVP_XCLK_PIN
                 int "DVP XCLK Pin"
-                range 0 56
                 default 20
+                range 0 54 if IDF_TARGET_ESP32P4
+                range 0 48 if IDF_TARGET_ESP32S3
 
             config EXAMPLE_DVP_PCLK_PIN
                 int "DVP PCLK Pin"
-                range 0 56
                 default 21
+                range 0 54 if IDF_TARGET_ESP32P4
+                range 0 48 if IDF_TARGET_ESP32S3
 
             config EXAMPLE_DVP_VSYNC_PIN
                 int "DVP VSYNC Pin"
-                range 0 56
                 default 23
+                range 0 54 if IDF_TARGET_ESP32P4
+                range 0 48 if IDF_TARGET_ESP32S3
 
             config EXAMPLE_DVP_DE_PIN
                 int "DVP DE Pin"
-                range 0 56
                 default 22
+                range 0 54 if IDF_TARGET_ESP32P4
+                range 0 48 if IDF_TARGET_ESP32S3
 
             config EXAMPLE_DVP_D0_PIN
                 int "DVP D0 Pin"
-                range 0 56
                 default 53
+                range 0 54 if IDF_TARGET_ESP32P4
+                range 0 48 if IDF_TARGET_ESP32S3
 
             config EXAMPLE_DVP_D1_PIN
                 int "DVP D1 Pin"
-                range 0 56
                 default 54
+                range 0 54 if IDF_TARGET_ESP32P4
+                range 0 48 if IDF_TARGET_ESP32S3
 
             config EXAMPLE_DVP_D2_PIN
                 int "DVP D2 Pin"
-                range 0 56
                 default 52
+                range 0 54 if IDF_TARGET_ESP32P4
+                range 0 48 if IDF_TARGET_ESP32S3
 
             config EXAMPLE_DVP_D3_PIN
                 int "DVP D3 Pin"
-                range 0 56
                 default 1
+                range 0 54 if IDF_TARGET_ESP32P4
+                range 0 48 if IDF_TARGET_ESP32S3
 
             config EXAMPLE_DVP_D4_PIN
                 int "DVP D4 Pin"
-                range 0 56
                 default 0
+                range 0 54 if IDF_TARGET_ESP32P4
+                range 0 48 if IDF_TARGET_ESP32S3
 
             config EXAMPLE_DVP_D5_PIN
                 int "DVP D5 Pin"
-                range 0 56
                 default 45
+                range 0 54 if IDF_TARGET_ESP32P4
+                range 0 48 if IDF_TARGET_ESP32S3
 
             config EXAMPLE_DVP_D6_PIN
                 int "DVP D6 Pin"
-                range 0 56
                 default 46
+                range 0 54 if IDF_TARGET_ESP32P4
+                range 0 48 if IDF_TARGET_ESP32S3
 
             config EXAMPLE_DVP_D7_PIN
                 int "DVP D7 Pin"
-                range 0 56
                 default 47
+                range 0 54 if IDF_TARGET_ESP32P4
+                range 0 48 if IDF_TARGET_ESP32S3
         endif
 
         if EXAMPLE_ENABLE_SPI_CAM_SENSOR
             config EXAMPLE_SPI_SCCB_I2C_SCL_PIN
                 int "SPI SCCB I2C SCL Pin"
                 default 8
-                range -1 56
+                range 0 54 if IDF_TARGET_ESP32P4
+                range 0 48 if IDF_TARGET_ESP32S3
 
             config EXAMPLE_SPI_SCCB_I2C_SDA_PIN
                 int "SPI SCCB I2C SDA Pin"
                 default 7
-                range -1 56
+                range 0 54 if IDF_TARGET_ESP32P4
+                range 0 48 if IDF_TARGET_ESP32S3
 
             config EXAMPLE_SPI_CAM_SENSOR_RESET_PIN
                 int "SPI Camera Sensor Reset Pin"
                 default -1
-                range -1 56
+                range -1 54 if IDF_TARGET_ESP32P4
+                range -1 48 if IDF_TARGET_ESP32S3
 
             config EXAMPLE_SPI_CAM_SENSOR_PWDN_PIN
                 int "SPI Camera Sensor Power Down Pin"
                 default -1
-                range -1 56
+                range -1 54 if IDF_TARGET_ESP32P4
+                range -1 48 if IDF_TARGET_ESP32S3
 
             config EXAMPLE_SPI_CAM_XCLK_PIN
                 int "Output XCLK Pin for SPI Sensor"
-                range 0 56
                 default 20
+                range -1 54 if IDF_TARGET_ESP32P4
+                range -1 48 if IDF_TARGET_ESP32S3
 
             config EXAMPLE_SPI_CAM_CS_PIN
                 int "SPI Camera Sensor CS Pin"
                 default 37
-                range 0 56
-            
+                range 0 54 if IDF_TARGET_ESP32P4
+                range 0 48 if IDF_TARGET_ESP32S3
+
             config EXAMPLE_SPI_CAM_SCLK_PIN
                 int "SPI Camera Sensor SCLK Pin"
                 default 4
-                range 0 56
+                range 0 54 if IDF_TARGET_ESP32P4
+                range 0 48 if IDF_TARGET_ESP32S3
 
             config EXAMPLE_SPI_CAM_DATA0_IO_PIN
                 int "SPI Camera Sensor Data0 I/O Pin"
                 default 21
-                range 0 56
+                range 0 54 if IDF_TARGET_ESP32P4
+                range 0 48 if IDF_TARGET_ESP32S3
         endif
     endif
 
@@ -326,4 +382,17 @@ menu "Example Video Initialization Configuration"
             Select this option to use an explicitly initialized I2C master bus for the camera sensor. 
             When enabled, the application must initialize the I2C bus before using the camera sensor. 
             This allows the I2C master to be shared among multiple I2C devices.
+
+    choice EXAMPLE_SELECT_JPEG_ENCODER
+        prompt "Select Target JPEG Encoder"
+        default EXAMPLE_SELECT_JPEG_HW_DRIVER if IDF_TARGET_ESP32P4
+        default EXAMPLE_SELECT_JPEG_ESP_NEW_JPEG if IDF_TARGET_ESP32S3
+
+        config EXAMPLE_SELECT_JPEG_HW_DRIVER
+            bool "JPEG Hardware Driver"
+            depends on SOC_JPEG_CODEC_SUPPORTED
+        
+        config EXAMPLE_SELECT_JPEG_ESP_NEW_JPEG
+            bool "Library \"esp_new_jpeg\""
+    endchoice
 endmenu

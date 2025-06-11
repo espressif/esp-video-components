@@ -4,6 +4,7 @@
  * SPDX-License-Identifier: ESPRESSIF MIT
  */
 
+#include <string.h>
 #include <inttypes.h>
 #include "hal/gpio_ll.h"
 #include "driver/gpio.h"
@@ -22,7 +23,9 @@
 
 #include "esp_video_init.h"
 #include "esp_video_device_internal.h"
+#if CONFIG_ESP_VIDEO_ENABLE_DVP_VIDEO_DEVICE
 #include "esp_private/esp_cam_dvp.h"
+#endif
 #if CONFIG_ESP_VIDEO_ENABLE_ISP_PIPELINE_CONTROLLER
 #include "esp_video_pipeline_isp.h"
 #endif
@@ -64,10 +67,12 @@ typedef struct sensor_sccb_mask {
 #if CONFIG_ESP_VIDEO_ENABLE_SPI_VIDEO_DEVICE
 static esp_cam_sensor_xclk_handle_t s_spi_xclk_handle; /*!< SPI XCLK handle */
 #endif
+#if ESP_VIDEO_ENABLE_SCCB_DEVICE
 static sensor_sccb_mask_t s_sensor_sccb_mask[SCCB_NUM_MAX];
+#endif
 static const char *TAG = "esp_video_init";
 
-#if CONFIG_ESP_VIDEO_ENABLE_MIPI_CSI_VIDEO_DEVICE || CONFIG_ESP_VIDEO_ENABLE_DVP_VIDEO_DEVICE
+#if ESP_VIDEO_ENABLE_SCCB_DEVICE
 /**
  * @brief Create I2C master handle
  *
@@ -412,12 +417,24 @@ esp_err_t esp_video_init(const esp_video_init_config_t *config)
             const esp_video_init_spi_config_t *spi_config = config->spi;
 
             if (spi_config->xclk_pin >= 0 && spi_config->xclk_freq > 0) {
-                esp_cam_sensor_xclk_config_t cam_xclk_config = {
-                    .esp_clock_router_cfg = {
-                        .xclk_pin = spi_config->xclk_pin,
-                        .xclk_freq_hz = spi_config->xclk_freq,
-                    }
-                };
+                esp_cam_sensor_xclk_config_t cam_xclk_config = {0};
+
+#if CONFIG_CAMERA_XCLK_USE_ESP_CLOCK_ROUTER
+                if (spi_config->xclk_source == ESP_CAM_SENSOR_XCLK_ESP_CLOCK_ROUTER) {
+                    cam_xclk_config.esp_clock_router_cfg.xclk_pin = spi_config->xclk_pin;
+                    cam_xclk_config.esp_clock_router_cfg.xclk_freq_hz = spi_config->xclk_freq;
+                }
+#endif
+
+#if CONFIG_CAMERA_XCLK_USE_LEDC
+                if (spi_config->xclk_source == ESP_CAM_SENSOR_XCLK_LEDC) {
+                    cam_xclk_config.ledc_cfg.timer = spi_config->xclk_ledc_cfg.timer;
+                    cam_xclk_config.ledc_cfg.clk_cfg = spi_config->xclk_ledc_cfg.clk_cfg;
+                    cam_xclk_config.ledc_cfg.channel = spi_config->xclk_ledc_cfg.channel;
+                    cam_xclk_config.ledc_cfg.xclk_freq_hz = spi_config->xclk_freq;
+                    cam_xclk_config.ledc_cfg.xclk_pin = spi_config->xclk_pin;
+                }
+#endif
                 if (esp_cam_sensor_xclk_allocate(spi_config->xclk_source, &xclk_handle) != ESP_OK) {
                     ESP_LOGE(TAG, "SPI xclk allocate failed.");
                     return ESP_FAIL;
@@ -598,7 +615,6 @@ esp_err_t esp_video_deinit(void)
                 ESP_RETURN_ON_ERROR(esp_cam_sensor_xclk_free(s_spi_xclk_handle), TAG, "Failed to free SPI XCLK");
                 s_spi_xclk_handle = NULL;
             }
-
             spi_deinited = true;
         }
 #endif

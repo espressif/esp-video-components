@@ -74,7 +74,7 @@ menu "Espressif Video Configuration"
 
     menuconfig ESP_VIDEO_ENABLE_HW_JPEG_VIDEO_DEVICE
         bool "Enable Hardware JPEG based Video Device"
-        depends on IDF_TARGET_ESP32P4
+        depends on SOC_JPEG_CODEC_SUPPORTED
         select ESP_VIDEO_ENABLE_JPEG_VIDEO_DEVICE
         default n
         help
@@ -128,7 +128,5 @@ menu "Espressif Video Configuration"
         help
             Select this option, enable camera motor controller to set the focus of the camera.
 
-    if IDF_TARGET_ESP32P4
-        rsource "./src/data_reprocessing/$IDF_TARGET/Kconfig.data_reprocessing"
-    endif
+    rsource "./src/data_reprocessing/Kconfig.data_reprocessing"
 endmenu

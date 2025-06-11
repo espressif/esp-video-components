@@ -4,39 +4,39 @@ This component implements the board-level initialization for esp_video, includin
 
 ## Supported Boards and GPIO Pins
 
-| Hardware | ESP32-P4-Function-EV-Board V1.4 | ESP32-P4-Function-EV-Board V1.5 | ESP32-P4-EYE |
-|:-:|:-:|:-:|:-:|
-| MIPI-CSI I2C SCL Pin        |  8 |  8 | 13 |
-| MIPI-CSI I2C SDA Pin        |  7 |  7 | 14 |
-| MIPI-CSI I2C Reset Pin      | NA | NA | 26 |
-| MIPI-CSI I2C Power-down Pin | NA | NA | 12 |
-| MIPI-CSI I2C XCLK           | NA | NA | 11 |
+| Hardware | ESP32-P4-Function-EV-Board V1.4 | ESP32-P4-Function-EV-Board V1.5 | ESP32-P4-EYE | ESP32-S3-EYE |
+|:-:|:-:|:-:|:-:|:-:|
+| MIPI-CSI I2C SCL Pin        |  8 |  8 | 13 | NA |
+| MIPI-CSI I2C SDA Pin        |  7 |  7 | 14 | NA |
+| MIPI-CSI I2C Reset Pin      | NA | NA | 26 | NA |
+| MIPI-CSI I2C Power-down Pin | NA | NA | 12 | NA |
+| MIPI-CSI I2C XCLK           | NA | NA | 11 | NA |
 |   |   |   |   |
-| DVP I2C SCL Pin             | NA |  8 | NA |
-| DVP I2C SDA Pin             | NA |  7 | NA |
-| DVP I2C Reset Pin           | NA | 36 | NA |
-| DVP I2C Power-down Pin      | NA | 38 | NA |
-| DVP XCLK Pin                | NA | 20 | NA |
-| DVP PCLK Pin                | NA |  4 | NA |
-| DVP V-SYNC Pin              | NA | 37 | NA |
-| DVP DE Pin                  | NA | 22 | NA |
-| DVP D0 Pin                  | NA |  2 | NA |
-| DVP D1 Pin                  | NA | 32 | NA |
-| DVP D2 Pin                  | NA | 33 | NA |
-| DVP D3 Pin                  | NA | 23 | NA |
-| DVP D4 Pin                  | NA |  3 | NA |
-| DVP D5 Pin                  | NA |  6 | NA |
-| DVP D6 Pin                  | NA |  5 | NA |
-| DVP D7 Pin                  | NA | 21 | NA |
+| DVP I2C SCL Pin             | NA |  8 | NA |  5 |
+| DVP I2C SDA Pin             | NA |  7 | NA |  4 |
+| DVP I2C Reset Pin           | NA | 36 | NA | NA |
+| DVP I2C Power-down Pin      | NA | 38 | NA | NA |
+| DVP XCLK Pin                | NA | 20 | NA | 15 |
+| DVP PCLK Pin                | NA |  4 | NA | 13 |
+| DVP V-SYNC Pin              | NA | 37 | NA |  6 |
+| DVP DE Pin                  | NA | 22 | NA |  7 |
+| DVP D0 Pin                  | NA |  2 | NA | 11 |
+| DVP D1 Pin                  | NA | 32 | NA |  9 |
+| DVP D2 Pin                  | NA | 33 | NA |  8 |
+| DVP D3 Pin                  | NA | 23 | NA | 10 |
+| DVP D4 Pin                  | NA |  3 | NA | 12 |
+| DVP D5 Pin                  | NA |  6 | NA | 18 |
+| DVP D6 Pin                  | NA |  5 | NA | 17 |
+| DVP D7 Pin                  | NA | 21 | NA | 16 |
 |   |   |   |   |
-| SPI I2C SCL Pin             | NA |  8 | NA |
-| SPI I2C SDA Pin             | NA |  7 | NA |
-| SPI I2C Reset Pin           | NA | NA | NA |
-| SPI I2C Power-down Pin      | NA | NA | NA |
-| SPI XCLK Pin                | NA | 20 | NA |
-| SPI CS Pin                  | NA | 37 | NA |
-| SPI SCLK Pin                | NA |  4 | NA |
-| SPI Data0 I/O Pin           | NA | 21 | NA |
+| SPI I2C SCL Pin             | NA |  8 | NA |  5 |
+| SPI I2C SDA Pin             | NA |  7 | NA |  4 |
+| SPI I2C Reset Pin           | NA | NA | NA | NA |
+| SPI I2C Power-down Pin      | NA | NA | NA | NA |
+| SPI XCLK Pin                | NA | 20 | NA | 15 |
+| SPI CS Pin                  | NA | 37 | NA |  6 |
+| SPI SCLK Pin                | NA |  4 | NA | 13 |
+| SPI Data0 I/O Pin           | NA | 21 | NA | 16 |
 
 * Note: ESP32-P4-Function-EV v1.4 board and ESP32-P4-EYE don't support the DVP interface camera sensor by default, so if you want to connect the DVP interface camera sensor to these boards, please select the customized board in the menu and configure the GPIO pin and clock based on the actual situation
 
@@ -140,6 +140,14 @@ Example Video Initialization Configuration  --->
     ......
 ```
 ### SPI Development Kit
+
+Enable SPI video device as follows:
+
+```
+Component config  --->
+    Espressif Video Configuration  --->
+        [*] Enable SPI based Video Device  ----
+```
 
 Select your development board and SPI interface as follows:
 

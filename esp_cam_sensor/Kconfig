@@ -15,6 +15,36 @@ menu "Espressif Camera Sensors Configurations"
         rsource "sensors/sc101iot/Kconfig.sc101iot"
         rsource "sensors/sc202cs/Kconfig.sc202cs"
         rsource "sensors/sc2336/Kconfig.sc2336"
+
+        config CAMERA_SENSOR_SWAP_PIXEL_BYTE_ORDER
+            bool "Swap Pixel Byte Order"
+            default y if IDF_TARGET_ESP32P4
+            default n if IDF_TARGET_ESP32S3
+            depends on CAMERA_OV2640 || CAMERA_BF3901
+            help
+                If enabled, the pixel byte order will be swapped, for example:
+
+                    Original RGB565 byte order:
+                    0x00 0x01 0x02 0x03 0x04 0x05
+                     B  G  R   B  G  R   B  G  R
+
+                    Swapped RGB565 byte order:
+                    0x00 0x01 0x02 0x03 0x04 0x05
+                     R  G  B   R  G  B   R  G  B
+
+                    Original YUYV byte order:
+                    0x00 0x01 0x02 0x03 0x04 0x05 0x06 0x07
+                     Y    U    Y    V    Y    U    Y    V
+
+                    Swapped YUYV byte order:
+                    0x00 0x01 0x02 0x03 0x04 0x05 0x06 0x07
+                     U    Y    V    Y    U    Y    V    Y
+
+                Please note that this option is only valid for OV2640 and BF3901.
+
+                If you want to swap the pixel byte order of other sensors,
+                please use ESP_VIDEO_ENABLE_SWAP_BYTE. Only ESP32-P4 is supported;
+                other platforms are not supported.
     endmenu
     
     menu "Camera XCLK generator Configuration"

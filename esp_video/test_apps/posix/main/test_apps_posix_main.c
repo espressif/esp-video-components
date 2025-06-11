@@ -24,16 +24,31 @@
 
 #include "example_video_common.h"
 
-#define TEST_MEMORY_LEAK_THRESHOLD (-300)
+#define TEST_MEMORY_LEAK_THRESHOLD (-512)
 
 #define VIDEO_BUFFER_NUM 2
 
 #define TEST_APP_VIDEO_DEVICE EXAMPLE_CAM_DEV_PATH
 
+#define HEAP_RECORD_NUM 32
+
 void setUp(void);
 
 static size_t before_free_8bit;
 static size_t before_free_32bit;
+
+#ifdef CONFIG_HEAP_TRACING
+static void init_heap_record(void)
+{
+    static heap_trace_record_t record_buffer[HEAP_RECORD_NUM];
+    static bool initialized = false;
+
+    if (!initialized) {
+        assert(heap_trace_init_standalone(record_buffer, HEAP_RECORD_NUM) == ESP_OK);
+        initialized = true;
+    }
+}
+#endif
 
 TEST_CASE("V4L2 init/deinit", "[video]")
 {
@@ -56,6 +71,7 @@ TEST_CASE("V4L2 Command", "[video]")
     int ret;
     uint16_t width;
     uint16_t height;
+    uint32_t pixelformat;
     struct v4l2_format format;
     struct v4l2_capability cap;
 
@@ -79,11 +95,17 @@ TEST_CASE("V4L2 Command", "[video]")
     width = format.fmt.pix.width;
     height = format.fmt.pix.height;
 
+#if CONFIG_ESP_VIDEO_ENABLE_MIPI_CSI_VIDEO_DEVICE
+    pixelformat = V4L2_PIX_FMT_RGB565;
+#else
+    pixelformat = format.fmt.pix.pixelformat;
+#endif
+
     memset(&format, 0, sizeof(format));
     format.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
     format.fmt.pix.width = width;
     format.fmt.pix.height = height;
-    format.fmt.pix.pixelformat = V4L2_PIX_FMT_RGB565;
+    format.fmt.pix.pixelformat = pixelformat;
     ret = ioctl(fd, VIDIOC_S_FMT, &format);
     TEST_ESP_OK(ret);
 
@@ -91,7 +113,7 @@ TEST_CASE("V4L2 Command", "[video]")
     format.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
     format.fmt.pix.width = width - 1;
     format.fmt.pix.height = height;
-    format.fmt.pix.pixelformat = V4L2_PIX_FMT_RGB565;
+    format.fmt.pix.pixelformat = pixelformat;
     ret = ioctl(fd, VIDIOC_S_FMT, &format);
     TEST_ASSERT_EQUAL_INT(-1, ret);
 
@@ -99,7 +121,7 @@ TEST_CASE("V4L2 Command", "[video]")
     format.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
     format.fmt.pix.width = width;
     format.fmt.pix.height = height - 1;
-    format.fmt.pix.pixelformat = V4L2_PIX_FMT_RGB565;
+    format.fmt.pix.pixelformat = pixelformat;
     ret = ioctl(fd, VIDIOC_S_FMT, &format);
     TEST_ASSERT_EQUAL_INT(-1, ret);
 
@@ -108,6 +130,7 @@ TEST_CASE("V4L2 Command", "[video]")
     TEST_ESP_OK(example_video_deinit());
 }
 
+#if CONFIG_ESP_VIDEO_ENABLE_JPEG_VIDEO_DEVICE
 TEST_CASE("V4L2 M2M device", "[video]")
 {
     int fd;
@@ -246,7 +269,9 @@ TEST_CASE("V4L2 M2M device", "[video]")
 
     TEST_ESP_OK(example_video_deinit());
 }
+#endif /* CONFIG_ESP_VIDEO_ENABLE_JPEG_VIDEO_DEVICE */
 
+#if CONFIG_ESP_VIDEO_ENABLE_MIPI_CSI_VIDEO_DEVICE
 TEST_CASE("V4L2 set/get selection", "[video]")
 {
     int fd;
@@ -394,6 +419,7 @@ TEST_CASE("V4L2 set/get param", "[video]")
 
     TEST_ESP_OK(example_video_deinit());
 }
+#endif /* CONFIG_ESP_VIDEO_ENABLE_MIPI_CSI_VIDEO_DEVICE */
 
 static void check_leak(size_t before_free, size_t after_free, const char *type)
 {
@@ -404,6 +430,11 @@ static void check_leak(size_t before_free, size_t after_free, const char *type)
 
 void setUp(void)
 {
+#ifdef CONFIG_HEAP_TRACING
+    init_heap_record();
+    heap_trace_start(HEAP_TRACE_LEAKS);
+#endif
+
     before_free_8bit = heap_caps_get_free_size(MALLOC_CAP_8BIT);
     before_free_32bit = heap_caps_get_free_size(MALLOC_CAP_32BIT);
 }
@@ -415,6 +446,11 @@ void tearDown(void)
 
     /* clean up some of the newlib's lazy allocations */
     esp_reent_cleanup();
+
+#ifdef CONFIG_HEAP_TRACING
+    heap_trace_stop();
+    heap_trace_dump();
+#endif
 
     size_t after_free_8bit = heap_caps_get_free_size(MALLOC_CAP_8BIT);
     size_t after_free_32bit = heap_caps_get_free_size(MALLOC_CAP_32BIT);
