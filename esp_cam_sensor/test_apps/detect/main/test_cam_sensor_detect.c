@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2024 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2024-2025 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -23,6 +23,8 @@
 #elif CONFIG_CAMERA_SC2336
 #include "sc2336.h"
 #define SCCB0_CAM_DEVICE_ADDR SC2336_SCCB_ADDR
+#elif CONFIG_CAMERA_BF3901
+#include "bf3901.h"
 #else
 #define SCCB0_CAM_DEVICE_ADDR 0x01
 #endif
@@ -87,6 +89,7 @@ TEST_CASE("Camera sensor detect test", "[video]")
         .pwdn_pin = -1,
         .xclk_pin = -1,
     };
+
 #if CONFIG_CAMERA_OV5645
     esp_cam_sensor_device_t *cam0 = ov5645_detect(&cam0_config);
     TEST_ASSERT_MESSAGE(cam0 != NULL, "detect fail");
@@ -94,6 +97,11 @@ TEST_CASE("Camera sensor detect test", "[video]")
     TEST_ESP_OK(esp_cam_sensor_del_dev(cam0));
 #elif CONFIG_CAMERA_SC2336
     esp_cam_sensor_device_t *cam0 = sc2336_detect(&cam0_config);
+    TEST_ASSERT_MESSAGE(cam0 != NULL, "detect fail");
+
+    TEST_ESP_OK(esp_cam_sensor_del_dev(cam0));
+#elif CONFIG_CAMERA_BF3901
+    esp_cam_sensor_device_t *cam0 = bf3901_detect(&cam0_config);
     TEST_ASSERT_MESSAGE(cam0 != NULL, "detect fail");
 
     TEST_ESP_OK(esp_cam_sensor_del_dev(cam0));
