@@ -12,6 +12,7 @@
 #include "driver/i2c_master.h"
 #include "esp_cam_ctlr_dvp.h"
 #include "driver/jpeg_encode.h"
+#include "esp_cam_sensor_xclk.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -61,6 +62,25 @@ typedef struct esp_video_init_dvp_config {
 } esp_video_init_dvp_config_t;
 
 /**
+ * @brief SPI interface camera sensor connection configuration
+ */
+typedef struct esp_video_init_spi_config {
+    esp_video_init_sccb_config_t sccb_config;   /*!< Camera sensor SCCB configuration */
+
+    uint8_t spi_port;                           /*!< SPI port */
+    int8_t spi_cs_pin;                          /*!< SPI CS pin */
+    int8_t spi_sclk_pin;                        /*!< SPI SCLK pin */
+    int8_t spi_data0_io_pin;                    /*!< SPI data0 I/O pin */
+
+    int8_t  reset_pin;                          /*!< SPI interface camera sensor reset pin, if hardware has no reset pin, set reset_pin to be -1 */
+    int8_t  pwdn_pin;                           /*!< SPI interface camera sensor power down pin, if hardware has no power down pin, set pwdn_pin to be -1 */
+
+    esp_cam_sensor_xclk_source_t xclk_source;   /*!< Output clock resource for SPI interface camera sensor */
+    uint32_t xclk_freq;                         /*!< Output clock frequency for SPI interface camera sensor */
+    int8_t xclk_pin;                            /*!< Output clock pin for SPI interface camera sensor */
+} esp_video_init_spi_config_t;
+
+/**
  * @brief JPEG initialization configuration
  */
 typedef struct esp_video_init_jpeg_config {
@@ -88,6 +108,7 @@ typedef struct esp_video_init_config {
     const esp_video_init_dvp_config_t *dvp;     /*!< DVP initialization configuration array */
     const esp_video_init_jpeg_config_t *jpeg;   /*!< JPEG initialization configuration */
     const esp_video_init_cam_motor_config_t *cam_motor;     /*!< Camera motor initialization configuration */
+    const esp_video_init_spi_config_t *spi;     /*!< SPI initialization configuration */
 } esp_video_init_config_t;
 
 /**

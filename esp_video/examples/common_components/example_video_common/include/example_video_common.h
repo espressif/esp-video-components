@@ -42,8 +42,41 @@ extern "C" {
 /**
  * @brief DVP clock frequency configuration
  */
+#if CONFIG_EXAMPLE_DVP_XCLK_PIN >= 0
 #define EXAMPLE_DVP_XCLK_FREQ                           CONFIG_EXAMPLE_DVP_XCLK_FREQ
+#else
+#define EXAMPLE_DVP_XCLK_FREQ                           0
+#endif /* CONFIG_EXAMPLE_DVP_XCLK_PIN >= 0 */
 #endif /* CONFIG_EXAMPLE_ENABLE_DVP_CAM_SENSOR */
+
+/**
+ * @brief SPI camera sensor common configuration
+ */
+#if CONFIG_EXAMPLE_ENABLE_SPI_CAM_SENSOR
+#define EXAMPLE_ENABLE_SPI_CAM_SENSOR                   1
+#define EXAMPLE_SPI_SCCB_I2C_PORT                       CONFIG_EXAMPLE_SPI_SCCB_I2C_PORT
+#define EXAMPLE_SPI_SCCB_I2C_FREQ                       CONFIG_EXAMPLE_SPI_SCCB_I2C_FREQ
+
+/**
+ * @brief SPI camera sensor SPI port configuration
+ */
+#define EXAMPLE_SPI_CAM_SPI_PORT                        CONFIG_EXAMPLE_SPI_CAM_SPI_PORT
+
+/**
+ * @brief SPI camera sensor clock resource configuration
+ */
+#if CONFIG_EXAMPLE_SPI_CAM_XCLK_USE_LEDC
+#define EXAMPLE_SPI_CAM_XCLK_RESOURCE                   ESP_CAM_SENSOR_XCLK_LEDC
+#elif CONFIG_EXAMPLE_SPI_CAM_XCLK_USE_CLOCK_ROUTER
+#define EXAMPLE_SPI_CAM_XCLK_RESOURCE                   ESP_CAM_SENSOR_XCLK_ESP_CLOCK_ROUTER
+#endif /* CONFIG_EXAMPLE_SPI_CAM_XCLK_USE_LEDC */
+
+#if CONFIG_EXAMPLE_SPI_CAM_XCLK_PIN >= 0
+#define EXAMPLE_SPI_CAM_XCLK_FREQ                       CONFIG_EXAMPLE_SPI_CAM_XCLK_FREQ
+#else
+#define EXAMPLE_SPI_CAM_XCLK_FREQ                       0
+#endif /* CONFIG_EXAMPLE_SPI_CAM_XCLK_PIN >= 0 */
+#endif /* CONFIG_EXAMPLE_ENABLE_SPI_CAM_SENSOR */
 
 /**
  * @brief Example camera device path configuration
@@ -52,6 +85,8 @@ extern "C" {
 #define EXAMPLE_CAM_DEV_PATH                            ESP_VIDEO_MIPI_CSI_DEVICE_NAME
 #elif EXAMPLE_ENABLE_DVP_CAM_SENSOR
 #define EXAMPLE_CAM_DEV_PATH                            ESP_VIDEO_DVP_DEVICE_NAME
+#elif EXAMPLE_ENABLE_SPI_CAM_SENSOR
+#define EXAMPLE_CAM_DEV_PATH                            ESP_VIDEO_SPI_DEVICE_NAME
 #endif /* CONFIG_EXAMPLE_ENABLE_MIPI_CSI_CAM_SENSOR */
 
 /**

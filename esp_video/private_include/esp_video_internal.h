@@ -14,6 +14,8 @@
 extern "C" {
 #endif
 
+#define ESP_VIDEO_ALIGN(s, a)               (((s) + ((a) - 1)) / (a) * (a))
+
 #define VIDEO_PRIV_DATA(t, v)               ((t)(v)->priv)
 
 #define STREAM_FORMAT(s)                    (&(s)->format)

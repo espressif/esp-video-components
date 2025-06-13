@@ -63,6 +63,28 @@ extern "C" {
 #define EXAMPLE_DVP_D7_PIN                              CONFIG_EXAMPLE_DVP_D7_PIN
 #endif /* CONFIG_EXAMPLE_ENABLE_DVP_CAM_SENSOR */
 
+#if CONFIG_EXAMPLE_ENABLE_SPI_CAM_SENSOR
+/**
+ * @brief SPI camera sensor configuration
+ */
+#define EXAMPLE_SPI_SCCB_I2C_SCL_PIN                    CONFIG_EXAMPLE_SPI_SCCB_I2C_SCL_PIN
+#define EXAMPLE_SPI_SCCB_I2C_SDA_PIN                    CONFIG_EXAMPLE_SPI_SCCB_I2C_SDA_PIN
+#define EXAMPLE_SPI_CAM_SENSOR_RESET_PIN                CONFIG_EXAMPLE_SPI_CAM_SENSOR_RESET_PIN
+#define EXAMPLE_SPI_CAM_SENSOR_PWDN_PIN                 CONFIG_EXAMPLE_SPI_CAM_SENSOR_PWDN_PIN
+
+/**
+ * @brief SPI camera sensor clock resource configuration
+ */
+#define EXAMPLE_SPI_CAM_XCLK_PIN                        CONFIG_EXAMPLE_SPI_CAM_XCLK_PIN
+
+/**
+ * @brief SPI camera sensor configuration
+ */
+#define EXAMPLE_SPI_CAM_CS_PIN                          CONFIG_EXAMPLE_SPI_CAM_CS_PIN
+#define EXAMPLE_SPI_CAM_SCLK_PIN                        CONFIG_EXAMPLE_SPI_CAM_SCLK_PIN
+#define EXAMPLE_SPI_CAM_DATA0_IO_PIN                    CONFIG_EXAMPLE_SPI_CAM_DATA0_IO_PIN
+#endif /* CONFIG_EXAMPLE_ENABLE_SPI_CAM_SENSOR */
+
 #ifdef __cplusplus
 }
 #endif

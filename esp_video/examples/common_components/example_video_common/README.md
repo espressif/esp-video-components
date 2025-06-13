@@ -28,6 +28,15 @@ This component implements the board-level initialization for esp_video, includin
 | DVP D5 Pin                  | NA |  6 | NA |
 | DVP D6 Pin                  | NA |  5 | NA |
 | DVP D7 Pin                  | NA | 21 | NA |
+|   |   |   |   |
+| SPI I2C SCL Pin             | NA |  8 | NA |
+| SPI I2C SDA Pin             | NA |  7 | NA |
+| SPI I2C Reset Pin           | NA | NA | NA |
+| SPI I2C Power-down Pin      | NA | NA | NA |
+| SPI XCLK Pin                | NA | 20 | NA |
+| SPI CS Pin                  | NA | 37 | NA |
+| SPI SCLK Pin                | NA |  4 | NA |
+| SPI Data0 I/O Pin           | NA | 21 | NA |
 
 * Note: ESP32-P4-Function-EV v1.4 board and ESP32-P4-EYE don't support the DVP interface camera sensor by default, so if you want to connect the DVP interface camera sensor to these boards, please select the customized board in the menu and configure the GPIO pin and clock based on the actual situation
 
@@ -50,6 +59,7 @@ Example Video Initialization Configuration  --->
     Camera Sensor Interface (MIPI-CSI)  --->
         (X) MIPI-CSI
         ( ) DVP
+        ( ) SPI
 ```
 
 If your development board is not in the menu, please select "Customized Development Board" and configure the GPIO pins based on your development board as follows:
@@ -92,6 +102,7 @@ Example Video Initialization Configuration  --->
     Camera Sensor Interface (MIPI-CSI)  --->
         ( ) MIPI-CSI
         (X) DVP
+        ( ) SPI
 ```
 
 If your development board is not in the menu, please select "Customized Development Board" and configure the GPIO pins based on your development board as follows:
@@ -125,6 +136,52 @@ Example Video Initialization Configuration  --->
     (45) DVP D5 Pin
     (46) DVP D6 Pin
     (47) DVP D7 Pin
+
+    ......
+```
+### SPI Development Kit
+
+Select your development board and SPI interface as follows:
+
+```
+Example Video Initialization Configuration  --->
+    Select Target Development Board (ESP32-P4-Function-EV-Board V1.5)
+        ( ) ESP32-P4-Function-EV-Board V1.4
+        (X) ESP32-P4-Function-EV-Board V1.5
+        ( ) ESP32-P4-EYE
+
+        ......
+
+        ( ) Customized Development Board
+    Camera Sensor Interface (MIPI-CSI)  --->
+        ( ) MIPI-CSI
+        ( ) DVP
+        (X) SPI
+```
+
+If your development board is not in the menu, please select "Customized Development Board" and configure the GPIO pins based on your development board as follows:
+
+```
+Example Video Initialization Configuration  --->
+    Select Target Development Board (ESP32-P4-Function-EV-Board V1.4)
+        ( ) ESP32-P4-Function-EV-Board V1.4
+        ( ) ESP32-P4-Function-EV-Board V1.5
+        ( ) ESP32-P4-EYE
+
+        ......
+
+        (X) Customized Development Board
+
+    ......
+
+        (8) SPI SCCB I2C SCL Pin
+        (7) SPI SCCB I2C SDA Pin
+        (-1) SPI Camera Sensor Reset Pin
+        (-1) SPI Camera Sensor Power Down Pin
+        (20) Output XCLK Pin for SPI Sensor
+        (37) SPI Camera Sensor CS Pin
+        (4) SPI Camera Sensor SCLK Pin
+        (21) SPI Camera Sensor Data0 I/O Pin
 
     ......
 ```

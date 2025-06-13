@@ -38,6 +38,10 @@ extern "C" {
 #error "DVP interface camera sensor is not supported on ESP32-P4-Function-EV-Board V1.4 by default"
 #endif /* CONFIG_EXAMPLE_ENABLE_DVP_CAM_SENSOR */
 
+#if CONFIG_EXAMPLE_ENABLE_SPI_CAM_SENSOR
+#error "SPI interface camera sensor is not supported on ESP32-P4-Function-EV-Board V1.4 by default"
+#endif /* CONFIG_EXAMPLE_ENABLE_SPI_CAM_SENSOR */
+
 #ifdef __cplusplus
 }
 #endif

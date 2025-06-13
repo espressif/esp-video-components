@@ -18,8 +18,6 @@
 extern "C" {
 #endif
 
-#define BUF_ALIGN_SIZE(s, a)                (((s) + (a) - 1) & (~((a) - 1)))
-
 #define ESP_VIDEO_BUFFER_ELEMENT(vb, i)     (&(vb)->element[i])
 #define ELEMENT_SIZE(e)                     ((e)->video_buffer->info.size)
 #define ELEMENT_BUFFER(e)                   ((e)->buffer)
@@ -78,6 +76,9 @@ struct esp_video_buffer {
 
 /**
  * @brief Create video buffer object.
+ *
+ * @note The buffer size is aligned to the alignment size, so the actual
+ *       buffer size maybe not equal to the size in given parameter.
  *
  * @param info Buffer information pointer.
  *

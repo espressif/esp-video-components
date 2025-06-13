@@ -1,3 +1,8 @@
+## Unreleased
+
+- Add SPI video device and board-level configuration
+- Fix open function crashes after failing to initialize the video device
+
 ## 1.0.0
 
 - Add statistics region configuration to ISP pipeline controller

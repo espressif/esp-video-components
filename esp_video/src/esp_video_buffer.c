@@ -11,13 +11,15 @@
 #include "esp_log.h"
 #include "esp_heap_caps.h"
 #include "esp_video_buffer.h"
-
-#define ESP_VIDEO_BUFFER_ALIGN(s, a)      (((s) + ((a) - 1)) & (~((a) - 1)))
+#include "esp_video_internal.h"
 
 static const char *TAG = "esp_video_buffer";
 
 /**
  * @brief Create video buffer object.
+ *
+ * @note The buffer size is aligned to the alignment size, so the actual
+ *       buffer size maybe not equal to the size in given parameter.
  *
  * @param info Buffer information pointer.
  *
@@ -29,6 +31,7 @@ struct esp_video_buffer *esp_video_buffer_create(const struct esp_video_buffer_i
 {
     uint32_t size;
     struct esp_video_buffer *buffer;
+    uint32_t align_size = ESP_VIDEO_ALIGN(info->size, info->align_size);
 
     size = sizeof(struct esp_video_buffer) + sizeof(struct esp_video_buffer_element) * info->count;
     buffer = heap_caps_calloc(1, size, info->caps);
@@ -41,7 +44,7 @@ struct esp_video_buffer *esp_video_buffer_create(const struct esp_video_buffer_i
         struct esp_video_buffer_element *element = &buffer->element[i];
 
         if (info->memory_type == V4L2_MEMORY_MMAP) {
-            element->buffer = heap_caps_aligned_alloc(info->align_size, info->size, info->caps);
+            element->buffer = heap_caps_aligned_alloc(info->align_size, align_size, info->caps);
             if (element->buffer) {
                 element->index = i;
                 element->video_buffer = buffer;
@@ -58,6 +61,7 @@ struct esp_video_buffer *esp_video_buffer_create(const struct esp_video_buffer_i
     }
 
     memcpy(&buffer->info, info, sizeof(struct esp_video_buffer_info));
+    buffer->info.size = align_size;
 
     return buffer;
 

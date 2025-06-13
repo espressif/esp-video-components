@@ -22,6 +22,9 @@ extern "C" {
 #define ESP_VIDEO_DVP_DEVICE_ID             2
 #define ESP_VIDEO_DVP_DEVICE_NAME           "/dev/video2"
 
+#define ESP_VIDEO_SPI_DEVICE_ID             3
+#define ESP_VIDEO_SPI_DEVICE_NAME           "/dev/video3"
+
 /**
  * @brief Codec video device
  */

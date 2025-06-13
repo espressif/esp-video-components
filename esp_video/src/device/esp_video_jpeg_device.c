@@ -80,7 +80,7 @@ static esp_err_t jpeg_get_input_format_from_v4l2(uint32_t v4l2_format, jpeg_enc_
 
 static uint32_t jpeg_capture_size(uint32_t output_size)
 {
-    return BUF_ALIGN_SIZE((uint32_t)(output_size * JPEG_MAX_COMP_RATE), JPEG_DMA_ALIGN_BYTES);
+    return ESP_VIDEO_ALIGN((uint32_t)(output_size * JPEG_MAX_COMP_RATE), JPEG_DMA_ALIGN_BYTES);
 }
 
 static esp_err_t jpeg_video_m2m_process(struct esp_video *video, uint8_t *src, uint32_t src_size, uint8_t *dst, uint32_t dst_size, uint32_t *dst_out_size)
