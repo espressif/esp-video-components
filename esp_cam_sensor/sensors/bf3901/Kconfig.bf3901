@@ -2,30 +2,39 @@ menuconfig CAMERA_BF3901
     bool "BF3901"
     default n
     help
-        Enabling this option will add the support for BF3901.
+        Enable support for the BF3901 CMOS image sensor.
 
 if CAMERA_BF3901
     menu "Auto detect BF3901"
         config CAMERA_BF3901_AUTO_DETECT_SPI_INTERFACE_SENSOR
             bool "Detect for SPI interface sensor"
-            default n
+            default y
             help
-                When enabled, you don't need to call bf3901_detect manaually, BF3901 will
-                be automatically detected and connected to the SPI interface when the
-                application starts.
+                When enabled, the BF3901 sensor will be automatically detected
+                and initialized on the SPI interface at startup without requiring
+                manual detection call(bf3901_detect) in your application.
     endmenu
 
     choice CAMERA_BF3901_SPI_DEFAULT_FMT
-        prompt "Default format select"
+        prompt "Select default output format for SPI interface"
         default CAMERA_BF3901_SPI_YUV422_240X320_10FPS
         help
-            Select the default format to load when the sensor is detected.
-            When the sensor is in stream off state, the format can be changed.
-    
+            This option allows you to select the default video format for the BF3901 sensor
+            when it is initialized on the SPI interface. The selected format will be used
+            when the sensor is detected and initialized, and can be changed later when the
+            sensor is in stream off state.
+
         config CAMERA_BF3901_SPI_RGB565_240X320_10FPS
-            bool "RGB565 240x320 10fps, SPI 1bit 24M input"
+            bool "RGB565 240x320 10fps, SPI 1-bit, 24M input"
+            help
+                RGB565 color format at 240x320 resolution with 10fps framerate.
+                Requires 1-bit SPI interface with 24MHz input clock.
+
         config CAMERA_BF3901_SPI_YUV422_240X320_10FPS
-            bool "YUV422 240x320 10fps, SPI 1bit 24M input"
+            bool "YUV422 240x320 10fps, SPI 1-bit, 24M input"
+            help
+                YUV422 color format at 240x320 resolution with 10fps framerate.
+                Requires 1-bit SPI interface with 24MHz input clock.
     endchoice # CAMERA_BF3901_SPI_DEFAULT_FMT
 
     config CAMERA_BF3901_SPI_IF_FORMAT_INDEX_DEFAULT
@@ -33,6 +42,6 @@ if CAMERA_BF3901
         default 0 if CAMERA_BF3901_SPI_RGB565_240X320_10FPS
         default 1 if CAMERA_BF3901_SPI_YUV422_240X320_10FPS
         help
-            Set the configuration loaded by default for the SPI interface.
-            More information can be obtained by calling the query_support_formats().
+            Sets the default configuration for the SPI interface.
+            Use query_support_formats() API to get more format options.
 endif

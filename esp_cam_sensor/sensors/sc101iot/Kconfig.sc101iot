@@ -11,29 +11,37 @@ if CAMERA_SC101IOT
             bool "Detect for DVP interface sensor"
             default y
             help
-                When enabled, you don't need to call sc101iot_detect manaually, SC101IOT will
-                be automatically detected and connected to the DVP interface when the
-                application starts.
+                When enabled, the SC101IOT sensor will be automatically detected
+                and initialized on the DVP interface at startup without requiring
+                manual detection call(sc101iot_detect) in your application.
     endmenu
-    
+
     choice CAMERA_SC101IOT_DVP_DEFAULT_FMT
-        prompt "Default format select"
+        prompt "Select default output format for DVP interface"
         default CAMERA_SC101IOT_DVP_YUV422_1280X720_15FPS
         help
-            Select the default format to load when the sensor is detected.
-            When the sensor is in stream off state, the format can be changed.
-    
+            This option allows you to select the default video format for the SC101IOT sensor
+            when it is initialized on the DVP interface. The selected format will be used
+            when the sensor is detected and initialized, and can be changed later when the
+            sensor is in stream off state.
+
         config CAMERA_SC101IOT_DVP_YUV422_1280X720_15FPS
-            bool "YUV422 1280x720 15fps, DVP 8bit 20M input"
+            bool "YUV422 1280x720 15fps, DVP 8-bit, 20M input"
+            help
+                Standard color format using YUV422 at 1280x720 resolution (HD)
+                with 15fps framerate. Requires 8-bit DVP interface and 20MHz input clock.
         config CAMERA_SC101IOT_DVP_YUV422_1280X720_25FPS
-            bool "YUV422 1280x720 25fps, DVP 8bit 20M input"
+            bool "YUV422 1280x720 25fps, DVP 8-bit, 20M input"
+            help
+                Standard color format using YUV422 at 1280x720 resolution (HD)
+                with 25fps framerate. Requires 8-bit DVP interface and 20MHz input clock.
     endchoice # CAMERA_SC101IOT_DVP_DEFAULT_FMT
 
-    config CAMERA_SC101IOT_DVP_IF_FORMAT_INDEX_DAFAULT
+    config CAMERA_SC101IOT_DVP_IF_FORMAT_INDEX_DEFAULT
         int
         default 0 if CAMERA_SC101IOT_DVP_YUV422_1280X720_15FPS
         default 1 if CAMERA_SC101IOT_DVP_YUV422_1280X720_25FPS
         help
-            Set the configuration loaded by default for the DVP interface.
-            More information can be obtained by calling the query_support_formats().
+            Sets the default configuration for the DVP interface.
+            Use query_support_formats() API to get more format options.
 endif
