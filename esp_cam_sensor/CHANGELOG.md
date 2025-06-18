@@ -1,7 +1,8 @@
 ## Unreleased
 
 - Added support for BF3901 SPI camera sensor driver.
-- Added camera SPI interface driver
+- Added camera SPI interface driver.
+- Enhanced the clarity and readability of prompt and help descriptions in Kconfig files.
 
 ## 1.1.0
 
