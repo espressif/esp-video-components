@@ -1233,7 +1233,7 @@ static esp_err_t sc202cs_set_format(esp_cam_sensor_device_t *dev, const esp_cam_
     /* Depending on the interface type, an available configuration is automatically loaded.
     You can set the output format of the sensor without using query_format().*/
     if (format == NULL) {
-        format = &sc202cs_format_info[CONFIG_CAMERA_SC202CS_MIPI_IF_FORMAT_INDEX_DAFAULT];
+        format = &sc202cs_format_info[CONFIG_CAMERA_SC202CS_MIPI_IF_FORMAT_INDEX_DEFAULT];
     }
 
     ret = sc202cs_write_array(dev->sccb_handle, (sc202cs_reginfo_t *)format->regs);
@@ -1425,7 +1425,7 @@ esp_cam_sensor_device_t *sc202cs_detect(esp_cam_sensor_config_t *config)
     dev->sensor_port = config->sensor_port;
     dev->ops = &sc202cs_ops;
     dev->priv = cam_sc202cs;
-    dev->cur_format = &sc202cs_format_info[CONFIG_CAMERA_SC202CS_MIPI_IF_FORMAT_INDEX_DAFAULT];
+    dev->cur_format = &sc202cs_format_info[CONFIG_CAMERA_SC202CS_MIPI_IF_FORMAT_INDEX_DEFAULT];
     for (size_t i = 0; i < ARRAY_SIZE(sc202cs_abs_gain_val_map); i++) {
         if (sc202cs_abs_gain_val_map[i] > s_limited_abs_gain) {
             s_limited_abs_gain_index = i - 1;

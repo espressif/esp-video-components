@@ -332,7 +332,7 @@ static esp_err_t gc0308_set_format(esp_cam_sensor_device_t *dev, const esp_cam_s
     /* Depending on the interface type, an available configuration is automatically loaded.
     You can set the output format of the sensor without using query_format().*/
     if (format == NULL) {
-        format = &gc0308_format_info[CONFIG_CAMERA_GC0308_DVP_IF_FORMAT_INDEX_DAFAULT];
+        format = &gc0308_format_info[CONFIG_CAMERA_GC0308_DVP_IF_FORMAT_INDEX_DEFAULT];
     }
 
     ret = gc0308_write_array(dev->sccb_handle, (gc0308_reginfo_t *)format->regs, format->regs_size);
@@ -507,7 +507,7 @@ esp_cam_sensor_device_t *gc0308_detect(esp_cam_sensor_config_t *config)
     dev->pwdn_pin = config->pwdn_pin;
     dev->sensor_port = config->sensor_port;
     dev->ops = &gc0308_ops;
-    dev->cur_format = &gc0308_format_info[CONFIG_CAMERA_GC0308_DVP_IF_FORMAT_INDEX_DAFAULT];
+    dev->cur_format = &gc0308_format_info[CONFIG_CAMERA_GC0308_DVP_IF_FORMAT_INDEX_DEFAULT];
 
     // Configure sensor power, clock, and SCCB port
     if (gc0308_power_on(dev) != ESP_OK) {

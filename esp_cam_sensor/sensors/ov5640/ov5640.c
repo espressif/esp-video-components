@@ -314,13 +314,13 @@ static esp_err_t ov5640_set_format(esp_cam_sensor_device_t *dev, const esp_cam_s
 #if CONFIG_SOC_MIPI_CSI_SUPPORTED
         if (dev->sensor_port == ESP_CAM_SENSOR_MIPI_CSI) {
             reset_regs_list = (ov5640_reginfo_t *)ov5640_mipi_reset_regs;
-            format = &ov5640_format_info_mipi[CONFIG_CAMERA_OV5640_MIPI_IF_FORMAT_INDEX_DAFAULT];
+            format = &ov5640_format_info_mipi[CONFIG_CAMERA_OV5640_MIPI_IF_FORMAT_INDEX_DEFAULT];
         }
 #endif
 #if CONFIG_SOC_LCDCAM_CAM_SUPPORTED
         if (dev->sensor_port == ESP_CAM_SENSOR_DVP) {
             reset_regs_list = (ov5640_reginfo_t *)ov5640_dvp_reset_regs;
-            format = &ov5640_format_info_dvp[CONFIG_CAMERA_OV5640_DVP_IF_FORMAT_INDEX_DAFAULT];
+            format = &ov5640_format_info_dvp[CONFIG_CAMERA_OV5640_DVP_IF_FORMAT_INDEX_DEFAULT];
         }
 #endif
     }
@@ -502,13 +502,13 @@ esp_cam_sensor_device_t *ov5640_detect(esp_cam_sensor_config_t *config)
 
 #if CONFIG_SOC_MIPI_CSI_SUPPORTED
     if (config->sensor_port == ESP_CAM_SENSOR_MIPI_CSI) {
-        dev->cur_format = &ov5640_format_info_mipi[CONFIG_CAMERA_OV5640_MIPI_IF_FORMAT_INDEX_DAFAULT];
+        dev->cur_format = &ov5640_format_info_mipi[CONFIG_CAMERA_OV5640_MIPI_IF_FORMAT_INDEX_DEFAULT];
     }
 #endif
 
 #if CONFIG_SOC_LCDCAM_CAM_SUPPORTED
     if (config->sensor_port == ESP_CAM_SENSOR_DVP) {
-        dev->cur_format = &ov5640_format_info_dvp[CONFIG_CAMERA_OV5640_DVP_IF_FORMAT_INDEX_DAFAULT];
+        dev->cur_format = &ov5640_format_info_dvp[CONFIG_CAMERA_OV5640_DVP_IF_FORMAT_INDEX_DEFAULT];
     }
 #endif
 

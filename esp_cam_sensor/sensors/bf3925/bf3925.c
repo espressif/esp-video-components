@@ -493,7 +493,7 @@ static esp_err_t bf3925_set_format(esp_cam_sensor_device_t *dev, const esp_cam_s
     /* Depending on the interface type, an available configuration is automatically loaded.
     You can set the output format of the sensor without using query_format().*/
     if (format == NULL) {
-        format = &bf3925_format_info[CONFIG_CAMERA_BF3925_DVP_IF_FORMAT_INDEX_DAFAULT];
+        format = &bf3925_format_info[CONFIG_CAMERA_BF3925_DVP_IF_FORMAT_INDEX_DEFAULT];
     }
     /*Todo, IDF I2C driver to be fixed*/
     // bf3925_write(dev->sccb_handle, BF3925_REG_PAGE_SELECT, 0x01); // select reg page
@@ -672,7 +672,7 @@ esp_cam_sensor_device_t *bf3925_detect(esp_cam_sensor_config_t *config)
     dev->pwdn_pin = config->pwdn_pin;
     dev->sensor_port = config->sensor_port;
     dev->ops = &bf3925_ops;
-    dev->cur_format = &bf3925_format_info[CONFIG_CAMERA_BF3925_DVP_IF_FORMAT_INDEX_DAFAULT];
+    dev->cur_format = &bf3925_format_info[CONFIG_CAMERA_BF3925_DVP_IF_FORMAT_INDEX_DEFAULT];
 
     // Configure sensor power, clock, and SCCB port
     if (bf3925_power_on(dev) != ESP_OK) {

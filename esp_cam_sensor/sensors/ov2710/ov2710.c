@@ -407,7 +407,7 @@ static esp_err_t ov2710_set_format(esp_cam_sensor_device_t *dev, const esp_cam_s
     /* Depending on the interface type, an available configuration is automatically loaded.
     You can set the output format of the sensor without using query_format().*/
     if (format == NULL) {
-        format = &ov2710_format_info[CONFIG_CAMERA_OV2710_MIPI_IF_FORMAT_INDEX_DAFAULT];
+        format = &ov2710_format_info[CONFIG_CAMERA_OV2710_MIPI_IF_FORMAT_INDEX_DEFAULT];
     }
 
     ret = ov2710_write_array(dev->sccb_handle, (ov2710_reginfo_t *)format->regs);
@@ -606,7 +606,7 @@ esp_cam_sensor_device_t *ov2710_detect(esp_cam_sensor_config_t *config)
     dev->priv = cam_ov2710;
 
     if (config->sensor_port != ESP_CAM_SENSOR_DVP) {
-        dev->cur_format = &ov2710_format_info[CONFIG_CAMERA_OV2710_MIPI_IF_FORMAT_INDEX_DAFAULT];
+        dev->cur_format = &ov2710_format_info[CONFIG_CAMERA_OV2710_MIPI_IF_FORMAT_INDEX_DEFAULT];
     }
 
     // Configure sensor power, clock, and SCCB port
