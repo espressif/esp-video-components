@@ -1,7 +1,6 @@
 # This file was generated using idf.py save-defconfig. It can be edited manually.
 # Espressif IoT Development Framework (ESP-IDF) 5.5.0 Project Minimal Configuration
 #
-CONFIG_SPIRAM=y
 CONFIG_CAMERA_BF3901=y
 CONFIG_CAMERA_BF3901_AUTO_DETECT_SPI_INTERFACE_SENSOR=y
 CONFIG_CAMERA_BF3925=y

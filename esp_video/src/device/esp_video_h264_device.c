@@ -10,7 +10,7 @@
 #include "esp_heap_caps.h"
 #include "esp_log.h"
 #include "esp_attr.h"
-
+#include "esp_private/esp_cache_private.h"
 #include "esp_h264_enc_single_hw.h"
 #include "esp_h264_enc_single_sw.h"
 #include "esp_h264_enc_single.h"
@@ -20,8 +20,11 @@
 
 #define H264_NAME                   "H.264"
 
-#define H264_DMA_ALIGN_BYTES        64
+#if CONFIG_SPIRAM
 #define H264_MEM_CAPS               (MALLOC_CAP_8BIT | MALLOC_CAP_SPIRAM | MALLOC_CAP_CACHE_ALIGNED)
+#else
+#define H264_MEM_CAPS               (MALLOC_CAP_8BIT | MALLOC_CAP_DMA)
+#endif
 
 #define H264_VIDEO_DEVICE_GOP       30
 #define H264_VIDEO_DEVICE_MIN_QP    25
@@ -241,6 +244,14 @@ static esp_err_t h264_video_set_format(struct esp_video *video, const struct v4l
     const struct v4l2_pix_format *pix = &format->fmt.pix;
     struct h264_video *h264_video = VIDEO_PRIV_DATA(struct h264_video *, video);
 
+    size_t alignments = 0;
+#if CONFIG_SPIRAM
+    ESP_RETURN_ON_ERROR(esp_cache_get_alignment(H264_MEM_CAPS, &alignments), TAG, "failed to get cache alignment");
+#else
+    alignments = 4;
+#endif
+    ESP_LOGD(TAG, "alignments=%zu", alignments);
+
     if (format->type == V4L2_BUF_TYPE_VIDEO_CAPTURE) {
         uint32_t width = M2M_VIDEO_GET_OUTPUT_FORMAT_WIDTH(video);
         uint32_t height = M2M_VIDEO_GET_OUTPUT_FORMAT_HEIGHT(video);
@@ -256,7 +267,7 @@ static esp_err_t h264_video_set_format(struct esp_video *video, const struct v4l
 
         ESP_LOGD(TAG, "capture buffer size=%" PRIu32, buf_size);
 
-        M2M_VIDEO_SET_CAPTURE_BUF_INFO(video, buf_size, H264_DMA_ALIGN_BYTES, H264_MEM_CAPS);
+        M2M_VIDEO_SET_CAPTURE_BUF_INFO(video, buf_size, alignments, H264_MEM_CAPS);
         M2M_VIDEO_SET_CAPTURE_FORMAT(video, width, height, pix->pixelformat);
     } else if (format->type == V4L2_BUF_TYPE_VIDEO_OUTPUT) {
         uint8_t input_bpp;
@@ -279,7 +290,7 @@ static esp_err_t h264_video_set_format(struct esp_video *video, const struct v4l
 
         ESP_LOGD(TAG, "output buffer size=%" PRIu32, buf_size);
 
-        M2M_VIDEO_SET_OUTPUT_BUF_INFO(video, buf_size, H264_DMA_ALIGN_BYTES, H264_MEM_CAPS);
+        M2M_VIDEO_SET_OUTPUT_BUF_INFO(video, buf_size, alignments, H264_MEM_CAPS);
         M2M_VIDEO_SET_OUTPUT_FORMAT(video, width, height, pix->pixelformat);
     } else {
         return ESP_ERR_NOT_SUPPORTED;

@@ -145,5 +145,81 @@ menu "Espressif Camera Sensors Configurations"
                 during all system states.
 
                 Note: This automatically enables SPI_SLAVE_ISR_IN_IRAM for the SPI peripheral.
+
+        config CAM_CTLR_SPI_DISABLE_BACKUP_BUFFER
+            bool "Disable SPI backup buffer"
+            default n
+            help
+                Disable the backup buffer feature for camera controller SPI interface.
+
+                When disabled, the camera controller will not allocate a backup buffer for frame data,
+                which can save memory but may reduce performance since the system cannot buffer incoming
+                frames while processing the current frame.
+
+                Benefits of disabling:
+                - Reduces memory usage
+                - Simplifies buffer management
+
+                Trade-offs:
+                - May cause frame drops during processing
+                - Reduced throughput in high-speed scenarios
+
+                Recommended: Only disable if memory is severely constrained and frame drops are acceptable.
+
+        config CAM_CTLR_SPI_DISABLE_AUTO_DECODE
+            bool "Disable automatic frame decoding"
+            default n
+            help
+                Disable automatic frame decoding for camera controller SPI interface.
+
+                When disabled, the camera controller will not automatically decode incoming frame data
+                (such as removing frame headers, line headers, etc.). The raw frame data will be passed
+                directly to the application without processing.
+
+                Use cases for disabling:
+                - Custom decoding logic implementation required
+                - Working with sensors using non-standard frame formats
+                - Direct access to raw sensor data needed
+                - Debugging frame format issues
+
+                Note: When disabled, the application is responsible for all frame data processing.
+
+        config CAM_CTLR_SPI_DECODE_TASK_STACK_SIZE
+            int "Decode task stack size (bytes)"
+            default 4096
+            depends on !CAM_CTLR_SPI_DISABLE_AUTO_DECODE
+            help
+                Configure the stack size for the camera controller SPI auto decode task.
+
+                This task handles decoding of incoming frame data when automatic decoding is enabled.
+                The stack size should be sufficient to handle frame processing operations without
+                causing stack overflow.
+
+                Considerations:
+                - Larger frames may require more stack space
+                - Complex decoding algorithms need additional stack
+                - Default 4096 bytes suits most standard use cases
+
+                Increase if experiencing stack overflow during frame decoding operations.
+
+        config CAM_CTLR_SPI_DECODE_TASK_PRIORITY
+            int "Decode task priority"
+            default 10
+            depends on !CAM_CTLR_SPI_DISABLE_AUTO_DECODE
+            range 2 25
+            help
+                Set the priority level for the camera controller SPI auto decode task.
+
+                The decode task processes incoming frame data in the background. Priority selection
+                should balance frame processing speed with other system tasks to avoid blocking
+                critical operations.
+
+                Priority guidelines:
+                - Higher values = higher priority (range: 2-25)
+                - 2-5: Low priority, suitable for non-critical applications
+                - 6-15: Medium priority, balanced performance (recommended)
+                - 16-25: High priority, use only for time-critical applications
+
+                Default value of 10 provides good balance for most applications.
     endmenu
 endmenu

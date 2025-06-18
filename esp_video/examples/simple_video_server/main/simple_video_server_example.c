@@ -66,30 +66,34 @@ static esp_err_t record_bin_handler(httpd_req_t *req)
     struct v4l2_buffer buf;
     web_cam_t *wc = (web_cam_t *)req->user_ctx;
 
-    httpd_resp_set_type(req, "application/octet-stream");
-    httpd_resp_set_hdr(req, "Content-Disposition", "inline; filename=record.bin"); // default name is record.bin
-    httpd_resp_set_hdr(req, "Access-Control-Allow-Origin", "*");
-
     memset(&buf, 0, sizeof(buf));
     buf.type   = type;
     buf.memory = MEMORY_TYPE;
     res = ioctl(wc->fd, VIDIOC_DQBUF, &buf);
-    if (res == 0) {
+    if (res != 0) {
+        return res;
+    }
+
+    if (buf.flags & V4L2_BUF_FLAG_DONE) {
+        httpd_resp_set_type(req, "application/octet-stream");
+        httpd_resp_set_hdr(req, "Content-Disposition", "inline; filename=record.bin"); // default name is record.bin
+        httpd_resp_set_hdr(req, "Access-Control-Allow-Origin", "*");
+
         res = httpd_resp_send_chunk(req, (const char *)wc->buffer[buf.index], buf.bytesused);
         if (res != ESP_OK) {
             ESP_LOGW(TAG, "chunk send failed");
         }
+
+        /* Respond with an empty chunk to signal HTTP response completion */
+        httpd_resp_send_chunk(req, NULL, 0);
     } else {
-        ESP_LOGE(TAG, "failed to receive video frame");
-        return ESP_FAIL;
+        ESP_LOGD(TAG, "buffer is invalid");
     }
 
     if (ioctl(wc->fd, VIDIOC_QBUF, &buf) != 0) {
         ESP_LOGE(TAG, "failed to free video frame");
     }
 
-    /* Respond with an empty chunk to signal HTTP response completion */
-    httpd_resp_send_chunk(req, NULL, 0);
     return res;
 }
 
@@ -122,47 +126,51 @@ static esp_err_t stream_handler(httpd_req_t *req)
             break;
         }
 
-        res = clock_gettime (CLOCK_MONOTONIC, &ts);
-        if (res != 0) {
-            ESP_LOGE(TAG, "failed to get time");
-        }
-
-        res = httpd_resp_send_chunk(req, STREAM_BOUNDARY, strlen(STREAM_BOUNDARY));
-        if (res != ESP_OK) {
-            ESP_LOGE(TAG, "Boundary sending failed!");
-            if (ioctl(wc->fd, VIDIOC_QBUF, &buf) != 0) {
-                ESP_LOGE(TAG, "failed to free fb");
+        if (buf.flags & V4L2_BUF_FLAG_DONE) {
+            res = clock_gettime (CLOCK_MONOTONIC, &ts);
+            if (res != 0) {
+                ESP_LOGE(TAG, "failed to get time");
             }
-            /* Abort sending file */
-            httpd_resp_sendstr_chunk(req, NULL);
-            /* Respond with 500 Internal Server Error */
-            httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "Failed to send Boundary");
-            break;
-        }
 
-        if (wc->is_jpeg) {
-            jpeg_ptr = wc->buffer[buf.index];
-            jpeg_size = buf.bytesused;
-            tx_valid = true;
-        } else {
-            res = example_encoder_process(wc->encoder_handle, wc->buffer[buf.index], buf.bytesused, wc->jpeg_out_buf, wc->jpeg_out_size, &jpeg_encoded_size);
-            if (res == ESP_OK) {
-                jpeg_ptr = wc->jpeg_out_buf;
-                jpeg_size = jpeg_encoded_size;
+            res = httpd_resp_send_chunk(req, STREAM_BOUNDARY, strlen(STREAM_BOUNDARY));
+            if (res != ESP_OK) {
+                ESP_LOGE(TAG, "Boundary sending failed!");
+                if (ioctl(wc->fd, VIDIOC_QBUF, &buf) != 0) {
+                    ESP_LOGE(TAG, "failed to free fb");
+                }
+                /* Abort sending file */
+                httpd_resp_sendstr_chunk(req, NULL);
+                /* Respond with 500 Internal Server Error */
+                httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "Failed to send Boundary");
+                break;
+            }
+
+            if (wc->is_jpeg) {
+                jpeg_ptr = wc->buffer[buf.index];
+                jpeg_size = buf.bytesused;
                 tx_valid = true;
-                ESP_LOGD(TAG, "jpeg size = %d", jpeg_size);
+            } else {
+                res = example_encoder_process(wc->encoder_handle, wc->buffer[buf.index], buf.bytesused, wc->jpeg_out_buf, wc->jpeg_out_size, &jpeg_encoded_size);
+                if (res == ESP_OK) {
+                    jpeg_ptr = wc->jpeg_out_buf;
+                    jpeg_size = jpeg_encoded_size;
+                    tx_valid = true;
+                    ESP_LOGD(TAG, "jpeg size = %d", jpeg_size);
+                }
             }
-        }
 
-        if (tx_valid) {
-            int hlen;
-            char part_buf[128];
+            if (tx_valid) {
+                int hlen;
+                char part_buf[128];
 
-            hlen = snprintf(part_buf, sizeof(part_buf), STREAM_PART, jpeg_size, ts.tv_sec, ts.tv_nsec);
-            res = httpd_resp_send_chunk(req, part_buf, hlen);
-            if (res == ESP_OK) {
-                res = httpd_resp_send_chunk(req, (char *)jpeg_ptr, jpeg_size);
+                hlen = snprintf(part_buf, sizeof(part_buf), STREAM_PART, jpeg_size, ts.tv_sec, ts.tv_nsec);
+                res = httpd_resp_send_chunk(req, part_buf, hlen);
+                if (res == ESP_OK) {
+                    res = httpd_resp_send_chunk(req, (char *)jpeg_ptr, jpeg_size);
+                }
             }
+        } else {
+            ESP_LOGD(TAG, "buffer is invalid");
         }
 
         if (ioctl(wc->fd, VIDIOC_QBUF, &buf) != 0) {
@@ -196,7 +204,11 @@ static esp_err_t pic_handler(httpd_req_t *req)
     buf.type   = V4L2_BUF_TYPE_VIDEO_CAPTURE;
     buf.memory = MEMORY_TYPE;
     res = ioctl(wc->fd, VIDIOC_DQBUF, &buf);
-    if (res == 0) {
+    if (res != 0) {
+        return res;
+    }
+
+    if (buf.flags & V4L2_BUF_FLAG_DONE) {
         if (wc->is_jpeg) {
             jpeg_ptr = wc->buffer[buf.index];
             jpeg_size = buf.bytesused;
@@ -220,14 +232,14 @@ static esp_err_t pic_handler(httpd_req_t *req)
             }
         }
 
-        if (ioctl(wc->fd, VIDIOC_QBUF, &buf) != 0) {
-            ESP_LOGE(TAG, "failed to free video frame");
-        }
-
         /* Respond with an empty chunk to signal HTTP response completion */
         httpd_resp_send_chunk(req, NULL, 0);
     } else {
-        ESP_LOGE(TAG, "failed to receive video frame");
+        ESP_LOGD(TAG, "buffer is invalid");
+    }
+
+    if (ioctl(wc->fd, VIDIOC_QBUF, &buf) != 0) {
+        ESP_LOGE(TAG, "failed to free video frame");
     }
 
     return res;

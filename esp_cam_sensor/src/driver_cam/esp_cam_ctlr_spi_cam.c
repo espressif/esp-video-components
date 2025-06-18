@@ -30,11 +30,10 @@
 #define SPI_CAM_ISR_ATTR
 #endif
 
-#define SPI_TASK_STACK_SIZE         4096
-#define SPI_TASK_PRIORITY           10
+#if CAM_CTLR_SPI_HAS_AUTO_DECODE
+#define SPI_TASK_STACK_SIZE         CONFIG_CAM_CTLR_SPI_DECODE_TASK_STACK_SIZE
+#define SPI_TASK_PRIORITY           CONFIG_CAM_CTLR_SPI_DECODE_TASK_PRIORITY
 #define SPI_TASK_NAME_BASE          "spi_cam%d"
-
-#define ALIGN_UP_BY(num, align)     (((num) + ((align) - 1)) / (align) * (align))
 
 /**
  * @brief SPI message type
@@ -56,6 +55,15 @@ typedef struct spi_cam_msg {
         } recved_frame;             /*!< Frame received message payload */
     };
 } spi_cam_msg_t;
+#endif /* CAM_CTLR_SPI_HAS_AUTO_DECODE */
+
+#if CONFIG_SPIRAM
+#define SPI_MEM_CAPS                (MALLOC_CAP_8BIT | MALLOC_CAP_SPIRAM | MALLOC_CAP_DMA)
+#else
+#define SPI_MEM_CAPS                (MALLOC_CAP_8BIT | MALLOC_CAP_DMA)
+#endif
+
+#define ALIGN_UP_BY(num, align)     (((num) + ((align) - 1)) / (align) * (align))
 
 static const char *TAG = "spi_cam";
 
@@ -70,27 +78,51 @@ static const char *TAG = "spi_cam";
 static void SPI_CAM_ISR_ATTR setup_trans_buffer(esp_cam_ctlr_spi_cam_t *ctlr, spi_slave_transaction_t *spi_trans)
 {
     bool buffer_ready = false;
-    esp_cam_ctlr_trans_t trans = {0};
 
-    if (ctlr->cbs.on_get_new_trans) {
-        ctlr->cbs.on_get_new_trans(&(ctlr->base), &trans, ctlr->cbs_user_data);
-        if (trans.buffer && (trans.buflen >= ctlr->fb_size_in_bytes)) {
-            spi_trans->rx_buffer = trans.buffer;
-            spi_trans->length = trans.buflen * 8;
-            spi_trans->user = ctlr;
-            buffer_ready = true;
+    if (ctlr->dropped_frame_count >= ctlr->drop_frame_count) {
+        if (ctlr->cbs.on_get_new_trans) {
+            esp_cam_ctlr_trans_t trans = {0};
+
+            ctlr->cbs.on_get_new_trans(&(ctlr->base), &trans, ctlr->cbs_user_data);
+            if (trans.buffer && (trans.buflen >= ctlr->fb_size_in_bytes)) {
+                spi_trans->rx_buffer = trans.buffer;
+                spi_trans->length = trans.buflen * 8;
+                spi_trans->user = ctlr;
+
+#if !CAM_CTLR_SPI_HAS_BACKUP_BUFFER
+                ctlr->setup_ll_buffer = 0;
+#endif /* !CAM_CTLR_SPI_HAS_BACKUP_BUFFER */
+
+                buffer_ready = true;
+            }
         }
     }
 
     if (!buffer_ready) {
+#if CAM_CTLR_SPI_HAS_BACKUP_BUFFER
         if (!ctlr->bk_buffer_dis) {
             spi_trans->rx_buffer = ctlr->frame_buffer;
             spi_trans->length = ctlr->fb_size_in_bytes * 8;
             spi_trans->user = ctlr;
-            buffer_ready = true;
         } else {
             assert(false && "no new buffer, and no driver internal buffer");
         }
+#else /* CAM_CTLR_SPI_HAS_BACKUP_BUFFER */
+        /**
+         * Setup the smallest low-level buffer as the SPI RX buffer
+         * to avoid the SPI receive ISR to stop.
+         *
+         * Compare to sending free buffer to queue in application thread,
+         * this method is able to avoid the multi-threaded access to the
+         * SPI RX transaction.
+         */
+
+        spi_trans->rx_buffer = ctlr->spi_ll_buffer;
+        spi_trans->length = ctlr->spi_ll_buffer_size * 8;
+        spi_trans->user = ctlr;
+
+        ctlr->setup_ll_buffer = 1;
+#endif /* CAM_CTLR_SPI_HAS_BACKUP_BUFFER */
     }
 }
 
@@ -114,32 +146,44 @@ static void SPI_CAM_ISR_ATTR spi_cam_post_trans_cb(spi_slave_transaction_t *spi_
         return;
     }
 
-    if ((spi_trans->rx_buffer != ctlr->frame_buffer) || ctlr->bk_buffer_exposed) {
-        if (!ctlr->auto_decode_dis) {
-            spi_cam_msg_t msg;
-            BaseType_t xTaskWoken = 0;
+    if (ctlr->dropped_frame_count >= ctlr->drop_frame_count) {
+#if CAM_CTLR_SPI_HAS_BACKUP_BUFFER
+        if ((spi_trans->rx_buffer != ctlr->frame_buffer) || ctlr->bk_buffer_exposed)
+#else /* CAM_CTLR_SPI_HAS_BACKUP_BUFFER */
+        if (!ctlr->setup_ll_buffer)
+#endif /* CAM_CTLR_SPI_HAS_BACKUP_BUFFER */
+        {
+#if CAM_CTLR_SPI_HAS_AUTO_DECODE
+            if (!ctlr->auto_decode_dis) {
+                spi_cam_msg_t msg;
+                BaseType_t xTaskWoken = 0;
 
-            msg.type = SPI_CAM_MSG_FRAME_RECVED;
-            msg.recved_frame.buffer = spi_trans->rx_buffer;
-            msg.recved_frame.length = ctlr->bf_size_in_bytes;
-            if (xQueueSendFromISR(ctlr->spi_recv_queue, &msg, &xTaskWoken) == pdPASS) {
-                if (xTaskWoken) {
-                    portYIELD_FROM_ISR(xTaskWoken);
+                msg.type = SPI_CAM_MSG_FRAME_RECVED;
+                msg.recved_frame.buffer = spi_trans->rx_buffer;
+                msg.recved_frame.length = ctlr->bf_size_in_bytes;
+                if (xQueueSendFromISR(ctlr->spi_recv_queue, &msg, &xTaskWoken) == pdPASS) {
+                    if (xTaskWoken) {
+                        portYIELD_FROM_ISR(xTaskWoken);
+                    }
+                } else {
+                    ESP_EARLY_LOGD(TAG, "failed to send frame received message");
                 }
-            } else {
-                ESP_EARLY_LOGD(TAG, "failed to send frame received message");
-            }
-        } else {
-            esp_cam_ctlr_trans_t trans = {
-                .buffer = spi_trans->rx_buffer,
-                .buflen = ctlr->fb_size_in_bytes,
-                .received_size = ctlr->fb_size_in_bytes,
-            };
+            } else
+#endif /* CAM_CTLR_SPI_HAS_AUTO_DECODE */
+            {
+                esp_cam_ctlr_trans_t trans = {
+                    .buffer = spi_trans->rx_buffer,
+                    .buflen = ctlr->fb_size_in_bytes,
+                    .received_size = ctlr->fb_size_in_bytes,
+                };
 
-            if (ctlr->cbs.on_trans_finished) {
-                ctlr->cbs.on_trans_finished(&(ctlr->base), &trans, ctlr->cbs_user_data);
+                if (ctlr->cbs.on_trans_finished) {
+                    ctlr->cbs.on_trans_finished(&(ctlr->base), &trans, ctlr->cbs_user_data);
+                }
             }
         }
+    } else {
+        ctlr->dropped_frame_count++;
     }
 
     setup_trans_buffer(ctlr, spi_trans);
@@ -174,7 +218,7 @@ static esp_err_t spi_cam_init_intf(esp_cam_ctlr_spi_cam_t *ctlr, const esp_cam_c
     };
 
     spi_slave_interface_config_t slvcfg = {
-        .mode = 0,
+        .mode = 1, // 1: CPOL=0, CPHA=1; CLK idle low, data capture on rising edge
         .spics_io_num = config->spi_cs_pin,
         .queue_size = 1,
         .post_trans_cb = spi_cam_post_trans_cb,
@@ -226,7 +270,7 @@ static esp_err_t spi_cam_decode(esp_cam_ctlr_spi_cam_t *ctlr, uint8_t *src, uint
     bool decode_check_dis = ctlr->decode_check_dis;
 
     if (!decode_check_dis && (memcmp(src, ctlr->frame_info->frame_header_check, ctlr->frame_info->frame_header_check_size) != 0)) {
-        ESP_LOGD(TAG, "invalid frame header");
+        ESP_LOGD(TAG, "invalid frame header: %x %x %x %x", src[0], src[1], src[2], src[3]);
         return ESP_FAIL;
     }
     src += ctlr->frame_info->frame_header_size;
@@ -251,6 +295,7 @@ static esp_err_t spi_cam_decode(esp_cam_ctlr_spi_cam_t *ctlr, uint8_t *src, uint
     return ESP_OK;
 }
 
+#if CAM_CTLR_SPI_HAS_AUTO_DECODE
 /**
  * @brief Image decode task
  *
@@ -271,10 +316,13 @@ static void spi_cam_task(void *arg)
                 uint8_t *rx_buffer = msg.recved_frame.buffer;
                 uint32_t decoded_size;
 
+#if CAM_CTLR_SPI_HAS_BACKUP_BUFFER
                 if (rx_buffer == ctlr->frame_buffer) {
                     ret = spi_cam_decode(ctlr, rx_buffer, ctlr->backup_buffer, &decoded_size);
                     decoded_buffer = ctlr->backup_buffer;
-                } else {
+                } else
+#endif /* CAM_CTLR_SPI_HAS_BACKUP_BUFFER */
+                {
                     ret = spi_cam_decode(ctlr, rx_buffer, rx_buffer, &decoded_size);
                     decoded_buffer = rx_buffer;
                 }
@@ -296,6 +344,7 @@ static void spi_cam_task(void *arg)
         }
     }
 }
+#endif /* CAM_CTLR_SPI_HAS_AUTO_DECODE */
 
 /**
  * @brief Enable CAM SPI camera controller
@@ -361,6 +410,7 @@ static esp_err_t spi_cam_start(esp_cam_ctlr_handle_t handle)
     ESP_RETURN_ON_FALSE(ctlr, ESP_ERR_INVALID_ARG, TAG, "invalid argument: handle is null");
     ESP_RETURN_ON_FALSE(ctlr->fsm == ESP_CAM_CTLR_SPI_CAM_FSM_ENABLED, ESP_ERR_INVALID_STATE, TAG, "processor isn't in enabled state");
 
+    ctlr->dropped_frame_count = 0;
     setup_trans_buffer(ctlr, &ctlr->spi_trans);
     ret = esp_cam_spi_slave_queue_trans(ctlr->spi_port, &ctlr->spi_trans, portMAX_DELAY);
     if (ret == ESP_OK) {
@@ -408,7 +458,11 @@ static esp_err_t spi_cam_register_event_callbacks(esp_cam_ctlr_handle_t handle, 
 
     ESP_RETURN_ON_FALSE(handle && cbs, ESP_ERR_INVALID_ARG, TAG, "invalid argument: handle or cbs is null");
     ESP_RETURN_ON_FALSE(cbs->on_trans_finished, ESP_ERR_INVALID_ARG, TAG, "invalid argument: on_trans_finished is null");
+#if CAM_CTLR_SPI_HAS_BACKUP_BUFFER
     ESP_RETURN_ON_FALSE(cbs->on_get_new_trans || !ctlr->bk_buffer_dis, ESP_ERR_INVALID_ARG, TAG, "invalid argument: on_get_new_trans is null");
+#else /* CAM_CTLR_SPI_HAS_BACKUP_BUFFER */
+    ESP_RETURN_ON_FALSE(cbs->on_get_new_trans, ESP_ERR_INVALID_ARG, TAG, "invalid argument: on_get_new_trans is null");
+#endif /* CAM_CTLR_SPI_HAS_BACKUP_BUFFER */
     ESP_RETURN_ON_FALSE(ctlr->fsm == ESP_CAM_CTLR_SPI_CAM_FSM_INIT, ESP_ERR_INVALID_STATE, TAG, "driver starts already, not allow cbs register");
 
 #if CONFIG_CAM_CTLR_SPI_ISR_CACHE_SAFE
@@ -440,10 +494,11 @@ static esp_err_t spi_cam_register_event_callbacks(esp_cam_ctlr_handle_t handle, 
  */
 static esp_err_t spi_cam_get_internal_buffer(esp_cam_ctlr_handle_t handle, uint32_t fb_num, const void **fb0, ...)
 {
+#if CAM_CTLR_SPI_HAS_BACKUP_BUFFER
     esp_cam_ctlr_spi_cam_t *ctlr = (esp_cam_ctlr_spi_cam_t *)handle;
     ESP_RETURN_ON_FALSE(ctlr, ESP_ERR_INVALID_ARG, TAG, "invalid argument: handle is null");
-    ESP_RETURN_ON_FALSE((ctlr->fsm >= ESP_CAM_CTLR_SPI_CAM_FSM_INIT) && (ctlr->backup_buffer), ESP_ERR_INVALID_STATE, TAG, "driver don't initialized or back_buffer not available");
     ESP_RETURN_ON_FALSE(fb_num && fb_num <= 1, ESP_ERR_INVALID_ARG, TAG, "invalid frame buffer number");
+    ESP_RETURN_ON_FALSE((ctlr->fsm >= ESP_CAM_CTLR_SPI_CAM_FSM_INIT) && (!ctlr->bk_buffer_dis), ESP_ERR_INVALID_STATE, TAG, "driver don't initialized or back_buffer not available");
 
     va_list args;
     const void **fb_itor = fb0;
@@ -451,7 +506,12 @@ static esp_err_t spi_cam_get_internal_buffer(esp_cam_ctlr_handle_t handle, uint3
     va_start(args, fb0);
     for (uint32_t i = 0; i < fb_num; i++) {
         if (fb_itor) {
+#if CAM_CTLR_SPI_HAS_AUTO_DECODE
             *fb_itor = ctlr->auto_decode_dis ? ctlr->frame_buffer : ctlr->backup_buffer;
+#else /* CAM_CTLR_SPI_HAS_AUTO_DECODE */
+            *fb_itor = ctlr->frame_buffer;
+#endif /* CAM_CTLR_SPI_HAS_AUTO_DECODE */
+
             fb_itor = va_arg(args, const void **);
         }
     }
@@ -460,6 +520,11 @@ static esp_err_t spi_cam_get_internal_buffer(esp_cam_ctlr_handle_t handle, uint3
     ctlr->bk_buffer_exposed = true;
 
     return ESP_OK;
+#else /* CAM_CTLR_SPI_HAS_BACKUP_BUFFER */
+    ESP_LOGD(TAG, "backup buffer is disabled");
+
+    return ESP_ERR_NOT_SUPPORTED;
+#endif /* CAM_CTLR_SPI_HAS_BACKUP_BUFFER */
 }
 
 /**
@@ -474,13 +539,24 @@ static esp_err_t spi_cam_get_internal_buffer(esp_cam_ctlr_handle_t handle, uint3
  */
 static esp_err_t spi_cam_get_frame_buffer_len(esp_cam_ctlr_handle_t handle, size_t *ret_fb_len)
 {
+#if CAM_CTLR_SPI_HAS_BACKUP_BUFFER
+
     esp_cam_ctlr_spi_cam_t *ctlr = (esp_cam_ctlr_spi_cam_t *)handle;
     ESP_RETURN_ON_FALSE(ctlr && ret_fb_len, ESP_ERR_INVALID_ARG, TAG, "invalid argument: handle or ret_fb_len is null");
-    ESP_RETURN_ON_FALSE((ctlr->fsm >= ESP_CAM_CTLR_SPI_CAM_FSM_INIT) && (ctlr->backup_buffer), ESP_ERR_INVALID_STATE, TAG, "driver don't initialized or back_buffer not available");
+    ESP_RETURN_ON_FALSE((ctlr->fsm >= ESP_CAM_CTLR_SPI_CAM_FSM_INIT) && (!ctlr->bk_buffer_dis), ESP_ERR_INVALID_STATE, TAG, "driver don't initialized or back_buffer not available");
 
+#if CAM_CTLR_SPI_HAS_AUTO_DECODE
     *ret_fb_len = ctlr->auto_decode_dis ? ctlr->fb_size_in_bytes : ctlr->bf_size_in_bytes;
+#else /* CAM_CTLR_SPI_HAS_AUTO_DECODE */
+    *ret_fb_len = ctlr->fb_size_in_bytes;
+#endif /* CAM_CTLR_SPI_HAS_AUTO_DECODE */
 
     return ESP_OK;
+#else /* CAM_CTLR_SPI_HAS_BACKUP_BUFFER */
+    ESP_LOGD(TAG, "backup buffer is disabled");
+
+    return ESP_ERR_NOT_SUPPORTED;
+#endif /* CAM_CTLR_SPI_HAS_BACKUP_BUFFER */
 }
 
 /**
@@ -498,17 +574,28 @@ static esp_err_t spi_cam_del(esp_cam_ctlr_handle_t handle)
     ESP_RETURN_ON_FALSE(ctlr, ESP_ERR_INVALID_ARG, TAG, "invalid argument: handle is null");
     ESP_RETURN_ON_FALSE(ctlr->fsm == ESP_CAM_CTLR_SPI_CAM_FSM_INIT, ESP_ERR_INVALID_STATE, TAG, "processor isn't in init state");
 
+#if CAM_CTLR_SPI_HAS_AUTO_DECODE
     if (!ctlr->auto_decode_dis) {
         vTaskDelete(ctlr->spi_task_handle);
         vQueueDelete(ctlr->spi_recv_queue);
     }
+#endif
 
     spi_cam_deinit_intf(ctlr);
 
+#if CAM_CTLR_SPI_HAS_BACKUP_BUFFER
     if (!ctlr->bk_buffer_dis) {
-        heap_caps_free(ctlr->backup_buffer);
+#if CAM_CTLR_SPI_HAS_AUTO_DECODE
+        if (!ctlr->auto_decode_dis) {
+            heap_caps_free(ctlr->backup_buffer);
+        }
+#endif /* CAM_CTLR_SPI_HAS_AUTO_DECODE */
+
         heap_caps_free(ctlr->frame_buffer);
     }
+#else /* CAM_CTLR_SPI_HAS_BACKUP_BUFFER */
+    heap_caps_free(ctlr->spi_ll_buffer);
+#endif /* CAM_CTLR_SPI_HAS_BACKUP_BUFFER */
 
     heap_caps_free(ctlr);
 
@@ -535,43 +622,68 @@ esp_err_t esp_cam_new_spi_ctlr(const esp_cam_ctlr_spi_config_t *config, esp_cam_
     ESP_RETURN_ON_FALSE(config && ret_handle, ESP_ERR_INVALID_ARG, TAG, "invalid argument: config or ret_handle is null");
     ESP_RETURN_ON_FALSE(config->frame_info, ESP_ERR_INVALID_ARG, TAG, "invalid argument: frame_info is null");
 
-    ESP_RETURN_ON_ERROR(esp_cache_get_alignment(MALLOC_CAP_SPIRAM | MALLOC_CAP_DMA, &alignment_size), TAG, "failed to get cache alignment");
+#if CONFIG_SPIRAM
+    ESP_RETURN_ON_ERROR(esp_cache_get_alignment(SPI_MEM_CAPS, &alignment_size), TAG, "failed to get cache alignment");
+#else
+    alignment_size = 4;
+#endif
 
     esp_cam_ctlr_spi_cam_t *ctlr = heap_caps_calloc(1, sizeof(esp_cam_ctlr_spi_cam_t), MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT);
     ESP_RETURN_ON_FALSE(ctlr, ESP_ERR_NO_MEM, TAG, "no mem for CAM SPI controller context");
+
+    ESP_LOGD(TAG, "frame_size=%d, alignment_size=%d", (int)config->frame_info->frame_size, (int)alignment_size);
 
     ctlr->frame_info = config->frame_info;
     ctlr->fb_lines = config->v_res;
     ctlr->fb_size_in_bytes = ALIGN_UP_BY(config->frame_info->frame_size, alignment_size);
     ctlr->bf_size_in_bytes = config->frame_info->frame_size - config->frame_info->frame_header_size - config->frame_info->line_header_size * config->v_res;
+    ctlr->drop_frame_count = config->frame_info->drop_frame_count;
+
+#if CAM_CTLR_SPI_HAS_BACKUP_BUFFER
     ctlr->bk_buffer_dis = config->bk_buffer_dis;
+#endif
+
+#if CONFIG_SPIRAM
     ctlr->bk_buffer_sram = config->bk_buffer_sram;
+#endif
+
+#if CAM_CTLR_SPI_HAS_AUTO_DECODE
     ctlr->auto_decode_dis = config->auto_decode_dis;
+#endif
+
     ctlr->fsm = ESP_CAM_CTLR_SPI_CAM_FSM_INIT;
 
     ESP_LOGD(TAG, "fb_size_in_bytes: %" PRIu32 ", bf_size_in_bytes: %" PRIu32, ctlr->fb_size_in_bytes, ctlr->bf_size_in_bytes);
 
+#if CAM_CTLR_SPI_HAS_BACKUP_BUFFER
     if (!config->bk_buffer_dis) {
-        uint32_t heap_cap = MALLOC_CAP_8BIT | MALLOC_CAP_CACHE_ALIGNED;
+        uint32_t heap_cap = MALLOC_CAP_8BIT;
 
 #if CONFIG_SPIRAM
         if (!config->bk_buffer_sram) {
-            heap_cap |= MALLOC_CAP_SPIRAM;
+            heap_cap |= MALLOC_CAP_SPIRAM | MALLOC_CAP_CACHE_ALIGNED;
         } else {
-            heap_cap |= MALLOC_CAP_INTERNAL;
+            heap_cap |= MALLOC_CAP_INTERNAL | MALLOC_CAP_DMA;
         }
-#else
-        heap_cap |= MALLOC_CAP_INTERNAL;
-#endif
-
+#else /* CONFIG_SPIRAM */
+        heap_cap |= MALLOC_CAP_INTERNAL | MALLOC_CAP_DMA;
+#endif /* CONFIG_SPIRAM */
+        ESP_LOGD(TAG, "free memory: %d, frame buffer size: %d", (int)heap_caps_get_free_size(heap_cap), (int)ctlr->fb_size_in_bytes);
         ctlr->frame_buffer = heap_caps_calloc(1, ctlr->fb_size_in_bytes, heap_cap);
         ESP_GOTO_ON_FALSE(ctlr->frame_buffer, ESP_ERR_NO_MEM, fail0, TAG, "no mem for SPI frame buffer");
 
+#if CAM_CTLR_SPI_HAS_AUTO_DECODE
         if (!ctlr->auto_decode_dis) {
             ctlr->backup_buffer = heap_caps_calloc(1, ctlr->bf_size_in_bytes, heap_cap);
             ESP_GOTO_ON_FALSE(ctlr->backup_buffer, ESP_ERR_NO_MEM, fail1, TAG, "no mem for SPI backup buffer");
         }
+#endif /* CAM_CTLR_SPI_HAS_AUTO_DECODE */
     }
+#else /* CAM_CTLR_SPI_HAS_BACKUP_BUFFER */
+    ctlr->spi_ll_buffer = heap_caps_aligned_alloc(alignment_size, alignment_size, MALLOC_CAP_INTERNAL | MALLOC_CAP_DMA);
+    ESP_GOTO_ON_FALSE(ctlr->spi_ll_buffer, ESP_ERR_NO_MEM, fail0, TAG, "no mem for SPI low level buffer");
+    ctlr->spi_ll_buffer_size = alignment_size;
+#endif /* CAM_CTLR_SPI_HAS_BACKUP_BUFFER */
 
     ctlr->spi_port = config->spi_port;
     ESP_GOTO_ON_ERROR(spi_cam_init_intf(ctlr, config), fail2, TAG, "failed to initialize SPI slave");
@@ -585,6 +697,7 @@ esp_err_t esp_cam_new_spi_ctlr(const esp_cam_ctlr_spi_config_t *config, esp_cam_
     ctlr->base.get_internal_buffer = spi_cam_get_internal_buffer;
     ctlr->base.get_buffer_len = spi_cam_get_frame_buffer_len;
 
+#if CAM_CTLR_SPI_HAS_AUTO_DECODE
     if (!ctlr->auto_decode_dis) {
         char name[12];
 
@@ -597,19 +710,28 @@ esp_err_t esp_cam_new_spi_ctlr(const esp_cam_ctlr_spi_config_t *config, esp_cam_
         BaseType_t os_ret = xTaskCreate(spi_cam_task, name, SPI_TASK_STACK_SIZE, ctlr, SPI_TASK_PRIORITY, &ctlr->spi_task_handle);
         ESP_GOTO_ON_FALSE(os_ret == pdPASS, ESP_ERR_NO_MEM, fail4, TAG, "failed to create SPI task");
     }
+#endif /* CAM_CTLR_SPI_HAS_AUTO_DECODE */
 
     *ret_handle = &ctlr->base;
 
     return ESP_OK;
 
+#if CAM_CTLR_SPI_HAS_AUTO_DECODE
 fail4:
     vQueueDelete(ctlr->spi_recv_queue);
 fail3:
     spi_cam_deinit_intf(ctlr);
+#endif /* CAM_CTLR_SPI_HAS_AUTO_DECODE */
 fail2:
+#if CAM_CTLR_SPI_HAS_BACKUP_BUFFER
+#if CAM_CTLR_SPI_HAS_AUTO_DECODE
     heap_caps_free(ctlr->backup_buffer);
 fail1:
+#endif /* CAM_CTLR_SPI_HAS_AUTO_DECODE */
     heap_caps_free(ctlr->frame_buffer);
+#else /* CAM_CTLR_SPI_HAS_BACKUP_BUFFER */
+    heap_caps_free(ctlr->spi_ll_buffer);
+#endif /* CAM_CTLR_SPI_HAS_BACKUP_BUFFER */
 fail0:
     heap_caps_free(ctlr);
     return ret;
@@ -636,7 +758,11 @@ esp_err_t esp_cam_spi_decode_frame(esp_cam_ctlr_handle_t handle, uint8_t *src, u
 {
     esp_cam_ctlr_spi_cam_t *ctlr = (esp_cam_ctlr_spi_cam_t *)handle;
     ESP_RETURN_ON_FALSE(ctlr, ESP_ERR_INVALID_ARG, TAG, "invalid argument: handle is null");
+
+#if CAM_CTLR_SPI_HAS_AUTO_DECODE
     ESP_RETURN_ON_FALSE(ctlr->auto_decode_dis, ESP_ERR_INVALID_STATE, TAG, "auto decode is enabled");
+#endif
+
     ESP_RETURN_ON_FALSE(src && dst, ESP_ERR_INVALID_ARG, TAG, "invalid argument: src or dst is null");
     ESP_RETURN_ON_FALSE(src_len == ctlr->fb_size_in_bytes && dst_len >= ctlr->bf_size_in_bytes, ESP_ERR_INVALID_ARG, TAG, "invalid argument: src_len or dst_len is invalid");
 

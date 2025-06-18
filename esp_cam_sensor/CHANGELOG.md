@@ -2,8 +2,13 @@
 
 - Added support for BF3901 SPI camera sensor driver.
 - Added camera SPI interface driver.
+- Added ESP32-S3/C3/C5/C6/C61 platforms.
 - Enhanced the clarity and readability of prompt and help descriptions in Kconfig files.
 - Fixed `sensor_set_reg_bits` error in camera drivers.
+
+### Enhancements
+
+- ESP32-C3/C5/C6/C61 only support SPI interface camera sensor.
 
 ## 1.1.0
 

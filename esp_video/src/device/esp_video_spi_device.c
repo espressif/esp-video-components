@@ -10,6 +10,7 @@
 #include "esp_heap_caps.h"
 #include "esp_log.h"
 #include "esp_attr.h"
+#include "esp_private/esp_cache_private.h"
 #include "esp_cam_ctlr_spi.h"
 #include "esp_video.h"
 #include "esp_video_device_internal.h"
@@ -17,8 +18,11 @@
 
 #define SPI_NAME                        "SPI"
 
-#define SPI_DMA_ALIGN_BYTES             128
+#if CONFIG_SPIRAM
 #define SPI_MEM_CAPS                    (MALLOC_CAP_8BIT | MALLOC_CAP_SPIRAM | MALLOC_CAP_CACHE_ALIGNED)
+#else
+#define SPI_MEM_CAPS                    (MALLOC_CAP_8BIT | MALLOC_CAP_DMA)
+#endif
 
 #ifndef ARRAY_SIZE
 #define ARRAY_SIZE(x)                   sizeof(x) / sizeof((x)[0])
@@ -141,7 +145,15 @@ static esp_err_t init_config(struct esp_video *video)
 
     ESP_LOGD(TAG, "buffer size=%" PRIu32, buf_size);
 
-    CAPTURE_VIDEO_SET_BUF_INFO(video, buf_size, SPI_DMA_ALIGN_BYTES, SPI_MEM_CAPS);
+    size_t alignments = 0;
+#if CONFIG_SPIRAM
+    ESP_RETURN_ON_ERROR(esp_cache_get_alignment(SPI_MEM_CAPS, &alignments), TAG, "failed to get cache alignment");
+#else
+    alignments = 4;
+#endif
+    ESP_LOGD(TAG, "alignments=%zu", alignments);
+
+    CAPTURE_VIDEO_SET_BUF_INFO(video, buf_size, alignments, SPI_MEM_CAPS);
 
     return ESP_OK;
 }

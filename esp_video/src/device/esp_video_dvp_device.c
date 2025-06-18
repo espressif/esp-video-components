@@ -9,7 +9,7 @@
 #include "esp_heap_caps.h"
 #include "esp_log.h"
 #include "esp_attr.h"
-
+#include "esp_private/esp_cache_private.h"
 #include "esp_cam_ctlr_dvp.h"
 
 #include "esp_video.h"
@@ -22,10 +22,12 @@
 #define DVP_NAME                    "DVP"
 
 #define DVP_CTLR_ID                 0
-#define DVP_DMA_BURST_SIZE          128
 
-#define DVP_DMA_ALIGN_BYTES         64
+#if CONFIG_SPIRAM
 #define DVP_MEM_CAPS                (MALLOC_CAP_8BIT | MALLOC_CAP_SPIRAM | MALLOC_CAP_CACHE_ALIGNED)
+#else
+#define DVP_MEM_CAPS                (MALLOC_CAP_8BIT | MALLOC_CAP_DMA)
+#endif
 
 struct dvp_video {
     cam_ctlr_color_t in_color;
@@ -163,7 +165,15 @@ static esp_err_t init_config(struct esp_video *video)
 
     ESP_LOGD(TAG, "buffer size=%" PRIu32, buf_size);
 
-    CAPTURE_VIDEO_SET_BUF_INFO(video, buf_size, DVP_DMA_ALIGN_BYTES, DVP_MEM_CAPS);
+    size_t alignments = 0;
+#if CONFIG_SPIRAM
+    ESP_RETURN_ON_ERROR(esp_cache_get_alignment(DVP_MEM_CAPS, &alignments), TAG, "failed to get cache alignment");
+#else
+    alignments = 4;
+#endif
+    ESP_LOGD(TAG, "alignments=%zu", alignments);
+
+    CAPTURE_VIDEO_SET_BUF_INFO(video, buf_size, alignments, DVP_MEM_CAPS);
 
     return ESP_OK;
 }
@@ -184,6 +194,14 @@ static esp_err_t dvp_video_start(struct esp_video *video, uint32_t type)
     struct dvp_video *dvp_video = VIDEO_PRIV_DATA(struct dvp_video *, video);
     esp_cam_sensor_device_t *sensor = dvp_video->cam.sensor;
 
+    size_t alignments = 0;
+#if CONFIG_SPIRAM
+    ESP_RETURN_ON_ERROR(esp_cache_get_alignment(DVP_MEM_CAPS, &alignments), TAG, "failed to get cache alignment");
+#else
+    alignments = 4;
+#endif
+    ESP_LOGD(TAG, "alignments=%zu", alignments);
+
 #if CONFIG_ESP_VIDEO_ENABLE_SWAP_BYTE
     uint32_t data_seq;
 
@@ -202,10 +220,13 @@ static esp_err_t dvp_video_start(struct esp_video *video, uint32_t type)
         .clk_src = CAM_CLK_SRC_DEFAULT,
         .h_res = CAPTURE_VIDEO_GET_FORMAT_WIDTH(video),
         .v_res = CAPTURE_VIDEO_GET_FORMAT_HEIGHT(video),
-        .dma_burst_size = DVP_DMA_BURST_SIZE,
+        .dma_burst_size = alignments,
         .input_data_color_type = dvp_video->in_color,
         .pin_dont_init = true,
         .pic_format_jpeg = CAPTURE_VIDEO_GET_FORMAT_PIXEL_FORMAT(video) == V4L2_PIX_FMT_JPEG,
+#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(6, 0, 0)
+        .external_xtal = true,
+#endif
     };
     ret = esp_cam_new_dvp_ctlr(&dvp_config, &dvp_video->cam_ctrl_handle);
     if (ret != ESP_OK) {
