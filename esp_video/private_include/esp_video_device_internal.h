@@ -9,7 +9,9 @@
 #include "esp_err.h"
 #include "esp_cam_sensor_types.h"
 #include "esp_cam_motor_types.h"
+#if CONFIG_ESP_VIDEO_ENABLE_HW_JPEG_VIDEO_DEVICE
 #include "driver/jpeg_encode.h"
+#endif
 #include "esp_video_device.h"
 #include "hal/cam_ctlr_types.h"
 #include "esp_cam_ctlr_spi.h"
@@ -169,7 +171,7 @@ esp_err_t esp_video_create_h264_video_device(bool hw_codec);
 esp_err_t esp_video_destroy_h264_video_device(bool hw_codec);
 #endif
 
-#ifdef CONFIG_ESP_VIDEO_ENABLE_JPEG_VIDEO_DEVICE
+#ifdef CONFIG_ESP_VIDEO_ENABLE_HW_JPEG_VIDEO_DEVICE
 /**
  * @brief Create JPEG video device
  *

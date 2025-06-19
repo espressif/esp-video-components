@@ -1,3 +1,6 @@
+| Supported Targets | ESP32-P4 |
+| ----------------- | -------- |
+
 # USB Video Class Example
 
 (See the [README.md](../README.md) file in the upper level [examples](../) directory for more information about examples.)

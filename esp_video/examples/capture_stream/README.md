@@ -1,3 +1,7 @@
+| Supported Targets | ESP32-P4 | ESP32-S3 |
+| ----------------- | -------- | -------- |
+
+
 # Capture Stream Example
 
 (See the [README.md](../README.md) file in the upper level [examples](../) directory for more information about examples.)
@@ -31,6 +35,16 @@ Component config  --->
     Espressif Camera Sensors Configurations  --->
         [*] OV2640  --->
         [ ] SC2336  ----
+```
+
+#### SPI Development Kit
+
+```
+Component config  --->
+    Espressif Camera Sensors Configurations  --->
+        [*] BF3901  --->
+            Auto detect BF3901  --->
+                [*] Detect for SPI interface sensor
 ```
 
 ### Build and Flash
@@ -123,5 +137,31 @@ I (4367) example:       height: 480
 I (4367) example:       size:   614400
 I (4367) example:       FPS:    6
 I (4367) main_task: Returned from app_main()
+...
+```
+
+#### SPI Development Kit
+
+```
+...
+I (1483) main_task: Calling app_main()
+I (1483) example_init_video: SPI camera sensor I2C port=1, scl_pin=8, sda_pin=7, freq=100000
+I (1513) bf3901: Detected Camera sensor PID=0x3901
+I (1573) example: version: 1.0.0
+I (1573) example: driver:  SPI
+I (1573) example: card:    SPI
+I (1573) example: bus:     esp32p4:SPI
+I (1573) example: capabilities:
+I (1573) example:       VIDEO_CAPTURE
+I (1573) example:       STREAMING
+I (1583) example: device capabilities:
+I (1583) example:       VIDEO_CAPTURE
+I (1583) example:       STREAMING
+I (1593) example: Capture YVU 4:2:2 planar format frames for 3 seconds:
+I (4613) example:       width:  240
+I (4613) example:       height: 320
+I (4613) example:       size:   153600
+I (4613) example:       FPS:    10
+I (4613) main_task: Returned from app_main()
 ...
 ```

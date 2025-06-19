@@ -1,5 +1,5 @@
-| Supported Targets | ESP32-P4 |
-| ----------------- | -------- |
+| Supported Targets | ESP32-S3 | ESP32-P4 |
+| ----------------- | -------- | -------- |
 
 # Simple Video Server Example
 

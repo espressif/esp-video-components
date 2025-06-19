@@ -92,6 +92,13 @@ static const esp_video_init_spi_config_t s_spi_config = {
     .xclk_source = EXAMPLE_SPI_CAM_XCLK_RESOURCE,
     .xclk_pin = EXAMPLE_SPI_CAM_XCLK_PIN,
     .xclk_freq = EXAMPLE_SPI_CAM_XCLK_FREQ,
+#if CONFIG_EXAMPLE_SPI_CAM_XCLK_USE_LEDC
+    .xclk_ledc_cfg = {
+        .timer = EXAMPLE_SPI_CAM_XCLK_TIMER,
+        .clk_cfg = LEDC_SCLK,
+        .channel = EXAMPLE_SPI_CAM_XCLK_TIMER_CHANNEL,
+    },
+#endif /* CONFIG_EXAMPLE_SPI_CAM_XCLK_USE_LEDC */
 };
 #endif /* EXAMPLE_ENABLE_SPI_CAM_SENSOR */
 static const esp_video_init_config_t s_cam_config = {

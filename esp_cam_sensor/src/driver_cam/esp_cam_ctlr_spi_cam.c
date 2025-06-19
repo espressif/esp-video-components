@@ -555,7 +555,7 @@ esp_err_t esp_cam_new_spi_ctlr(const esp_cam_ctlr_spi_config_t *config, esp_cam_
         uint32_t heap_cap = MALLOC_CAP_8BIT | MALLOC_CAP_CACHE_ALIGNED;
 
 #if CONFIG_SPIRAM
-        if (config->bk_buffer_sram) {
+        if (!config->bk_buffer_sram) {
             heap_cap |= MALLOC_CAP_SPIRAM;
         } else {
             heap_cap |= MALLOC_CAP_INTERNAL;

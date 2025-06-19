@@ -9,10 +9,17 @@
 #include "linux/videodev2.h"
 #include "esp_cam_sensor_types.h"
 #include "esp_cam_motor_types.h"
+#include <stdint.h>
 
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+#define V4L2_FMT_STR                    "%c%c%c%c"
+#define V4L2_FMT_STR_ARG(fmt)           (uint8_t)(((fmt) >> 0)  & 0xFF), \
+                                        (uint8_t)(((fmt) >> 8)  & 0xFF), \
+                                        (uint8_t)(((fmt) >> 16) & 0xFF), \
+                                        (uint8_t)(((fmt) >> 24) & 0xFF)
 
 #define VIDIOC_S_SENSOR_FMT _IOWR('V',  BASE_VIDIOC_PRIVATE + 1, esp_cam_sensor_format_t)
 #define VIDIOC_G_SENSOR_FMT _IOWR('V',  BASE_VIDIOC_PRIVATE + 2, esp_cam_sensor_format_t)

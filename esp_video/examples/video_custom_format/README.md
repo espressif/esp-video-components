@@ -1,3 +1,6 @@
+| Supported Targets | ESP32-P4 | ESP32-S3 |
+| ----------------- | -------- | -------- |
+
 # Apply Custom Format In Video
 
 (See the [README.md](../README.md) file in the upper level [examples](../) directory for more information about examples.)
@@ -67,13 +70,14 @@ Component config  --->
         [*] SC2336  ----
 ```
 
-#### DVP Development Kit
+#### SPI Development Kit
 
 ```
 Component config  --->
     Espressif Camera Sensors Configurations  --->
-        [*] OV2640  --->
-        [ ] SC2336  ----
+        [*] BF3901  --->
+            Auto detect BF3901  --->
+                [*] Detect for SPI interface sensor
 ```
 
 ### Build and Flash
@@ -115,4 +119,29 @@ I (4847) example:       height: 800
 I (4847) example:       size:   1280000
 I (4857) example:       FPS:    30
 I (4857) main_task: Returned from app_main()
+```
+
+#### SPI Development Kit
+
+```
+...
+I (779) main_task: Calling app_main()
+I (779) example_init_video: SPI camera sensor I2C port=1, scl_pin=5, sda_pin=4, freq=100000
+I (799) bf3901: Detected Camera sensor PID=0x3901
+I (859) example: version: 1.0.0
+I (859) example: driver:  SPI
+I (859) example: card:    SPI
+I (859) example: bus:     esp32s3:SPI
+I (859) example: capabilities:
+I (869) example:        VIDEO_CAPTURE
+I (869) example:        STREAMING
+I (869) example: device capabilities:
+I (869) example:        VIDEO_CAPTURE
+I (879) example:        STREAMING
+I (939) example: Capture RGB 5-6-5 format frames for 3 seconds:
+I (3999) example:       width:  240
+I (3999) example:       height: 320
+I (3999) example:       size:   153600
+I (3999) example:       FPS:    12
+I (3999) main_task: Returned from app_main()
 ```

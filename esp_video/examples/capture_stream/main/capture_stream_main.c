@@ -261,10 +261,14 @@ static esp_err_t camera_capture_stream(void)
         }
 #endif
 
-        ESP_LOGI(TAG, "\twidth:  %" PRIu32, format.fmt.pix.width);
-        ESP_LOGI(TAG, "\theight: %" PRIu32, format.fmt.pix.height);
-        ESP_LOGI(TAG, "\tsize:   %" PRIu32, frame_size / frame_count);
-        ESP_LOGI(TAG, "\tFPS:    %" PRIu32, frame_count / CAPTURE_SECONDS);
+        if (frame_count > 0) {
+            ESP_LOGI(TAG, "\twidth:  %" PRIu32, format.fmt.pix.width);
+            ESP_LOGI(TAG, "\theight: %" PRIu32, format.fmt.pix.height);
+            ESP_LOGI(TAG, "\tsize:   %" PRIu32, frame_size / frame_count);
+            ESP_LOGI(TAG, "\tFPS:    %" PRIu32, frame_count / CAPTURE_SECONDS);
+        } else {
+            ESP_LOGW(TAG, "No frame captured");
+        }
     }
 
     ret = ESP_OK;

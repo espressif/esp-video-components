@@ -1,6 +1,7 @@
 ## Unreleased
 
 - Add SPI video device and board-level configuration
+- Add ESP32-S3 platform
 - Fix open function crashes after failing to initialize the video device
 
 ## 1.0.0

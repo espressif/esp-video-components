@@ -14,7 +14,13 @@
 #include "esp_log.h"
 #include "esp_timer.h"
 #include "example_video_common.h"
+#if CONFIG_CAMERA_BF3901
+#include "app_bf3901_custom_settings.h"
+#elif CONFIG_CAMERA_SC2336
 #include "app_sc2336_custom_settings.h"
+#else
+#error "No supported camera sensor selected, only support BF3901(SPI interface) and SC2336(MIPI-CSI interface)"
+#endif
 
 #define MEMORY_TYPE V4L2_MEMORY_MMAP
 #define BUFFER_COUNT 2
@@ -37,7 +43,7 @@ static esp_err_t camera_capture_stream(void)
 
     const int type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
 
-    fd = open("/dev/video0", O_RDONLY);
+    fd = open(EXAMPLE_CAM_DEV_PATH, O_RDONLY);
     if (fd < 0) {
         ESP_LOGE(TAG, "failed to open device");
         return ESP_FAIL;
@@ -109,6 +115,12 @@ static esp_err_t camera_capture_stream(void)
         .type = type,
     };
 
+    if (ioctl(fd, VIDIOC_ENUM_FMT, &fmtdesc) != 0) {
+        ESP_LOGE(TAG, "failed to enum format");
+        ret = ESP_FAIL;
+        goto exit_0;
+    }
+
     ESP_LOGI(TAG, "Capture %s format frames for %d seconds:", (char *)fmtdesc.description, CAPTURE_SECONDS);
 
     memset(&req, 0, sizeof(req));
@@ -168,15 +180,20 @@ static esp_err_t camera_capture_stream(void)
             goto exit_0;
         }
 
-        frame_size += buf.bytesused;
+        /**
+         * If no error, the flags has V4L2_BUF_FLAG_DONE. If error, the flags has V4L2_BUF_FLAG_ERROR.
+         * We need to skip these frames, but we also need queue the buffer.
+         */
+        if (buf.flags & V4L2_BUF_FLAG_DONE) {
+            frame_size += buf.bytesused;
+            frame_count++;
+        }
 
         if (ioctl(fd, VIDIOC_QBUF, &buf) != 0) {
             ESP_LOGE(TAG, "failed to queue video frame");
             ret = ESP_FAIL;
             goto exit_0;
         }
-
-        frame_count++;
     }
 
     if (ioctl(fd, VIDIOC_STREAMOFF, &type) != 0) {
@@ -185,10 +202,14 @@ static esp_err_t camera_capture_stream(void)
         goto exit_0;
     }
 
-    ESP_LOGI(TAG, "\twidth:  %" PRIu32, init_format.fmt.pix.width);
-    ESP_LOGI(TAG, "\theight: %" PRIu32, init_format.fmt.pix.height);
-    ESP_LOGI(TAG, "\tsize:   %" PRIu32, frame_size / frame_count);
-    ESP_LOGI(TAG, "\tFPS:    %" PRIu32, frame_count / CAPTURE_SECONDS);
+    if (frame_count > 0) {
+        ESP_LOGI(TAG, "\twidth:  %" PRIu32, init_format.fmt.pix.width);
+        ESP_LOGI(TAG, "\theight: %" PRIu32, init_format.fmt.pix.height);
+        ESP_LOGI(TAG, "\tsize:   %" PRIu32, frame_size / frame_count);
+        ESP_LOGI(TAG, "\tFPS:    %" PRIu32, frame_count / CAPTURE_SECONDS);
+    } else {
+        ESP_LOGW(TAG, "No frame captured");
+    }
 
     ret = ESP_OK;
 
@@ -199,17 +220,7 @@ exit_0:
 
 void app_main(void)
 {
-    esp_err_t ret = ESP_OK;
-
-    ret = example_video_init();
-    if (ret != ESP_OK) {
-        ESP_LOGE(TAG, "Camera init failed with error 0x%x", ret);
-        return;
-    }
-
-    ret = camera_capture_stream();
-    if (ret != ESP_OK) {
-        ESP_LOGE(TAG, "Camera capture stream failed with error 0x%x", ret);
-        return;
-    }
+    ESP_ERROR_CHECK(example_video_init());
+    ESP_ERROR_CHECK(camera_capture_stream());
+    ESP_ERROR_CHECK(example_video_deinit());
 }

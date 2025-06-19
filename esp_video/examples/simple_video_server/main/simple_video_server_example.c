@@ -3,6 +3,7 @@
  *
  * SPDX-License-Identifier: ESPRESSIF MIT
  */
+
 #include <string.h>
 #include <fcntl.h>
 #include <sys/ioctl.h>
@@ -15,10 +16,10 @@
 #include "esp_log.h"
 #include "esp_timer.h"
 #include "nvs_flash.h"
+#include "esp_check.h"
 #include "esp_http_server.h"
 #include "sdkconfig.h"
 #include "protocol_examples_common.h"
-#include "driver/jpeg_encode.h"
 #include "mdns.h"
 #include "lwip/apps/netbiosns.h"
 #include "example_video_common.h"
@@ -42,124 +43,21 @@
 */
 typedef struct web_cam {
     int fd;
-    uint32_t width;
-    uint32_t height;
-    uint32_t pixel_format;
-    jpeg_encode_cfg_t jpeg_enc_config;
-    size_t jpeg_enc_output_buf_alloced_size;
-    jpeg_encoder_handle_t jpeg_handle;
+    bool is_jpeg;
+
+    example_encoder_handle_t encoder_handle;
     uint8_t *jpeg_out_buf;
+    uint32_t jpeg_out_size;
+
     uint8_t *buffer[EXAMPLE_VIDEO_BUFFER_COUNT];
 } web_cam_t;
-
-/*
- * The image format type definition used in the example.
- */
-typedef enum {
-    EXAMPLE_VIDEO_FMT_RAW8 = V4L2_PIX_FMT_SBGGR8,
-    EXAMPLE_VIDEO_FMT_RAW10 = V4L2_PIX_FMT_SBGGR10,
-    EXAMPLE_VIDEO_FMT_GREY = V4L2_PIX_FMT_GREY,
-    EXAMPLE_VIDEO_FMT_RGB565 = V4L2_PIX_FMT_RGB565,
-    EXAMPLE_VIDEO_FMT_RGB888 = V4L2_PIX_FMT_RGB24,
-    EXAMPLE_VIDEO_FMT_YUV422 = V4L2_PIX_FMT_YUV422P,
-    EXAMPLE_VIDEO_FMT_YUV420 = V4L2_PIX_FMT_YUV420,
-} example_fmt_t;
 
 static const char *STREAM_CONTENT_TYPE = "multipart/x-mixed-replace;boundary=" PART_BOUNDARY;
 static const char *STREAM_BOUNDARY = "\r\n--" PART_BOUNDARY "\r\n";
 static const char *STREAM_PART = "Content-Type: image/jpeg\r\nContent-Length: %u\r\nX-Timestamp: %d.%06d\r\n\r\n";
-const int s_queue_buf_type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
+
 static uint16_t server_port_offset;
 static const char *TAG = "example";
-
-/**
- * @brief   Open the video device and initialize the video device to use `init_fmt` as the output format.
- * @note    When the sensor outputs data in RAW format, the ISP module can interpolate its data into RGB or YUV format.
- *          However, when the sensor works in RGB or YUV format, the output data can only be in RGB or YUV format.
- * @param dev device name(eg, "/dev/video0")
- * @param init_fmt output format.
- *
- * @return
- *     - Device descriptor   Success
- *     - -1 error
- */
-int app_video_open(char *dev, example_fmt_t init_fmt)
-{
-    struct v4l2_format default_format;
-    struct v4l2_capability capability;
-    const int type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
-
-    int fd = open(dev, O_RDONLY);
-    if (fd < 0) {
-        ESP_LOGE(TAG, "Open video failed");
-        return -1;
-    }
-
-    if (ioctl(fd, VIDIOC_QUERYCAP, &capability)) {
-        ESP_LOGE(TAG, "failed to get capability");
-        goto exit_0;
-    }
-
-    ESP_LOGI(TAG, "version: %d.%d.%d", (uint16_t)(capability.version >> 16),
-             (uint8_t)(capability.version >> 8),
-             (uint8_t)capability.version);
-    ESP_LOGI(TAG, "driver:  %s", capability.driver);
-    ESP_LOGI(TAG, "card:    %s", capability.card);
-    ESP_LOGI(TAG, "bus:     %s", capability.bus_info);
-
-    memset(&default_format, 0, sizeof(struct v4l2_format));
-    default_format.type = type;
-    if (ioctl(fd, VIDIOC_G_FMT, &default_format) != 0) {
-        ESP_LOGE(TAG, "failed to get format");
-        goto exit_0;
-    }
-
-    ESP_LOGI(TAG, "width=%" PRIu32 " height=%" PRIu32, default_format.fmt.pix.width, default_format.fmt.pix.height);
-
-    if (default_format.fmt.pix.pixelformat != init_fmt) {
-        struct v4l2_format format = {
-            .type = type,
-            .fmt.pix.width = default_format.fmt.pix.width,
-            .fmt.pix.height = default_format.fmt.pix.height,
-            .fmt.pix.pixelformat = init_fmt,
-        };
-
-        if (ioctl(fd, VIDIOC_S_FMT, &format) != 0) {
-            ESP_LOGE(TAG, "failed to set format");
-            goto exit_0;
-        }
-    }
-
-    return fd;
-exit_0:
-    close(fd);
-    return -1;
-}
-
-static jpeg_enc_input_format_t get_jpeg_enc_input_fmt(uint32_t video_fmt)
-{
-    jpeg_enc_input_format_t ret_fmt = JPEG_ENCODE_IN_FORMAT_YUV422;
-    switch (video_fmt) {
-    case EXAMPLE_VIDEO_FMT_YUV422:
-        ret_fmt = JPEG_ENCODE_IN_FORMAT_YUV422;
-        break;
-    case EXAMPLE_VIDEO_FMT_RAW8: // Treat raw8 as grayscale, for testing only.
-    case EXAMPLE_VIDEO_FMT_GREY:
-        ret_fmt = JPEG_ENCODE_IN_FORMAT_GRAY;
-        break;
-    case EXAMPLE_VIDEO_FMT_RGB565:
-        ret_fmt = JPEG_ENCODE_IN_FORMAT_RGB565;
-        break;
-    case EXAMPLE_VIDEO_FMT_RGB888:
-        ret_fmt = JPEG_ENCODE_IN_FORMAT_RGB888;
-        break;
-    default:
-        ESP_LOGE(TAG, "Unsupported format");
-        ret_fmt = -1;
-        break;
-    }
-    return ret_fmt;
-}
 
 static esp_err_t record_bin_handler(httpd_req_t *req)
 {
@@ -215,7 +113,7 @@ static esp_err_t stream_handler(httpd_req_t *req)
     while (1) {
         struct timespec ts = {0};
         memset(&buf, 0, sizeof(buf));
-        buf.type   = s_queue_buf_type;
+        buf.type   = V4L2_BUF_TYPE_VIDEO_CAPTURE;
         buf.memory = MEMORY_TYPE;
 
         res = ioctl(wc->fd, VIDIOC_DQBUF, &buf);
@@ -242,12 +140,12 @@ static esp_err_t stream_handler(httpd_req_t *req)
             break;
         }
 
-        if (wc->pixel_format == V4L2_PIX_FMT_JPEG) {
+        if (wc->is_jpeg) {
             jpeg_ptr = wc->buffer[buf.index];
             jpeg_size = buf.bytesused;
             tx_valid = true;
         } else {
-            res = jpeg_encoder_process(wc->jpeg_handle, &wc->jpeg_enc_config, wc->buffer[buf.index], buf.bytesused, wc->jpeg_out_buf, wc->jpeg_enc_output_buf_alloced_size, &jpeg_encoded_size);
+            res = example_encoder_process(wc->encoder_handle, wc->buffer[buf.index], buf.bytesused, wc->jpeg_out_buf, wc->jpeg_out_size, &jpeg_encoded_size);
             if (res == ESP_OK) {
                 jpeg_ptr = wc->jpeg_out_buf;
                 jpeg_size = jpeg_encoded_size;
@@ -295,16 +193,16 @@ static esp_err_t pic_handler(httpd_req_t *req)
     httpd_resp_set_hdr(req, "Access-Control-Allow-Origin", "*");
 
     memset(&buf, 0, sizeof(buf));
-    buf.type   = s_queue_buf_type;
+    buf.type   = V4L2_BUF_TYPE_VIDEO_CAPTURE;
     buf.memory = MEMORY_TYPE;
     res = ioctl(wc->fd, VIDIOC_DQBUF, &buf);
     if (res == 0) {
-        if (wc->pixel_format == V4L2_PIX_FMT_JPEG) {
+        if (wc->is_jpeg) {
             jpeg_ptr = wc->buffer[buf.index];
             jpeg_size = buf.bytesused;
             tx_valid = true;
         } else {
-            res = jpeg_encoder_process(wc->jpeg_handle, &wc->jpeg_enc_config, wc->buffer[buf.index], buf.bytesused, wc->jpeg_out_buf, wc->jpeg_enc_output_buf_alloced_size, &jpeg_encoded_size);
+            res = example_encoder_process(wc->encoder_handle, wc->buffer[buf.index], buf.bytesused, wc->jpeg_out_buf, wc->jpeg_out_size, &jpeg_encoded_size);
             if (res == ESP_OK) {
                 jpeg_ptr = wc->jpeg_out_buf;
                 jpeg_size = jpeg_encoded_size;
@@ -335,119 +233,94 @@ static esp_err_t pic_handler(httpd_req_t *req)
     return res;
 }
 
-static esp_err_t new_web_cam(int cam_fd, web_cam_t **ret_wc)
+static esp_err_t new_web_cam(const char *dev, web_cam_t **ret_wc)
 {
-    int ret;
+    int ret = ESP_FAIL;
+    struct v4l2_capability capability;
     struct v4l2_format format;
     int type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
     struct v4l2_requestbuffers req;
     web_cam_t *wc;
-    size_t jpeg_enc_input_src_size;
+    example_encoder_config_t encoder_config = {0};
+    example_encoder_handle_t encoder_handle;
 
-    memset(&format, 0, sizeof(struct v4l2_format));
-    format.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
-    if (ioctl(cam_fd, VIDIOC_G_FMT, &format) != 0) {
-        ESP_LOGE(TAG, "Failed get fmt");
-        return ESP_FAIL;
-    }
+    int fd = open(dev, O_RDWR);
+    ESP_RETURN_ON_FALSE(fd >= 0, ESP_FAIL, TAG, "Open video device %s failed", dev);
 
-    wc = malloc(sizeof(web_cam_t));
-    if (!wc) {
-        return ESP_ERR_NO_MEM;
-    }
-
-    wc->fd = cam_fd;
-    wc->width = format.fmt.pix.width;
-    wc->height = format.fmt.pix.height;
-    wc->pixel_format = format.fmt.pix.pixelformat;
-
-    jpeg_enc_input_format_t jpeg_enc_infmt = get_jpeg_enc_input_fmt(format.fmt.pix.pixelformat);
-
-    wc->jpeg_enc_config.src_type = jpeg_enc_infmt;
-    wc->jpeg_enc_config.image_quality = JPEG_ENC_QUALITY;
-    wc->jpeg_enc_config.width = format.fmt.pix.width;
-    wc->jpeg_enc_config.height = format.fmt.pix.height;
-
-    if (wc->pixel_format == EXAMPLE_VIDEO_FMT_RAW8) {
-        wc->jpeg_enc_config.sub_sample = JPEG_DOWN_SAMPLING_GRAY;
-        jpeg_enc_input_src_size = format.fmt.pix.width * format.fmt.pix.height;
-    } else if (wc->pixel_format == EXAMPLE_VIDEO_FMT_GREY) {
-        wc->jpeg_enc_config.sub_sample = JPEG_DOWN_SAMPLING_GRAY;
-        jpeg_enc_input_src_size = format.fmt.pix.width * format.fmt.pix.height;
-    } else if (wc->pixel_format == EXAMPLE_VIDEO_FMT_YUV420) {
-        wc->jpeg_enc_config.sub_sample = JPEG_DOWN_SAMPLING_YUV420;
-        jpeg_enc_input_src_size = format.fmt.pix.width * format.fmt.pix.height * 3 / 2;
-    } else {
-        wc->jpeg_enc_config.sub_sample = JPEG_DOWN_SAMPLING_YUV422;
-        jpeg_enc_input_src_size = format.fmt.pix.width * format.fmt.pix.height * 2;
-    }
-
-    jpeg_encode_engine_cfg_t encode_eng_cfg = {
-        .timeout_ms = 5000,
-    };
-    ESP_ERROR_CHECK(jpeg_new_encoder_engine(&encode_eng_cfg, &wc->jpeg_handle));
-
-    jpeg_encode_memory_alloc_cfg_t jpeg_enc_output_mem_cfg = {
-        .buffer_direction = JPEG_DEC_ALLOC_OUTPUT_BUFFER,
-    };
-
-    // Note that a larger JPEG_ENC_QUALITY means better image quality, so you need to increase the allocated buffer size
-    wc->jpeg_out_buf = (uint8_t *)jpeg_alloc_encoder_mem(jpeg_enc_input_src_size / 2, &jpeg_enc_output_mem_cfg, &wc->jpeg_enc_output_buf_alloced_size);
-    if (!wc->jpeg_out_buf) {
-        ESP_LOGE(TAG, "failed to alloc jpeg output buf");
-        ret = ESP_ERR_NO_MEM;
-        goto errout;
-    }
+    ESP_GOTO_ON_ERROR(ioctl(fd, VIDIOC_QUERYCAP, &capability), fail0, TAG, "failed to get capability");
+    ESP_LOGI(TAG, "version: %d.%d.%d", (uint16_t)(capability.version >> 16),
+             (uint8_t)(capability.version >> 8),
+             (uint8_t)capability.version);
+    ESP_LOGI(TAG, "driver:  %s", capability.driver);
+    ESP_LOGI(TAG, "card:    %s", capability.card);
+    ESP_LOGI(TAG, "bus:     %s", capability.bus_info);
 
     memset(&req, 0, sizeof(req));
-    req.count  = ARRAY_SIZE(wc->buffer);
+    req.count  = EXAMPLE_VIDEO_BUFFER_COUNT;
     req.type   = type;
     req.memory = MEMORY_TYPE;
-    if (ioctl(wc->fd, VIDIOC_REQBUFS, &req) != 0) {
-        ESP_LOGE(TAG, "failed to req buffers");
-        ret = ESP_FAIL;
-        goto errout;
-    }
+    ESP_GOTO_ON_ERROR(ioctl(fd, VIDIOC_REQBUFS, &req), fail0, TAG, "failed to req buffers");
 
-    for (int i = 0; i < ARRAY_SIZE(wc->buffer); i++) {
+    wc = malloc(sizeof(web_cam_t));
+    ESP_GOTO_ON_FALSE(wc, ESP_ERR_NO_MEM, fail0, TAG, "failed to alloc web cam");
+    wc->fd = fd;
+
+    for (int i = 0; i < EXAMPLE_VIDEO_BUFFER_COUNT; i++) {
         struct v4l2_buffer buf;
 
         memset(&buf, 0, sizeof(buf));
         buf.type        = type;
         buf.memory      = MEMORY_TYPE;
         buf.index       = i;
-        if (ioctl(wc->fd, VIDIOC_QUERYBUF, &buf) != 0) {
-            ESP_LOGE(TAG, "failed to query buffer");
-            ret = ESP_FAIL;
-            goto errout;
-        }
+        ESP_GOTO_ON_ERROR(ioctl(fd, VIDIOC_QUERYBUF, &buf), fail1, TAG, "failed to query buffer");
 
         wc->buffer[i] = (uint8_t *)mmap(NULL, buf.length, PROT_READ | PROT_WRITE,
-                                        MAP_SHARED, wc->fd, buf.m.offset);
-        if (!wc->buffer[i]) {
-            ESP_LOGE(TAG, "failed to map buffer");
-            ret = ESP_FAIL;
-            goto errout;
-        }
+                                        MAP_SHARED, fd, buf.m.offset);
+        ESP_GOTO_ON_FALSE(wc->buffer[i], ESP_FAIL, fail1, TAG, "failed to map buffer");
 
-        if (ioctl(wc->fd, VIDIOC_QBUF, &buf) != 0) {
-            ESP_LOGE(TAG, "failed to queue frame buffer");
-            ret = ESP_FAIL;
-            goto errout;
-        }
+        ESP_GOTO_ON_ERROR(ioctl(fd, VIDIOC_QBUF, &buf), fail1, TAG, "failed to queue frame buffer");
     }
 
-    if (ioctl(wc->fd, VIDIOC_STREAMON, &type)) {
-        ESP_LOGE(TAG, "failed to start stream");
-        ret = ESP_FAIL;
-        goto errout;
+    memset(&format, 0, sizeof(struct v4l2_format));
+    format.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
+    ESP_GOTO_ON_ERROR(ioctl(fd, VIDIOC_G_FMT, &format), fail1, TAG, "Failed get fmt");
+
+    ESP_LOGI(TAG, "width=%" PRIu32 " height=%" PRIu32 " format=" V4L2_FMT_STR, format.fmt.pix.width,
+             format.fmt.pix.height, V4L2_FMT_STR_ARG(format.fmt.pix.pixelformat));
+
+    wc->is_jpeg = (format.fmt.pix.pixelformat == V4L2_PIX_FMT_JPEG);
+
+    if (!wc->is_jpeg) {
+        encoder_config.width = format.fmt.pix.width;
+        encoder_config.height = format.fmt.pix.height;
+        encoder_config.pixel_format = format.fmt.pix.pixelformat;
+        encoder_config.quality = JPEG_ENC_QUALITY;
+        ESP_GOTO_ON_ERROR(example_encoder_init(&encoder_config, &encoder_handle), fail1, TAG, "failed to init encoder");
+
+        wc->encoder_handle = encoder_handle;
+
+        ESP_GOTO_ON_ERROR(example_encoder_alloc_output_buffer(encoder_handle, &wc->jpeg_out_buf, &wc->jpeg_out_size), fail2, TAG, "failed to alloc jpeg output buf");
     }
+
+    ESP_GOTO_ON_ERROR(ioctl(fd, VIDIOC_STREAMON, &type), fail3, TAG, "failed to start stream");
+
 
     *ret_wc = wc;
+
     return ESP_OK;
 
-errout:
+fail3:
+    if (!wc->is_jpeg) {
+        example_encoder_free_output_buffer(encoder_handle, wc->jpeg_out_buf);
+    }
+fail2:
+    if (!wc->is_jpeg) {
+        example_encoder_deinit(encoder_handle);
+    }
+fail1:
     free(wc);
+fail0:
+    close(fd);
     return ret;
 }
 
@@ -512,10 +385,10 @@ static esp_err_t http_server_init(int index, web_cam_t *web_cam)
  *     - ESP_OK   Success
  *     - Others error
  */
-static esp_err_t start_cam_web_server(int index, int cam_fd)
+static esp_err_t start_cam_web_server(int index, const char *dev)
 {
     web_cam_t *web_cam;
-    esp_err_t ret = new_web_cam(cam_fd, &web_cam);
+    esp_err_t ret = new_web_cam(dev, &web_cam);
     if (ret != ESP_OK) {
         ESP_LOGE(TAG, "Failed to new web cam");
         return ret;
@@ -540,7 +413,6 @@ static void initialise_mdns(void)
 
 void app_main(void)
 {
-    int index = 0;
     esp_err_t ret = nvs_flash_init();
     if (ret == ESP_ERR_NVS_NO_FREE_PAGES || ret == ESP_ERR_NVS_NEW_VERSION_FOUND) {
         // NVS partition was truncated and needs to be erased
@@ -564,12 +436,6 @@ void app_main(void)
 
     ESP_ERROR_CHECK(example_video_init());
 
-    int video_cam_fd = app_video_open(EXAMPLE_CAM_DEV_PATH, EXAMPLE_VIDEO_FMT_RGB565);
-    if (video_cam_fd < 0) {
-        ESP_LOGE(TAG, "video cam open failed");
-        return;
-    }
-
-    ESP_ERROR_CHECK(start_cam_web_server(index, video_cam_fd));
+    ESP_ERROR_CHECK(start_cam_web_server(0, EXAMPLE_CAM_DEV_PATH));
     ESP_LOGI(TAG, "Example Start");
 }

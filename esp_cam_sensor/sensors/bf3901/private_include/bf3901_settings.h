@@ -14,7 +14,12 @@
 
 #define G3LB5  0x05
 #define RGB    0x04
+
+#if CONFIG_CAMERA_SENSOR_SWAP_PIXEL_BYTE_ORDER
 #define YUV422 0x02
+#else
+#define YUV422 0x00
+#endif
 
 #ifdef __cplusplus
 extern "C" {
