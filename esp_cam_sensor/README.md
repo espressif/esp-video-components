@@ -10,6 +10,7 @@ It is highly recommended that users use it in the [esp-video](https://github.com
 
 | model   | max resolution | output interface | output format                                                | Len Size |
 | ------- | -------------- | ---------- | ------------------------------------------------------------ | -------- |
+| BF3901  | 240 x 320    | SPI | YCbCr422<br/>RGB565 | 1/13"     |
 | BF3925  | 1600 x 1200    | DVP | YCbCr422<br/>8bit Raw RGB data | 1/5"     |
 | BF3A03  | 640 x 480    | DVP | YCbCr422<br/>RGB565<br/>8bit Raw RGB data | 1/6.5"     |
 | GC0308  | 640 x 480    | DVP | Grayscale<br/>YCbCr422<br/>RGB565 | 1/6.5"     |
