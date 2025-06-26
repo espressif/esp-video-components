@@ -432,7 +432,7 @@ static esp_err_t bf3a03_set_format(esp_cam_sensor_device_t *dev, const esp_cam_s
     /* Depending on the interface type, an available configuration is automatically loaded.
     You can set the output format of the sensor without using query_format().*/
     if (format == NULL) {
-        format = &bf3a03_format_info[CONFIG_CAMERA_BF3A03_DVP_IF_FORMAT_INDEX_DAFAULT];
+        format = &bf3a03_format_info[CONFIG_CAMERA_BF3A03_DVP_IF_FORMAT_INDEX_DEFAULT];
     }
 
     /* Todo, I2C NACK error causes the I2C driver to fail. After fixing the error, re-enable the reset.*/
@@ -611,7 +611,7 @@ esp_cam_sensor_device_t *bf3a03_detect(esp_cam_sensor_config_t *config)
     dev->pwdn_pin = config->pwdn_pin;
     dev->sensor_port = config->sensor_port;
     dev->ops = &bf3a03_ops;
-    dev->cur_format = &bf3a03_format_info[CONFIG_CAMERA_BF3A03_DVP_IF_FORMAT_INDEX_DAFAULT];
+    dev->cur_format = &bf3a03_format_info[CONFIG_CAMERA_BF3A03_DVP_IF_FORMAT_INDEX_DEFAULT];
 
     // Configure sensor power, clock, and SCCB port
     if (bf3a03_power_on(dev) != ESP_OK) {

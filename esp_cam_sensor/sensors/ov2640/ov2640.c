@@ -700,7 +700,7 @@ static esp_err_t ov2640_set_format(esp_cam_sensor_device_t *dev, const esp_cam_s
     You can set the output format of the sensor without using query_format().*/
     if (format == NULL) {
         if (dev->sensor_port == ESP_CAM_SENSOR_DVP) {
-            format = &ov2640_format_info[CONFIG_CAMERA_OV2640_DVP_IF_FORMAT_INDEX_DAFAULT];
+            format = &ov2640_format_info[CONFIG_CAMERA_OV2640_DVP_IF_FORMAT_INDEX_DEFAULT];
         } else {
             return ret;
         }
@@ -898,7 +898,7 @@ esp_cam_sensor_device_t *ov2640_detect(esp_cam_sensor_config_t *config)
     dev->pwdn_pin = config->pwdn_pin;
     dev->priv = cam_ov2640;
     if (config->sensor_port == ESP_CAM_SENSOR_DVP) {
-        dev->cur_format = &ov2640_format_info[CONFIG_CAMERA_OV2640_DVP_IF_FORMAT_INDEX_DAFAULT];
+        dev->cur_format = &ov2640_format_info[CONFIG_CAMERA_OV2640_DVP_IF_FORMAT_INDEX_DEFAULT];
     } else {
         ESP_LOGE(TAG, "Not support MIPI port");
     }

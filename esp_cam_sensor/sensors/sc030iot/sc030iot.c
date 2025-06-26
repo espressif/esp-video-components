@@ -359,12 +359,12 @@ static esp_err_t sc030iot_set_format(esp_cam_sensor_device_t *dev, const esp_cam
     if (format == NULL) {
 #if CONFIG_SOC_MIPI_CSI_SUPPORTED
         if (dev->sensor_port == ESP_CAM_SENSOR_MIPI_CSI) {
-            format = &sc030iot_format_info_mipi[CONFIG_CAMERA_SC030IOT_MIPI_IF_FORMAT_INDEX_DAFAULT];
+            format = &sc030iot_format_info_mipi[CONFIG_CAMERA_SC030IOT_MIPI_IF_FORMAT_INDEX_DEFAULT];
         }
 #endif
 #if CONFIG_SOC_LCDCAM_CAM_SUPPORTED
         if (dev->sensor_port == ESP_CAM_SENSOR_DVP) {
-            format = &sc030iot_format_info_dvp[CONFIG_CAMERA_SC030IOT_DVP_IF_FORMAT_INDEX_DAFAULT];
+            format = &sc030iot_format_info_dvp[CONFIG_CAMERA_SC030IOT_DVP_IF_FORMAT_INDEX_DEFAULT];
         }
 #endif
     }
@@ -542,13 +542,13 @@ esp_cam_sensor_device_t *sc030iot_detect(esp_cam_sensor_config_t *config)
     dev->ops = &sc030iot_ops;
 #if CONFIG_SOC_MIPI_CSI_SUPPORTED
     if (config->sensor_port == ESP_CAM_SENSOR_MIPI_CSI) {
-        dev->cur_format = &sc030iot_format_info_mipi[CONFIG_CAMERA_SC030IOT_MIPI_IF_FORMAT_INDEX_DAFAULT];
+        dev->cur_format = &sc030iot_format_info_mipi[CONFIG_CAMERA_SC030IOT_MIPI_IF_FORMAT_INDEX_DEFAULT];
     }
 #endif
 
 #if CONFIG_SOC_LCDCAM_CAM_SUPPORTED
     if (config->sensor_port == ESP_CAM_SENSOR_DVP) {
-        dev->cur_format = &sc030iot_format_info_dvp[CONFIG_CAMERA_SC030IOT_DVP_IF_FORMAT_INDEX_DAFAULT];
+        dev->cur_format = &sc030iot_format_info_dvp[CONFIG_CAMERA_SC030IOT_DVP_IF_FORMAT_INDEX_DEFAULT];
     }
 #endif
     ESP_LOGD(TAG, "fmt=%s", dev->cur_format->name);

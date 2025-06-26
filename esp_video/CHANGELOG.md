@@ -3,6 +3,7 @@
 - Add SPI video device and board-level configuration
 - Add ESP32-S3 platform
 - Fix open function crashes after failing to initialize the video device
+- Enhance the clarity and readability of prompt and help descriptions in Kconfig file
 
 ## 1.0.0
 

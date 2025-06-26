@@ -1647,12 +1647,12 @@ static esp_err_t sc2336_set_format(esp_cam_sensor_device_t *dev, const esp_cam_s
     if (format == NULL) {
 #if CONFIG_SOC_MIPI_CSI_SUPPORTED
         if (dev->sensor_port == ESP_CAM_SENSOR_MIPI_CSI) {
-            format = &sc2336_format_info_mipi[CONFIG_CAMERA_SC2336_MIPI_IF_FORMAT_INDEX_DAFAULT];
+            format = &sc2336_format_info_mipi[CONFIG_CAMERA_SC2336_MIPI_IF_FORMAT_INDEX_DEFAULT];
         }
 #endif
 #if CONFIG_SOC_LCDCAM_CAM_SUPPORTED
         if (dev->sensor_port == ESP_CAM_SENSOR_DVP) {
-            format = &sc2336_format_info_dvp[CONFIG_CAMERA_SC2336_DVP_IF_FORMAT_INDEX_DAFAULT];
+            format = &sc2336_format_info_dvp[CONFIG_CAMERA_SC2336_DVP_IF_FORMAT_INDEX_DEFAULT];
         }
 #endif
     }
@@ -1855,12 +1855,12 @@ esp_cam_sensor_device_t *sc2336_detect(esp_cam_sensor_config_t *config)
     }
 #if CONFIG_SOC_MIPI_CSI_SUPPORTED
     if (config->sensor_port == ESP_CAM_SENSOR_MIPI_CSI) {
-        dev->cur_format = &sc2336_format_info_mipi[CONFIG_CAMERA_SC2336_MIPI_IF_FORMAT_INDEX_DAFAULT];
+        dev->cur_format = &sc2336_format_info_mipi[CONFIG_CAMERA_SC2336_MIPI_IF_FORMAT_INDEX_DEFAULT];
     }
 #endif
 #if CONFIG_SOC_LCDCAM_CAM_SUPPORTED
     if (config->sensor_port == ESP_CAM_SENSOR_DVP) {
-        dev->cur_format = &sc2336_format_info_dvp[CONFIG_CAMERA_SC2336_DVP_IF_FORMAT_INDEX_DAFAULT];
+        dev->cur_format = &sc2336_format_info_dvp[CONFIG_CAMERA_SC2336_DVP_IF_FORMAT_INDEX_DEFAULT];
     }
 #endif
     // Configure sensor power, clock, and SCCB port

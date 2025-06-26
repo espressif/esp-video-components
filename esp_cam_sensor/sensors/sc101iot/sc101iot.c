@@ -273,7 +273,7 @@ static esp_err_t sc101iot_set_format(esp_cam_sensor_device_t *dev, const esp_cam
     /* Depending on the interface type, an available configuration is automatically loaded.
     You can set the output format of the sensor without using query_format().*/
     if (format == NULL) {
-        format = &sc101iot_format_info[CONFIG_CAMERA_SC101IOT_DVP_IF_FORMAT_INDEX_DAFAULT];
+        format = &sc101iot_format_info[CONFIG_CAMERA_SC101IOT_DVP_IF_FORMAT_INDEX_DEFAULT];
     }
 
     ret = sc101iot_write_array(dev->sccb_handle, (sc101iot_reginfo_t *)format->regs, format->regs_size);
@@ -448,7 +448,7 @@ esp_cam_sensor_device_t *sc101iot_detect(esp_cam_sensor_config_t *config)
     dev->pwdn_pin = config->pwdn_pin;
     dev->sensor_port = config->sensor_port;
     dev->ops = &sc101iot_ops;
-    dev->cur_format = &sc101iot_format_info[CONFIG_CAMERA_SC101IOT_DVP_IF_FORMAT_INDEX_DAFAULT];
+    dev->cur_format = &sc101iot_format_info[CONFIG_CAMERA_SC101IOT_DVP_IF_FORMAT_INDEX_DEFAULT];
 
     // Configure sensor power, clock, and SCCB port
     if (sc101iot_power_on(dev) != ESP_OK) {

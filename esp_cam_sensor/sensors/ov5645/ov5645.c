@@ -327,7 +327,7 @@ static esp_err_t ov5645_set_format(esp_cam_sensor_device_t *dev, const esp_cam_s
     /* Depending on the interface type, an available configuration is automatically loaded.
     You can set the output format of the sensor without using query_format().*/
     if (format == NULL) {
-        format = &ov5645_format_info[CONFIG_CAMERA_OV5645_MIPI_IF_FORMAT_INDEX_DAFAULT];
+        format = &ov5645_format_info[CONFIG_CAMERA_OV5645_MIPI_IF_FORMAT_INDEX_DEFAULT];
     }
 
     ret = ov5645_write_array(dev->sccb_handle, ov5645_mipi_reset_regs);
@@ -505,7 +505,7 @@ esp_cam_sensor_device_t *ov5645_detect(esp_cam_sensor_config_t *config)
     dev->pwdn_pin = config->pwdn_pin;
     dev->sensor_port = config->sensor_port;
     if (config->sensor_port == ESP_CAM_SENSOR_MIPI_CSI) {
-        dev->cur_format = &ov5645_format_info[CONFIG_CAMERA_OV5645_MIPI_IF_FORMAT_INDEX_DAFAULT];
+        dev->cur_format = &ov5645_format_info[CONFIG_CAMERA_OV5645_MIPI_IF_FORMAT_INDEX_DEFAULT];
     } else {
         ESP_LOGE(TAG, "Not support DVP port");
     }

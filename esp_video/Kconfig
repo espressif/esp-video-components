@@ -16,7 +16,7 @@ menu "Espressif Video Configuration"
         bool
         default n
         depends on SOC_BITSCRAMBLER_SUPPORTED
-    
+
     config ESP_VIDEO_ENABLE_DATA_PREPROCESSING
         bool
         default n
@@ -25,8 +25,17 @@ menu "Espressif Video Configuration"
         bool "Check Video Function Parameters"
         default y
         help
-            Select this option, espressif video core functions will check
-            input parameters.
+            Enable runtime parameter validation for all video core functions.
+
+            When enabled, video functions will check input parameters for validity
+            and return appropriate error codes for invalid inputs. This helps
+            catch programming errors and improves system reliability.
+
+            Disabling this option reduces code size and improves performance slightly,
+            but removes safety checks that help identify incorrect API usage.
+
+            Recommended: Keep enabled during development, consider disabling
+            for production builds where performance is critical.
 
     menuconfig ESP_VIDEO_ENABLE_MIPI_CSI_VIDEO_DEVICE
         bool "Enable MIPI-CSI based Video Device"
@@ -34,7 +43,18 @@ menu "Espressif Video Configuration"
         default y
         select ESP_VIDEO_ENABLE_ISP
         help
-            Select this option, enable MIPI-CSI based video device.
+            Enable MIPI Camera Serial Interface video device support.
+
+            MIPI-CSI is a high-speed serial interface standard widely used
+            in mobile and embedded applications for connecting camera sensors.
+
+            Features:
+            - High-speed differential signaling
+            - Multiple data lanes (1-4 lanes typical)
+            - Low power consumption
+            - Suitable for high-resolution sensors
+
+            Automatically enables ISP support for image processing.
 
     if ESP_VIDEO_ENABLE_MIPI_CSI_VIDEO_DEVICE
 
@@ -42,43 +62,108 @@ menu "Espressif Video Configuration"
             bool "Disable MIPI-CSI Driver Backup Buffer"
             default y
             help
-                Select this option, esp-video disables MIPI-CSI driver backup buffer,
-                and always reserves a block of video buffer for MIPI-CSI driver to
-                receive data.
+                Disable the internal backup buffer in the MIPI-CSI driver.
 
-                In this mode, video buffer number must > 1.
+                When enabled, the video system will always reserve one video buffer
+                specifically for the MIPI-CSI driver to receive incoming data,
+                eliminating the need for an additional backup buffer.
+
+                Benefits:
+                - Reduced memory usage
+                - More predictable buffer management
+                - Lower latency in buffer handling
+
+                Requirements:
+                - Video buffer count must be greater than 1
+
+                Recommended: Keep enabled unless the application has to setup only one video buffer.
     endif
 
-    menuconfig ESP_VIDEO_ENABLE_DVP_VIDEO_DEVICE
+    config ESP_VIDEO_ENABLE_DVP_VIDEO_DEVICE
         bool "Enable DVP based Video Device"
         depends on SOC_LCDCAM_CAM_SUPPORTED
         default y
         help
             Select this option, enable DVP based video device.
 
-    menuconfig ESP_VIDEO_ENABLE_SPI_VIDEO_DEVICE
+            Enable Digital Video Port (DVP) video device support.
+
+            DVP is a parallel interface for connecting camera sensors.
+
+            Features:
+            - Parallel data transmission (8-bit typical)
+            - Separate sync signals (VSYNC)
+            - Pixel clock for synchronization
+            - Lower bandwidth than MIPI-CSI
+
+            Suitable for moderate resolution sensors and applications
+            where MIPI-CSI is not available.
+
+    config ESP_VIDEO_ENABLE_SPI_VIDEO_DEVICE
         bool "Enable SPI based Video Device"
         depends on SOC_GPSPI_SUPPORTED
         select ESP_VIDEO_ENABLE_DATA_PREPROCESSING
         default n
         help
-            Select this option, enable SPI based video device.
+            Enable Serial Peripheral Interface (SPI) video device support.
 
-    menuconfig ESP_VIDEO_ENABLE_HW_H264_VIDEO_DEVICE
+            SPI interface is typically used for lower resolution camera sensors
+            or special applications where parallel interfaces are not suitable.
+
+            Features:
+            - Serial data transmission
+            - Lower GPIO pin count requirement
+            - Flexible clock rates
+            - Limited bandwidth compared to parallel interfaces
+
+            Automatically enables data preprocessing for format conversion.
+
+            Best for: Low-resolution sensors, prototype development,
+            or applications with limited GPIO availability.
+
+    config ESP_VIDEO_ENABLE_HW_H264_VIDEO_DEVICE
         bool "Enable Hardware H.264 based Video Device"
         depends on IDF_TARGET_ESP32P4
         select ESP_VIDEO_ENABLE_H264_VIDEO_DEVICE
         default n
         help
-            Select this option, enable hardware H.264 based video device.
+            Enable hardware-accelerated H.264 encoding video device support.
 
-    menuconfig ESP_VIDEO_ENABLE_HW_JPEG_VIDEO_DEVICE
+            Uses dedicated H.264 encoding hardware for efficient video compression
+            with minimal CPU overhead.
+
+            Features:
+            - Hardware-accelerated encoding
+            - Low CPU usage
+            - Real-time compression capability
+            - Industry-standard H.264 format
+
+            Available on ESP32-P4 and other chips with H.264 codec support.
+
+            Best for: Video streaming, recording applications requiring
+            efficient compression with minimal CPU impact.
+
+    config ESP_VIDEO_ENABLE_HW_JPEG_VIDEO_DEVICE
         bool "Enable Hardware JPEG based Video Device"
         depends on SOC_JPEG_CODEC_SUPPORTED
         select ESP_VIDEO_ENABLE_JPEG_VIDEO_DEVICE
         default n
         help
-            Select this option, enable hardware JPEG based video device.
+            Enable hardware-accelerated JPEG image compression video device support.
+
+            Uses dedicated JPEG encoding hardware for efficient image compression
+            with minimal CPU overhead.
+
+            Features:
+            - Hardware-accelerated compression
+            - Low CPU usage
+            - Fast encoding speed
+            - Standard JPEG format output
+
+            Available on ESP32-P4 and other chips with JPEG codec support.
+
+            Best for: Image capture, surveillance systems, and applications
+            requiring fast JPEG compression.
 
     menuconfig ESP_VIDEO_ENABLE_ISP_VIDEO_DEVICE
         bool "Enable ISP based Video Device"
@@ -86,8 +171,19 @@ menu "Espressif Video Configuration"
         default y
         select ESP_VIDEO_ENABLE_ISP
         help
-            Select this option, enable ISP based video device. When using
-            camera sensor's internal ISP, this option can be disable.
+            Enable Image Signal Processor (ISP) video device support.
+
+            The ISP provides advanced image processing capabilities including
+            color correction, noise reduction, and format conversion.
+
+            Features:
+            - Hardware-accelerated image processing
+            - Auto exposure, white balance, focus algorithms
+            - Color space conversion
+            - Noise reduction and enhancement
+
+            Note: This can be disabled if using camera sensors with
+            built-in ISP capabilities to avoid redundant processing.
 
     if ESP_VIDEO_ENABLE_ISP_VIDEO_DEVICE
 
@@ -95,10 +191,15 @@ menu "Espressif Video Configuration"
             bool "Enable ISP Pipeline Controller"
             default n
             help
-                Select this option, enable ISP pipeline controller by creating
-                the task "isp_task". This task reads statistics from the ISP
-                statistics module, passes statistics to the image process algorithm
-                module, and writes calculated data to the ISP or sensor.
+                Enable the ISP pipeline controller for automated image processing.
+
+                Creates a dedicated task ("isp_task") that:
+                - Reads statistics from ISP hardware modules
+                - Processes data through image processing algorithms
+                - Applies calculated adjustments to ISP or sensor settings
+
+                This provides automatic image quality optimization without
+                requiring manual intervention from the application.
 
         if ESP_VIDEO_ENABLE_ISP_PIPELINE_CONTROLLER
 
@@ -108,16 +209,31 @@ menu "Espressif Video Configuration"
                 depends on SPIRAM
                 select FREERTOS_TASK_CREATE_ALLOW_EXT_MEM
                 help
-                    Select this option to use PSRAM for the ISP controller task stack instead of DRAM.
-                    Default is 'n' because using DRAM provides better performance and avoids potential
-                    issues with PSRAM availability or access speed.
-        
+                    Use external PSRAM for the ISP controller task stack instead of internal DRAM.
+
+                    Trade-offs:
+                    - PSRAM: Lower memory pressure on DRAM, but potentially slower access
+                    - DRAM: Better performance and lower latency, but uses precious internal memory
+
+                    Recommended: Keep disabled (use DRAM) for better performance unless
+                    internal memory is severely constrained.
+
             config ESP_VIDEO_ISP_PIPELINE_CONTROL_CAMERA_MOTOR
                 bool "ISP Pipeline Control Camera Motor"
                 default y
                 depends on ESP_VIDEO_ENABLE_CAMERA_MOTOR_CONTROLLER && ESP_IPA_AF_ALGORITHM
                 help
                     Select this option, ISP pipeline controller will control the camera motor by IPA AF algorithm.
+
+                    Allow the ISP pipeline controller to automatically control the camera's
+                    autofocus motor using the Auto Focus (AF) algorithm.
+
+                    This provides hands-free autofocus operation without requiring
+                    application intervention.
+
+                    Requirements:
+                    - Compatible autofocus motor hardware
+                    - AF algorithm enabled in IPA configuration
         endif
     endif
 
@@ -126,7 +242,13 @@ menu "Espressif Video Configuration"
         default y
         depends on CAMERA_MOTOR_DEVICE_USED
         help
-            Select this option, enable camera motor controller to set the focus of the camera.
+            Enable support for camera autofocus motor control.
+
+            Provides a standardized interface for controlling Voice Coil Motors (VCM)
+            and other autofocus actuators commonly used in camera modules.
+
+            Required for camera modules with autofocus capabilities.
+            Disable if using only fixed-focus lenses.
 
     rsource "./src/data_reprocessing/Kconfig.data_reprocessing"
 endmenu

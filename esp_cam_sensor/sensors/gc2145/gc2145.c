@@ -750,12 +750,12 @@ static esp_err_t gc2145_set_format(esp_cam_sensor_device_t *dev, const esp_cam_s
     if (format == NULL) {
 #if CONFIG_SOC_MIPI_CSI_SUPPORTED
         if (dev->sensor_port == ESP_CAM_SENSOR_MIPI_CSI) {
-            format = &gc2145_format_info_mipi[CONFIG_CAMERA_GC2145_MIPI_IF_FORMAT_INDEX_DAFAULT];
+            format = &gc2145_format_info_mipi[CONFIG_CAMERA_GC2145_MIPI_IF_FORMAT_INDEX_DEFAULT];
         }
 #endif
 #if CONFIG_SOC_LCDCAM_CAM_SUPPORTED
         if (dev->sensor_port == ESP_CAM_SENSOR_DVP) {
-            format = &gc2145_format_info_dvp[CONFIG_CAMERA_GC2145_DVP_IF_FORMAT_INDEX_DAFAULT];
+            format = &gc2145_format_info_dvp[CONFIG_CAMERA_GC2145_DVP_IF_FORMAT_INDEX_DEFAULT];
         }
 #endif
     }
@@ -933,13 +933,13 @@ esp_cam_sensor_device_t *gc2145_detect(esp_cam_sensor_config_t *config)
     dev->ops = &gc2145_ops;
 #if CONFIG_SOC_MIPI_CSI_SUPPORTED
     if (config->sensor_port == ESP_CAM_SENSOR_MIPI_CSI) {
-        dev->cur_format = &gc2145_format_info_mipi[CONFIG_CAMERA_GC2145_MIPI_IF_FORMAT_INDEX_DAFAULT];
+        dev->cur_format = &gc2145_format_info_mipi[CONFIG_CAMERA_GC2145_MIPI_IF_FORMAT_INDEX_DEFAULT];
     }
 #endif
 
 #if CONFIG_SOC_LCDCAM_CAM_SUPPORTED
     if (config->sensor_port == ESP_CAM_SENSOR_DVP) {
-        dev->cur_format = &gc2145_format_info_dvp[CONFIG_CAMERA_GC2145_DVP_IF_FORMAT_INDEX_DAFAULT];
+        dev->cur_format = &gc2145_format_info_dvp[CONFIG_CAMERA_GC2145_DVP_IF_FORMAT_INDEX_DEFAULT];
     }
 #endif
 
