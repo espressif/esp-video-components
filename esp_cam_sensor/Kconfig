@@ -46,6 +46,27 @@ menu "Espressif Camera Sensors Configurations"
 
                 Note: This option only applies to OV2640 and BF3901 sensors.
                 For other sensors, use ESP_VIDEO_ENABLE_SWAP_BYTE (ESP32-P4 only).
+
+        config CAMERA_SENSOR_XCLK_INPUT_24M
+            bool
+            default y if IDF_TARGET_ESP32P4 || IDF_TARGET_ESP32S3 || IDF_TARGET_ESP32C5
+            default n
+            depends on CAMERA_BF3901
+            help
+                Internal configuration flag indicating whether the chip can output 24MHz XCLK.
+
+                24MHz is a commonly used external clock frequency for CMOS camera sensors.
+                When enabled, the sensor will be configured to use timing parameters
+                optimized for 24MHz XCLK input.
+
+                This setting affects:
+                - Sensor register configuration for optimal performance at 24MHz
+                - Frame rate and timing calculations
+                - Power consumption characteristics
+
+                Note: This configuration is sensor-specific and currently only
+                applies to BF3901 sensor. Other sensors may have different
+                optimal XCLK frequencies.
     endmenu
 
     menu "Camera XCLK Generator Configuration"
