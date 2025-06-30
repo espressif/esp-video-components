@@ -397,7 +397,7 @@ static esp_err_t sc035hgs_set_reg_bits(esp_sccb_io_handle_t sccb_handle, uint16_
         return ret;
     }
     uint8_t mask = ((1 << length) - 1) << offset;
-    value = (ret & ~mask) | ((value << offset) & mask);
+    value = (reg_data & ~mask) | ((value << offset) & mask);
     ret = sc035hgs_write(sccb_handle, reg, value);
     return ret;
 }

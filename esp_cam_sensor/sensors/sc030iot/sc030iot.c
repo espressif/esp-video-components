@@ -199,7 +199,7 @@ static esp_err_t sc030iot_write_reg_bits_a16v8(esp_sccb_io_handle_t sccb_handle,
         return ret;
     }
     uint8_t mask = ((1 << length) - 1) << offset;
-    value = (ret & ~mask) | ((value << offset) & mask);
+    value = (reg_data & ~mask) | ((value << offset) & mask);
     ret = sc030iot_write_a16v8(sccb_handle, reg, value);
     return ret;
 }

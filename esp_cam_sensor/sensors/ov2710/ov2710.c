@@ -153,7 +153,7 @@ static esp_err_t ov2710_set_reg_bits(esp_sccb_io_handle_t sccb_handle, uint16_t 
         return ret;
     }
     uint8_t mask = ((1 << length) - 1) << offset;
-    value = (ret & ~mask) | ((value << offset) & mask);
+    value = (reg_data & ~mask) | ((value << offset) & mask);
     ret = ov2710_write(sccb_handle, reg, value);
     return ret;
 }
