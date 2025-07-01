@@ -10,12 +10,24 @@ Now we have implementations based on:
 - esp_h264
 - esp_ipa
 
+## Supported SoCs and Interfaces
+
+| SoC | MIPI-CSI Video Device | DVP Video Device | SPI Video Device | JPEG Video Device | H.264 Video Device | ISP Video Device |
+|:-:|:-:|:-:|:-:|:-:|:-:|:-:|
+| ESP32-P4 | Y   | Y   | Y | Y | Y | Y |
+| ESP32-S3 | N/A | Y   | Y | N/A | N/A | N/A |
+| ESP32-C3 | N/A | N/A | Y | N/A | N/A | N/A |
+| ESP32-C5 | N/A | N/A | Y | N/A | N/A | N/A |
+| ESP32-C6 | N/A | N/A | Y | N/A | N/A | N/A |
+| ESP32-C61 | N/A | N/A | Y | N/A | N/A | N/A |
+
 ## Video Device
 
 | Hardware | Video Device | Type | Input Format | Output Format |
 |:-:|:-:|:-:|:-|:-|
 | MIPI-CSI | /dev/video0 | Capture | / | camera output pixel format or ISP output format(1) |
 | DVP | /dev/video2 | Capture  | / | camera output pixel format |
+| SPI | /dev/video3 | Capture  | / | camera output pixel format |
 | JPEG encode | /dev/video10 | M2M | RGB565: V4L2_PIX_FMT_RGB565<br> RGB888: V4L2_PIX_FMT_RGB24<br> YUV422: V4L2_PIX_FMT_YUV422P<br> Gray8: V4L2_PIX_FMT_GREY | JPEG: V4L2_PIX_FMT_JPEG |
 | H.264 encode | /dev/video11 | M2M | YUV420: V4L2_PIX_FMT_YUV420 | H.264: V4L2_PIX_FMT_H264 |
 | ISP | /dev/video20 | Meta | camera output pixel format  | Metadata: V4L2_META_FMT_ESP_ISP_STATS |

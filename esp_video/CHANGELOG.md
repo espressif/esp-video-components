@@ -1,4 +1,4 @@
-## Unreleased
+## 1.1.0
 
 - Add SPI video device and board-level configuration
 - Add ESP32-S3/C3/C5/C6/C61 platforms
