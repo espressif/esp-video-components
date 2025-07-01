@@ -46,37 +46,50 @@ When using "ESP32-XX-DevKitC" development boards, you can try the default GPIO p
 
 | Hardware | ESP32-P4 | ESP32-S3 | ESP32-C3 | ESP32-C6 | ESP32-C61 | ESP32-C5 |
 |:-:|:-:|:-:|:-:|:-:|:-:|:-:|
-| MIPI-CSI I2C SCL Pin        |  8 | NA | NA | NA | NA | NA |
-| MIPI-CSI I2C SDA Pin        |  7 | NA | NA | NA | NA | NA |
-| MIPI-CSI I2C Reset Pin      | NA | NA | NA | NA | NA | NA |
-| MIPI-CSI I2C Power-down Pin | NA | NA | NA | NA | NA | NA |
-| MIPI-CSI I2C XCLK           | NA | NA | NA | NA | NA | NA |
+| MIPI-CSI CAM I2C SCL Pin        |  8 | NA | NA | NA | NA | NA |
+| MIPI-CSI CAM I2C SDA Pin        |  7 | NA | NA | NA | NA | NA |
+| MIPI-CSI CAM I2C Reset Pin      | NA | NA | NA | NA | NA | NA |
+| MIPI-CSI CAM I2C Power-down Pin | NA | NA | NA | NA | NA | NA |
+| MIPI-CSI CAM I2C XCLK           | NA | NA | NA | NA | NA | NA |
 |   |   |   |   |
-| DVP I2C SCL Pin             |  8 |  5 | NA | NA | NA | NA |
-| DVP I2C SDA Pin             |  7 |  4 | NA | NA | NA | NA |
-| DVP I2C Reset Pin           | NA | NA | NA | NA | NA | NA |
-| DVP I2C Power-down Pin      | NA | NA | NA | NA | NA | NA |
-| DVP XCLK Pin                | 20 | 15 | NA | NA | NA | NA |
-| DVP PCLK Pin                |  4 | 13 | NA | NA | NA | NA |
-| DVP V-SYNC Pin              | 37 |  6 | NA | NA | NA | NA |
-| DVP DE Pin                  | 22 |  7 | NA | NA | NA | NA |
-| DVP D0 Pin                  |  2 | 11 | NA | NA | NA | NA |
-| DVP D1 Pin                  | 32 |  9 | NA | NA | NA | NA |
-| DVP D2 Pin                  | 33 |  8 | NA | NA | NA | NA |
-| DVP D3 Pin                  | 23 | 10 | NA | NA | NA | NA |
-| DVP D4 Pin                  |  3 | 12 | NA | NA | NA | NA |
-| DVP D5 Pin                  |  6 | 18 | NA | NA | NA | NA |
-| DVP D6 Pin                  |  5 | 17 | NA | NA | NA | NA |
-| DVP D7 Pin                  | 21 | 16 | NA | NA | NA | NA |
+| DVP CAM I2C SCL Pin             |  8 |  5 | NA | NA | NA | NA |
+| DVP CAM I2C SDA Pin             |  7 |  4 | NA | NA | NA | NA |
+| DVP CAM I2C Reset Pin           | NA | NA | NA | NA | NA | NA |
+| DVP CAM I2C Power-down Pin      | NA | NA | NA | NA | NA | NA |
+| DVP CAM XCLK Pin                | 20 | 15 | NA | NA | NA | NA |
+| DVP CAM PCLK Pin                |  4 | 13 | NA | NA | NA | NA |
+| DVP CAM V-SYNC Pin              | 37 |  6 | NA | NA | NA | NA |
+| DVP CAM DE Pin                  | 22 |  7 | NA | NA | NA | NA |
+| DVP CAM D0 Pin                  |  2 | 11 | NA | NA | NA | NA |
+| DVP CAM D1 Pin                  | 32 |  9 | NA | NA | NA | NA |
+| DVP CAM D2 Pin                  | 33 |  8 | NA | NA | NA | NA |
+| DVP CAM D3 Pin                  | 23 | 10 | NA | NA | NA | NA |
+| DVP CAM D4 Pin                  |  3 | 12 | NA | NA | NA | NA |
+| DVP CAM D5 Pin                  |  6 | 18 | NA | NA | NA | NA |
+| DVP CAM D6 Pin                  |  5 | 17 | NA | NA | NA | NA |
+| DVP CAM D7 Pin                  | 21 | 16 | NA | NA | NA | NA |
 |   |   |   |   |
-| SPI I2C SCL Pin             |  8 |  5 |  5 |  5 |  5 |  5 |
-| SPI I2C SDA Pin             |  7 |  4 |  4 |  4 |  4 |  4 |
-| SPI I2C Reset Pin           | NA | NA | NA | NA | NA | NA |
-| SPI I2C Power-down Pin      | NA | NA | NA | NA | NA | NA |
-| SPI XCLK Pin                | 20 | 15 |  8 |  0 |  0 |  0 |
-| SPI CS Pin                  | 37 |  6 | 10 |  1 |  8 | 10 |
-| SPI SCLK Pin                |  4 | 13 |  6 |  6 |  6 |  6 |
-| SPI Data0 I/O Pin           | 21 | 16 |  7 |  7 |  7 |  7 |
+| SPI CAM0 I2C SCL Pin             |  8 |  5 |  5 |  5 |  5 |  5 |
+| SPI CAM0 I2C SDA Pin             |  7 |  4 |  4 |  4 |  4 |  4 |
+| SPI CAM0 I2C Reset Pin           | NA | NA | NA | NA | NA | NA |
+| SPI CAM0 I2C Power-down Pin      | NA | NA | NA | NA | NA | NA |
+| SPI CAM0 XCLK Pin                | 20 | 15 |  8 |  0 |  0 |  0 |
+| SPI CAM0 CS Pin                  | 37 |  6 | 10 |  1 |  8 | 10 |
+| SPI CAM0 SCLK Pin                |  4 | 13 |  6 |  6 |  6 |  6 |
+| SPI CAM0 Data0 I/O Pin           | 21 | 16 |  7 |  7 |  7 |  7 |
+|   |   |   |   |
+| SPI CAM1 I2C SCL Pin             |  5 |  1 | NA | NA | NA | NA |
+| SPI CAM1 I2C SDA Pin             |  6 |  2 | NA | NA | NA | NA |
+| SPI CAM1 I2C Reset Pin           | NA | NA | NA | NA | NA | NA |
+| SPI CAM1 I2C Power-down Pin      | NA | NA | NA | NA | NA | NA |
+| SPI CAM1 XCLK Pin                | 23 | 39 | NA | NA | NA | NA |
+| SPI CAM1 CS Pin                  | 38 | 42 | NA | NA | NA | NA |
+| SPI CAM1 SCLK Pin                | 22 | 41 | NA | NA | NA | NA |
+| SPI CAM1 Data0 I/O Pin           |  3 | 40 | NA | NA | NA | NA |
+
+**Note 1**: Only SoCs that have more than one SPI port, except for SPI flash and SPI RAM ports, can use the SPI CAM0 and SPI CAM1 simultaneously.
+
+**Note 2**: If the SPI CAM0 and SPI CAM1 use the same camera sensor and it only owns one I2C slave address, the SPI CAM0 and SPI CAM1 should use different I2C ports to communicate with their target camera sensor.
 
 ## Usage Instructions
 
@@ -235,6 +248,63 @@ Example Video Initialization Configuration  --->
             (37) Chip Select Pin
             (4) Clock Pin
             (21) Data0 I/O Pin
+```
+
+### Dual SPI Camera Sensors
+
+***ESP32-P4*** and ***ESP32-S3*** have more than two SPI ports (where one port is used for SPI flash and SPIRAM), allowing these two SoCs to connect to dual SPI camera sensors. To enable dual SPI camera sensors, first enable the following configuration:
+
+```
+Component config  --->
+    Espressif Video Configuration  --->
+        [*] Enable SPI based Video Device  --->
+            [*] Enable The Second SPI Video Device
+```
+
+Then select the "Customized Development Board" configuration, as there is currently no dedicated dual SPI camera sensor development board available:
+
+```
+Example Video Initialization Configuration  --->
+    Select Target Development Board (Customized Development Board)  --->
+        ......
+        (X) Customized Development Board
+```
+
+Configure the GPIO pins according to your board specifications:
+
+```
+Example Video Initialization Configuration  --->
+    Select and Set Camera Sensor Interface  --->
+        [*] SPI Camera Sensor 0  --->
+            (0) SCCB(I2C) Port Number
+            (100000) SCCB(I2C) Frequency (100K-400K Hz)
+            (2) SPI Port Number
+                Select XCLK Source (ESP Clock Router)  --->
+            (24000000) XCLK Frequency (Hz)
+            (8) SCCB(I2C) SCL Pin (NEW)
+            (7) SCCB(I2C) SDA Pin (NEW)
+            (-1) Reset Pin (NEW)
+            (-1) Power Down Pin (NEW)
+            (20) XCLK Output Pin (NEW)
+            (37) Chip Select Pin (NEW)
+            (4) Clock Pin (NEW)
+            (21) Data0 I/O Pin (NEW)
+       [*] SPI Camera Sensor 1  --->
+            (1) SCCB(I2C) Port Number
+            (100000) SCCB(I2C) Frequency (100K-400K Hz)
+            (1) SPI Port Number
+                Select XCLK Source (LEDC Timer)  --->
+            (20000000) XCLK Frequency (Hz)
+            (1) XCLK LEDC Timer Number
+            (1) XCLK LEDC Timer Channel
+            (5) SCCB(I2C) SCL Pin (NEW)
+            (6) SCCB(I2C) SDA Pin (NEW)
+            (-1) Reset Pin (NEW)
+            (-1) Power Down Pin (NEW)
+            (23) XCLK Output Pin (NEW)
+            (38) Chip Select Pin (NEW)
+            (22) Clock Pin (NEW)
+            (3) Data0 I/O Pin (NEW)
 ```
 
 ### Use Pre-initialized SCCB(I2C) Bus

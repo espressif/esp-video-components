@@ -28,13 +28,15 @@ Now we have implementations based on:
 |:-:|:-:|:-:|:-|:-|
 | MIPI-CSI | /dev/video0 | Capture | / | camera output pixel format or ISP output format(1) |
 | DVP | /dev/video2 | Capture  | / | camera output pixel format |
-| SPI | /dev/video3 | Capture  | / | camera output pixel format |
+| SPI0 | /dev/video3 | Capture  | / | camera output pixel format |
+| SPI1(2) | /dev/video4 | Capture  | / | camera output pixel format |
 | USB | /dev/video40 | Capture  | / | camera output pixel format |
 | JPEG encode | /dev/video10 | M2M | RGB565: V4L2_PIX_FMT_RGB565<br> RGB888: V4L2_PIX_FMT_RGB24<br> YUV422: V4L2_PIX_FMT_YUV422P<br> Gray8: V4L2_PIX_FMT_GREY | JPEG: V4L2_PIX_FMT_JPEG |
 | H.264 encode | /dev/video11 | M2M | YUV420: V4L2_PIX_FMT_YUV420 | H.264: V4L2_PIX_FMT_H264 |
 | ISP | /dev/video20 | Meta | camera output pixel format  | Metadata: V4L2_META_FMT_ESP_ISP_STATS |
 
 - (1): if camera output pixel format is RAW8, ISP can transform it to other pixel format: RGB565, RGB888, YUV420 and YUV422
+- (2): select option `ESP_VIDEO_ENABLE_THE_SECOND_SPI_VIDEO_DEVICE` to enable the second SPI video device
 
 ## V4L2 Control IDs
 

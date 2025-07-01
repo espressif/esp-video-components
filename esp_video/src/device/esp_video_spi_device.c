@@ -363,17 +363,30 @@ static const struct esp_video_ops s_spi_video_ops = {
  *
  * @param cam_dev       Camera sensor device
  * @param config        SPI video device configuration
+ * @param index         SPI video device index
  *
  * @return
  *      - ESP_OK on success
  *      - Others if failed
  */
-esp_err_t esp_video_create_spi_video_device(esp_cam_sensor_device_t *cam_dev, const esp_video_spi_device_config_t *config)
+esp_err_t esp_video_create_spi_video_device(esp_cam_sensor_device_t *cam_dev, const esp_video_spi_device_config_t *config, uint8_t index)
 {
+    const char *name;
+    uint8_t id;
     struct esp_video *video;
     struct spi_video *spi_video;
     uint32_t device_caps = V4L2_CAP_VIDEO_CAPTURE | V4L2_CAP_EXT_PIX_FORMAT | V4L2_CAP_STREAMING;
     uint32_t caps = device_caps | V4L2_CAP_DEVICE_CAPS;
+
+    if (index == 0) {
+        name = ESP_VIDEO_SPI_DEVICE_0_NAME;
+        id = ESP_VIDEO_SPI_DEVICE_0_ID;
+    } else if (index == 1) {
+        name = ESP_VIDEO_SPI_DEVICE_1_NAME;
+        id = ESP_VIDEO_SPI_DEVICE_1_ID;
+    } else {
+        return ESP_ERR_INVALID_ARG;
+    }
 
     spi_video = heap_caps_calloc(1, sizeof(struct spi_video), MALLOC_CAP_8BIT | MALLOC_CAP_INTERNAL);
     if (!spi_video) {
@@ -383,7 +396,7 @@ esp_err_t esp_video_create_spi_video_device(esp_cam_sensor_device_t *cam_dev, co
     spi_video->cam.sensor = cam_dev;
     spi_video->spi_config = *config;
 
-    video = esp_video_create(SPI_NAME, ESP_VIDEO_SPI_DEVICE_ID, &s_spi_video_ops, spi_video, caps, device_caps);
+    video = esp_video_create(name, id, &s_spi_video_ops, spi_video, caps, device_caps);
     if (!video) {
         heap_caps_free(spi_video);
         return ESP_FAIL;
@@ -395,19 +408,28 @@ esp_err_t esp_video_create_spi_video_device(esp_cam_sensor_device_t *cam_dev, co
 /**
  * @brief Destroy SPI video device
  *
- * @param None
+ * @param index         SPI video device index
  *
  * @return
  *      - ESP_OK on success
  *      - Others if failed
  */
-esp_err_t esp_video_destroy_spi_video_device(void)
+esp_err_t esp_video_destroy_spi_video_device(uint8_t index)
 {
     esp_err_t ret;
+    const char *name;
     struct esp_video *video;
     struct spi_video *spi_video;
 
-    video = esp_video_device_get_object(SPI_NAME);
+    if (index == 0) {
+        name = ESP_VIDEO_SPI_DEVICE_0_NAME;
+    } else if (index == 1) {
+        name = ESP_VIDEO_SPI_DEVICE_1_NAME;
+    } else {
+        return ESP_ERR_INVALID_ARG;
+    }
+
+    video = esp_video_device_get_object(name);
     if (!video) {
         return ESP_ERR_NOT_FOUND;
     }
@@ -427,18 +449,27 @@ esp_err_t esp_video_destroy_spi_video_device(void)
 /**
  * @brief Get the sensor connected to SPI video device
  *
- * @param None
+ * @param index         SPI video device index
  *
  * @return
  *      - Sensor pointer on success
  *      - NULL if failed
  */
-esp_cam_sensor_device_t *esp_video_get_spi_video_device_sensor(void)
+esp_cam_sensor_device_t *esp_video_get_spi_video_device_sensor(uint8_t index)
 {
+    const char *name;
     struct esp_video *video;
     struct spi_video *spi_video;
 
-    video = esp_video_device_get_object(SPI_NAME);
+    if (index == 0) {
+        name = ESP_VIDEO_SPI_DEVICE_0_NAME;
+    } else if (index == 1) {
+        name = ESP_VIDEO_SPI_DEVICE_1_NAME;
+    } else {
+        return NULL;
+    }
+
+    video = esp_video_device_get_object(name);
     if (!video) {
         return NULL;
     }

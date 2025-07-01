@@ -99,7 +99,7 @@ menu "Espressif Video Configuration"
             Suitable for moderate resolution sensors and applications
             where MIPI-CSI is not available.
 
-    config ESP_VIDEO_ENABLE_SPI_VIDEO_DEVICE
+    menuconfig ESP_VIDEO_ENABLE_SPI_VIDEO_DEVICE
         bool "Enable SPI based Video Device"
         depends on SOC_GPSPI_SUPPORTED
         select ESP_VIDEO_ENABLE_DATA_PREPROCESSING
@@ -123,6 +123,27 @@ menu "Espressif Video Configuration"
 
             Best for: Low-resolution sensors, prototype development,
             or applications with limited GPIO availability.
+
+    if ESP_VIDEO_ENABLE_SPI_VIDEO_DEVICE
+
+        config ESP_VIDEO_ENABLE_THE_SECOND_SPI_VIDEO_DEVICE
+            bool "Enable The Second SPI Video Device"
+            default n
+            depends on IDF_TARGET_ESP32P4 || IDF_TARGET_ESP32S3
+            help
+                Enable the second Serial Peripheral Interface (SPI) video device support.
+
+                Creates the second video device interface accessible at /dev/video4,
+                the device uses an extra SPI port for receiving image stream data from camera sensor.
+
+                Features:
+                - Serial data transmission protocol
+                - Compatible with SPI-based camera modules
+                - Lower GPIO pin count requirement compared to parallel interfaces,
+                  but still requires some GPIO pins for SPI communication.
+
+                Note: Requires ESP_VIDEO_ENABLE_SPI_VIDEO_DEVICE to be enabled.
+    endif
 
     menuconfig ESP_VIDEO_ENABLE_USB_UVC_VIDEO_DEVICE
         bool "Enable USB-UVC based Video Device"
