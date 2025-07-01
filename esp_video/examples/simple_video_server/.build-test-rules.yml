@@ -1,7 +1,6 @@
 esp_video/examples/simple_video_server:
   enable:
-    - if: IDF_TARGET in ["esp32p4", "esp32s3"]
-      reason: only support on esp32p4 and esp32s3
+    - if: IDF_TARGET in ["esp32p4", "esp32s3", "esp32c3", "esp32c6", "esp32c5"]
   depends_filepatterns:
     - simple_video_server/**/*
   depends_components:

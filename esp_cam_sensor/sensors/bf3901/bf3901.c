@@ -44,6 +44,7 @@ static const esp_cam_sensor_spi_frame_info bf3901_frame_info_spi[] = {
         .line_header_size = BF3901_LINE_HEADER_SIZE,
         .frame_header_check_size = 4,
         .line_header_check_size = 4,
+        .drop_frame_count = 1, // The 1st SPI packet is not the image data, so we need to drop it
     },
     {
         .frame_size = (240 * 2 + BF3901_LINE_HEADER_SIZE) * 240 + BF3901_FRAME_HEADER_SIZE,
@@ -54,6 +55,7 @@ static const esp_cam_sensor_spi_frame_info bf3901_frame_info_spi[] = {
         .line_header_size = BF3901_LINE_HEADER_SIZE,
         .frame_header_check_size = 4,
         .line_header_check_size = 4,
+        .drop_frame_count = 1,
     },
     {
         .frame_size = (120 * 2 + BF3901_LINE_HEADER_SIZE) * 160 + BF3901_FRAME_HEADER_SIZE,
@@ -64,6 +66,7 @@ static const esp_cam_sensor_spi_frame_info bf3901_frame_info_spi[] = {
         .line_header_size = BF3901_LINE_HEADER_SIZE,
         .frame_header_check_size = 4,
         .line_header_check_size = 4,
+        .drop_frame_count = 1,
     },
 };
 

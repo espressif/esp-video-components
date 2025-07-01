@@ -3,6 +3,10 @@ description: "Espressif camera sensor drivers, it is recommended to use with esp
 targets:
   - esp32p4
   - esp32s3
+  - esp32c3
+  - esp32c5
+  - esp32c6
+  - esp32c61
 url: https://github.com/espressif/esp-video-components/tree/master/esp_cam_sensor
 repository: https://github.com/espressif/esp-video-components.git
 issues: https://github.com/espressif/esp-video-components/issues

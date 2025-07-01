@@ -95,7 +95,7 @@ static const esp_video_init_spi_config_t s_spi_config = {
 #if CONFIG_EXAMPLE_SPI_CAM_XCLK_USE_LEDC
     .xclk_ledc_cfg = {
         .timer = EXAMPLE_SPI_CAM_XCLK_TIMER,
-        .clk_cfg = LEDC_SCLK,
+        .clk_cfg = LEDC_AUTO_CLK,
         .channel = EXAMPLE_SPI_CAM_XCLK_TIMER_CHANNEL,
     },
 #endif /* CONFIG_EXAMPLE_SPI_CAM_XCLK_USE_LEDC */

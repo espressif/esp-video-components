@@ -10,7 +10,7 @@
 #include "esp_heap_caps.h"
 #include "esp_log.h"
 #include "esp_attr.h"
-
+#include "esp_private/esp_cache_private.h"
 #include "driver/jpeg_encode.h"
 
 #include "esp_video.h"
@@ -18,8 +18,11 @@
 
 #define JPEG_NAME                       "JPEG"
 
-#define JPEG_DMA_ALIGN_BYTES            64
+#if CONFIG_SPIRAM
 #define JPEG_MEM_CAPS                   (MALLOC_CAP_8BIT | MALLOC_CAP_SPIRAM | MALLOC_CAP_CACHE_ALIGNED)
+#else
+#define JPEG_MEM_CAPS                   (MALLOC_CAP_8BIT | MALLOC_CAP_DMA)
+#endif
 
 #define JPEG_MAX_COMP_RATE              0.75
 
@@ -80,7 +83,15 @@ static esp_err_t jpeg_get_input_format_from_v4l2(uint32_t v4l2_format, jpeg_enc_
 
 static uint32_t jpeg_capture_size(uint32_t output_size)
 {
-    return ESP_VIDEO_ALIGN((uint32_t)(output_size * JPEG_MAX_COMP_RATE), JPEG_DMA_ALIGN_BYTES);
+    size_t alignments = 0;
+#if CONFIG_SPIRAM
+    ESP_RETURN_ON_ERROR(esp_cache_get_alignment(JPEG_MEM_CAPS, &alignments), TAG, "failed to get cache alignment");
+#else
+    alignments = 4;
+#endif
+    ESP_LOGD(TAG, "alignments=%zu", alignments);
+
+    return ESP_VIDEO_ALIGN((uint32_t)(output_size * JPEG_MAX_COMP_RATE), alignments);
 }
 
 static esp_err_t jpeg_video_m2m_process(struct esp_video *video, uint8_t *src, uint32_t src_size, uint8_t *dst, uint32_t dst_size, uint32_t *dst_out_size)
@@ -206,6 +217,14 @@ static esp_err_t jpeg_video_set_format(struct esp_video *video, const struct v4l
     const struct v4l2_pix_format *pix = &format->fmt.pix;
     struct jpeg_video *jpeg_video = VIDEO_PRIV_DATA(struct jpeg_video *, video);
 
+    size_t alignments = 0;
+#if CONFIG_SPIRAM
+    ESP_RETURN_ON_ERROR(esp_cache_get_alignment(JPEG_MEM_CAPS, &alignments), TAG, "failed to get cache alignment");
+#else
+    alignments = 4;
+#endif
+    ESP_LOGD(TAG, "alignments=%zu", alignments);
+
     if (format->type == V4L2_BUF_TYPE_VIDEO_CAPTURE) {
         uint32_t width = M2M_VIDEO_GET_OUTPUT_FORMAT_WIDTH(video);
         uint32_t height = M2M_VIDEO_GET_OUTPUT_FORMAT_HEIGHT(video);
@@ -226,7 +245,7 @@ static esp_err_t jpeg_video_set_format(struct esp_video *video, const struct v4l
         ESP_LOGD(TAG, "capture buffer size=%" PRIu32, buf_size);
 
         M2M_VIDEO_SET_CAPTURE_FORMAT(video, width, height, pix->pixelformat);
-        M2M_VIDEO_SET_CAPTURE_BUF_INFO(video, buf_size, JPEG_DMA_ALIGN_BYTES, JPEG_MEM_CAPS);
+        M2M_VIDEO_SET_CAPTURE_BUF_INFO(video, buf_size, alignments, JPEG_MEM_CAPS);
     } else if (format->type == V4L2_BUF_TYPE_VIDEO_OUTPUT) {
         uint8_t input_bpp;
         uint32_t width = M2M_VIDEO_GET_CAPTURE_FORMAT_WIDTH(video);
@@ -248,7 +267,7 @@ static esp_err_t jpeg_video_set_format(struct esp_video *video, const struct v4l
 
         ESP_LOGD(TAG, "output buffer size=%" PRIu32, buf_size);
 
-        M2M_VIDEO_SET_OUTPUT_BUF_INFO(video, buf_size, JPEG_DMA_ALIGN_BYTES, JPEG_MEM_CAPS);
+        M2M_VIDEO_SET_OUTPUT_BUF_INFO(video, buf_size, alignments, JPEG_MEM_CAPS);
         M2M_VIDEO_SET_OUTPUT_FORMAT(video, width, height, pix->pixelformat);
     } else {
         return ESP_ERR_NOT_SUPPORTED;

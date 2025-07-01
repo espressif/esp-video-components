@@ -1,9 +1,14 @@
 ## Unreleased
 
 - Add SPI video device and board-level configuration
-- Add ESP32-S3 platform
+- Add ESP32-S3/C3/C5/C6/C61 platforms
 - Fix open function crashes after failing to initialize the video device
 - Enhance the clarity and readability of prompt and help descriptions in Kconfig file
+
+### Enhancements
+
+- ESP32-C3/C5/C6/C61 only support SPI video device
+- ESP32-S3 supports the SPI and LCD_CAM DVP video devices, but only IDF v6.0.0 and later versions support LCD_CAM DVP for ESP32-S3
 
 ## 1.0.0
 

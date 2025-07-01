@@ -40,6 +40,44 @@ This component implements the board-level initialization for esp_video, includin
 
 * Note: ESP32-P4-Function-EV v1.4 board and ESP32-P4-EYE don't support the DVP interface camera sensor by default, so if you want to connect the DVP interface camera sensor to these boards, please select the customized board in the menu and configure the GPIO pin and clock based on the actual situation
 
+### Customized Development Board Default Configuration
+
+You can try the default GPIO pins configuration of the "Customized Development Board" in the following table when using the "ESP32-XX-DevKitC" development boards:
+
+| Hardware | ESP32-P4 | ESP32-S3 | ESP32-C3 | ESP32-C6 | ESP32-C61 | ESP32-C5 |
+|:-:|:-:|:-:|:-:|:-:|:-:|:-:|
+| MIPI-CSI I2C SCL Pin        |  8 | NA | NA | NA | NA | NA |
+| MIPI-CSI I2C SDA Pin        |  7 | NA | NA | NA | NA | NA |
+| MIPI-CSI I2C Reset Pin      | NA | NA | NA | NA | NA | NA |
+| MIPI-CSI I2C Power-down Pin | NA | NA | NA | NA | NA | NA |
+| MIPI-CSI I2C XCLK           | NA | NA | NA | NA | NA | NA |
+|   |   |   |   |
+| DVP I2C SCL Pin             |  8 |  5 | NA | NA | NA | NA |
+| DVP I2C SDA Pin             |  7 |  4 | NA | NA | NA | NA |
+| DVP I2C Reset Pin           | NA | NA | NA | NA | NA | NA |
+| DVP I2C Power-down Pin      | NA | NA | NA | NA | NA | NA |
+| DVP XCLK Pin                | 20 | 15 | NA | NA | NA | NA |
+| DVP PCLK Pin                |  4 | 13 | NA | NA | NA | NA |
+| DVP V-SYNC Pin              | 37 |  6 | NA | NA | NA | NA |
+| DVP DE Pin                  | 22 |  7 | NA | NA | NA | NA |
+| DVP D0 Pin                  |  2 | 11 | NA | NA | NA | NA |
+| DVP D1 Pin                  | 32 |  9 | NA | NA | NA | NA |
+| DVP D2 Pin                  | 33 |  8 | NA | NA | NA | NA |
+| DVP D3 Pin                  | 23 | 10 | NA | NA | NA | NA |
+| DVP D4 Pin                  |  3 | 12 | NA | NA | NA | NA |
+| DVP D5 Pin                  |  6 | 18 | NA | NA | NA | NA |
+| DVP D6 Pin                  |  5 | 17 | NA | NA | NA | NA |
+| DVP D7 Pin                  | 21 | 16 | NA | NA | NA | NA |
+|   |   |   |   |
+| SPI I2C SCL Pin             |  8 |  5 |  5 |  5 |  5 |  5 |
+| SPI I2C SDA Pin             |  7 |  4 |  4 |  4 |  4 |  4 |
+| SPI I2C Reset Pin           | NA | NA | NA | NA | NA | NA |
+| SPI I2C Power-down Pin      | NA | NA | NA | NA | NA | NA |
+| SPI XCLK Pin                | 20 | 15 |  8 |  0 |  0 |  0 |
+| SPI CS Pin                  | 37 |  6 | 10 |  1 |  8 | 10 |
+| SPI SCLK Pin                |  4 | 13 |  6 |  6 |  6 |  6 |
+| SPI Data0 I/O Pin           | 21 | 16 |  7 |  7 |  7 |  7 |
+
 ## How to use this component
 
 ### MIPI-CSI Development Kit
@@ -120,22 +158,22 @@ Example Video Initialization Configuration  --->
 
     ......
 
-    (33) DVP SCCB I2C SCL Pin
-    (32) DVP SCCB I2C SDA Pin
+    (8) DVP SCCB I2C SCL Pin
+    (7) DVP SCCB I2C SDA Pin
     (-1) DVP Camera Sensor Reset Pin
     (-1) DVP Camera Sensor Power Down Pin
     (20) DVP XCLK Pin
-    (21) DVP PCLK Pin
-    (23) DVP VSYNC Pin
+    (4) DVP PCLK Pin
+    (37) DVP VSYNC Pin
     (22) DVP DE Pin
-    (53) DVP D0 Pin
-    (54) DVP D1 Pin
-    (52) DVP D2 Pin
-    (1) DVP D3 Pin
-    (0) DVP D4 Pin
-    (45) DVP D5 Pin
-    (46) DVP D6 Pin
-    (47) DVP D7 Pin
+    (2) DVP D0 Pin
+    (32) DVP D1 Pin
+    (33) DVP D2 Pin
+    (23) DVP D3 Pin
+    (3) DVP D4 Pin
+    (6) DVP D5 Pin
+    (5) DVP D6 Pin
+    (21) DVP D7 Pin
 
     ......
 ```
