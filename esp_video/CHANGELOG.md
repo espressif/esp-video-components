@@ -1,3 +1,11 @@
+## Unreleased
+
+- Add dual camera web server
+- Add multiple camera sensor option in menuconfig
+- Add FPS calculation to DVP and SPI video device
+- Example encode function supports multiple resolutions
+- Fix compilation error when enabling DVP and MIPI-CSI detection of one sensor
+
 ## 1.1.0
 
 - Add SPI video device and board-level configuration

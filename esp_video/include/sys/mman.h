@@ -20,6 +20,8 @@ extern "C" {
 
 #define MAP_SHARED      (1 << 0)        /* Share this mapping */
 
+#define MAP_FAILED      NULL
+
 /**
  * @brief This is only used for video device to map video buffer to user side.
  *

@@ -20,7 +20,6 @@
 typedef struct example_encoder {
 #if CONFIG_EXAMPLE_SELECT_JPEG_HW_DRIVER
     jpeg_encode_cfg_t jpeg_enc_config;
-    jpeg_encoder_handle_t jpeg_handle;
 #else
     jpeg_enc_handle_t jpeg_handle;
 #endif
@@ -28,6 +27,14 @@ typedef struct example_encoder {
 } example_encoder_t;
 
 static const char *TAG = "example_encoder";
+
+#if CONFIG_EXAMPLE_SELECT_JPEG_HW_DRIVER
+/**
+ * @brief JPEG hardware encoder handle to provide a single instance for all video streams
+ */
+static jpeg_encoder_handle_t s_jpeg_hw_handle;
+static uint32_t s_jpeg_hw_ref_count;
+#endif
 
 /**
  * @brief Initialize the encoder
@@ -49,9 +56,9 @@ esp_err_t example_encoder_init(example_encoder_config_t *config, example_encoder
     uint32_t jpeg_enc_input_src_size;
 #if CONFIG_EXAMPLE_SELECT_JPEG_HW_DRIVER
     jpeg_encode_cfg_t jpeg_enc_config = {0};
-    jpeg_encoder_handle_t jpeg_handle;
+    jpeg_encoder_handle_t jpeg_handle = NULL;
 #else
-    jpeg_enc_handle_t jpeg_handle;
+    jpeg_enc_handle_t jpeg_handle = NULL;
     jpeg_enc_config_t jpeg_enc_config = {0};
 #endif
 
@@ -88,10 +95,12 @@ esp_err_t example_encoder_init(example_encoder_config_t *config, example_encoder
         return ESP_ERR_NOT_SUPPORTED;
     }
 
-    jpeg_encode_engine_cfg_t encode_eng_cfg = {
-        .timeout_ms = 5000,
-    };
-    ESP_RETURN_ON_ERROR(jpeg_new_encoder_engine(&encode_eng_cfg, &jpeg_handle), TAG, "failed to create jpeg encoder engine");
+    if (!s_jpeg_hw_handle) {
+        jpeg_encode_engine_cfg_t encode_eng_cfg = {
+            .timeout_ms = 5000,
+        };
+        ESP_RETURN_ON_ERROR(jpeg_new_encoder_engine(&encode_eng_cfg, &jpeg_handle), TAG, "failed to create jpeg encoder engine");
+    }
 #else
     jpeg_enc_config.quality = config->quality;
 
@@ -120,8 +129,14 @@ esp_err_t example_encoder_init(example_encoder_config_t *config, example_encoder
 
 #if CONFIG_EXAMPLE_SELECT_JPEG_HW_DRIVER
     encoder->jpeg_enc_config = jpeg_enc_config;
-#endif
+    if (!s_jpeg_hw_ref_count) {
+        s_jpeg_hw_ref_count++;
+        s_jpeg_hw_handle = jpeg_handle;
+    }
+#else
     encoder->jpeg_handle = jpeg_handle;
+#endif
+
     encoder->jpeg_out_buf_size = jpeg_enc_input_src_size * 3 / 4;
 
     *ret_handle = encoder;
@@ -148,6 +163,13 @@ fail0:
  */
 esp_err_t example_encoder_alloc_output_buffer(example_encoder_handle_t handle, uint8_t **buf, uint32_t *size)
 {
+#if CONFIG_EXAMPLE_SELECT_JPEG_HW_DRIVER
+    if (!s_jpeg_hw_ref_count) {
+        ESP_LOGE(TAG, "jpeg hardware encoder is not initialized");
+        return ESP_ERR_INVALID_STATE;
+    }
+#endif
+
     uint8_t *jpeg_out_buf;
     example_encoder_t *encoder = (example_encoder_t *)handle;
     if (!encoder || !buf || !size) {
@@ -188,6 +210,13 @@ esp_err_t example_encoder_alloc_output_buffer(example_encoder_handle_t handle, u
  */
 esp_err_t example_encoder_free_output_buffer(example_encoder_handle_t handle, uint8_t *buf)
 {
+#if CONFIG_EXAMPLE_SELECT_JPEG_HW_DRIVER
+    if (!s_jpeg_hw_ref_count) {
+        ESP_LOGE(TAG, "jpeg hardware encoder is not initialized");
+        return ESP_ERR_INVALID_STATE;
+    }
+#endif
+
     if (!buf || !handle) {
         ESP_LOGE(TAG, "invalid argument");
         return ESP_ERR_INVALID_ARG;
@@ -216,8 +245,14 @@ esp_err_t example_encoder_free_output_buffer(example_encoder_handle_t handle, ui
 esp_err_t example_encoder_process(example_encoder_handle_t handle, uint8_t *src_buf, uint32_t src_size,
                                   uint8_t *dst_buf, uint32_t dst_size, uint32_t *dst_size_out)
 {
+#if CONFIG_EXAMPLE_SELECT_JPEG_HW_DRIVER
+    if (!s_jpeg_hw_ref_count) {
+        ESP_LOGE(TAG, "jpeg hardware encoder is not initialized");
+        return ESP_ERR_INVALID_STATE;
+    }
+#endif
+
     if (!handle || !src_buf || !src_size || !dst_buf || !dst_size || !dst_size_out) {
-        ESP_LOGE(TAG, "invalid argument");
         return ESP_ERR_INVALID_ARG;
     }
 
@@ -225,7 +260,7 @@ esp_err_t example_encoder_process(example_encoder_handle_t handle, uint8_t *src_
     example_encoder_t *encoder = (example_encoder_t *)handle;
 
 #if CONFIG_EXAMPLE_SELECT_JPEG_HW_DRIVER
-    ret = jpeg_encoder_process(encoder->jpeg_handle, &encoder->jpeg_enc_config, src_buf, src_size, dst_buf, dst_size, dst_size_out);
+    ret = jpeg_encoder_process(s_jpeg_hw_handle, &encoder->jpeg_enc_config, src_buf, src_size, dst_buf, dst_size, dst_size_out);
 #else
     ret = jpeg_enc_process(encoder->jpeg_handle, src_buf, src_size, dst_buf, dst_size, (int *)dst_size_out);
 #endif
@@ -248,7 +283,15 @@ esp_err_t example_encoder_deinit(example_encoder_handle_t handle)
     }
 
 #if CONFIG_EXAMPLE_SELECT_JPEG_HW_DRIVER
-    jpeg_del_encoder_engine(encoder->jpeg_handle);
+    if (s_jpeg_hw_ref_count) {
+        s_jpeg_hw_ref_count--;
+        if (!s_jpeg_hw_ref_count) {
+            jpeg_del_encoder_engine(s_jpeg_hw_handle);
+            s_jpeg_hw_handle = NULL;
+        }
+    } else {
+        ESP_LOGW(TAG, "jpeg hardware encoder ref count already 0, possible double deinit");
+    }
 #else
     jpeg_enc_close(encoder->jpeg_handle);
 #endif

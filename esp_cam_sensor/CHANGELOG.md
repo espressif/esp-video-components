@@ -2,6 +2,7 @@
 
 ## Unreleased
 - Changed YUV422 sequence for SC030IOT, SC101IOT, GC0308, and BF3A03 sensors to depend on CONFIG_CAMERA_SENSOR_SWAP_PIXEL_BYTE_ORDER
+- Fixed OV2640 JPEG compression quality calculation issue.
 
 ## 1.2.1
 - Deprecated ledc intr type config

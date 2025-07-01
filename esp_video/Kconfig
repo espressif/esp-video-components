@@ -105,7 +105,8 @@ menu "Espressif Video Configuration"
         select ESP_VIDEO_ENABLE_DATA_PREPROCESSING
         select CAM_CTLR_SPI_DISABLE_BACKUP_BUFFER
         select CAM_CTLR_SPI_DISABLE_AUTO_DECODE
-        default n
+        default n if IDF_TARGET_ESP32P4 || IDF_TARGET_ESP32S3
+        default y
         help
             Enable Serial Peripheral Interface (SPI) video device support.
 
@@ -242,7 +243,7 @@ menu "Espressif Video Configuration"
     config ESP_VIDEO_ENABLE_CAMERA_MOTOR_CONTROLLER
         bool "Enable Camera Motor Controller"
         default y
-        depends on CAMERA_MOTOR_DEVICE_USED
+        depends on CAMERA_MOTOR_DEVICE_USED && ESP_VIDEO_ENABLE_ISP_VIDEO_DEVICE
         help
             Enable support for camera autofocus motor control.
 

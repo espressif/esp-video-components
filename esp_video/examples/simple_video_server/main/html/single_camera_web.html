@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    .title-bar {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      width: 100%;
+      padding: 15px 0;         
+      background-color: rgba(44, 62, 80, 0.9); 
+      color: white;
+      font-size: 32px;
+      font-weight: bold;
+      z-index: 20;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.6);
+    }
+    body {
+      background-color: #000;
+      overflow: hidden;
+      font-family: Arial, sans-serif;
+    }
+    .split-container {
+      display: flex;
+      height: 100vh;
+      overflow: hidden;
+      gap: 0;
+      justify-content: center;
+      align-items: center;
+      background: #000;
+      padding-top: 50px;
+    }
+    .original-size-img {
+      width: auto !important;
+      height: auto !important;
+      max-width: none !important;
+      object-fit: none;
+      flex-shrink: 0;
+      margin: 0 !important;
+    }
+    .button-group {
+      position: absolute;
+      top: 20px;
+      display: flex;
+      gap: 20px;
+      z-index: 10;
+    }
+    .left-group {
+      left: 20px;
+    }
+    .right-group {
+      right: 20px;
+    }
+    .action-btn {
+      padding: 12px 24px;
+      background: #2c3e50;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      font-size: 16px;
+      cursor: pointer;
+      transition: all 0.3s;
+    }
+    .action-btn:hover {
+      background: #3498db;
+      transform: translateY(-2px);
+      box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+    }
+    .action-btn:active {
+      transform: translateY(1px);
+    }
+  </style>
+</head>
+<body>
+  <div class="title-bar">ESP-Video Simple Video Server</div>
+
+  <div class="split-container">
+    <img src="http://%s:81/stream" 
+        class="original-size-img" 
+        id="stream_0">
+    
+    <div class="button-group left-group">
+      <button class="action-btn" id="captureBtn0">Capture Image</button>
+      <button class="action-btn" id="binaryBtn0">Capture Binary</button>
+    </div>
+  </div>
+
+  <script>
+    function getTimeWithMilliseconds() {
+        const now = new Date();
+        const year = now.getFullYear();
+        const month = String(now.getMonth() + 1).padStart(2, '0');
+        const day = String(now.getDate()).padStart(2, '0');
+        const hours = String(now.getHours()).padStart(2, '0');
+        const minutes = String(now.getMinutes()).padStart(2, '0');
+        const seconds = String(now.getSeconds()).padStart(2, '0');
+        const milliseconds = String(now.getMilliseconds()).padStart(3, '0');
+        
+        return `${year}-${month}-${day}-${hours}:${minutes}:${seconds}.${milliseconds}`;
+    }
+
+    let isSaving = false;
+
+    async function saveImage(data, filename, sourceIndex) {
+      console.log(`Saving image from source ${sourceIndex}: ${filename}`);
+      const blob = new Blob([data], { type: 'image/jpeg' });
+
+      if (isSaving) {
+        console.error('Error saving image: saving is in progress, please wait for the previous saving to complete');
+        return;
+      }
+
+      isSaving = true;
+      const url = URL.createObjectURL(blob);
+      try {
+        const split_data = filename.split('.');
+        const full_name = split_data[0] + '_' + getTimeWithMilliseconds() + '.' + split_data[1];
+
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = full_name;
+        document.body.appendChild(a);
+        a.click();
+
+        setTimeout(() => {
+          document.body.removeChild(a);
+          URL.revokeObjectURL(url);
+          isSaving = false;
+        }, 100);
+      } catch (error) {
+        console.error('Error saving image:', error);
+      }
+    }
+
+    async function handleCapture(imageType, sourceIndex) {
+      const response = await fetch(`http://%s:80/capture_${imageType}?source=${sourceIndex}`);
+      if (response.ok) {
+        const data = await response.arrayBuffer();
+        const name = await response.headers.get('Content-Type').split('name=')[1];
+        await saveImage(data, name, sourceIndex);
+      } else {
+        alert(`Capture ${imageType} ${sourceIndex} Failed`);
+      }
+    }
+
+    document.getElementById('captureBtn0').addEventListener('click', () => handleCapture('image', 0));
+    document.getElementById('binaryBtn0').addEventListener('click', () => handleCapture('binary', 0));
+
+    function setNaturalSize(img) {
+      img.width = img.naturalWidth;
+      img.height = img.naturalHeight;
+    }
+
+    document.getElementById('stream_0').onerror = function() {
+      console.error('Failed to load stream 0');
+      this.alt = 'Stream 0 unavailable';
+      this.style.backgroundColor = '#333';
+    };
+
+    document.getElementById('stream_0').onload = function() {
+      setNaturalSize(this);
+    };
+  </script>
+</body>
+</html>

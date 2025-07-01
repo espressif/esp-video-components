@@ -15,6 +15,15 @@ extern "C" {
 /**
  * @brief ESP32-P4-Function-EV-Board V1.4 configuration
  */
+
+/**
+ * @brief SCCB(I2C) pre-initialized port configuration
+ */
+#if CONFIG_EXAMPLE_SCCB_I2C_INIT_BY_APP
+#define EXAMPLE_SCCB_I2C_SCL_PIN_INIT_BY_APP            8
+#define EXAMPLE_SCCB_I2C_SDA_PIN_INIT_BY_APP            7
+#endif /* CONFIG_EXAMPLE_SCCB_I2C_INIT_BY_APP */
+
 #if CONFIG_EXAMPLE_ENABLE_MIPI_CSI_CAM_SENSOR
 /**
  * @brief MIPI-CSI camera sensor configuration
