@@ -72,15 +72,15 @@ static const esp_cam_sensor_spi_frame_info bf3901_frame_info_spi[] = {
 
 static const esp_cam_sensor_format_t bf3901_format_info_spi[] = {
     {
-        .name = "SPI_1bit_24Minput_RGB565_240x320_10fps",
+        .name = "SPI_1bit_24Minput_RGB565_240x320_15fps",
         .format = ESP_CAM_SENSOR_PIXFORMAT_RGB565,
         .port = ESP_CAM_SENSOR_SPI,
         .xclk = 24000000,
         .width = 240,
         .height = 320,
-        .regs = SPI_1bit_24Minput_240x320_rgb565_10fps,
-        .regs_size = ARRAY_SIZE(SPI_1bit_24Minput_240x320_rgb565_10fps),
-        .fps = 10,
+        .regs = SPI_1bit_24Minput_240x320_rgb565_15fps,
+        .regs_size = ARRAY_SIZE(SPI_1bit_24Minput_240x320_rgb565_15fps),
+        .fps = 15,
         .isp_info = NULL,
         .spi_info = {
             .rx_lines = 1,
@@ -89,15 +89,15 @@ static const esp_cam_sensor_format_t bf3901_format_info_spi[] = {
         .reserved = NULL,
     },
     {
-        .name = "SPI_1bit_24Minput_YUV422_240x320_10fps",
+        .name = "SPI_1bit_24Minput_YUV422_240x320_15fps",
         .format = ESP_CAM_SENSOR_PIXFORMAT_YUV422,
         .port = ESP_CAM_SENSOR_SPI,
         .xclk = 24000000,
         .width = 240,
         .height = 320,
-        .regs = SPI_1bit_24Minput_240x320_yuv422_10fps,
-        .regs_size = ARRAY_SIZE(SPI_1bit_24Minput_240x320_yuv422_10fps),
-        .fps = 10,
+        .regs = SPI_1bit_24Minput_240x320_yuv422_15fps,
+        .regs_size = ARRAY_SIZE(SPI_1bit_24Minput_240x320_yuv422_15fps),
+        .fps = 15,
         .isp_info = NULL,
         .spi_info = {
             .rx_lines = 1,

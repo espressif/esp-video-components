@@ -25,12 +25,12 @@
 extern "C" {
 #endif
 
-static const bf3901_reginfo_t SPI_1bit_24Minput_240x320_rgb565_10fps[] = {
+static const bf3901_reginfo_t SPI_1bit_24Minput_240x320_rgb565_15fps[] = {
     {0x09, 0x13}, // standby enable
     {BF3901_REG_DELAY, 0x01},
     {0x0b, 0x03}, // no frame header, frame end, line data packet; skip 2 frame
     {0x11, 0x30}, // CLKRC
-    {0x1b, 0x86}, // disable PLL
+    {0x1b, 0x06}, // disable PLL
     {0x6b, 0x41}, // Enable CCIR656; Enable CK-GATE subsample.
     {0x12, RGB}, // Zhan Xun or MTK CCIR; RGB565,
     {0x3a, G3LB5}, // Output YUV422/RGB565 Sequence,
@@ -38,7 +38,7 @@ static const bf3901_reginfo_t SPI_1bit_24Minput_240x320_rgb565_10fps[] = {
     {0x62, 0x81}, // SPI
     {0x08, 0xa0},
     {0x06, 0x68},
-    {0x2b, 0x20},
+    {0x2b, 0x06},
     {0x27, 0x97},
     {0x17, 0x01},
     {0x18, 0x79},
@@ -104,7 +104,7 @@ static const bf3901_reginfo_t SPI_1bit_24Minput_240x320_rgb565_10fps[] = {
     {0x84, 0x39},
     {0x85, 0x58},
     {0x86, 0x77},
-    {0x89, 0x74},
+    {0x89, 0x7d},
     {0x8a, 0x5c},
     {0x8b, 0x4c},
     {0x39, 0x98},
@@ -189,12 +189,12 @@ static const bf3901_reginfo_t SPI_1bit_24Minput_240x320_rgb565_10fps[] = {
     {0x98, 0x1a},
 };
 
-static const bf3901_reginfo_t SPI_1bit_24Minput_240x320_yuv422_10fps[] = {
+static const bf3901_reginfo_t SPI_1bit_24Minput_240x320_yuv422_15fps[] = {
     {0x09, 0x13}, // standby enable
     {BF3901_REG_DELAY, 0x01},
     {0x0b, 0x03}, // en frame header, frame end, line data packet; skip 2 frame
     {0x11, 0x30}, // CLKRC
-    {0x1b, 0x86}, // disable PLL
+    {0x1b, 0x06}, // disable PLL
     {0x6b, 0x41}, // Enable CCIR656; Enable CK-GATE subsample.
     {0x12, 0x00}, // Zhan Xun or MTK CCIR; YUV422,
     {0x3a, YUV422}, // Output YUV422 Sequence,
@@ -202,7 +202,7 @@ static const bf3901_reginfo_t SPI_1bit_24Minput_240x320_yuv422_10fps[] = {
     {0x62, 0x81}, // SPI
     {0x08, 0xa0}, // Bit[7]: Serial mode select for VCLK: 0: normal, 1: Serial mode
     {0x06, 0x68},
-    {0x2b, 0x20},
+    {0x2b, 0x06},
     {0x27, 0x97},
     {0x17, 0x01},
     {0x18, 0x79},
@@ -268,7 +268,7 @@ static const bf3901_reginfo_t SPI_1bit_24Minput_240x320_yuv422_10fps[] = {
     {0x84, 0x39},
     {0x85, 0x58},
     {0x86, 0x77},
-    {0x89, 0x74},
+    {0x89, 0x7d},
     {0x8a, 0x5c},
     {0x8b, 0x4c},
     {0x39, 0x98},

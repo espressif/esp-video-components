@@ -17,7 +17,7 @@ if CAMERA_BF3901
 
     choice CAMERA_BF3901_SPI_DEFAULT_FMT
         prompt "Select default output format for SPI interface"
-        default CAMERA_BF3901_SPI_YUV422_240X320_10FPS if CAMERA_SENSOR_XCLK_INPUT_24M
+        default CAMERA_BF3901_SPI_YUV422_240X320_15FPS if CAMERA_SENSOR_XCLK_INPUT_24M
         default CAMERA_BF3901_SPI_YUV422_120X160_5FPS
         help
             This option allows you to select the default video format for the BF3901 sensor
@@ -25,15 +25,15 @@ if CAMERA_BF3901
             when the sensor is detected and initialized, and can be changed later when the
             sensor is in stream off state.
 
-        config CAMERA_BF3901_SPI_RGB565_240X320_10FPS
-            bool "RGB565 240x320 10fps, SPI 1-bit, 24M input"
+        config CAMERA_BF3901_SPI_RGB565_240X320_15FPS
+            bool "RGB565 240x320 15fps, SPI 1-bit, 24M input"
             help
-                RGB565 color format at 240x320 resolution with 10fps framerate.
+                RGB565 color format at 240x320 resolution with 15fps framerate.
                 Requires 1-bit SPI interface with 24MHz input clock.
-        config CAMERA_BF3901_SPI_YUV422_240X320_10FPS
-            bool "YUV422 240x320 10fps, SPI 1-bit, 24M input"
+        config CAMERA_BF3901_SPI_YUV422_240X320_15FPS
+            bool "YUV422 240x320 15fps, SPI 1-bit, 24M input"
             help
-                YUV422 color format at 240x320 resolution with 10fps framerate.
+                YUV422 color format at 240x320 resolution with 15fps framerate.
                 Requires 1-bit SPI interface with 24MHz input clock.
         config CAMERA_BF3901_SPI_YUV422_240X320_12FPS
             bool "YUV422 240x320 12fps, SPI 1-bit, 20M input"
@@ -64,8 +64,8 @@ if CAMERA_BF3901
 
     config CAMERA_BF3901_SPI_IF_FORMAT_INDEX_DEFAULT
         int
-        default 0 if CAMERA_BF3901_SPI_RGB565_240X320_10FPS
-        default 1 if CAMERA_BF3901_SPI_YUV422_240X320_10FPS
+        default 0 if CAMERA_BF3901_SPI_RGB565_240X320_15FPS
+        default 1 if CAMERA_BF3901_SPI_YUV422_240X320_15FPS
         default 2 if CAMERA_BF3901_SPI_YUV422_240X320_12FPS
         default 3 if CAMERA_BF3901_SPI_YUV422_240X240_10FPS
         default 4 if CAMERA_BF3901_SPI_YUV422_120X160_10FPS
