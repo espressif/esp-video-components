@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2024 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2024-2025 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: ESPRESSIF MIT
  */
@@ -111,6 +111,17 @@ typedef struct esp_video_init_spi_config {
 #endif /* CONFIG_ESP_VIDEO_ENABLE_SPI_VIDEO_DEVICE */
 
 /**
+ * @brief UVC video device initialization configuration
+ */
+#if CONFIG_ESP_VIDEO_ENABLE_USB_UVC_VIDEO_DEVICE
+typedef struct esp_video_init_usb_uvc_config {
+    size_t task_stack;                          /*!< USB UVC video device task stack size */
+    unsigned task_priority;                     /*!< USB UVC video device task priority */
+    int task_affinity;                          /*!< USB UVC video device task affinity, -1 means no affinity */
+} esp_video_init_usb_uvc_config_t;
+#endif /* CONFIG_ESP_VIDEO_ENABLE_USB_UVC_VIDEO_DEVICE */
+
+/**
  * @brief JPEG initialization configuration
  */
 #if CONFIG_ESP_VIDEO_ENABLE_HW_JPEG_VIDEO_DEVICE
@@ -152,6 +163,9 @@ typedef struct esp_video_init_config {
 #endif
 #if CONFIG_ESP_VIDEO_ENABLE_SPI_VIDEO_DEVICE
     const esp_video_init_spi_config_t *spi;     /*!< SPI initialization configuration */
+#endif
+#if CONFIG_ESP_VIDEO_ENABLE_USB_UVC_VIDEO_DEVICE
+    const esp_video_init_usb_uvc_config_t *usb_uvc; /*!< USB UVC video device initialization configuration */
 #endif
 } esp_video_init_config_t;
 

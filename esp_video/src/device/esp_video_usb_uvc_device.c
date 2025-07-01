@@ -12,7 +12,7 @@
 
 #include "esp_video.h"
 #include "esp_video_device.h"
-#include "esp_video_device_usb_uvc.h"
+#include "esp_video_device_internal.h"
 #include "usb/uvc_host.h"
 #include "esp_private/uvc_esp_video.h"
 
@@ -98,7 +98,8 @@ static esp_err_t uvc_video_stop(struct esp_video *video, uint32_t type)
 static esp_err_t uvc_video_deinit(struct esp_video *video)
 {
     ESP_LOGD(TAG, "%s called", __func__);
-    return ESP_OK;
+    struct uvc_video *uvc_video = VIDEO_PRIV_DATA(struct uvc_video *, video);
+    return uvc_host_stream_close(uvc_video->uvc_dev); // Deinit means close in esp_video
 }
 
 static esp_err_t uvc_video_enum_format(struct esp_video *video, uint32_t type, uint32_t index, uint32_t *pixel_format)

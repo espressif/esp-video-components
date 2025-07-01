@@ -3,6 +3,7 @@
 - Add dual camera web server
 - Add multiple camera sensor option in menuconfig
 - Add FPS calculation to DVP and SPI video device
+- Add support for USB UVC streams
 - Example encode function supports multiple resolutions
 - Example simple_video_server uses a new web interface to display and control camera streams
 - Fix compilation error when enabling DVP and MIPI-CSI detection of one sensor
@@ -16,7 +17,6 @@
 - Fix video buffer sequence error
 - Fix esp_video_deinit error when using a sensor that has an internal ISP
 - Enhance the clarity and readability of prompt and help descriptions in Kconfig file
-- Add support for USB UVC streams
 
 ### Enhancements
 

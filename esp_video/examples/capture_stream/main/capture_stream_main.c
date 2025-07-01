@@ -26,7 +26,7 @@
 #endif
 
 #define BUFFER_COUNT 2
-#define CAPTURE_SECONDS 10
+#define CAPTURE_SECONDS 3
 
 static const char *TAG = "example";
 
@@ -286,7 +286,6 @@ exit_0:
     return ret;
 }
 
-esp_err_t esp_video_install_usb_uvc_driver(size_t task_stack, unsigned task_priority, int task_affinity);
 static void usb_lib_task(void *arg)
 {
     // Install USB Host driver. Should only be called once in entire application
@@ -296,9 +295,11 @@ static void usb_lib_task(void *arg)
         .intr_flags = ESP_INTR_FLAG_LEVEL1,
     };
     ESP_ERROR_CHECK(usb_host_install(&host_config));
-    ESP_ERROR_CHECK(esp_video_install_usb_uvc_driver(4096, 10, 0));
 
-    ESP_LOGI(TAG, "USB Host and UVC driver installed");
+    // Signalize the app_main, the USB host library has been installed
+    xTaskNotifyGive(arg);
+
+    ESP_LOGI(TAG, "USB Host installed");
     while (1) {
         // Start handling system events
         uint32_t event_flags;
@@ -316,19 +317,20 @@ static void usb_lib_task(void *arg)
 void app_main(void)
 {
     // Create a task that will handle USB library events
-    BaseType_t task_created = xTaskCreatePinnedToCore(usb_lib_task, "usb_lib", 4096, NULL, 11, NULL, tskNO_AFFINITY);
+    BaseType_t task_created = xTaskCreatePinnedToCore(usb_lib_task, "usb_lib", 4096, xTaskGetCurrentTaskHandle(), 11, NULL, tskNO_AFFINITY);
     assert(task_created == pdTRUE);
+    ulTaskNotifyTake(false, 1000); // Wait until the USB host library is installed
 
     esp_err_t ret = ESP_OK;
 
-    // ret = example_video_init();
-    // ESP_GOTO_ON_ERROR(ret, clean1, TAG, "Camera init failed");
+    ret = example_video_init();
+    ESP_GOTO_ON_ERROR(ret, clean1, TAG, "Camera init failed");
 
     ret = camera_capture_stream();
     ESP_GOTO_ON_ERROR(ret, clean0, TAG, "Camera capture stream failed");
 
 clean0:
-//     ESP_ERROR_CHECK(example_video_deinit());
-// clean1:
+    ESP_ERROR_CHECK(example_video_deinit());
+clean1:
     return;
 }
