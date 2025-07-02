@@ -31,12 +31,12 @@ struct esp_video_buffer_element;
 /**
  * @brief Video buffer element.
  */
-typedef SLIST_ENTRY(esp_video_buffer_element) esp_video_buffer_node_t;
+typedef TAILQ_ENTRY(esp_video_buffer_element) esp_video_buffer_node_t;
 
 /**
  * @brief Video buffer list.
  */
-typedef SLIST_HEAD(esp_video_buffer_list, esp_video_buffer_element) esp_video_buffer_list_t;
+typedef TAILQ_HEAD(esp_video_buffer_list, esp_video_buffer_element) esp_video_buffer_list_t;
 
 
 struct esp_video_buffer;

@@ -1317,3 +1317,15 @@ esp_err_t esp_video_isp_pipeline_deinit(void)
 
     return ESP_OK;
 }
+
+/**
+ * @brief Check if ISP pipeline is initialized.
+ *
+ * @return
+ *      - true if ISP pipeline is initialized
+ *      - false if ISP pipeline is not initialized
+ */
+bool esp_video_isp_pipeline_is_initialized(void)
+{
+    return s_esp_video_isp != NULL;
+}

@@ -126,7 +126,7 @@ extern "C" {
     esp_video_get_queued_element(v, V4L2_BUF_TYPE_VIDEO_CAPTURE)
 
 #define CAPTURE_VIDEO_GET_FIRST_DONE_ELEMENT_PTR(v)                     \
-    SLIST_FIRST(&CAPTURE_VIDEO_STREAM(v)->done_list)
+    TAILQ_FIRST(&CAPTURE_VIDEO_STREAM(v)->done_list)
 
 /* video M2M operations */
 

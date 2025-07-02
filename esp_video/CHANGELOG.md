@@ -3,6 +3,8 @@
 - Add SPI video device and board-level configuration
 - Add ESP32-S3/C3/C5/C6/C61 platforms
 - Fix open function crashes after failing to initialize the video device
+- Fix video buffer sequence error
+- Fix esp_video_deinit error when using a sensor that has an internal ISP
 - Enhance the clarity and readability of prompt and help descriptions in Kconfig file
 
 ### Enhancements

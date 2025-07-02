@@ -476,8 +476,8 @@ struct esp_video *esp_video_open(const char *name)
 
                 stream->buffer = NULL;
                 memset(&stream->param, 0, sizeof(struct esp_video_param));
-                SLIST_INIT(&stream->queued_list);
-                SLIST_INIT(&stream->done_list);
+                TAILQ_INIT(&stream->queued_list);
+                TAILQ_INIT(&stream->done_list);
             }
         }
     } else {
@@ -640,8 +640,8 @@ esp_err_t esp_video_stop_capture(struct esp_video *video, uint32_t type)
                     ret = xSemaphoreTake(stream->ready_sem, 0);
                 } while (ret == pdTRUE);
 
-                SLIST_INIT(&stream->queued_list);
-                SLIST_INIT(&stream->done_list);
+                TAILQ_INIT(&stream->queued_list);
+                TAILQ_INIT(&stream->done_list);
 
                 esp_video_buffer_reset(stream->buffer);
             }
@@ -872,9 +872,9 @@ struct esp_video_buffer_element *IRAM_ATTR esp_video_get_queued_element(struct e
     }
 
     portENTER_CRITICAL_SAFE(&video->stream_lock);
-    if (!SLIST_EMPTY(&stream->queued_list)) {
-        element = SLIST_FIRST(&stream->queued_list);
-        SLIST_REMOVE(&stream->queued_list, element, esp_video_buffer_element, node);
+    if (!TAILQ_EMPTY(&stream->queued_list)) {
+        element = TAILQ_FIRST(&stream->queued_list);
+        TAILQ_REMOVE(&stream->queued_list, element, node);
         ELEMENT_SET_FREE(element);
     }
     portEXIT_CRITICAL_SAFE(&video->stream_lock);
@@ -925,9 +925,9 @@ struct esp_video_buffer_element *esp_video_get_done_element(struct esp_video *vi
     }
 
     portENTER_CRITICAL_SAFE(&video->stream_lock);
-    if (!SLIST_EMPTY(&stream->done_list)) {
-        element = SLIST_FIRST(&stream->done_list);
-        SLIST_REMOVE(&stream->done_list, element, esp_video_buffer_element, node);
+    if (!TAILQ_EMPTY(&stream->done_list)) {
+        element = TAILQ_FIRST(&stream->done_list);
+        TAILQ_REMOVE(&stream->done_list, element, node);
         ELEMENT_SET_FREE(element);
     }
     portEXIT_CRITICAL_SAFE(&video->stream_lock);
@@ -962,7 +962,7 @@ esp_err_t IRAM_ATTR esp_video_done_element(struct esp_video *video, uint32_t typ
     }
 
     ELEMENT_SET_ALLOCATED(element);
-    SLIST_INSERT_HEAD(&stream->done_list, element, node);
+    TAILQ_INSERT_TAIL(&stream->done_list, element, node);
     portEXIT_CRITICAL_SAFE(&video->stream_lock);
 
     if (xPortInIsrContext()) {
@@ -1044,7 +1044,7 @@ esp_err_t esp_video_queue_element(struct esp_video *video, uint32_t type, struct
     }
 
     ELEMENT_SET_ALLOCATED(element);
-    SLIST_INSERT_HEAD(&stream->queued_list, element, node);
+    TAILQ_INSERT_TAIL(&stream->queued_list, element, node);
     portEXIT_CRITICAL_SAFE(&video->stream_lock);
 
     if (video->ops->notify) {
@@ -1248,10 +1248,10 @@ esp_err_t esp_video_queue_m2m_elements(struct esp_video *video,
     portENTER_CRITICAL_SAFE(&video->stream_lock);
     if (ELEMENT_IS_FREE(src_element) && ELEMENT_IS_FREE(dst_element)) {
         ELEMENT_SET_ALLOCATED(src_element);
-        SLIST_INSERT_HEAD(&stream[0]->queued_list, src_element, node);
+        TAILQ_INSERT_TAIL(&stream[0]->queued_list, src_element, node);
 
         ELEMENT_SET_ALLOCATED(dst_element);
-        SLIST_INSERT_HEAD(&stream[1]->queued_list, dst_element, node);
+        TAILQ_INSERT_TAIL(&stream[1]->queued_list, dst_element, node);
 
         ret = ESP_OK;
     } else {
@@ -1298,10 +1298,10 @@ esp_err_t esp_video_done_m2m_elements(struct esp_video *video,
     portENTER_CRITICAL_SAFE(&video->stream_lock);
     if (ELEMENT_IS_FREE(src_element) && ELEMENT_IS_FREE(dst_element)) {
         ELEMENT_SET_ALLOCATED(src_element);
-        SLIST_INSERT_HEAD(&stream[0]->done_list, src_element, node);
+        TAILQ_INSERT_TAIL(&stream[0]->done_list, src_element, node);
 
         ELEMENT_SET_ALLOCATED(dst_element);
-        SLIST_INSERT_HEAD(&stream[1]->done_list, dst_element, node);
+        TAILQ_INSERT_TAIL(&stream[1]->done_list, dst_element, node);
 
         ret = ESP_OK;
     } else {
@@ -1364,13 +1364,13 @@ esp_err_t esp_video_get_m2m_queued_elements(struct esp_video *video,
     }
 
     portENTER_CRITICAL_SAFE(&video->stream_lock);
-    if (!SLIST_EMPTY(&stream[0]->queued_list) && !SLIST_EMPTY(&stream[1]->queued_list)) {
-        *src_element = SLIST_FIRST(&stream[0]->queued_list);
-        SLIST_REMOVE(&stream[0]->queued_list, *src_element, esp_video_buffer_element, node);
+    if (!TAILQ_EMPTY(&stream[0]->queued_list) && !TAILQ_EMPTY(&stream[1]->queued_list)) {
+        *src_element = TAILQ_FIRST(&stream[0]->queued_list);
+        TAILQ_REMOVE(&stream[0]->queued_list, *src_element, node);
         ELEMENT_SET_FREE(*src_element);
 
-        *dst_element = SLIST_FIRST(&stream[1]->queued_list);
-        SLIST_REMOVE(&stream[1]->queued_list, *dst_element, esp_video_buffer_element, node);
+        *dst_element = TAILQ_FIRST(&stream[1]->queued_list);
+        TAILQ_REMOVE(&stream[1]->queued_list, *dst_element, node);
         ELEMENT_SET_FREE(*dst_element);
 
         ret = ESP_OK;
@@ -1936,6 +1936,6 @@ void IRAM_ATTR esp_video_skip_buffer(struct esp_video *video, uint32_t type, uin
 
     portENTER_CRITICAL_SAFE(&video->stream_lock);
     ELEMENT_SET_ALLOCATED(element);
-    SLIST_INSERT_HEAD(&stream->queued_list, element, node);
+    TAILQ_INSERT_HEAD(&stream->queued_list, element, node);
     portEXIT_CRITICAL_SAFE(&video->stream_lock);
 }
