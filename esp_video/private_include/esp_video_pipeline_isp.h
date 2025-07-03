@@ -45,6 +45,15 @@ esp_err_t esp_video_isp_pipeline_init(const esp_video_isp_config_t *config);
  */
 esp_err_t esp_video_isp_pipeline_deinit(void);
 
+/**
+ * @brief Check if ISP pipeline is initialized.
+ *
+ * @return
+ *      - true if ISP pipeline is initialized
+ *      - false if ISP pipeline is not initialized
+ */
+bool esp_video_isp_pipeline_is_initialized(void);
+
 #ifdef __cplusplus
 }
 #endif

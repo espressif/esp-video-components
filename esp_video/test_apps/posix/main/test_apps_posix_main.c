@@ -130,6 +130,69 @@ TEST_CASE("V4L2 Command", "[video]")
     TEST_ESP_OK(example_video_deinit());
 }
 
+TEST_CASE("V4L2 Video Buffer Sequence", "[video]")
+{
+    int fd;
+    int ret;
+    int val;
+    struct v4l2_buffer buf;
+    struct v4l2_requestbuffers req;
+    int buffer_count = 5;
+
+    setUp();
+
+    TEST_ESP_OK(example_video_init());
+
+    fd = open(TEST_APP_VIDEO_DEVICE, O_RDWR);
+    TEST_ASSERT_GREATER_OR_EQUAL(0, fd);
+
+    memset(&req, 0, sizeof(req));
+    req.type   = V4L2_BUF_TYPE_VIDEO_CAPTURE;
+    req.memory = V4L2_MEMORY_MMAP;
+    req.count  = buffer_count;
+    ret = ioctl(fd, VIDIOC_REQBUFS, &req);
+    TEST_ESP_OK(ret);
+
+    for (int test_count = 0; test_count < 4; test_count++) {
+        for (int i = 0; i < buffer_count; i++) {
+            memset(&buf, 0, sizeof(buf));
+            buf.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
+            buf.memory = V4L2_MEMORY_MMAP;
+            buf.index = i;
+            ret = ioctl(fd, VIDIOC_QUERYBUF, &buf);
+            TEST_ESP_OK(ret);
+
+            ret = ioctl(fd, VIDIOC_QBUF, &buf);
+            TEST_ESP_OK(ret);
+        }
+
+        val = V4L2_BUF_TYPE_VIDEO_CAPTURE;
+        ret = ioctl(fd, VIDIOC_STREAMON, &val);
+        TEST_ESP_OK(ret);
+
+        for (int i = 0; i < buffer_count; i++) {
+            memset(&buf, 0, sizeof(buf));
+            buf.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
+            buf.memory = V4L2_MEMORY_MMAP;
+            ret = ioctl(fd, VIDIOC_DQBUF, &buf);
+            TEST_ESP_OK(ret);
+
+            TEST_ASSERT_EQUAL_INT(i, buf.index);
+
+            ret = ioctl(fd, VIDIOC_QBUF, &buf);
+            TEST_ESP_OK(ret);
+        }
+
+        val = V4L2_BUF_TYPE_VIDEO_CAPTURE;
+        ret = ioctl(fd, VIDIOC_STREAMOFF, &val);
+        TEST_ESP_OK(ret);
+    }
+
+    close(fd);
+
+    TEST_ESP_OK(example_video_deinit());
+}
+
 #if CONFIG_ESP_VIDEO_ENABLE_JPEG_VIDEO_DEVICE
 TEST_CASE("V4L2 M2M device", "[video]")
 {

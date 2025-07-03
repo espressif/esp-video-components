@@ -563,7 +563,9 @@ esp_err_t esp_video_deinit(void)
 #endif
 
 #if CONFIG_ESP_VIDEO_ENABLE_ISP_PIPELINE_CONTROLLER
-            ESP_RETURN_ON_ERROR(esp_video_isp_pipeline_deinit(), TAG, "Failed to destroy ISP controller");
+            if (esp_video_isp_pipeline_is_initialized()) {
+                ESP_RETURN_ON_ERROR(esp_video_isp_pipeline_deinit(), TAG, "Failed to destroy ISP controller");
+            }
 #endif
 
             ESP_RETURN_ON_ERROR(esp_video_destroy_csi_video_device(), TAG, "Failed to destroy CSI video device");
