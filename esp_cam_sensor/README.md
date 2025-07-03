@@ -6,6 +6,17 @@ It is highly recommended that users use it in the [esp-video](https://github.com
 
 [![Component Registry](https://components.espressif.com/components/espressif/esp_cam_sensor/badge.svg)](https://components.espressif.com/components/espressif/esp_cam_sensor)
 
+## Supported SoCs and Interfaces
+
+| SoC | MIPI-CSI | LCD_CAM DVP | SPI |
+|:-:|:-:|:-:|:-:|
+| ESP32-P4 | Y   | Y   | Y |
+| ESP32-S3 | N/A | Y   | Y |
+| ESP32-C3 | N/A | N/A | Y |
+| ESP32-C5 | N/A | N/A | Y |
+| ESP32-C6 | N/A | N/A | Y |
+| ESP32-C61 | N/A | N/A | Y |
+
 ## Supported Camera Sensors
 
 | model   | max resolution | output interface | output format                                                | Len Size |

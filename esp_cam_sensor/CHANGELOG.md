@@ -1,4 +1,4 @@
-## Unreleased
+## 1.2.0
 
 - Added support for BF3901 SPI camera sensor driver.
 - Added camera SPI interface driver.

@@ -1,3 +1,7 @@
+## 1.0.1
+
+- Fix the light flicker issue in the part-anti-flicker mode
+
 ## 1.0.0
 
 - Add extended configuration to set hue, brightness and statistics window
