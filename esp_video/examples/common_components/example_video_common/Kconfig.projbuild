@@ -637,7 +637,12 @@ menu "Example Video Initialization Configuration"
                     help
                         GPIO pin for SPI data input/output to camera sensor.
             endif
-        endif    
+        endif
+        menuconfig EXAMPLE_ENABLE_USB_UVC_CAM_SENSOR
+            bool "USB-UVC"
+            depends on ESP_VIDEO_ENABLE_USB_UVC_VIDEO_DEVICE
+            help
+                USB Host interface using USB Video Class driver.
     endmenu
 
     menuconfig EXAMPLE_SCCB_I2C_INIT_BY_APP

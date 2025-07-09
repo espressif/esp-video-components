@@ -13,6 +13,7 @@
 #include "esp_video.h"
 #include "esp_video_device.h"
 #include "esp_video_device_internal.h"
+#include "usb/usb_host.h"
 #include "usb/uvc_host.h"
 #include "esp_private/uvc_esp_video.h"
 
@@ -36,6 +37,8 @@ struct uvc_video {
     uvc_host_stream_hdl_t uvc_dev; // Handle to usb_host_uvc device
     enum uvc_host_stream_format format[UVC_VIDEO_MAX_FORMATS];
 };
+
+static bool uvc_driver_installed = false;
 
 static uint32_t uvc_to_v4l2_format(enum uvc_host_stream_format uvc_format)
 {
@@ -424,20 +427,85 @@ static void uvc_host_driver_event_callback(const uvc_host_driver_event_data_t *e
     }
 }
 
-esp_err_t esp_video_install_usb_uvc_driver(size_t task_stack, unsigned task_priority, int task_affinity)
+static void usb_lib_task(void *arg)
 {
+    // Install USB Host driver. Should only be called once in entire application
+    ESP_LOGI(TAG, "Installing USB Host");
+    const usb_host_config_t host_config = {
+        .skip_phy_setup = false,
+        .intr_flags = ESP_INTR_FLAG_LEVEL1,
+    };
+    ESP_ERROR_CHECK(usb_host_install(&host_config));
+
+    // Signalize the app_main, the USB host library has been installed
+    xTaskNotifyGive(arg);
+
+    ESP_LOGI(TAG, "USB Host installed");
+    while (1) {
+        // Start handling system events
+        uint32_t event_flags;
+        usb_host_lib_handle_events(portMAX_DELAY, &event_flags);
+        if (event_flags & USB_HOST_LIB_EVENT_FLAGS_NO_CLIENTS) {
+            usb_host_device_free_all();
+        }
+        if (event_flags & USB_HOST_LIB_EVENT_FLAGS_ALL_FREE) {
+            ESP_LOGI(TAG, "USB: All devices freed");
+            // Continue handling USB events to allow device reconnection
+        }
+    }
+}
+
+esp_err_t esp_video_install_usb_uvc_driver(const esp_video_init_usb_uvc_config_t *cfg)
+{
+    static BaseType_t usb_task_created = pdFALSE;
+
+    if (uvc_driver_installed) {
+        return ESP_OK; // Driver is already installed
+    }
+
+    if (cfg->usb.init_usb_host_lib && !usb_task_created) {
+        // Initialize USB Host Library if not already done
+        // Create a task that will handle USB library events
+        usb_task_created = xTaskCreatePinnedToCore(
+                               usb_lib_task, "usb_lib",
+                               cfg->usb.task_stack,
+                               xTaskGetCurrentTaskHandle(),
+                               cfg->usb.task_priority,
+                               NULL,
+                               cfg->usb.task_affinity);
+        assert(usb_task_created == pdTRUE);
+        ulTaskNotifyTake(false, 1000); // Wait until the USB host library is installed
+    }
+
     const uvc_host_driver_config_t driver_config = {
-        .driver_task_stack_size = task_stack,
-        .driver_task_priority = task_priority,
-        .xCoreID = task_affinity,
+        .driver_task_stack_size = cfg->uvc.task_stack,
+        .driver_task_priority = cfg->uvc.task_priority,
+        .xCoreID = cfg->uvc.task_affinity,
         .create_background_task = true,
         .event_cb = uvc_host_driver_event_callback,
         .user_ctx = NULL, // user_ctx is not used in the driver now
     };
-    return uvc_host_install(&driver_config);
+    const esp_err_t ret = uvc_host_install(&driver_config);
+    if (ret == ESP_OK) {
+        uvc_driver_installed = true; // Mark the driver as installed
+    }
+
+    // If there is a camera plugged in, we must give it some time to enumerate on the USB bus
+    // If esp_video open() function is called without this delay, it could fail to find the device
+    // This is a workaround for the USB host library not being able to handle device enumeration immediately
+    vTaskDelay(2000 / portTICK_PERIOD_MS);
+    return ret;
 }
 
 esp_err_t esp_video_uninstall_usb_uvc_driver(void)
 {
-    return uvc_host_uninstall();
+    if (!uvc_driver_installed) {
+        return ESP_OK; // Driver is not installed
+    }
+
+    const esp_err_t ret = uvc_host_uninstall();
+    if (ret == ESP_OK) {
+        uvc_driver_installed = false; // Mark the driver as uninstalled
+    }
+    return ret;
 }

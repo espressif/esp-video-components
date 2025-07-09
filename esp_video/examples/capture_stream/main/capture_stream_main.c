@@ -15,7 +15,6 @@
 #include "esp_timer.h"
 #include "esp_check.h"
 #include "example_video_common.h"
-#include "usb/usb_host.h"
 #if CONFIG_EXAMPLE_VIDEO_BUFFER_TYPE_USER
 #include "esp_heap_caps.h"
 
@@ -51,8 +50,7 @@ static esp_err_t camera_capture_stream(void)
 #endif
     const int type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
 
-    vTaskDelay(3000 / portTICK_PERIOD_MS); // Give user some time to plug in the camera
-    fd = open(ESP_VIDEO_USB_UVC_DEVICE_NAME, O_RDONLY);
+    fd = open(EXAMPLE_CAM_DEV_PATH, O_RDONLY);
     if (fd < 0) {
         ESP_LOGE(TAG, "failed to open device");
         return ESP_FAIL;
@@ -153,8 +151,8 @@ static esp_err_t camera_capture_stream(void)
 
         struct v4l2_format format = {
             .type = type,
-            .fmt.pix.width = 160,
-            .fmt.pix.height = 120,
+            .fmt.pix.width = init_format.fmt.pix.width,
+            .fmt.pix.height = init_format.fmt.pix.height,
             .fmt.pix.pixelformat = fmtdesc.pixelformat,
         };
 
@@ -286,41 +284,8 @@ exit_0:
     return ret;
 }
 
-static void usb_lib_task(void *arg)
-{
-    // Install USB Host driver. Should only be called once in entire application
-    ESP_LOGI(TAG, "Installing USB Host");
-    const usb_host_config_t host_config = {
-        .skip_phy_setup = false,
-        .intr_flags = ESP_INTR_FLAG_LEVEL1,
-    };
-    ESP_ERROR_CHECK(usb_host_install(&host_config));
-
-    // Signalize the app_main, the USB host library has been installed
-    xTaskNotifyGive(arg);
-
-    ESP_LOGI(TAG, "USB Host installed");
-    while (1) {
-        // Start handling system events
-        uint32_t event_flags;
-        usb_host_lib_handle_events(portMAX_DELAY, &event_flags);
-        if (event_flags & USB_HOST_LIB_EVENT_FLAGS_NO_CLIENTS) {
-            usb_host_device_free_all();
-        }
-        if (event_flags & USB_HOST_LIB_EVENT_FLAGS_ALL_FREE) {
-            ESP_LOGI(TAG, "USB: All devices freed");
-            // Continue handling USB events to allow device reconnection
-        }
-    }
-}
-
 void app_main(void)
 {
-    // Create a task that will handle USB library events
-    BaseType_t task_created = xTaskCreatePinnedToCore(usb_lib_task, "usb_lib", 4096, xTaskGetCurrentTaskHandle(), 11, NULL, tskNO_AFFINITY);
-    assert(task_created == pdTRUE);
-    ulTaskNotifyTake(false, 1000); // Wait until the USB host library is installed
-
     esp_err_t ret = ESP_OK;
 
     ret = example_video_init();

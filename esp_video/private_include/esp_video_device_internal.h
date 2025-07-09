@@ -309,18 +309,17 @@ esp_cam_sensor_device_t *esp_video_get_spi_video_device_sensor(void);
 #endif
 
 #if CONFIG_ESP_VIDEO_ENABLE_USB_UVC_VIDEO_DEVICE
+#include "esp_video_init.h"
 /**
  * @brief Install USB UVC video device driver
  *
  * @note USB Host Library must be initialized before calling this function.
  * @note This function will create a task to handle USB UVC video device.
  *
- * @param[in] task_stack    Task stack size in bytes
- * @param[in] task_priority Task priority
- * @param[in] task_affinity Task affinity, -1 means no affinity
+ * @param[in] cfg USB UVC video device configuration
  * @return esp_err_t
  */
-esp_err_t esp_video_install_usb_uvc_driver(size_t task_stack, unsigned task_priority, int task_affinity);
+esp_err_t esp_video_install_usb_uvc_driver(const esp_video_init_usb_uvc_config_t *cfg);
 
 /**
  * @brief Uninstall USB UVC video device driver

@@ -115,9 +115,18 @@ typedef struct esp_video_init_spi_config {
  */
 #if CONFIG_ESP_VIDEO_ENABLE_USB_UVC_VIDEO_DEVICE
 typedef struct esp_video_init_usb_uvc_config {
-    size_t task_stack;                          /*!< USB UVC video device task stack size */
-    unsigned task_priority;                     /*!< USB UVC video device task priority */
-    int task_affinity;                          /*!< USB UVC video device task affinity, -1 means no affinity */
+    struct {
+        size_t task_stack;                      /*!< USB UVC video device task stack size */
+        unsigned task_priority;                 /*!< USB UVC video device task priority */
+        int task_affinity;                      /*!< USB UVC video device task affinity, -1 means no affinity */
+    } uvc;
+    struct {
+        bool init_usb_host_lib;                 /*!< Init USB Host Lib in esp_video */
+        // USB Host Lib task configuration: Ignored if init_usb_host_lib is false
+        size_t task_stack;                      /*!< USB Host Lib task stack size */
+        unsigned task_priority;                 /*!< USB Host Lib task priority */
+        int task_affinity;                      /*!< USB Host Lib task affinity, -1 means no affinity */
+    } usb;
 } esp_video_init_usb_uvc_config_t;
 #endif /* CONFIG_ESP_VIDEO_ENABLE_USB_UVC_VIDEO_DEVICE */
 

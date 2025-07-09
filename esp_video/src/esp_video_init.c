@@ -291,12 +291,11 @@ esp_err_t esp_video_init(const esp_video_init_config_t *config)
 #endif
 
 #if CONFIG_ESP_VIDEO_ENABLE_USB_UVC_VIDEO_DEVICE
-    ESP_RETURN_ON_ERROR(
-        esp_video_install_usb_uvc_driver(
-            config->usb_uvc->task_stack,
-            config->usb_uvc->task_priority,
-            config->usb_uvc->task_affinity),
-        TAG, "Failed to install USB UVC driver");
+    if (config->usb_uvc) {
+        ESP_RETURN_ON_ERROR(
+            esp_video_install_usb_uvc_driver(config->usb_uvc),
+            TAG, "Failed to install USB UVC driver");
+    }
 #endif
 
     for (esp_cam_sensor_detect_fn_t *p = &__esp_cam_sensor_detect_fn_array_start; p < &__esp_cam_sensor_detect_fn_array_end; ++p) {
