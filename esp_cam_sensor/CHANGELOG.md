@@ -1,3 +1,6 @@
+## 1.2.1
+- Deprecated ledc intr type config
+
 ## 1.2.0
 
 - Added support for BF3901 SPI camera sensor driver.
