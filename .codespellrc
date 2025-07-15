@@ -1,4 +1,4 @@
 [codespell]
-skip = build,*.yuv,alice.txt,*.rgb
+skip = build,*.yuv,alice.txt,*.rgb,**/pnpm-lock.yaml
 ignore-words-list = ser,dout,rsource,fram,inout,shs,ans,aci,unstall,unstalling,hart,wheight,wel,ot,adn,parm
 write-changes = true
