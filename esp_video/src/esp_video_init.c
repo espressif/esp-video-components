@@ -12,6 +12,10 @@
 #include "esp_log.h"
 #include "esp_check.h"
 
+#if CONFIG_ESP_VIDEO_ENABLE_USB_UVC_VIDEO_DEVICE
+#include "usb/usb_host.h"
+#endif
+
 #include "esp_sccb_i2c.h"
 #include "esp_cam_sensor.h"
 #include "esp_cam_sensor_detect.h"
@@ -52,6 +56,7 @@
 /**
  * @brief SCCB initialization mark
  */
+#if ESP_VIDEO_ENABLE_SCCB_DEVICE
 typedef struct sccb_mark {
     int i2c_ref;                                /*!< I2C reference */
     i2c_master_bus_handle_t handle;             /*!< I2C master handle */
@@ -64,6 +69,7 @@ typedef struct sensor_sccb_mask {
     i2c_master_bus_handle_t handle;             /*!< I2C master handle */
     esp_sccb_io_handle_t sccb_io[SCCB_DEV_NUM]; /*!< SCCB I/O handle */
 } sensor_sccb_mask_t;
+#endif /* ESP_VIDEO_ENABLE_SCCB_DEVICE */
 
 static sensor_sccb_mask_t s_sensor_sccb_mask[SCCB_NUM_MAX];
 #endif /* ESP_VIDEO_ENABLE_SCCB_DEVICE */
@@ -72,6 +78,42 @@ static sensor_sccb_mask_t s_sensor_sccb_mask[SCCB_NUM_MAX];
 static esp_cam_sensor_xclk_handle_t s_spi_xclk_handle; /*!< SPI XCLK handle */
 #endif /* CONFIG_ESP_VIDEO_ENABLE_SPI_VIDEO_DEVICE */
 static const char *TAG = "esp_video_init";
+
+#if CONFIG_ESP_VIDEO_ENABLE_USB_UVC_VIDEO_DEVICE
+static void usb_lib_task(void *arg)
+{
+    ESP_LOGD(TAG, "USB Host installed");
+
+    while (1) {
+        uint32_t event_flags;
+
+        if (usb_host_lib_handle_events(portMAX_DELAY, &event_flags) == ESP_OK) {
+            if (event_flags & USB_HOST_LIB_EVENT_FLAGS_NO_CLIENTS) {
+                if (usb_host_device_free_all() == ESP_OK) {
+                    ESP_LOGI(TAG, "USB: All devices freed");
+                    break;
+                } else {
+                    ESP_LOGD(TAG, "USB: Wait for the FLAGS_ALL_FREE");
+                }
+            }
+
+            if (event_flags & USB_HOST_LIB_EVENT_FLAGS_ALL_FREE) {
+                ESP_LOGD(TAG, "USB: All devices freed");
+                break;
+            }
+        } else {
+            ESP_LOGE(TAG, "Failed to handle USB events");
+            break;
+        }
+    }
+
+    vTaskDelay(10); // Short delay to allow clients clean-up
+    if (usb_host_uninstall() != ESP_OK) {
+        ESP_LOGE(TAG, "Failed to uninstall USB Host driver");
+    }
+    vTaskDelete(NULL);
+}
+#endif
 
 #if ESP_VIDEO_ENABLE_SCCB_DEVICE
 /**
@@ -292,9 +334,44 @@ esp_err_t esp_video_init(const esp_video_init_config_t *config)
 
 #if CONFIG_ESP_VIDEO_ENABLE_USB_UVC_VIDEO_DEVICE
     if (config->usb_uvc) {
-        ESP_RETURN_ON_ERROR(
-            esp_video_install_usb_uvc_driver(config->usb_uvc),
-            TAG, "Failed to install USB UVC driver");
+        if (config->usb_uvc->usb.init_usb_host_lib) {
+            TaskHandle_t usb_lib_task_handler = NULL;
+            BaseType_t usb_task_created = pdFALSE;
+            int task_affinity = config->usb_uvc->usb.task_affinity >= 0 ? config->usb_uvc->usb.task_affinity : tskNO_AFFINITY;
+
+            ESP_LOGD(TAG, "Installing USB Host");
+
+            usb_host_config_t host_config = {
+                .skip_phy_setup = false,
+                .intr_flags = ESP_INTR_FLAG_LEVEL1,
+            };
+            if (usb_host_install(&host_config) != ESP_OK) {
+                ESP_LOGE(TAG, "Failed to install USB Host driver");
+                return ESP_FAIL;
+            }
+
+            usb_task_created = xTaskCreatePinnedToCore(
+                                   usb_lib_task,
+                                   "usb_lib",
+                                   config->usb_uvc->usb.task_stack,
+                                   NULL,
+                                   config->usb_uvc->usb.task_priority,
+                                   &usb_lib_task_handler,
+                                   task_affinity);
+            if (usb_task_created != pdTRUE) {
+                ESP_LOGE(TAG, "Failed to create USB host library task");
+                return ESP_FAIL;
+            }
+        }
+
+        esp_video_usb_uvc_device_config_t cfg = {
+            .uvc_dev_num = config->usb_uvc->uvc.uvc_dev_num,
+            .task_stack = config->usb_uvc->uvc.task_stack,
+            .task_priority = config->usb_uvc->uvc.task_priority,
+            .task_affinity = config->usb_uvc->uvc.task_affinity,
+        };
+
+        ESP_RETURN_ON_ERROR(esp_video_install_usb_uvc_driver(&cfg), TAG, "Failed to install USB UVC driver");
     }
 #endif
 
@@ -554,10 +631,6 @@ esp_err_t esp_video_deinit(void)
     ESP_RETURN_ON_ERROR(esp_video_destroy_h264_video_device(true), TAG, "Failed to destroy H.264 video device");
 #endif
 
-#if CONFIG_ESP_VIDEO_ENABLE_USB_UVC_VIDEO_DEVICE
-    ESP_RETURN_ON_ERROR(esp_video_uninstall_usb_uvc_driver(), TAG, "Failed to uninstall USB UVC driver");
-#endif
-
     for (esp_cam_sensor_detect_fn_t *p = &__esp_cam_sensor_detect_fn_array_start; p < &__esp_cam_sensor_detect_fn_array_end; ++p) {
 #if CONFIG_ESP_VIDEO_ENABLE_MIPI_CSI_VIDEO_DEVICE
         if (!csi_deinited && p->port == ESP_CAM_SENSOR_MIPI_CSI) {
@@ -655,6 +728,10 @@ esp_err_t esp_video_deinit(void)
     }
     memset(s_sensor_sccb_mask, 0, sizeof(s_sensor_sccb_mask));
 #endif /* ESP_VIDEO_ENABLE_SCCB_DEVICE */
+
+#if CONFIG_ESP_VIDEO_ENABLE_USB_UVC_VIDEO_DEVICE
+    ESP_RETURN_ON_ERROR(esp_video_uninstall_usb_uvc_driver(), TAG, "Failed to uninstall USB UVC driver");
+#endif
 
 #if CONFIG_ESP_VIDEO_ENABLE_ISP_VIDEO_DEVICE
     ESP_RETURN_ON_ERROR(esp_video_destroy_isp_video_device(), TAG, "Failed to destroy ISP video device");

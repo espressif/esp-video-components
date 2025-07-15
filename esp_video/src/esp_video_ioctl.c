@@ -276,6 +276,16 @@ static inline esp_err_t esp_video_ioctl_get_parm(struct esp_video *video, struct
     return esp_video_get_parm(video, stream_parm);
 }
 
+static inline esp_err_t esp_video_ioctl_enum_framesizes(struct esp_video *video, struct v4l2_frmsizeenum *frmsize)
+{
+    return esp_video_enum_framesizes(video, frmsize);
+}
+
+static inline esp_err_t esp_video_ioctl_enum_frameintervals(struct esp_video *video, struct v4l2_frmivalenum *frmival)
+{
+    return esp_video_enum_frameintervals(video, frmival);
+}
+
 esp_err_t esp_video_ioctl(struct esp_video *video, int cmd, va_list args)
 {
     esp_err_t ret = ESP_OK;
@@ -362,6 +372,12 @@ esp_err_t esp_video_ioctl(struct esp_video *video, int cmd, va_list args)
         break;
     case VIDIOC_G_PARM:
         ret = esp_video_ioctl_get_parm(video, (struct v4l2_streamparm *)arg_ptr);
+        break;
+    case VIDIOC_ENUM_FRAMESIZES:
+        ret = esp_video_ioctl_enum_framesizes(video, (struct v4l2_frmsizeenum *)arg_ptr);
+        break;
+    case VIDIOC_ENUM_FRAMEINTERVALS:
+        ret = esp_video_ioctl_enum_frameintervals(video, (struct v4l2_frmivalenum *)arg_ptr);
         break;
     default:
         ret = ESP_ERR_INVALID_ARG;

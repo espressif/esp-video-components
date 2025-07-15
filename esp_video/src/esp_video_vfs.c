@@ -53,14 +53,14 @@ static int esp_err_to_errno(esp_err_t err)
 
 static int esp_video_vfs_open(void *ctx, const char *path, int flags, int mode)
 {
+    esp_err_t ret;
     struct esp_video *video = (struct esp_video *)ctx;
 
     /* Open video here to initialize software resource and hardware */
 
-    video = esp_video_open(video->dev_name);
-    if (!video) {
-        errno = ENOENT;
-        return -1;
+    ret = esp_video_open(video->dev_name, &video);
+    if (ret != ESP_OK) {
+        return esp_err_to_errno(ret);
     }
 
     return video->id;

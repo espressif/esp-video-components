@@ -112,13 +112,18 @@ static const esp_video_init_spi_config_t s_spi_config = {
 
 #if EXAMPLE_ENABLE_USB_UVC_CAM_SENSOR
 static const esp_video_init_usb_uvc_config_t s_usb_uvc_config = {
-    .uvc.task_stack = 4096,
-    .uvc.task_priority = 10,
-    .uvc.task_affinity = 0,
-    .usb.init_usb_host_lib = true,
-    .usb.task_stack = 4096,
-    .usb.task_priority = 11,
-    .usb.task_affinity = 0,
+    .uvc = {
+        .uvc_dev_num = CONFIG_EXAMPLE_USB_UVC_DEVICES_NUM,
+        .task_stack = CONFIG_EXAMPLE_USB_UVC_TASK_STACK_SIZE,
+        .task_priority = CONFIG_EXAMPLE_USB_UVC_TASK_PRIORITY,
+        .task_affinity = CONFIG_EXAMPLE_USB_UVC_TASK_AFFINITY,
+    },
+    .usb = {
+        .init_usb_host_lib = true,
+        .task_stack = CONFIG_EXAMPLE_USB_LIB_TASK_STACK_SIZE,
+        .task_priority = CONFIG_EXAMPLE_USB_LIB_TASK_PRIORITY,
+        .task_affinity = CONFIG_EXAMPLE_USB_LIB_TASK_AFFINITY,
+    },
 };
 #endif /* EXAMPLE_ENABLE_USB_UVC_CAM_SENSOR */
 
