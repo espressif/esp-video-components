@@ -159,7 +159,6 @@ esp_err_t xclk_ledc_generator_start(esp_cam_sensor_xclk_t *xclk_handle, const es
     ch_conf.gpio_num = config->ledc_cfg.xclk_pin;
     ch_conf.speed_mode = LEDC_LOW_SPEED_MODE;
     ch_conf.channel = config->ledc_cfg.channel;
-    ch_conf.intr_type = LEDC_INTR_DISABLE;
     ch_conf.timer_sel = config->ledc_cfg.timer;
     ch_conf.duty = 1;
     ch_conf.hpoint = 0;
