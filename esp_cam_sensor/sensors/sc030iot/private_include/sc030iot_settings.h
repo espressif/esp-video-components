@@ -17,6 +17,13 @@ extern "C" {
 #endif
 
 #if CONFIG_SOC_LCDCAM_CAM_SUPPORTED
+
+#if CONFIG_CAMERA_SENSOR_SWAP_PIXEL_BYTE_ORDER
+#define SC030IOT_YUV422_FMT 0xa8
+#else
+#define SC030IOT_YUV422_FMT 0x88
+#endif
+
 static const sc030iot_reginfo_t DVP_8bit_20Minput_640x480_yuv422_26fps[] = {
     {0xf0, 0x30},
     {0x01, 0xff},
@@ -33,7 +40,7 @@ static const sc030iot_reginfo_t DVP_8bit_20Minput_640x480_yuv422_26fps[] = {
     {0x74, 0xe0},
     {0x75, 0x10},
     {0x76, 0x81},
-    {0x77, 0xa8}, // send in CbYCrY
+    {0x77, SC030IOT_YUV422_FMT},// CbYCrY seq
     {0x78, 0xe1},
     {0x79, 0x01},
     {0xf5, 0x01},
