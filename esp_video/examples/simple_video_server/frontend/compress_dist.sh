@@ -40,7 +40,7 @@ if command -v gzip >/dev/null 2>&1; then
     fi
 }
 
-prepare_gziped_directory() {
+prepare_gzipped_directory() {
     if [ -d "gzipped" ]; then
         print_info "clearing existing \`gzipped\` directory"
         rm -rf gzipped/*
@@ -84,7 +84,7 @@ compress_dist_files() {
 main() {
     check_dist_directory
     check_compression_tools
-    prepare_gziped_directory
+    prepare_gzipped_directory
     setup_reproducible_env
     compress_dist_files
     

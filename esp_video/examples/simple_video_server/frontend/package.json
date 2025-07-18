@@ -2,8 +2,8 @@
   "name": "esp-video-web-camera",
   "private": true,
   "type": "module",
-  "version": "0.0.4",
-  "license":"Apache-2.0",
+  "version": "0.0.5",
+  "license":"ESPRESSIF MIT",
   "scripts": {
     "dev": "vite",
     "build": "run-p type-check \"build-only {@}\" --",

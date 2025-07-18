@@ -196,6 +196,16 @@ esp_err_t example_encoder_free_output_buffer(example_encoder_handle_t handle, ui
 esp_err_t example_encoder_process(example_encoder_handle_t handle, uint8_t *src_buf, uint32_t src_size, uint8_t *dst_buf, uint32_t dst_size, uint32_t *dst_size_out);
 
 /**
+ * @brief Set the JPEG quality
+ *
+ * @param handle Encoder handle
+ * @param quality JPEG quality
+ *
+ * @return ESP_OK on success or other value on failure
+ */
+esp_err_t example_encoder_set_jpeg_quality(example_encoder_handle_t handle, uint8_t quality);
+
+/**
  * @brief Deinitialize the encoder
  *
  * @param handle Encoder handle

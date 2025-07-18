@@ -26,9 +26,10 @@
           {{ camera.name && camera.name.length > 0 ? camera.name : `Camera #${camera.index}` }}
         </div>
         <div style="font-size: smaller; opacity: 70%;">
-          {{ camera.currentImageFormatDescription }} @ {{ camera.currentFrameRate }} fps (Quality: {{
-            camera.currentQuality
-          }})
+          {{ camera.currentImageFormatDescription }} @ {{ camera.currentFrameRate }} fps
+          <span v-if="camera.currentQuality">
+            (Quality: {{ camera.currentQuality }})
+          </span>
         </div>
       </div>
       <div class="d-flex">
@@ -49,13 +50,14 @@
       <v-card-text>
         <v-select v-model="selectedImageFormatId" :items="camera.imageFormats" item-title="description" item-value="id"
           :disabled="settingsSaving" label="Image Format" />
-        <v-slider v-model="selectedQuality" :min="selectedFormat?.quality.min ?? 80"
+        <v-slider v-model="selectedQuality" v-if="selectedFormat?.quality" :min="selectedFormat?.quality.min ?? 80"
           :max="selectedFormat?.quality.max ?? 95" :step="selectedFormat?.quality.step ?? 1" :disabled="settingsSaving"
           label="Quality">
           <template #append>
             {{ selectedQuality }}
           </template>
         </v-slider>
+        <div v-else class="text-center mb-4">This image format may not support quality settings</div>
         <v-row>
           <v-col cols="9">
             <v-btn variant="tonal" @click="saveSettings" width="100%" :loading="settingsSaving">Save</v-btn>
@@ -89,7 +91,7 @@ const props = defineProps<{
 
 const camera = computed(() => mainStore.clientCameras[props.camNum])
 
-const imgSrc = ref<string>('/404')
+const imgSrc = ref<string>(LOADING_IMAGE_SRC)
 const settingsDialog = ref<boolean>(false)
 const selectedImageFormatId = ref<number | string>(camera.value.currentImageFormat)
 const selectedQuality = ref<number>(camera.value.currentQuality ?? 80)
@@ -202,7 +204,9 @@ watch(realCameraUrl, (newUrl) => {
 })
 
 watch(selectedImageFormatId, () => {
-  selectedQuality.value = selectedFormat.value?.quality.default ?? selectedFormat.value?.quality.max ?? 90;
+  if (selectedFormat.value?.quality) {
+    selectedQuality.value = selectedFormat.value?.quality.default ?? selectedFormat.value?.quality.max ?? 90;
+  }
 })
 
 onMounted(() => {

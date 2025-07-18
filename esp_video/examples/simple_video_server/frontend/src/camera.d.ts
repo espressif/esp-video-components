@@ -8,7 +8,7 @@ export type QualityRange = {
 export type ImageFormat = {
   id: string | number;
   description: string;
-  quality: QualityRange;
+  quality?: QualityRange;
 };
 
 export type Resolution = {
@@ -23,7 +23,7 @@ export type Camera = {
   currentFrameRate: number;
   currentImageFormat: number | string;
   currentImageFormatDescription?: string;
-  currentQuality: number;
+  currentQuality?: number;
   currentResolution: Resolution;
   imageFormats: ImageFormat[];
 };

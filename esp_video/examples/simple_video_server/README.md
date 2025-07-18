@@ -1,164 +1,183 @@
 | Supported Targets | ESP32-P4 | ESP32-S3 | ESP32-C3 | ESP32-C6 | ESP32-C5 |
-| ----------------- | -------- | -------- | -------- | -------- | -------- |
+|-------------------|----------|----------|----------|----------|----------|
 
 # Simple Video Server Example
 
-(See the [README.md](../README.md) file in the upper level [examples](../) directory for more information about examples.)
+*(See the [README.md](../README.md) file in the upper level [examples](../) directory for more information about examples.)*
 
 ## Overview
 
-This example starts several HTTP servers on a local network using different ports. You can access these servers through a web browser.
+This example demonstrates how to create multiple HTTP servers on a local network using different ports. These servers can be accessed through a web browser to provide various video streaming and image capture functionalities.
 
-The example provides several APIs to fetch resources as follows:
+## API Endpoints
 
-| TCP Port | URL | Method | Description |
-| :------: | :-----: | :----: | ------------------------------------------------------------ |
-| 80 | /stream | GET | Serves HTML web script for browser-based video display |
-| 80 | /capture_image?source={n} | GET | Returns JPEG format images from the selected camera sensor. Parameter `n` indicates the camera sensor number: 0 for the first camera sensor, 1 for the second camera sensor. Example: `/capture_image?source=0` |
-| 80 | /capture_binary?source={n} | GET | Returns binary data describing the original image from the selected camera sensor. Parameter `n` indicates the camera sensor number: 0 for the first camera sensor, 1 for the second camera sensor. Example: `/capture_binary?source=0` |
-| 81 | /stream | GET | Provides continuous MJPEG stream from the **first** camera sensor (*1) |
-| 82 | /stream | GET | Provides continuous MJPEG stream from the **second** camera sensor (*1) |
+The example provides the following REST API endpoints:
 
-* (*1): The server continuously pushes JPEG images from the background to the client. When you save images from the webpage, the saved images may not be in real-time.
+| Port | Endpoint | Method | Description |
+|:----:|:---------|:------:|:------------|
+| 80 | `/` | GET | Serves the main HTML page for browser-based video display |
+| 80 | `/api/capture_image?source={n}` | GET | Returns JPEG-formatted images from the specified camera sensor.<br/>**Parameter**: `n` - Camera sensor number (0 = first sensor, 1 = second sensor)<br/>**Example**: `/api/capture_image?source=0` |
+| 80 | `/api/capture_binary?source={n}` | GET | Returns raw binary image data from the specified camera sensor.<br/>**Parameter**: `n` - Camera sensor number (0 = first sensor, 1 = second sensor)<br/>**Example**: `/api/capture_binary?source=0` |
+| 80 | `/api/get_camera_info` | GET | Retrieves information about all camera sensors, including resolution and JPEG compression settings |
+| 80 | `/api/set_camera_config` | POST | Configures camera sensor settings including resolution and JPEG compression |
+| 81 | `/stream` | GET | Provides continuous MJPEG stream from the **first** camera sensor (*1) |
+| 82 | `/stream` | GET | Provides continuous MJPEG stream from the **second** camera sensor (*1) |
 
-By default, the example starts an mDNS domain name system, allowing server access via domain name. For example, you can access the image capture URL by entering `http://esp-web.local/capture_image/source=0` in your browser. You can also access URLs using IP addresses.
+> **Note (*1)**: The server continuously streams JPEG images from the background to the client. When saving images from the webpage, the saved images may not reflect real-time data.
 
-## How to Use This Example
+### Domain Name Access
 
-### Configure the Project
+By default, the example enables mDNS (Multicast DNS), allowing you to access the server using a domain name instead of an IP address. For example:
+- Image capture: `http://esp-web.local/api/capture_image?source=0`
+- Main interface: `http://esp-web.local`
 
-Open the project configuration menu (`idf.py menuconfig`).
+You can also access all URLs using the device's IP address directly.
 
-#### Configure the Hardware
+## Getting Started
 
-Please refer to the example video initialization configuration [document](../common_components/example_video_common/README.md) for detailed information about board-level configuration, including camera sensor interface, GPIO pins, clock frequency, and other settings.
+### Hardware Configuration
 
-#### Connection Configuration
+Before using this example, please refer to the [video initialization configuration guide](../common_components/example_video_common/README.md) for detailed information about:
+- Board-level configuration
+- Camera sensor interface setup
+- GPIO pin assignments
+- Clock frequency settings
 
-In the `Example Connection Configuration` menu:
+### Project Configuration
 
-* **Wi-Fi Interface**: If you select the Wi-Fi interface, you must also configure:
-  * Wi-Fi SSID and password for your ESP32 to connect to
-  * Wi-Fi SoftAP SSID and password if you want the ESP32 to work as an Access Point
+Open the project configuration menu:
 
-* **Ethernet Interface**: If you select the Ethernet interface, you must also configure:
-  * PHY model in the `Ethernet PHY` option (e.g., IP101)
-  * PHY address in the `PHY Address` option (determined by your board schematic)
-  * EMAC Clock mode and GPIO used by SMI
-
-For devices that do not support native WiFi, [esp_wifi_remote](https://github.com/espressif/esp-protocols/tree/master/components/esp_wifi_remote) is used by default to provide an additional WiFi interface. In the `Wi-Fi Remote` menu:
-
-* Choose the slave target to connect to the MCU
-
-#### Configure Camera Sensor
-
-In the `Espressif Camera Sensors Configurations` menu:
-
-* Select the camera sensor you want to connect
-* Select the target format for this sensor
-
-#### Configure Example
-
-Run the following commands to select the ESP32-P4 platform and enter menuconfig:
-
-```sh
-idf.py set-target esp32p4
+```bash
 idf.py menuconfig
 ```
 
-Configure the camera sensor video buffer number:
+#### Network Connection Setup
 
-```
-Example Configuration  --->
-    (2) Camera video buffer number
-```
+Navigate to **Example Connection Configuration**:
 
-More buffers provide better performance and reduce frame drops but consume more memory. For sensors with large resolutions such as 1080P, it's recommended to use 2 buffers.
+**Wi-Fi Interface Configuration:**
+- **Wi-Fi SSID and Password**: Required for ESP32 to connect to your network
+- **SoftAP Settings**: Configure if you want the ESP32 to work as an Access Point
 
-Configure the output JPEG format image compression quality:
+**Ethernet Interface Configuration:**
+- **PHY Model**: Select your PHY model (e.g., IP101) in `Ethernet PHY` option
+- **PHY Address**: Set based on your board schematic in `PHY Address` option  
+- **Clock Configuration**: Configure EMAC Clock mode and SMI GPIO pins
 
-```
-Example Configuration  --->
-    (80) JPEG compression quality (%)
-```
+**Wi-Fi Remote Configuration** (for devices without native WiFi support):
 
-**Note**: This value may not be supported by all camera sensors. If your selected camera sensor doesn't support this value, the example will calculate the nearest supported value to configure the camera sensor.
+[esp_wifi_remote](https://github.com/espressif/esp-protocols/tree/master/components/esp_wifi_remote) is used by default to provide additional WiFi interface capability.
 
-Additional HTTP and mDNS configurations:
+In the `Wi-Fi Remote` menu:
+- Select the slave target to connect to the MCU
 
-```
-Example Configuration  --->
-    (123456789000000000000987654321) HTTP part boundary
-    (web-cam) mDNS instance
-    (esp-web) mDNS host name
-```
+#### Camera Sensor Configuration
 
-If you have no special requirements, please keep these HTTP and mDNS default configurations.
+Navigate to **Espressif Camera Sensors Configurations**:
+- Select the camera sensor you want to use
+- Choose the target output format for the sensor
 
-Select and configure the camera sensor interface; this example will try to initialize all enabled camera sensors and push their image streams to the client:
+#### Example-Specific Configuration
 
-```
-Example Video Initialization Configuration  --->
-    Select and Set Camera Sensor Interface  --->
-        [*] MIPI-CSI  ---
-        [*] DVP  ---->
-```
+1. **Set the target platform:**
+   ```bash
+   idf.py set-target esp32p4
+   idf.py menuconfig
+   ```
 
-If these camera sensor uses the same I2C GPIO pins, such as MIPI-CSI and DVP camera sensors in the development board of `ESP32-P4-Function-EV-Board V1.5`, please select the following option:
+2. **Configure video buffer settings:**
+   ```
+   Example Configuration  --->
+       (2) Camera video buffer number
+   ```
+   
+   > **Recommendation**: More buffers provide better performance and reduce frame drops but consume more memory. For high-resolution sensors (e.g., 1080P), use 2 buffers.
 
-```
-Example Video Initialization Configuration  --->
-    ......
-    [*] Use Pre-initialized SCCB(I2C) Bus for All Camera Sensors And Motors
-        (0) SCCB(I2C) Port Number
-        (8) SCCB(I2C) SCL Pin
-        (7) SCCB(I2C) SDA Pin
-    ......
-```
+3. **Set JPEG compression quality:**
+   ```
+   Example Configuration  --->
+       (80) JPEG compression quality (%)
+   ```
+   
+   > **Note**: Not all camera sensors support this setting. If unsupported, the example will automatically select the nearest supported value.
 
-Select the target sensors based on your development board:
+4. **HTTP and mDNS configuration:**
+   ```
+   Example Configuration  --->
+       (123456789000000000000987654321) HTTP part boundary
+       (web-cam) mDNS instance
+       (esp-web) mDNS host name
+   ```
+   
+   > **Recommendation**: Keep these default settings unless you have specific requirements.
 
-```
-Component config  --->
-    Espressif Camera Sensors Configurations  --->
-        Camera Sensor Configuration  --->
-            Select and Set Camera Sensor  --->
-                ......
-                [ ] GC0308  ----
-                [*] GC2145  --->
-                [*] OV2640  ---->
-                ......
-```
+5. **Camera sensor interface selection:**
+   
+   The example will initialize all enabled camera sensors and stream their output to clients:
+   
+   ```
+   Example Video Initialization Configuration  --->
+       Select and Set Camera Sensor Interface  --->
+           [*] MIPI-CSI  ---
+           [*] DVP  ---->
+   ```
 
-For better FPS of the DVP interface camera sensor, you can select the following option:
+6. **Shared I2C bus configuration:**
+   
+   If your camera sensors share the same I2C GPIO pins (such as MIPI-CSI and DVP sensors on the ESP32-P4-Function-EV-Board V1.5):
+   
+   ```
+   Example Video Initialization Configuration  --->
+       [*] Use Pre-initialized SCCB(I2C) Bus for All Camera Sensors And Motors
+           (0) SCCB(I2C) Port Number
+           (8) SCCB(I2C) SCL Pin
+           (7) SCCB(I2C) SDA Pin
+   ```
 
-```
-Component config  --->
-    Espressif Camera Sensors Configurations  --->
-        Camera Sensor Configuration  --->
-            Select and Set Camera Sensor  --->
-                ......
-                [*] OV2640  ---->
-                    Select default output format for DVP interface (JPEG 640x480 25fps, DVP 8-bit, 20M input)  --->
-                        ......
-                        ( ) YUV422 640x480 6fps, DVP 8-bit, 20M input
-                        (X) JPEG 640x480 25fps, DVP 8-bit, 20M input
-                        ( ) RGB565 240x240 25fps, DVP 8-bit, 20M input
-                        ......
-                ......
-```
+7. **Select target camera sensors:**
+   
+   Choose sensors based on your development board:
+   
+   ```
+   Component config  --->
+       Espressif Camera Sensors Configurations  --->
+           Camera Sensor Configuration  --->
+               Select and Set Camera Sensor  --->
+                   [ ] GC0308  ----
+                   [*] GC2145  --->
+                   [*] OV2640  ---->
+   ```
 
-Build the project and flash it to the board, then run the monitor tool to view serial output:
+8. **Optimize DVP interface performance:**
+   
+   For better frame rates with DVP interface camera sensors:
+   
+   ```
+   Component config  --->
+       Espressif Camera Sensors Configurations  --->
+           Camera Sensor Configuration  --->
+               Select and Set Camera Sensor  --->
+                   [*] OV2640  ---->
+                       Select default output format for DVP interface (JPEG 640x480 25fps, DVP 8-bit, 20M input)  --->
+                           ( ) YUV422 640x480 6fps, DVP 8-bit, 20M input
+                           (X) JPEG 640x480 25fps, DVP 8-bit, 20M input
+                           ( ) RGB565 240x240 25fps, DVP 8-bit, 20M input
+   ```
 
-```
-idf.py -p PORT flash monitor
-```
+## Building and Running
 
-(To exit the serial monitor, type `Ctrl-]`.)
+1. **Build and flash the project:**
+   ```bash
+   idf.py -p PORT flash monitor
+   ```
+   
+   *(Press `Ctrl-]` to exit the serial monitor)*
 
-See the [ESP-IDF Getting Started Guide](https://docs.espressif.com/projects/esp-idf/en/latest/esp32p4/get-started/index.html) for complete steps to configure and use ESP-IDF to build projects.
+2. **For complete setup instructions**, see the [ESP-IDF Getting Started Guide](https://docs.espressif.com/projects/esp-idf/en/latest/esp32p4/get-started/index.html).
 
-When running this example, you will see the following log output on the serial monitor:
+## Expected Output
+
+When running this example, you should see output similar to this in the serial monitor:
 
 ```
 ...
@@ -189,19 +208,33 @@ I (5918) main_task: Returned from app_main()
 ...
 ```
 
-Enter `http://esp-web.local/stream` or `172.168.30.45/stream` (you can find the IP address in the log information above) in your browser to access the video stream. You will see the web interface as follows:
+## Accessing the Web Interface
 
-![camera_web_pic](./pic/camera_web_pic.jpg)
+1. **Open your web browser** and navigate to one of the following:
+   - `http://esp-web.local` (using mDNS)
+   - `http://172.168.30.45` (replace with your device's IP address from the log output)
 
-You can capture and download JPEG format images using the `Capture Image0` button (left video stream) or `Capture Image1` button (right video stream), and capture and download raw binary data describing the original image using the `Capture Binary0` button (left video stream) or `Capture Binary1` button (right video stream).
+2. **Web interface features:**
+   - View live video streams from connected cameras
+   - **Camera Icon**: Download JPEG-formatted images from the selected video streams
+   - **Raw Icon**: Download raw binary image data from the selected video streams
+   - **Gear Icon**: Configure the image parameters to the selected video streams
+
+![Camera Web Interface](./pic/camera_web_pic.png)
 
 ## Troubleshooting
 
-1. **I2C Transaction Error:**
+### Common Issues
 
-   ```
-   E (1595) i2c.master: I2C transaction unexpected nack detected
-   E (1595) i2c.master: s_i2c_synchronous_transaction(870): I2C transaction failed
-   ```
+**1. I2C Transaction Errors**
 
-   **Solution**: Check that the camera sensor is properly connected to the board and that the pins are correctly configured in menuconfig.
+```
+E (1595) i2c.master: I2C transaction unexpected nack detected
+E (1595) i2c.master: s_i2c_synchronous_transaction(870): I2C transaction failed
+```
+
+**Solutions:**
+- Verify that the camera sensor is properly connected to the development board
+- Check that the I2C pins (SCL/SDA) are correctly configured in menuconfig
+- Ensure the I2C pull-up resistors are present on your board
+- Verify the camera sensor power supply is stable

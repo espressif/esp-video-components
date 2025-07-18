@@ -4,6 +4,7 @@
 - Add multiple camera sensor option in menuconfig
 - Add FPS calculation to DVP and SPI video device
 - Example encode function supports multiple resolutions
+- Example simple_video_server uses a new web interface to display and control camera streams
 - Fix compilation error when enabling DVP and MIPI-CSI detection of one sensor
 
 ## 1.1.0
