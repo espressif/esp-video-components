@@ -38,12 +38,24 @@
     - export PEDANTIC_FLAGS="-DIDF_CI_BUILD -Werror -Werror=deprecated-declarations -Werror=unused-variable -Werror=unused-but-set-variable -Werror=unused-function"
     - export EXTRA_CFLAGS="${PEDANTIC_FLAGS} -Wstrict-prototypes"
     - export EXTRA_CXXFLAGS="${PEDANTIC_FLAGS}"
-    - python tools/ci/build_apps.py
+    - python tools/ci/build_apps.py --targets $IDF_TARGETS
 
-build_test:
+build_test_esp32p4:
   extends:
     - .build_examples_template
     - .rules:build:test_apps
+  variables:
+    IDF_TARGETS: "esp32p4"
+  parallel:
+    matrix:
+      - IMAGE: [espressif/idf:release-v5.4, espressif/idf:release-v5.5, espressif/idf:latest]
+
+build_test_others:
+  extends:
+    - .build_examples_template
+    - .rules:build:test_apps
+  variables:
+    IDF_TARGETS: "esp32s3;esp32c3;esp32c5;esp32c6;esp32c61"
   parallel:
     matrix:
       - IMAGE: [espressif/idf:release-v5.4, espressif/idf:release-v5.5, espressif/idf:latest]
