@@ -4,6 +4,7 @@
 import logging
 import os, subprocess, sys
 import typing as t
+import argparse
 from pathlib import Path
 from idf_build_apps.constants import SUPPORTED_TARGETS
 from idf_build_apps import App, build_apps, find_apps, setup_logging, LOGGER
@@ -35,7 +36,7 @@ def get_mr_components(modified_files: str) -> str:
 
     return list(components)
 
-def find_all_apps(root: str, manifest_files: list[str], modified_components: list[str], modified_files: list[str]):
+def find_all_apps(root: str, manifest_files: list[str], modified_components: list[str], modified_files: list[str], targets: list[str]):
     apps = find_apps(
         paths=root,
         target='all',
@@ -53,6 +54,9 @@ def find_all_apps(root: str, manifest_files: list[str], modified_components: lis
 
     match_apps = []
     for app in apps:
+        if app.target not in targets:
+            continue
+
         if app.config_name == 'default':
             match_apps.append(app)
         else:
@@ -62,7 +66,7 @@ def find_all_apps(root: str, manifest_files: list[str], modified_components: lis
             elif 'esp32' not in app.config_name:
                 match_apps.append(app)
             else:
-                logger.info('Exclude: %s %s %s'%(app.name, app.target, app.config_name))
+                logger.debug('Exclude: %s %s %s'%(app.name, app.target, app.config_name))
 
     return match_apps
 
@@ -71,11 +75,18 @@ if __name__ == '__main__':
 
     setup_logging(verbose=1)
 
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--targets', type=str, default='esp32p4', help='Targets to build')
+    args = parser.parse_args()
+    targets = args.targets.split(';')
+
+    logger.info(f'Targets to build: {targets}')
+
     modified_files = get_mr_files(os.getenv('MODIFIED_FILES'))
     modified_components = get_mr_components(os.getenv('MODIFIED_FILES'))
     manifests = [str(p) for p in Path(root).glob('**/.build-test-rules.yml')]
 
-    apps_to_build = find_all_apps(root=root, manifest_files=manifests, modified_components=modified_components, modified_files=modified_files)
+    apps_to_build = find_all_apps(root=root, manifest_files=manifests, modified_components=modified_components, modified_files=modified_files, targets=targets)
 
     ret_code = build_apps(
         apps_to_build,
