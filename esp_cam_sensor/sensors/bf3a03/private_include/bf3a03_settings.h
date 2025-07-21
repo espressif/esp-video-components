@@ -22,6 +22,12 @@ extern "C" {
 #define BF3A03_AEC_TARGET_MIN       (0X28)
 #define BF3A03_AEC_TARGET_DEFAULT   (0x50)
 
+#if CONFIG_CAMERA_SENSOR_SWAP_PIXEL_BYTE_ORDER
+#define BF3A03_YUV422_FMT 0x02
+#else
+#define BF3A03_YUV422_FMT 0x00
+#endif
+
 /*
  * The color effect settings
  */
@@ -101,7 +107,7 @@ static const bf3a03_reginfo_t DVP_8bit_20Minput_640x480_yuv422_15fps_mono[] = {
     //output formats
     {0x4a, 0x98},
     {0x12, 0x00},
-    {0x3a, 0x02}, //uyvy
+    {0x3a, BF3A03_YUV422_FMT}, //yuv seq
     {0x2b, 0x20},
     {0x8a, 0x73},
     {0x8b, 0x60},

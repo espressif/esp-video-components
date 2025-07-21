@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2024 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2024-2025 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -17,14 +17,19 @@ extern "C" {
 #endif
 
 #define GC0308_RGB565_FMT   (0xa6)
-#define GC0308_YUYV422_FMT  (0xa0) // send in [Cb Y Cr Y] order. The sequence of data stored is [Y Cb Y Cr]
+#if CONFIG_CAMERA_SENSOR_SWAP_PIXEL_BYTE_ORDER
+#define GC0308_YUV422_FMT  (0xa0) // send in [Cb Y Cr Y] order.
+#else
+#define GC0308_YUV422_FMT  (0xa2) // send in [Y Cb Y Cr] order.
+#endif
+
 #define GC0308_ONLY_Y_FMT   (0xb1)
 
 #define gc0308_settings_rgb565 \
     {GC0308_REG_OUTPUT_FMT, GC0308_RGB565_FMT}
 
 #define gc0308_settings_yuv422 \
-    {GC0308_REG_OUTPUT_FMT, GC0308_YUYV422_FMT}
+    {GC0308_REG_OUTPUT_FMT, GC0308_YUV422_FMT}
 
 #define gc0308_settings_only_y \
     {GC0308_REG_OUTPUT_FMT, GC0308_ONLY_Y_FMT}

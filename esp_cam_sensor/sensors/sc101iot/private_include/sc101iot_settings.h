@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2024 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2024-2025 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -14,6 +14,12 @@
 
 #ifdef __cplusplus
 extern "C" {
+#endif
+
+#if CONFIG_CAMERA_SENSOR_SWAP_PIXEL_BYTE_ORDER
+#define SC101IOT_YUV422_FMT 0x02
+#else
+#define SC101IOT_YUV422_FMT 0x00
 #endif
 
 static const sc101iot_reginfo_t DVP_8bit_20Minput_1280x720_yuv422_15fps[] = {
@@ -223,7 +229,7 @@ static const sc101iot_reginfo_t DVP_8bit_20Minput_1280x720_yuv422_15fps[] = {
     {0xed, 0x27},
     {0xe9, 0x20},
     {0xf0, 0x01},
-    {0x79, 0x02}, // send in CbYCrY sequence
+    {0x79, SC101IOT_YUV422_FMT}, // YUV sequence
     {0xf0, 0x31},
     {0x00, 0x00}, // sleep mode enable
 };
@@ -423,7 +429,7 @@ static const sc101iot_reginfo_t DVP_8bit_20Minput_1280x720_yuv422_25fps[] = {
     {0xec, 0x11},
     {0xed, 0x18},
     {0xf0, 0x01},
-    {0x79, 0x02}, // send in CbYCrY sequence
+    {0x79, SC101IOT_YUV422_FMT}, // YUV sequence
     {0xf0, 0x31},
     {0x00, 0x00}, // sleep mode enable
 };
