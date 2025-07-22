@@ -15,6 +15,15 @@ extern "C" {
 /**
  * @brief ESP32-S3-EYE configuration
  */
+
+/**
+ * @brief SCCB(I2C) pre-initialized port configuration
+ */
+#if CONFIG_EXAMPLE_SCCB_I2C_INIT_BY_APP
+#define EXAMPLE_SCCB_I2C_SCL_PIN_INIT_BY_APP            5
+#define EXAMPLE_SCCB_I2C_SDA_PIN_INIT_BY_APP            4
+#endif /* CONFIG_EXAMPLE_SCCB_I2C_INIT_BY_APP */
+
 #if CONFIG_EXAMPLE_ENABLE_DVP_CAM_SENSOR
 /**
  * @brief DVP camera sensor configuration

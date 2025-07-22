@@ -378,7 +378,8 @@ static esp_err_t ov2640_set_jpeg_quality(esp_cam_sensor_device_t *dev, int quali
     } else if (quality > 63) {
         quality = 63;
     }
-    ret = ov2640_write_reg(dev->sccb_handle, BANK_DSP, QS, quality);
+    // Lower value means higher quality
+    ret = ov2640_write_reg(dev->sccb_handle, BANK_DSP, QS, 63 - quality);
     if (ret == ESP_OK) {
         cam_ov2640->jpeg_quality = quality;
     }

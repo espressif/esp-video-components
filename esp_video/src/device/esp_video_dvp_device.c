@@ -415,6 +415,20 @@ static esp_err_t dvp_video_query_menu(struct esp_video *video, struct v4l2_query
     return esp_video_cam_query_menu(&dvp_video->cam, qmenu);
 }
 
+static esp_err_t dvp_video_get_parm(struct esp_video *video, struct v4l2_streamparm *stream_parm, struct esp_video_stream *stream)
+{
+    struct dvp_video *dvp_video = VIDEO_PRIV_DATA(struct dvp_video *, video);
+    struct v4l2_captureparm *cp = &stream_parm->parm.capture;
+    esp_cam_sensor_format_t sensor_format;
+
+    ESP_RETURN_ON_ERROR(esp_cam_sensor_get_format(dvp_video->cam.sensor, &sensor_format), TAG, "failed to get sensor format");
+    cp->capability |= V4L2_CAP_TIMEPERFRAME;
+    cp->timeperframe.numerator = 1;
+    cp->timeperframe.denominator = sensor_format.fps;
+
+    return ESP_OK;
+}
+
 static const struct esp_video_ops s_dvp_video_ops = {
     .init          = dvp_video_init,
     .deinit        = dvp_video_deinit,
@@ -429,6 +443,7 @@ static const struct esp_video_ops s_dvp_video_ops = {
     .set_sensor_format = dvp_video_set_sensor_format,
     .get_sensor_format = dvp_video_get_sensor_format,
     .query_menu    = dvp_video_query_menu,
+    .get_parm      = dvp_video_get_parm,
 };
 
 /**

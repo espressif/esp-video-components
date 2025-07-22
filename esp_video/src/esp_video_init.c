@@ -32,6 +32,7 @@
 
 #define UNUSED(a)                   ((void)(a))
 
+#if ESP_VIDEO_ENABLE_SCCB_DEVICE
 #define SCCB_NUM_MAX                I2C_NUM_MAX
 
 #define ESP_VIDEO_INIT_DVP_SCCB     0
@@ -64,12 +65,12 @@ typedef struct sensor_sccb_mask {
     esp_sccb_io_handle_t sccb_io[SCCB_DEV_NUM]; /*!< SCCB I/O handle */
 } sensor_sccb_mask_t;
 
+static sensor_sccb_mask_t s_sensor_sccb_mask[SCCB_NUM_MAX];
+#endif /* ESP_VIDEO_ENABLE_SCCB_DEVICE */
+
 #if CONFIG_ESP_VIDEO_ENABLE_SPI_VIDEO_DEVICE
 static esp_cam_sensor_xclk_handle_t s_spi_xclk_handle; /*!< SPI XCLK handle */
-#endif
-#if ESP_VIDEO_ENABLE_SCCB_DEVICE
-static sensor_sccb_mask_t s_sensor_sccb_mask[SCCB_NUM_MAX];
-#endif
+#endif /* CONFIG_ESP_VIDEO_ENABLE_SPI_VIDEO_DEVICE */
 static const char *TAG = "esp_video_init";
 
 #if ESP_VIDEO_ENABLE_SCCB_DEVICE
@@ -264,14 +265,18 @@ esp_err_t esp_video_init(const esp_video_init_config_t *config)
     bool csi_inited = false;
     bool dvp_inited = false;
     bool spi_inited = false;
+#if ESP_VIDEO_ENABLE_SCCB_DEVICE
     esp_video_init_sccb_mark_t sccb_mark[SCCB_NUM_MAX] = {0};
+#endif /* ESP_VIDEO_ENABLE_SCCB_DEVICE */
 
     if (config == NULL) {
         UNUSED(ret);
         UNUSED(csi_inited);
         UNUSED(dvp_inited);
         UNUSED(spi_inited);
+#if ESP_VIDEO_ENABLE_SCCB_DEVICE
         UNUSED(sccb_mark);
+#endif /* ESP_VIDEO_ENABLE_SCCB_DEVICE */
 
         ESP_LOGW(TAG, "Please validate camera config");
         return ESP_ERR_INVALID_ARG;
@@ -622,6 +627,7 @@ esp_err_t esp_video_deinit(void)
 #endif
     }
 
+#if ESP_VIDEO_ENABLE_SCCB_DEVICE
     for (int i = 0; i < SCCB_NUM_MAX; i++) {
         sensor_sccb_mask_t *m = &s_sensor_sccb_mask[i];
 
@@ -636,6 +642,8 @@ esp_err_t esp_video_deinit(void)
         }
     }
     memset(s_sensor_sccb_mask, 0, sizeof(s_sensor_sccb_mask));
+#endif /* ESP_VIDEO_ENABLE_SCCB_DEVICE */
+
 #if CONFIG_ESP_VIDEO_ENABLE_ISP_VIDEO_DEVICE
     ESP_RETURN_ON_ERROR(esp_video_destroy_isp_video_device(), TAG, "Failed to destroy ISP video device");
 #endif

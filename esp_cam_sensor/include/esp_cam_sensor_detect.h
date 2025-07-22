@@ -30,10 +30,10 @@ extern "C" {
  *  target_link_libraries(${COMPONENT_LIB} INTERFACE "-u ov2640_detect")
  */
 #define ESP_CAM_SENSOR_DETECT_FN(f, i, j, ...) \
-    static esp_cam_sensor_device_t * __VA_ARGS__ __esp_cam_sensor_detect_fn_##f(void *config); \
+    static esp_cam_sensor_device_t * __VA_ARGS__ __esp_cam_sensor_detect_fn_##f##_##i(void *config); \
     static __attribute__((used)) _SECTION_ATTR_IMPL(".esp_cam_sensor_detect_fn", __COUNTER__) \
-        esp_cam_sensor_detect_fn_t esp_cam_sensor_detect_fn_##f = { .detect = ( __esp_cam_sensor_detect_fn_##f), .port = (i), .sccb_addr = (j) }; \
-    static esp_cam_sensor_device_t *__esp_cam_sensor_detect_fn_##f(void *config)
+        esp_cam_sensor_detect_fn_t esp_cam_sensor_detect_fn_##f##_##i = { .detect = ( __esp_cam_sensor_detect_fn_##f##_##i), .port = (i), .sccb_addr = (j) }; \
+    static esp_cam_sensor_device_t *__esp_cam_sensor_detect_fn_##f##_##i(void *config)
 
 /**
  * @brief camera sensor auto detect function array start.
