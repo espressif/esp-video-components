@@ -269,6 +269,31 @@ esp_err_t example_encoder_process(example_encoder_handle_t handle, uint8_t *src_
 }
 
 /**
+ * @brief Set the JPEG quality
+ *
+ * @param handle Encoder handle
+ * @param quality JPEG quality
+ *
+ * @return ESP_OK on success or other value on failure
+ */
+esp_err_t example_encoder_set_jpeg_quality(example_encoder_handle_t handle, uint8_t quality)
+{
+    esp_err_t ret = ESP_OK;
+    example_encoder_t *encoder = (example_encoder_t *)handle;
+    if (!encoder) {
+        ESP_LOGE(TAG, "example encoder is not initialized");
+        return ESP_ERR_INVALID_ARG;
+    }
+
+#if CONFIG_EXAMPLE_SELECT_JPEG_HW_DRIVER
+    encoder->jpeg_enc_config.image_quality = quality;
+#else
+    ret = jpeg_enc_set_quality(encoder->jpeg_handle, quality);
+#endif
+    return ret;
+}
+
+/**
  * @brief Deinitialize the encoder
  *
  * @param handle Encoder handle

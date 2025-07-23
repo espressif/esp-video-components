@@ -13,6 +13,7 @@
 #include "sdkconfig.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/semphr.h"
+#include "cJSON.h"
 #include "esp_event.h"
 #include "esp_err.h"
 #include "esp_check.h"
@@ -39,6 +40,17 @@
 static const char *STREAM_CONTENT_TYPE = "multipart/x-mixed-replace;boundary=" EXAMPLE_PART_BOUNDARY;
 static const char *STREAM_BOUNDARY = "\r\n--" EXAMPLE_PART_BOUNDARY "\r\n";
 static const char *STREAM_PART = "Content-Type: image/jpeg\r\nContent-Length: %u\r\nX-Timestamp: %d.%06d\r\n\r\n";
+
+extern const uint8_t index_html_gz_start[] asm("_binary_index_html_gz_start");
+extern const uint8_t index_html_gz_end[] asm("_binary_index_html_gz_end");
+extern const uint8_t loading_jpg_gz_start[] asm("_binary_loading_jpg_gz_start");
+extern const uint8_t loading_jpg_gz_end[] asm("_binary_loading_jpg_gz_end");
+extern const uint8_t favicon_ico_gz_start[] asm("_binary_favicon_ico_gz_start");
+extern const uint8_t favicon_ico_gz_end[] asm("_binary_favicon_ico_gz_end");
+extern const uint8_t assets_index_js_gz_start[] asm("_binary_index_js_gz_start");
+extern const uint8_t assets_index_js_gz_end[] asm("_binary_index_js_gz_end");
+extern const uint8_t assets_index_css_gz_start[] asm("_binary_index_css_gz_start");
+extern const uint8_t assets_index_css_gz_end[] asm("_binary_index_css_gz_end");
 
 /**
  * @brief Web cam control structure
@@ -78,6 +90,11 @@ typedef struct request_desc {
 } request_desc_t;
 
 static const char *TAG = "example";
+
+static bool is_valid_web_cam(web_cam_video_t *video)
+{
+    return video->fd != -1;
+}
 
 static esp_err_t decode_request(web_cam_t *web_cam, httpd_req_t *req, request_desc_t *desc)
 {
@@ -142,7 +159,7 @@ static esp_err_t capture_video_image(httpd_req_t *req, web_cam_video_t *video, b
 
     ESP_GOTO_ON_ERROR(httpd_resp_sendstr_chunk(req, NULL), fail0, TAG, "failed to send null");
 
-    ESP_LOGI(TAG, "send %s image%d size: %" PRIu32, type_str, video->index, jpeg_encoded_size);
+    ESP_LOGD(TAG, "send %s image%d size: %" PRIu32, type_str, video->index, jpeg_encoded_size);
 
     return ESP_OK;
 
@@ -151,40 +168,228 @@ fail0:
     return ret;
 }
 
-static esp_err_t stream_script_handler(httpd_req_t *req)
+static char *get_cameras_json(web_cam_t *web_cam)
+{
+    cJSON *root = cJSON_CreateObject();
+    cJSON *cameras = cJSON_CreateArray();
+    cJSON_AddItemToObject(root, "cameras", cameras);
+
+    for (int i = 0; i < web_cam->video_count; i++) {
+        char src_str[32];
+
+        if (!is_valid_web_cam(&web_cam->video[i])) {
+            continue;
+        }
+
+        cJSON *camera = cJSON_CreateObject();
+        cJSON_AddNumberToObject(camera, "index", i);
+        assert(snprintf(src_str, sizeof(src_str), ":%d/stream", i + 81) > 0);
+        cJSON_AddStringToObject(camera, "src", src_str);
+        cJSON_AddNumberToObject(camera, "currentFrameRate", web_cam->video[i].frame_rate);
+        cJSON_AddNumberToObject(camera, "currentImageFormat", 0);
+        assert(snprintf(src_str, sizeof(src_str), "JPEG %" PRIu32 "x%" PRIu32, web_cam->video[i].width, web_cam->video[i].height) > 0);
+        cJSON_AddStringToObject(camera, "currentImageFormatDescription", src_str);
+
+        int quality = EXAMPLE_JPEG_ENC_QUALITY;
+        if (web_cam->video[i].pixel_format == V4L2_PIX_FMT_JPEG) {
+            struct v4l2_ext_controls controls = {0};
+            struct v4l2_ext_control control[1];
+
+            controls.ctrl_class = V4L2_CID_JPEG_CLASS;
+            controls.count = 1;
+            controls.controls = control;
+            control[0].id = V4L2_CID_JPEG_COMPRESSION_QUALITY;
+            if (ioctl(web_cam->video[i].fd, VIDIOC_G_EXT_CTRLS, &controls) == 0) {
+                quality = control[0].value;
+            }
+        }
+        cJSON_AddNumberToObject(camera, "currentQuality", quality);
+
+        cJSON *current_resolution = cJSON_CreateObject();
+        cJSON_AddNumberToObject(current_resolution, "width", web_cam->video[i].width);
+        cJSON_AddNumberToObject(current_resolution, "height", web_cam->video[i].height);
+        cJSON_AddItemToObject(camera, "currentResolution", current_resolution);
+
+        cJSON *image_formats = cJSON_CreateArray();
+        cJSON *image_format = cJSON_CreateObject();
+        cJSON_AddNumberToObject(image_format, "id", 0);
+        assert(snprintf(src_str, sizeof(src_str), "JPEG %" PRIu32 "x%" PRIu32, web_cam->video[i].width, web_cam->video[i].height) > 0);
+        cJSON_AddStringToObject(image_format, "description", src_str);
+
+        cJSON *image_format_quality = cJSON_CreateObject();
+
+        int min_quality = 1;
+        int max_quality = 100;
+        int step_quality = 1;
+        int default_quality = EXAMPLE_JPEG_ENC_QUALITY;
+        if (web_cam->video[i].pixel_format == V4L2_PIX_FMT_JPEG) {
+            struct v4l2_query_ext_ctrl qctrl = {0};
+
+            qctrl.id = V4L2_CID_JPEG_COMPRESSION_QUALITY;
+            if (ioctl(web_cam->video[i].fd, VIDIOC_QUERY_EXT_CTRL, &qctrl) == 0) {
+                min_quality = qctrl.minimum;
+                max_quality = qctrl.maximum;
+                step_quality = qctrl.step;
+                default_quality = qctrl.default_value;
+            }
+        }
+
+        cJSON_AddNumberToObject(image_format_quality, "min", min_quality);
+        cJSON_AddNumberToObject(image_format_quality, "max", max_quality);
+        cJSON_AddNumberToObject(image_format_quality, "step", step_quality);
+        cJSON_AddNumberToObject(image_format_quality, "default", default_quality);
+        cJSON_AddItemToObject(image_format, "quality", image_format_quality);
+        cJSON_AddItemToArray(image_formats, image_format);
+
+        cJSON_AddItemToObject(camera, "imageFormats", image_formats);
+        cJSON_AddItemToArray(cameras, camera);
+    }
+
+    char *output = cJSON_Print(root);
+    cJSON_Delete(root);
+    return output;
+}
+
+static esp_err_t set_camera_jpeg_quality(web_cam_video_t *video, int quality)
+{
+    esp_err_t ret = ESP_OK;
+    int quality_reset = quality;
+
+    if (video->pixel_format == V4L2_PIX_FMT_JPEG) {
+        struct v4l2_ext_controls controls = {0};
+        struct v4l2_ext_control control[1];
+        struct v4l2_query_ext_ctrl qctrl = {0};
+
+        qctrl.id = V4L2_CID_JPEG_COMPRESSION_QUALITY;
+        ESP_RETURN_ON_ERROR(ioctl(video->fd, VIDIOC_QUERY_EXT_CTRL, &qctrl), TAG, "failed to query jpeg compression quality");
+        if ((quality > qctrl.maximum) || (quality < qctrl.minimum) ||
+                (((quality - qctrl.minimum) % qctrl.step) != 0)) {
+
+            if (quality > qctrl.maximum) {
+                quality_reset = qctrl.maximum;
+            } else if (quality < qctrl.minimum) {
+                quality_reset = qctrl.minimum;
+            } else {
+                quality_reset = qctrl.minimum + ((quality - qctrl.minimum) / qctrl.step) * qctrl.step;
+            }
+
+            ESP_LOGW(TAG, "JPEG compression quality=%d is out of sensor's range, reset to %d", quality, quality_reset);
+        }
+
+        controls.ctrl_class = V4L2_CID_JPEG_CLASS;
+        controls.count = 1;
+        controls.controls = control;
+        control[0].id = V4L2_CID_JPEG_COMPRESSION_QUALITY;
+        control[0].value = quality_reset;
+        ESP_RETURN_ON_ERROR(ioctl(video->fd, VIDIOC_S_EXT_CTRLS, &controls), TAG, "failed to set jpeg compression quality");
+    } else {
+        ESP_RETURN_ON_ERROR(example_encoder_set_jpeg_quality(video->encoder_handle, quality_reset), TAG, "failed to set jpeg quality");
+    }
+
+    ESP_LOGI(TAG, "set video %d jpeg quality %d success", video->index, quality_reset);
+
+    return ret;
+}
+
+static esp_err_t camera_info_handler(httpd_req_t *req)
 {
     esp_err_t ret;
-    char *response;
-    int response_size;
-    char ip_addr[16];
-    esp_netif_ip_info_t ip_info;
     web_cam_t *web_cam = (web_cam_t *)req->user_ctx;
-    extern const uint8_t single_camera_web_html_start[] asm("_binary_single_camera_web_html_start");
-    extern const uint8_t dual_camera_web_html_start[] asm("_binary_dual_camera_web_html_start");
+    char *output = get_cameras_json(web_cam);
 
-    ESP_RETURN_ON_ERROR(esp_netif_get_ip_info(esp_netif_get_default_netif(), &ip_info), TAG, "failed to get ip info");
-    inet_ntoa_r(ip_info.ip.addr, ip_addr, 16);
-    ESP_LOGD(TAG, "local IP: %s", ip_addr);
+    httpd_resp_set_type(req, "application/json");
+    ret = httpd_resp_sendstr(req, output);
+    free(output);
 
-    if (web_cam->video_count == 1) {
-        const char *html_text = (const char *)single_camera_web_html_start;
-        ESP_RETURN_ON_FALSE((response_size = asprintf(&response, html_text, ip_addr, ip_addr, ip_addr, ip_addr)) > 0,
-                            ESP_FAIL, TAG, "failed to format response");
-    } else {
-        const char *html_text = (const char *)dual_camera_web_html_start;
-        ESP_RETURN_ON_FALSE((response_size = asprintf(&response, html_text, ip_addr, ip_addr, ip_addr, ip_addr, ip_addr, ip_addr )) > 0,
-                            ESP_FAIL, TAG, "failed to format response");
-    }
+    return ret;
+}
 
-    ESP_LOGD(TAG, "response_size: %d", response_size);
+static esp_err_t camera_settings_handler(httpd_req_t *req)
+{
+    esp_err_t ret;
+    char *content;
+    web_cam_t *web_cam = (web_cam_t *)req->user_ctx;
 
-    ret = httpd_resp_send_chunk(req, response, response_size);
-    if (ret != ESP_OK) {
-        ESP_LOGE(TAG, "failed to send http html content");
-    }
-    free(response);
+    content = (char *)calloc(1, req->content_len + 1);
+    ESP_RETURN_ON_FALSE(content, ESP_ERR_NO_MEM, TAG, "failed to allocate memory");
 
+    ESP_GOTO_ON_FALSE(httpd_req_recv(req, content, req->content_len) > 0, ESP_FAIL, fail0, TAG, "failed to recv content");
+    ESP_LOGD(TAG, "content: %s", content);
+
+    cJSON *json_root = cJSON_Parse(content);
+    free(content);
+    content = NULL;
+    ESP_GOTO_ON_FALSE(json_root, ESP_FAIL, fail0, TAG, "failed to parse JSON");
+
+    cJSON *json_index = cJSON_GetObjectItem(json_root, "index");
+    ESP_GOTO_ON_FALSE(json_index && cJSON_IsNumber(json_index), ESP_ERR_INVALID_ARG, fail1, TAG, "missing or invalid index field");
+    int index = json_index->valueint;
+    ESP_GOTO_ON_FALSE(index >= 0 && index < web_cam->video_count && is_valid_web_cam(&web_cam->video[index]), ESP_ERR_INVALID_ARG, fail1, TAG, "invalid index");
+
+    cJSON *json_image_format = cJSON_GetObjectItem(json_root, "image_format");
+    ESP_GOTO_ON_FALSE(json_image_format && cJSON_IsNumber(json_image_format), ESP_ERR_INVALID_ARG, fail1, TAG, "missing or invalid image_format field");
+    int image_format = json_image_format->valueint;
+
+    cJSON *json_jpeg_quality = cJSON_GetObjectItem(json_root, "jpeg_quality");
+    ESP_GOTO_ON_FALSE(json_jpeg_quality && cJSON_IsNumber(json_jpeg_quality), ESP_ERR_INVALID_ARG, fail1, TAG, "missing or invalid jpeg_quality field");
+    int jpeg_quality = json_jpeg_quality->valueint;
+
+    ESP_LOGI(TAG, "JSON parse success - index:%d, image_format:%d, jpeg_quality:%d", index, image_format, jpeg_quality);
+    cJSON_Delete(json_root);
+    json_root = NULL;
+
+    ESP_GOTO_ON_ERROR(set_camera_jpeg_quality(&web_cam->video[index], jpeg_quality), fail1, TAG, "failed to set camera jpeg quality");
+
+    httpd_resp_sendstr(req, "OK");
     return ESP_OK;
+
+fail1:
+    if (json_root) {
+        cJSON_Delete(json_root);
+    }
+fail0:
+    if (ret == HTTPD_SOCK_ERR_TIMEOUT) {
+        httpd_resp_send_408(req);
+    } else {
+        httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "Invalid JSON format");
+    }
+    if (content) {
+        free(content);
+    }
+    return ret;
+}
+
+static esp_err_t static_file_handler(httpd_req_t *req)
+{
+    const char *uri = req->uri;
+
+    /* Route to appropriate static file based on URI */
+    if (strcmp(uri, "/") == 0) {
+        httpd_resp_set_type(req, "text/html");
+        httpd_resp_set_hdr(req, "Content-Encoding", "gzip");
+        return httpd_resp_send(req, (const char *)index_html_gz_start, index_html_gz_end - index_html_gz_start);
+    } else if (strcmp(uri, "/loading.jpg") == 0) {
+        httpd_resp_set_type(req, "image/jpeg");
+        httpd_resp_set_hdr(req, "Content-Encoding", "gzip");
+        return httpd_resp_send(req, (const char *)loading_jpg_gz_start, loading_jpg_gz_end - loading_jpg_gz_start);
+    } else if (strcmp(uri, "/favicon.ico") == 0) {
+        httpd_resp_set_type(req, "image/x-icon");
+        httpd_resp_set_hdr(req, "Content-Encoding", "gzip");
+        return httpd_resp_send(req, (const char *)favicon_ico_gz_start, favicon_ico_gz_end - favicon_ico_gz_start);
+    } else if (strcmp(uri, "/assets/index.js") == 0) {
+        httpd_resp_set_type(req, "application/javascript");
+        httpd_resp_set_hdr(req, "Content-Encoding", "gzip");
+        return httpd_resp_send(req, (const char *)assets_index_js_gz_start, assets_index_js_gz_end - assets_index_js_gz_start);
+    } else if (strcmp(uri, "/assets/index.css") == 0) {
+        httpd_resp_set_type(req, "text/css");
+        httpd_resp_set_hdr(req, "Content-Encoding", "gzip");
+        return httpd_resp_send(req, (const char *)assets_index_css_gz_start, assets_index_css_gz_end - assets_index_css_gz_start);
+    }
+
+    /* If no static file matches, return 404 */
+    ESP_LOGW(TAG, "File not found: %s", uri);
+    httpd_resp_send_404(req);
+    return ESP_FAIL;
 }
 
 static esp_err_t image_stream_handler(httpd_req_t *req)
@@ -294,7 +499,7 @@ static esp_err_t init_web_cam_video(web_cam_video_t *video, const web_cam_video_
     struct v4l2_fract *timeperframe = &cparam->timeperframe;
 
     fd = open(config->dev_name, O_RDWR);
-    ESP_RETURN_ON_FALSE(fd >= 0, ESP_FAIL, TAG, "Open video device %s failed", config->dev_name);
+    ESP_RETURN_ON_FALSE(fd >= 0, ESP_ERR_NOT_FOUND, TAG, "Open video device %s failed", config->dev_name);
 
     memset(&sparm, 0, sizeof(sparm));
     sparm.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
@@ -328,41 +533,13 @@ static esp_err_t init_web_cam_video(web_cam_video_t *video, const web_cam_video_
     format.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
     ESP_GOTO_ON_ERROR(ioctl(fd, VIDIOC_G_FMT, &format), fail0, TAG, "Failed get fmt from %s", config->dev_name);
 
+    video->fd = fd;
     video->width = format.fmt.pix.width;
     video->height = format.fmt.pix.height;
     video->pixel_format = format.fmt.pix.pixelformat;
 
     if (video->pixel_format == V4L2_PIX_FMT_JPEG) {
-        uint32_t quality;
-        struct v4l2_ext_controls controls = {0};
-        struct v4l2_ext_control control[1];
-        struct v4l2_query_ext_ctrl qctrl;
-
-        memset(&qctrl, 0, sizeof(qctrl));
-        qctrl.id = V4L2_CID_JPEG_COMPRESSION_QUALITY;
-        ESP_GOTO_ON_ERROR(ioctl(fd, VIDIOC_QUERY_EXT_CTRL, &qctrl), fail0, TAG, "failed to query jpeg compression quality");
-        if ((EXAMPLE_JPEG_ENC_QUALITY > qctrl.maximum) || (EXAMPLE_JPEG_ENC_QUALITY < qctrl.minimum) ||
-                (((EXAMPLE_JPEG_ENC_QUALITY - qctrl.minimum) % qctrl.step) != 0)) {
-
-            if (EXAMPLE_JPEG_ENC_QUALITY > qctrl.maximum) {
-                quality = qctrl.maximum;
-            } else if (EXAMPLE_JPEG_ENC_QUALITY < qctrl.minimum) {
-                quality = qctrl.minimum;
-            } else {
-                quality = qctrl.minimum + ((EXAMPLE_JPEG_ENC_QUALITY - qctrl.minimum) / qctrl.step) * qctrl.step;
-            }
-
-            ESP_LOGW(TAG, "JPEG compression quality=%d is out of sensor's range, reset to %" PRIu32, EXAMPLE_JPEG_ENC_QUALITY, quality);
-        } else {
-            quality = EXAMPLE_JPEG_ENC_QUALITY;
-        }
-
-        controls.ctrl_class = V4L2_CID_JPEG_CLASS;
-        controls.count = 1;
-        controls.controls = control;
-        control[0].id = V4L2_CID_JPEG_COMPRESSION_QUALITY;
-        control[0].value = quality;
-        ESP_GOTO_ON_ERROR(ioctl(fd, VIDIOC_S_EXT_CTRLS, &controls), fail0, TAG, "failed to set jpeg compression quality");
+        ESP_GOTO_ON_ERROR(set_camera_jpeg_quality(video, EXAMPLE_JPEG_ENC_QUALITY), fail0, TAG, "failed to set jpeg quality");
     } else {
         example_encoder_config_t encoder_config = {0};
 
@@ -380,9 +557,6 @@ static esp_err_t init_web_cam_video(web_cam_video_t *video, const web_cam_video_
     ESP_GOTO_ON_FALSE(video->sem, ESP_ERR_NO_MEM, fail2, TAG, "failed to create semaphore");
     xSemaphoreGive(video->sem);
 
-    video->index = index;
-    video->fd = fd;
-
     return ESP_OK;
 
 fail2:
@@ -397,6 +571,7 @@ fail1:
     }
 fail0:
     close(fd);
+    video->fd = -1;
     return ret;
 }
 
@@ -428,13 +603,26 @@ static esp_err_t new_web_cam(const web_cam_video_config_t *config, int config_co
     wc->video_count = config_count;
 
     for (i = 0; i < config_count; i++) {
-        ESP_GOTO_ON_ERROR(init_web_cam_video(&wc->video[i], &config[i], i), fail0, TAG, "failed to init web_cam %d", i);
+        wc->video[i].index = i;
+        wc->video[i].fd = -1;
+
+        ret = init_web_cam_video(&wc->video[i], &config[i], i);
+        if (ret == ESP_ERR_NOT_FOUND) {
+            ESP_LOGW(TAG, "failed to find web_cam %d", i);
+            continue;
+        } else if (ret != ESP_OK) {
+            ESP_LOGE(TAG, "failed to initialize web_cam %d", i);
+            goto fail0;
+        }
+
         ESP_LOGI(TAG, "video%d: width=%" PRIu32 " height=%" PRIu32 " format=" V4L2_FMT_STR, i, wc->video[i].width,
                  wc->video[i].height, V4L2_FMT_STR_ARG(wc->video[i].pixel_format));
     }
 
     for (i = 0; i < config_count; i++) {
-        ESP_GOTO_ON_ERROR(ioctl(wc->video[i].fd, VIDIOC_STREAMON, &type), fail1, TAG, "failed to start stream");
+        if (is_valid_web_cam(&wc->video[i])) {
+            ESP_GOTO_ON_ERROR(ioctl(wc->video[i].fd, VIDIOC_STREAMON, &type), fail1, TAG, "failed to start stream");
+        }
     }
 
     *ret_wc = wc;
@@ -443,12 +631,16 @@ static esp_err_t new_web_cam(const web_cam_video_config_t *config, int config_co
 
 fail1:
     for (int j = i - 1; j >= 0; j--) {
-        ioctl(wc->video[j].fd, VIDIOC_STREAMOFF, &type);
+        if (is_valid_web_cam(&wc->video[j])) {
+            ioctl(wc->video[j].fd, VIDIOC_STREAMOFF, &type);
+        }
     }
     i = config_count; // deinit all web_cam
 fail0:
     for (int j = i - 1; j >= 0; j--) {
-        deinit_web_cam_video(&wc->video[j]);
+        if (is_valid_web_cam(&wc->video[j])) {
+            deinit_web_cam_video(&wc->video[j]);
+        }
     }
     free(wc);
     return ret;
@@ -457,7 +649,9 @@ fail0:
 static void free_web_cam(web_cam_t *web_cam)
 {
     for (int i = 0; i < web_cam->video_count; i++) {
-        deinit_web_cam_video(&web_cam->video[i]);
+        if (is_valid_web_cam(&web_cam->video[i])) {
+            deinit_web_cam_video(&web_cam->video[i]);
+        }
     }
     free(web_cam);
 }
@@ -466,38 +660,63 @@ static esp_err_t http_server_init(web_cam_t *web_cam)
 {
     httpd_handle_t stream_httpd;
     httpd_config_t config = HTTPD_DEFAULT_CONFIG();
+    config.uri_match_fn = httpd_uri_match_wildcard;
 
-    httpd_uri_t stream_script_uri = {
-        .uri = "/stream",
+    /* Unified static file handler for all static resources */
+    httpd_uri_t static_file_uri = {
+        .uri = "/*",
         .method = HTTP_GET,
-        .handler = stream_script_handler,
+        .handler = static_file_handler,
         .user_ctx = (void *)web_cam
     };
 
+    /* API handlers */
     httpd_uri_t capture_image_uri = {
-        .uri = "/capture_image",
+        .uri = "/api/capture_image",
         .method = HTTP_GET,
         .handler = capture_image_handler,
         .user_ctx = (void *)web_cam
     };
 
     httpd_uri_t capture_binary_uri = {
-        .uri = "/capture_binary",
+        .uri = "/api/capture_binary",
         .method = HTTP_GET,
         .handler = capture_binary_handler,
         .user_ctx = (void *)web_cam
     };
 
+    httpd_uri_t camera_info_uri = {
+        .uri = "/api/get_camera_info",
+        .method = HTTP_GET,
+        .handler = camera_info_handler,
+        .user_ctx = (void *)web_cam
+    };
+
+    httpd_uri_t camera_settings_uri = {
+        .uri = "/api/set_camera_config",
+        .method = HTTP_POST,
+        .handler = camera_settings_handler,
+        .user_ctx = (void *)web_cam
+    };
 
     config.stack_size = 1024 * 6;
     ESP_LOGI(TAG, "Starting stream server on port: '%d'", config.server_port);
     if (httpd_start(&stream_httpd, &config) == ESP_OK) {
-        httpd_register_uri_handler(stream_httpd, &stream_script_uri);
+        /* Register API handlers (more specific URIs) */
         httpd_register_uri_handler(stream_httpd, &capture_image_uri);
         httpd_register_uri_handler(stream_httpd, &capture_binary_uri);
+        httpd_register_uri_handler(stream_httpd, &camera_info_uri);
+        httpd_register_uri_handler(stream_httpd, &camera_settings_uri);
+
+        /* Register wildcard static file handler to catch all other requests */
+        httpd_register_uri_handler(stream_httpd, &static_file_uri);
     }
 
     for (int i = 0; i < web_cam->video_count; i++) {
+        if (!is_valid_web_cam(&web_cam->video[i])) {
+            continue;
+        }
+
         httpd_uri_t stream_0_uri = {
             .uri = "/stream",
             .method = HTTP_GET,
