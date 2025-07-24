@@ -6,6 +6,7 @@
 - Example encode function supports multiple resolutions
 - Example simple_video_server uses a new web interface to display and control camera streams
 - Fix compilation error when enabling DVP and MIPI-CSI detection of one sensor
+- Fix MIPI-CSI video device RAW Bayer order mapping issue
 
 ## 1.1.0
 

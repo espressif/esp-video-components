@@ -216,7 +216,7 @@ static esp_err_t csi_get_input_bayer_order(const esp_cam_sensor_isp_info_t *isp_
     } else {
         switch (isp_info->isp_v1_info.bayer_type) {
         case ESP_CAM_SENSOR_BAYER_RGGB:
-            *bayer_order = COLOR_RAW_ELEMENT_ORDER_BGGR;
+            *bayer_order = COLOR_RAW_ELEMENT_ORDER_RGGB;
             break;
         case ESP_CAM_SENSOR_BAYER_GRBG:
             *bayer_order = COLOR_RAW_ELEMENT_ORDER_GRBG;
