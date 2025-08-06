@@ -5,6 +5,7 @@
 - Fixed OV2640 JPEG compression quality calculation issue.
 - Fixed incorrect format selection in OV2640 Kconfig.
 - Removed the GROUP Hold function in the SC2336 driver.
+- Modified GPIO pin type from int8_t to gpio_num_t
 
 ## 1.2.1
 - Deprecated ledc intr type config
