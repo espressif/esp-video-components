@@ -21,12 +21,12 @@ extern "C" {
  */
 typedef struct esp_cam_ctlr_spi_config {
     spi_host_device_t spi_port;                         /*!< SPI port */
-    int8_t spi_cs_pin;                                  /*!< SPI CS pin */
-    int8_t spi_sclk_pin;                                /*!< SPI SCLK pin */
-    int8_t spi_data0_io_pin;                            /*!< SPI data0 I/O pin */
+    gpio_num_t spi_cs_pin;                              /*!< SPI CS pin */
+    gpio_num_t spi_sclk_pin;                            /*!< SPI SCLK pin */
+    gpio_num_t spi_data0_io_pin;                        /*!< SPI data0 I/O pin */
 
-    int8_t reset_pin;                                   /*!< Reset pin */
-    int8_t pwdn_pin;                                    /*!< Power down pin */
+    gpio_num_t reset_pin;                               /*!< Reset pin */
+    gpio_num_t pwdn_pin;                                /*!< Power down pin */
 
     uint32_t h_res;                                     /*!< Input horizontal resolution, i.e. the number of pixels in a line */
     uint32_t v_res;                                     /*!< Input vertical resolution, i.e. the number of lines in a frame */

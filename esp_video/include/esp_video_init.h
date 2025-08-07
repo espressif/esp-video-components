@@ -38,8 +38,8 @@ typedef struct esp_video_init_sccb_config {
     union {
         struct {
             uint8_t port;                       /*!< SCCB I2C port */
-            uint8_t scl_pin;                    /*!< SCCB I2C SCL pin */
-            uint8_t sda_pin;                    /*!< SCCB I2C SDA pin */
+            gpio_num_t scl_pin;                 /*!< SCCB I2C SCL pin */
+            gpio_num_t sda_pin;                 /*!< SCCB I2C SDA pin */
         } i2c_config;
 
         i2c_master_bus_handle_t i2c_handle;     /*!< SCCB I2C handle */
@@ -56,8 +56,8 @@ typedef struct esp_video_init_sccb_config {
 typedef struct esp_video_init_csi_config {
     esp_video_init_sccb_config_t sccb_config;   /*!< Camera sensor SCCB configuration */
 
-    int8_t  reset_pin;                          /*!< Camera sensor reset pin, if hardware has no reset pin, set reset_pin to be -1 */
-    int8_t  pwdn_pin;                           /*!< Camera sensor power down pin, if hardware has no power down pin, set pwdn_pin to be -1 */
+    gpio_num_t  reset_pin;                      /*!< Camera sensor reset pin, if hardware has no reset pin, set reset_pin to be -1 */
+    gpio_num_t  pwdn_pin;                       /*!< Camera sensor power down pin, if hardware has no power down pin, set pwdn_pin to be -1 */
 } esp_video_init_csi_config_t;
 #endif /* CONFIG_ESP_VIDEO_ENABLE_MIPI_CSI_VIDEO_DEVICE */
 
@@ -68,8 +68,8 @@ typedef struct esp_video_init_csi_config {
 typedef struct esp_video_init_dvp_config {
     esp_video_init_sccb_config_t sccb_config;   /*!< Camera sensor SCCB configuration */
 
-    int8_t  reset_pin;                          /*!< Camera sensor reset pin, if hardware has no reset pin, set reset_pin to be -1 */
-    int8_t  pwdn_pin;                           /*!< Camera sensor power down pin, if hardware has no power down pin, set pwdn_pin to be -1 */
+    gpio_num_t  reset_pin;                      /*!< Camera sensor reset pin, if hardware has no reset pin, set reset_pin to be -1 */
+    gpio_num_t  pwdn_pin;                       /*!< Camera sensor power down pin, if hardware has no power down pin, set pwdn_pin to be -1 */
 
     esp_cam_ctlr_dvp_pin_config_t dvp_pin;      /*!< DVP pin configuration */
 
@@ -85,18 +85,18 @@ typedef struct esp_video_init_spi_config {
     esp_video_init_sccb_config_t sccb_config;   /*!< Camera sensor SCCB configuration */
 
     uint8_t spi_port;                           /*!< SPI port */
-    int8_t spi_cs_pin;                          /*!< SPI CS pin */
-    int8_t spi_sclk_pin;                        /*!< SPI SCLK pin */
-    int8_t spi_data0_io_pin;                    /*!< SPI data0 I/O pin */
+    gpio_num_t spi_cs_pin;                      /*!< SPI CS pin */
+    gpio_num_t spi_sclk_pin;                    /*!< SPI SCLK pin */
+    gpio_num_t spi_data0_io_pin;                /*!< SPI data0 I/O pin */
 
-    int8_t  reset_pin;                          /*!< SPI interface camera sensor reset pin, if hardware has no reset pin, set reset_pin to be -1 */
-    int8_t  pwdn_pin;                           /*!< SPI interface camera sensor power down pin, if hardware has no power down pin, set pwdn_pin to be -1 */
+    gpio_num_t  reset_pin;                      /*!< SPI interface camera sensor reset pin, if hardware has no reset pin, set reset_pin to be -1 */
+    gpio_num_t  pwdn_pin;                       /*!< SPI interface camera sensor power down pin, if hardware has no power down pin, set pwdn_pin to be -1 */
 
     /* Output clock configuration for SPI interface camera sensor */
 
     esp_cam_sensor_xclk_source_t xclk_source;   /*!< Output clock resource for SPI interface camera sensor */
     uint32_t xclk_freq;                         /*!< Output clock frequency for SPI interface camera sensor */
-    int8_t xclk_pin;                            /*!< Output clock pin for SPI interface camera sensor */
+    gpio_num_t xclk_pin;                        /*!< Output clock pin for SPI interface camera sensor */
 
 #if CONFIG_CAMERA_XCLK_USE_LEDC
     /* This is used when xclk_source is ESP_CAM_SENSOR_XCLK_LEDC */
@@ -128,9 +128,9 @@ typedef struct esp_video_init_jpeg_config {
 typedef struct esp_video_init_cam_motor_config {
     esp_video_init_sccb_config_t sccb_config;   /*!< Camera motor SCCB configuration */
 
-    int8_t  reset_pin;                          /*!< Camera motor reset pin, if hardware has no reset pin, set reset_pin to be -1 */
-    int8_t  pwdn_pin;                           /*!< Camera motor power down pin, if hardware has no power down pin, set pwdn_pin to be -1 */
-    int8_t  signal_pin;                         /*!< Camera motor enable signal pin, if hardware has no signal pin, set signal to be -1 */
+    gpio_num_t  reset_pin;                      /*!< Camera motor reset pin, if hardware has no reset pin, set reset_pin to be -1 */
+    gpio_num_t  pwdn_pin;                       /*!< Camera motor power down pin, if hardware has no power down pin, set pwdn_pin to be -1 */
+    gpio_num_t  signal_pin;                     /*!< Camera motor enable signal pin, if hardware has no signal pin, set signal to be -1 */
 } esp_video_init_cam_motor_config_t;
 #endif
 

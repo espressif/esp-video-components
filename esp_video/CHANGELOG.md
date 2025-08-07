@@ -8,6 +8,7 @@
 - Fix compilation error when enabling DVP and MIPI-CSI detection of one sensor
 - Fix MIPI-CSI video device RAW Bayer order mapping issue
 - Fix sdkconfig.default.esp32s3 for better image bandwidth
+- Modify GPIO pin type from int8_t to gpio_num_t
 
 ## 1.1.0
 

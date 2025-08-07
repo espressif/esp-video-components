@@ -49,9 +49,9 @@ typedef struct esp_video_csi_state {
  */
 typedef struct esp_video_spi_device_config {
     spi_host_device_t spi_port;             /*!< SPI port */
-    int8_t spi_cs_pin;                      /*!< SPI CS pin */
-    int8_t spi_sclk_pin;                    /*!< SPI SCLK pin */
-    int8_t spi_data0_io_pin;                /*!< SPI data0 I/O pin */
+    gpio_num_t spi_cs_pin;                  /*!< SPI CS pin */
+    gpio_num_t spi_sclk_pin;                /*!< SPI SCLK pin */
+    gpio_num_t spi_data0_io_pin;            /*!< SPI data0 I/O pin */
 } esp_video_spi_device_config_t;
 #endif
 

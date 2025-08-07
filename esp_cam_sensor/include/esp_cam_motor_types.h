@@ -58,9 +58,9 @@ typedef enum {
 
 typedef struct {
     esp_sccb_io_handle_t sccb_handle;            /*!< the handle of the sccb bus bound to the motor, returned by sccb_new_i2c_io */
-    int8_t  reset_pin;                           /*!< Hardware reset pin, set to -1 if not used */
-    int8_t  pwdn_pin;                            /*!< Power down pin, set to -1 if not used */
-    int8_t  signal_pin;                          /*!< Signal output pin, set to -1 if not used */
+    gpio_num_t  reset_pin;                       /*!< Hardware reset pin, set to -1 if not used */
+    gpio_num_t  pwdn_pin;                        /*!< Power down pin, set to -1 if not used */
+    gpio_num_t  signal_pin;                      /*!< Signal output pin, set to -1 if not used */
     void *platform_data;                         /*!< Platform info */
 } esp_cam_motor_config_t;
 
@@ -101,9 +101,9 @@ typedef struct {
     esp_cam_motor_status status;                 /*!< Motor status */
     esp_sccb_io_handle_t sccb_handle;            /*!< SCCB io handle that created by `sccb_new_i2c_io` */
     const esp_cam_motor_format_t *cur_format;    /*!< Current format */
-    int8_t  reset_pin;                           /*!< Hardware reset pin, set to -1 if not used */
-    int8_t  pwdn_pin;                            /*!< Power down pin, set to -1 if not used */
-    int8_t  signal_pin;                          /*!< Signal output pin, set to -1 if not used */
+    gpio_num_t  reset_pin;                       /*!< Hardware reset pin, set to -1 if not used */
+    gpio_num_t  pwdn_pin;                        /*!< Power down pin, set to -1 if not used */
+    gpio_num_t  signal_pin;                      /*!< Signal output pin, set to -1 if not used */
     int current_position;                        /*!< Current position */
     int requested_position;                      /*!< Requested position */
 

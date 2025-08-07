@@ -8,6 +8,7 @@
 
 #include <stdint.h>
 #include "esp_sccb_intf.h"
+#include "driver/gpio.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -376,9 +377,9 @@ typedef struct _esp_cam_sensor_ops esp_cam_sensor_ops_t;
 typedef struct {
     char *name;                                  /*!< String name of the sensor */
     esp_sccb_io_handle_t sccb_handle;            /*!< SCCB io handle that created by `sccb_new_i2c_io` */
-    int8_t  xclk_pin;                            /*!< Sensor clock input pin, set to -1 not used */
-    int8_t  reset_pin;                           /*!< Hardware reset pin, set to -1 if not used */
-    int8_t  pwdn_pin;                            /*!< Power down pin, set to -1 if not used */
+    gpio_num_t  xclk_pin;                        /*!< Sensor clock input pin, set to -1 not used */
+    gpio_num_t  reset_pin;                       /*!< Hardware reset pin, set to -1 if not used */
+    gpio_num_t  pwdn_pin;                        /*!< Power down pin, set to -1 if not used */
     esp_cam_sensor_port_t sensor_port;           /*!< Camera interface currently in use */
     const esp_cam_sensor_format_t *cur_format;   /*!< Current format */
     esp_cam_sensor_id_t id;                      /*!< Sensor ID. */
@@ -410,9 +411,9 @@ typedef struct _esp_cam_sensor_ops {
  */
 typedef struct {
     esp_sccb_io_handle_t sccb_handle;            /*!< the handle of the sccb bus bound to the sensor, returned by sccb_new_i2c_io */
-    int8_t  reset_pin;                           /*!< reset pin, set to -1 if not used */
-    int8_t  pwdn_pin;                            /*!< power down pin, set to -1 if not used */
-    int8_t  xclk_pin;                            /*!< xclk pin, set to -1 if not used*/
+    gpio_num_t  reset_pin;                       /*!< reset pin, set to -1 if not used */
+    gpio_num_t  pwdn_pin;                        /*!< power down pin, set to -1 if not used */
+    gpio_num_t  xclk_pin;                        /*!< xclk pin, set to -1 if not used*/
     int32_t xclk_freq_hz;                        /*!< xclk freq， invalid when xclk = -1 */
     esp_cam_sensor_port_t sensor_port;           /*!< camera interface currently in use， DVP or MIPI */
 } esp_cam_sensor_config_t;

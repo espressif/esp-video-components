@@ -46,7 +46,7 @@ typedef struct esp_cam_ctlr_spi_cam {
     void *cbs_user_data;                                /*!< Camera controller callback private data */
 
     spi_host_device_t spi_port;                         /*!< SPI port */
-    int8_t spi_cs_pin;                                  /*!< SPI CS pin */
+    gpio_num_t spi_cs_pin;                              /*!< SPI CS pin */
     const esp_cam_sensor_spi_frame_info *frame_info;    /*!< Frame information */
 
     esp_cam_ctlr_spi_cam_fsm_t fsm;                     /*!< SPI CAM finite state machine */
