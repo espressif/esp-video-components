@@ -18,7 +18,7 @@ if CAMERA_OV2640
 
     choice CAMERA_OV2640_DVP_DEFAULT_FMT
         prompt "Select default output format for DVP interface"
-        default CAMERA_OV2640_DVP_RGB565_640X480_6FPS
+        default CAMERA_OV2640_DVP_YUV422_640X480_6FPS
         help
             This option allows you to select the default video format for the OV2640 sensor
             when it is initialized on the DVP interface. The selected format will be used
@@ -93,10 +93,10 @@ if CAMERA_OV2640
         default 1 if CAMERA_OV2640_DVP_YUV422_640X480_6FPS
         default 2 if CAMERA_OV2640_DVP_JPEG_640X480_25FPS
         default 3 if CAMERA_OV2640_DVP_RGB565_240X240_25FPS
-        default 4 if CAMERA_OV2640_DVP_GRAY_320X240_20FPS
-        default 5 if CAMERA_OV2640_DVP_YUV422_240X240_25FPS
-        default 6 if CAMERA_OV2640_DVP_JPEG_320X240_50FPS
-        default 7 if CAMERA_OV2640_DVP_JPEG_1280X720_12FPS
+        default 4 if CAMERA_OV2640_DVP_YUV422_240X240_25FPS
+        default 5 if CAMERA_OV2640_DVP_JPEG_320X240_50FPS
+        default 6 if CAMERA_OV2640_DVP_JPEG_1280X720_12FPS
+        default 7 if CAMERA_OV2640_DVP_JPEG_1600X1200_12FPS
         default 8 if CAMERA_OV2640_DVP_RAW8_800X640_30FPS
         default 9 if CAMERA_OV2640_DVP_RAW8_800X640_15FPS
         default 10 if CAMERA_OV2640_DVP_RAW8_800X800_15FPS

@@ -7,6 +7,7 @@
 - Example simple_video_server uses a new web interface to display and control camera streams
 - Fix compilation error when enabling DVP and MIPI-CSI detection of one sensor
 - Fix MIPI-CSI video device RAW Bayer order mapping issue
+- Fix sdkconfig.default.esp32s3 for better image bandwidth
 
 ## 1.1.0
 

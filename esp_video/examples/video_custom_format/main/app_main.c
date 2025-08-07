@@ -19,7 +19,7 @@
 #elif CONFIG_CAMERA_SC2336
 #include "app_sc2336_custom_settings.h"
 #else
-#error "No supported camera sensor selected, only support BF3901(SPI interface) and SC2336(MIPI-CSI interface)"
+#error "No supported camera sensor selected, only support BF3901(SPI interface), SC2336(MIPI-CSI interface)"
 #endif
 
 #define MEMORY_TYPE V4L2_MEMORY_MMAP
