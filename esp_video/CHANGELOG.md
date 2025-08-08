@@ -9,6 +9,7 @@
 - Fix MIPI-CSI video device RAW Bayer order mapping issue
 - Fix sdkconfig.default.esp32s3 for better image bandwidth
 - Modify GPIO pin type from int8_t to gpio_num_t
+- Compatible with ESP-IDF v5.4.x(x ≥ 3), v5.5.1, and the later versions of the ESP-IDF DVP CAM driver
 
 ## 1.1.0
 

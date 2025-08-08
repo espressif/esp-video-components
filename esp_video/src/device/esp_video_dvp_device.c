@@ -29,6 +29,17 @@
 #define DVP_MEM_CAPS                (MALLOC_CAP_8BIT | MALLOC_CAP_DMA)
 #endif
 
+/**
+ * @brief IDF version v5.5.1 and later versions support external xtal for DVP
+ *        IDF version v5.4.x(x>=3) supports external xtal for DVP
+ */
+#if (ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 5, 1)) || \
+    ((ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 4, 3)) && (ESP_IDF_VERSION < ESP_IDF_VERSION_VAL(5, 5, 0)))
+#define DVP_DRIVER_HAS_EXTERNAL_XTAL    1
+#else
+#define DVP_DRIVER_HAS_EXTERNAL_XTAL    0
+#endif
+
 struct dvp_video {
     cam_ctlr_color_t in_color;
 
@@ -224,7 +235,7 @@ static esp_err_t dvp_video_start(struct esp_video *video, uint32_t type)
         .input_data_color_type = dvp_video->in_color,
         .pin_dont_init = true,
         .pic_format_jpeg = CAPTURE_VIDEO_GET_FORMAT_PIXEL_FORMAT(video) == V4L2_PIX_FMT_JPEG,
-#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(6, 0, 0)
+#if DVP_DRIVER_HAS_EXTERNAL_XTAL
         .external_xtal = true,
 #endif
     };
