@@ -29,7 +29,7 @@
 
 static const char *TAG = "example";
 
-static esp_err_t camera_capture_stream_resolution(int fd, int type, uint32_t v4l2_format, uint32_t width, uint32_t height)
+static esp_err_t camera_capture_stream_by_format(int fd, int type, uint32_t v4l2_format, uint32_t width, uint32_t height)
 {
     uint8_t *buffer[BUFFER_COUNT];
 #if CONFIG_EXAMPLE_VIDEO_BUFFER_TYPE_USER
@@ -312,8 +312,8 @@ static esp_err_t camera_capture_stream(void)
                                  (double)frmival.discrete.denominator / (double)frmival.discrete.numerator,
                                  CAPTURE_SECONDS);
 
-                        if (camera_capture_stream_resolution(fd, type, fmtdesc.pixelformat, frmsize.discrete.width,
-                                                             frmsize.discrete.height) != ESP_OK) {
+                        if (camera_capture_stream_by_format(fd, type, fmtdesc.pixelformat, frmsize.discrete.width,
+                                                            frmsize.discrete.height) != ESP_OK) {
                             break;
                         }
                     }
@@ -335,8 +335,8 @@ static esp_err_t camera_capture_stream(void)
                              (double)cparam->timeperframe.denominator / (double)cparam->timeperframe.numerator,
                              CAPTURE_SECONDS);
 
-                    if (camera_capture_stream_resolution(fd, type, fmtdesc.pixelformat, frmsize.discrete.width,
-                                                         frmsize.discrete.height) != ESP_OK) {
+                    if (camera_capture_stream_by_format(fd, type, fmtdesc.pixelformat, frmsize.discrete.width,
+                                                        frmsize.discrete.height) != ESP_OK) {
                         break;
                     }
                 }
@@ -368,8 +368,8 @@ static esp_err_t camera_capture_stream(void)
                      (double)cparam->timeperframe.denominator / (double)cparam->timeperframe.numerator,
                      CAPTURE_SECONDS);
 
-            if (camera_capture_stream_resolution(fd, type, fmtdesc.pixelformat, format.fmt.pix.width,
-                                                 format.fmt.pix.height) != ESP_OK) {
+            if (camera_capture_stream_by_format(fd, type, fmtdesc.pixelformat, format.fmt.pix.width,
+                                                format.fmt.pix.height) != ESP_OK) {
                 break;
             }
         }
