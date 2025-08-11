@@ -69,10 +69,13 @@ typedef struct web_cam_video {
     uint32_t width;
     uint32_t height;
     uint32_t pixel_format;
+    uint8_t jpeg_quality;
 
     uint32_t frame_rate;
 
     SemaphoreHandle_t sem;
+
+    uint32_t support_control_jpeg_quality   : 1;
 } web_cam_video_t;
 
 typedef struct web_cam {
@@ -190,20 +193,9 @@ static char *get_cameras_json(web_cam_t *web_cam)
         assert(snprintf(src_str, sizeof(src_str), "JPEG %" PRIu32 "x%" PRIu32, web_cam->video[i].width, web_cam->video[i].height) > 0);
         cJSON_AddStringToObject(camera, "currentImageFormatDescription", src_str);
 
-        int quality = EXAMPLE_JPEG_ENC_QUALITY;
-        if (web_cam->video[i].pixel_format == V4L2_PIX_FMT_JPEG) {
-            struct v4l2_ext_controls controls = {0};
-            struct v4l2_ext_control control[1];
-
-            controls.ctrl_class = V4L2_CID_JPEG_CLASS;
-            controls.count = 1;
-            controls.controls = control;
-            control[0].id = V4L2_CID_JPEG_COMPRESSION_QUALITY;
-            if (ioctl(web_cam->video[i].fd, VIDIOC_G_EXT_CTRLS, &controls) == 0) {
-                quality = control[0].value;
-            }
+        if (web_cam->video[i].support_control_jpeg_quality) {
+            cJSON_AddNumberToObject(camera, "currentQuality", web_cam->video[i].jpeg_quality);
         }
-        cJSON_AddNumberToObject(camera, "currentQuality", quality);
 
         cJSON *current_resolution = cJSON_CreateObject();
         cJSON_AddNumberToObject(current_resolution, "width", web_cam->video[i].width);
@@ -216,29 +208,31 @@ static char *get_cameras_json(web_cam_t *web_cam)
         assert(snprintf(src_str, sizeof(src_str), "JPEG %" PRIu32 "x%" PRIu32, web_cam->video[i].width, web_cam->video[i].height) > 0);
         cJSON_AddStringToObject(image_format, "description", src_str);
 
-        cJSON *image_format_quality = cJSON_CreateObject();
+        if (web_cam->video[i].support_control_jpeg_quality) {
+            cJSON *image_format_quality = cJSON_CreateObject();
 
-        int min_quality = 1;
-        int max_quality = 100;
-        int step_quality = 1;
-        int default_quality = EXAMPLE_JPEG_ENC_QUALITY;
-        if (web_cam->video[i].pixel_format == V4L2_PIX_FMT_JPEG) {
-            struct v4l2_query_ext_ctrl qctrl = {0};
+            int min_quality = 1;
+            int max_quality = 100;
+            int step_quality = 1;
+            int default_quality = EXAMPLE_JPEG_ENC_QUALITY;
+            if (web_cam->video[i].pixel_format == V4L2_PIX_FMT_JPEG) {
+                struct v4l2_query_ext_ctrl qctrl = {0};
 
-            qctrl.id = V4L2_CID_JPEG_COMPRESSION_QUALITY;
-            if (ioctl(web_cam->video[i].fd, VIDIOC_QUERY_EXT_CTRL, &qctrl) == 0) {
-                min_quality = qctrl.minimum;
-                max_quality = qctrl.maximum;
-                step_quality = qctrl.step;
-                default_quality = qctrl.default_value;
+                qctrl.id = V4L2_CID_JPEG_COMPRESSION_QUALITY;
+                if (ioctl(web_cam->video[i].fd, VIDIOC_QUERY_EXT_CTRL, &qctrl) == 0) {
+                    min_quality = qctrl.minimum;
+                    max_quality = qctrl.maximum;
+                    step_quality = qctrl.step;
+                    default_quality = qctrl.default_value;
+                }
             }
-        }
 
-        cJSON_AddNumberToObject(image_format_quality, "min", min_quality);
-        cJSON_AddNumberToObject(image_format_quality, "max", max_quality);
-        cJSON_AddNumberToObject(image_format_quality, "step", step_quality);
-        cJSON_AddNumberToObject(image_format_quality, "default", default_quality);
-        cJSON_AddItemToObject(image_format, "quality", image_format_quality);
+            cJSON_AddNumberToObject(image_format_quality, "min", min_quality);
+            cJSON_AddNumberToObject(image_format_quality, "max", max_quality);
+            cJSON_AddNumberToObject(image_format_quality, "step", step_quality);
+            cJSON_AddNumberToObject(image_format_quality, "default", default_quality);
+            cJSON_AddItemToObject(image_format, "quality", image_format_quality);
+        }
         cJSON_AddItemToArray(image_formats, image_format);
 
         cJSON_AddItemToObject(camera, "imageFormats", image_formats);
@@ -261,32 +255,42 @@ static esp_err_t set_camera_jpeg_quality(web_cam_video_t *video, int quality)
         struct v4l2_query_ext_ctrl qctrl = {0};
 
         qctrl.id = V4L2_CID_JPEG_COMPRESSION_QUALITY;
-        ESP_RETURN_ON_ERROR(ioctl(video->fd, VIDIOC_QUERY_EXT_CTRL, &qctrl), TAG, "failed to query jpeg compression quality");
-        if ((quality > qctrl.maximum) || (quality < qctrl.minimum) ||
-                (((quality - qctrl.minimum) % qctrl.step) != 0)) {
+        if (ioctl(video->fd, VIDIOC_QUERY_EXT_CTRL, &qctrl) == 0) {
+            if ((quality > qctrl.maximum) || (quality < qctrl.minimum) ||
+                    (((quality - qctrl.minimum) % qctrl.step) != 0)) {
 
-            if (quality > qctrl.maximum) {
-                quality_reset = qctrl.maximum;
-            } else if (quality < qctrl.minimum) {
-                quality_reset = qctrl.minimum;
-            } else {
-                quality_reset = qctrl.minimum + ((quality - qctrl.minimum) / qctrl.step) * qctrl.step;
+                if (quality > qctrl.maximum) {
+                    quality_reset = qctrl.maximum;
+                } else if (quality < qctrl.minimum) {
+                    quality_reset = qctrl.minimum;
+                } else {
+                    quality_reset = qctrl.minimum + ((quality - qctrl.minimum) / qctrl.step) * qctrl.step;
+                }
+
+                ESP_LOGW(TAG, "video%d: JPEG compression quality=%d is out of sensor's range, reset to %d", video->index, quality, quality_reset);
             }
 
-            ESP_LOGW(TAG, "JPEG compression quality=%d is out of sensor's range, reset to %d", quality, quality_reset);
-        }
+            controls.ctrl_class = V4L2_CID_JPEG_CLASS;
+            controls.count = 1;
+            controls.controls = control;
+            control[0].id = V4L2_CID_JPEG_COMPRESSION_QUALITY;
+            control[0].value = quality_reset;
+            ESP_RETURN_ON_ERROR(ioctl(video->fd, VIDIOC_S_EXT_CTRLS, &controls), TAG, "failed to set jpeg compression quality");
 
-        controls.ctrl_class = V4L2_CID_JPEG_CLASS;
-        controls.count = 1;
-        controls.controls = control;
-        control[0].id = V4L2_CID_JPEG_COMPRESSION_QUALITY;
-        control[0].value = quality_reset;
-        ESP_RETURN_ON_ERROR(ioctl(video->fd, VIDIOC_S_EXT_CTRLS, &controls), TAG, "failed to set jpeg compression quality");
+            video->jpeg_quality = quality_reset;
+            video->support_control_jpeg_quality = 1;
+        } else {
+            video->support_control_jpeg_quality = 0;
+            ESP_LOGW(TAG, "video%d: JPEG compression quality control is not supported", video->index);
+        }
     } else {
         ESP_RETURN_ON_ERROR(example_encoder_set_jpeg_quality(video->encoder_handle, quality_reset), TAG, "failed to set jpeg quality");
+        video->jpeg_quality = quality_reset;
     }
 
-    ESP_LOGI(TAG, "set video %d jpeg quality %d success", video->index, quality_reset);
+    if (video->support_control_jpeg_quality) {
+        ESP_LOGI(TAG, "video%d: set jpeg quality %d success", video->index, quality_reset);
+    }
 
     return ret;
 }
@@ -537,6 +541,7 @@ static esp_err_t init_web_cam_video(web_cam_video_t *video, const web_cam_video_
     video->width = format.fmt.pix.width;
     video->height = format.fmt.pix.height;
     video->pixel_format = format.fmt.pix.pixelformat;
+    video->jpeg_quality = EXAMPLE_JPEG_ENC_QUALITY;
 
     if (video->pixel_format == V4L2_PIX_FMT_JPEG) {
         ESP_GOTO_ON_ERROR(set_camera_jpeg_quality(video, EXAMPLE_JPEG_ENC_QUALITY), fail0, TAG, "failed to set jpeg quality");
@@ -551,6 +556,8 @@ static esp_err_t init_web_cam_video(web_cam_video_t *video, const web_cam_video_
 
         ESP_GOTO_ON_ERROR(example_encoder_alloc_output_buffer(video->encoder_handle, &video->jpeg_out_buf, &video->jpeg_out_size),
                           fail1, TAG, "failed to alloc jpeg output buf");
+
+        video->support_control_jpeg_quality = 1;
     }
 
     video->sem = xSemaphoreCreateBinary();
@@ -806,6 +813,11 @@ void app_main(void)
             .dev_name = ESP_VIDEO_SPI_DEVICE_NAME,
         }
 #endif /* EXAMPLE_ENABLE_SPI_CAM_SENSOR */
+#if EXAMPLE_ENABLE_USB_UVC_CAM_SENSOR
+        {
+            .dev_name = ESP_VIDEO_USB_UVC_DEVICE_NAME(0),
+        }
+#endif /* EXAMPLE_ENABLE_USB_UVC_CAM_SENSOR */
     };
     int config_count = sizeof(config) / sizeof(config[0]);
 

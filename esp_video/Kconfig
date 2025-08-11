@@ -124,6 +124,37 @@ menu "Espressif Video Configuration"
             Best for: Low-resolution sensors, prototype development,
             or applications with limited GPIO availability.
 
+    menuconfig ESP_VIDEO_ENABLE_USB_UVC_VIDEO_DEVICE
+        bool "Enable USB-UVC based Video Device"
+        depends on SOC_USB_OTG_SUPPORTED
+        default n
+        help
+            Enable USB Video Class (UVC) video device support.
+
+            UVC is a standard USB device class that provides a universal
+            interface for video devices like USB cameras, webcams, and
+            video capture devices.
+
+            Features:
+            - Plug-and-play compatibility with standard USB cameras
+            - No driver installation required for UVC-compliant devices
+            - Support for multiple video formats and resolutions
+            - Standard USB power delivery for connected devices
+            - Hot-plug detection and device enumeration
+
+            Supported device types:
+            - USB webcams and external cameras
+            - USB video capture devices
+            - Professional USB cameras
+            - Streaming devices with UVC support
+
+            Best for: Applications requiring external camera connectivity,
+            surveillance systems with USB cameras, or scenarios where
+            flexibility in camera selection is important.
+
+            Note: Requires USB OTG host functionality and sufficient
+            power supply for connected USB devices.
+
     config ESP_VIDEO_ENABLE_HW_H264_VIDEO_DEVICE
         bool "Enable Hardware H.264 based Video Device"
         depends on IDF_TARGET_ESP32P4

@@ -363,6 +363,14 @@ struct esp_video_ops {
     /*!< Get V4L2 stream parameters */
 
     esp_err_t (*get_parm)(struct esp_video *video, struct v4l2_streamparm *stream_parm, struct esp_video_stream *stream);
+
+    /*!< Enumerate video frame sizes */
+
+    esp_err_t (*enum_framesizes)(struct esp_video *video, struct v4l2_frmsizeenum *frmsize, struct esp_video_stream *stream);
+
+    /*!< Enumerate video frame intervals */
+
+    esp_err_t (*enum_frameintervals)(struct esp_video *video, struct v4l2_frmivalenum *frmival, struct esp_video_stream *stream);
 };
 
 #ifdef __cplusplus

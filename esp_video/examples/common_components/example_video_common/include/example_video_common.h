@@ -111,12 +111,23 @@ extern "C" {
 #endif /* CONFIG_EXAMPLE_ENABLE_SPI_CAM_SENSOR */
 
 /**
+ * @brief USB-UVC camera sensor common configuration
+ */
+#if CONFIG_EXAMPLE_ENABLE_USB_UVC_CAM_SENSOR
+#define EXAMPLE_ENABLE_USB_UVC_CAM_SENSOR               1
+#endif
+
+/**
  * @brief Example camera device path configuration
  */
 #if EXAMPLE_ENABLE_MIPI_CSI_CAM_SENSOR
 #define EXAMPLE_CAM_DEV_PATH                            ESP_VIDEO_MIPI_CSI_DEVICE_NAME
 #elif EXAMPLE_ENABLE_DVP_CAM_SENSOR
 #define EXAMPLE_CAM_DEV_PATH                            ESP_VIDEO_DVP_DEVICE_NAME
+#elif EXAMPLE_ENABLE_SPI_CAM_SENSOR
+#define EXAMPLE_CAM_DEV_PATH                            ESP_VIDEO_SPI_DEVICE_NAME
+#elif EXAMPLE_ENABLE_USB_UVC_CAM_SENSOR
+#define EXAMPLE_CAM_DEV_PATH                            ESP_VIDEO_USB_UVC_DEVICE_NAME(0)
 #else
 #define EXAMPLE_CAM_DEV_PATH                            ESP_VIDEO_SPI_DEVICE_NAME
 #endif /* CONFIG_EXAMPLE_ENABLE_MIPI_CSI_CAM_SENSOR */

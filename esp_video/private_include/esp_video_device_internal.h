@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2024 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2024-2025 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: ESPRESSIF MIT
  */
@@ -53,6 +53,19 @@ typedef struct esp_video_spi_device_config {
     gpio_num_t spi_sclk_pin;                /*!< SPI SCLK pin */
     gpio_num_t spi_data0_io_pin;            /*!< SPI data0 I/O pin */
 } esp_video_spi_device_config_t;
+#endif
+
+#if CONFIG_ESP_VIDEO_ENABLE_USB_UVC_VIDEO_DEVICE
+/**
+ * @brief USB UVC video device configuration
+ */
+typedef struct esp_video_usb_uvc_device_config {
+    uint32_t uvc_dev_num;                   /*!< USB UVC devices number */
+
+    uint32_t task_stack;                    /*!< USB UVC video device task stack size */
+    uint8_t task_priority;                  /*!< USB UVC video device task priority */
+    int8_t task_affinity;                   /*!< USB UVC video device task affinity, -1 means no affinity */
+} esp_video_usb_uvc_device_config_t;
 #endif
 
 #if CONFIG_ESP_VIDEO_ENABLE_MIPI_CSI_VIDEO_DEVICE
@@ -307,6 +320,28 @@ esp_err_t esp_video_destroy_spi_video_device(void);
  */
 esp_cam_sensor_device_t *esp_video_get_spi_video_device_sensor(void);
 #endif
+
+#if CONFIG_ESP_VIDEO_ENABLE_USB_UVC_VIDEO_DEVICE
+/**
+ * @brief Install USB UVC video device driver
+ *
+ * @note USB Host Library must be initialized before calling this function.
+ * @note This function will create a task to handle USB UVC video device.
+ *
+ * @param[in] cfg USB UVC video device configuration
+ * @return esp_err_t
+ */
+esp_err_t esp_video_install_usb_uvc_driver(const esp_video_usb_uvc_device_config_t *cfg);
+
+/**
+ * @brief Uninstall USB UVC video device driver
+ *
+ * @return
+ *      - ESP_OK on success
+ *      - Others if failed
+ */
+esp_err_t esp_video_uninstall_usb_uvc_driver(void);
+#endif // CONFIG_ESP_VIDEO_ENABLE_USB_UVC_VIDEO_DEVICE
 
 #ifdef __cplusplus
 }

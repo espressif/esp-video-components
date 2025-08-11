@@ -637,7 +637,165 @@ menu "Example Video Initialization Configuration"
                     help
                         GPIO pin for SPI data input/output to camera sensor.
             endif
-        endif    
+        endif
+        menuconfig EXAMPLE_ENABLE_USB_UVC_CAM_SENSOR
+            bool "USB-UVC"
+            depends on ESP_VIDEO_ENABLE_USB_UVC_VIDEO_DEVICE
+            help
+                USB Video Class (UVC) interface for standard USB cameras.
+
+                UVC is a standardized USB protocol that enables plug-and-play
+                connectivity with a wide range of USB camera devices without
+                requiring custom drivers.
+
+                Features:
+                - Standard USB interface with no custom drivers needed
+                - Support for multiple resolutions and formats
+                - Hot-plug capability for dynamic camera connection/disconnection
+                - Power and data transmission over single USB cable
+                - Compatible with most commercial USB webcams and industrial cameras
+
+                Ideal for applications requiring external camera connectivity,
+                webcam integration, or when GPIO pins are limited.
+
+        if EXAMPLE_ENABLE_USB_UVC_CAM_SENSOR
+            config EXAMPLE_USB_UVC_DEVICES_NUM
+                int "USB UVC Device Number"
+                default 1
+                range 1 10
+                help
+                    Maximum number of USB UVC (Video Class) devices that can be 
+                    simultaneously connected and managed by the system.
+
+                    This setting determines:
+                    - How many USB cameras can be used concurrently
+                    - Memory allocation for device management structures
+                    - USB host controller resource usage
+
+                    Values:
+                    - 1: Single camera operation (default, lowest resource usage)
+                    - 2-10: Multi-camera setups (requires more RAM and USB bandwidth)
+
+                    Note: Each additional device increases memory consumption.
+                    Ensure adequate USB power supply and bandwidth for multiple cameras.
+
+            config EXAMPLE_USB_UVC_TASK_STACK_SIZE
+                int "USB UVC Task Stack Size"
+                default 4096
+                help
+                    Stack size (in bytes) for the USB UVC task that handles camera operations.
+
+                    This task is responsible for:
+                    - USB video data processing
+                    - Frame buffer management
+                    - Camera control command handling
+
+                    Recommended values:
+                    - 4096 bytes: Default, suitable for most applications
+                    - 6144 bytes: For high-resolution video or complex processing
+                    - 8192 bytes: For multiple cameras or intensive operations
+
+                    Increase if you encounter stack overflow errors or use deep call stacks.
+
+            config EXAMPLE_USB_UVC_TASK_PRIORITY
+                int "USB UVC Task Priority"
+                default 10
+                range 2 15
+                help
+                    Task priority for the USB UVC task that handles video data processing (higher numbers = higher priority).
+
+                    This controls the scheduling priority of the USB UVC video task relative 
+                    to other application tasks. Higher priority ensures more responsive video 
+                    processing and smoother frame handling.
+
+                    Priority guidelines:
+                    - 10: Default, balanced priority for most video applications
+                    - 11-12: Higher priority for low-latency video streaming
+                    - 13-15: Maximum priority for real-time video processing
+                    - 6-9: Lower priority if video is not time-critical
+
+                    Note: Should typically be lower than USB library task priority (11) to ensure
+                    proper USB stack operation. Very high priorities may impact other system tasks.
+
+            config EXAMPLE_USB_UVC_TASK_AFFINITY
+                int "USB UVC Task Affinity"
+                default -1
+                range -1 0 if FREERTOS_UNICORE
+                range -1 1 if !FREERTOS_UNICORE
+                help
+                    CPU core affinity for the USB UVC task execution.
+
+                    This determines which CPU core will execute the USB UVC task:
+                    - -1: No affinity (FreeRTOS scheduler chooses automatically)
+                    - 0: Pin task to CPU core 0 (Protocol core)
+                    - 1: Pin task to CPU core 1 (Application core, dual-core only)
+
+                    Recommendations:
+                    - Use -1 for automatic load balancing (default)
+                    - Use 0 to isolate USB processing from application tasks
+                    - Use 1 to keep USB processing with main application
+
+                    Note: Core 1 is only available on dual-core ESP32 variants.
+
+            config EXAMPLE_USB_LIB_TASK_STACK_SIZE
+                int "USB Lib Task Stack Size"
+                default 4096
+                help
+                    Stack size (in bytes) for the USB library task that manages USB host operations.
+
+                    This low-level task handles:
+                    - USB host controller operations
+                    - Device enumeration and management
+                    - USB protocol stack processing
+                    - Interrupt and event handling
+
+                    Recommended values:
+                    - 4096 bytes: Default, suitable for standard USB operations
+                    - 6144 bytes: For multiple USB devices or complex configurations
+                    - 8192 bytes: For heavy USB traffic or debugging scenarios
+
+                    This is a critical system task - insufficient stack may cause USB failures.
+
+            config EXAMPLE_USB_LIB_TASK_PRIORITY
+                int "USB Lib Task Priority"
+                default 11
+                range 2 15
+                help
+                    Task priority for the USB library task (higher numbers = higher priority).
+
+                    This controls the scheduling priority of the USB host library task relative 
+                    to other system tasks. Higher priority ensures more responsive USB operations.
+
+                    Priority guidelines:
+                    - 11: Default, balanced priority for most applications
+                    - 12-13: Higher priority for time-sensitive USB operations
+                    - 14-15: Maximum priority for critical real-time USB requirements
+                    - 8-10: Lower priority if USB is not performance-critical
+
+                    Note: Should typically be higher than USB UVC task priority (10) to ensure
+                    proper USB stack operation. Very high priorities may impact other system tasks.
+
+            config EXAMPLE_USB_LIB_TASK_AFFINITY
+                int "USB Lib Affinity"
+                default -1
+                range -1 0 if FREERTOS_UNICORE
+                range -1 1 if !FREERTOS_UNICORE
+                help
+                    CPU core affinity for the USB library task execution.
+
+                    This determines which CPU core will execute the critical USB host library task:
+                    - -1: No affinity (FreeRTOS scheduler chooses automatically)
+                    - 0: Pin task to CPU core 0 (Protocol core)
+                    - 1: Pin task to CPU core 1 (Application core, dual-core only)
+
+                    Recommendations:
+                    - Use -1 for automatic load balancing (default)
+                    - Use 0 for dedicated USB processing on protocol core
+                    - Use 1 if main application runs on core 0
+
+                    Note: USB lib task handles time-critical USB operations, so core affinity
+                    can impact performance. Core 1 is only available on dual-core ESP32 variants.
+        endif
     endmenu
 
     menuconfig EXAMPLE_SCCB_I2C_INIT_BY_APP

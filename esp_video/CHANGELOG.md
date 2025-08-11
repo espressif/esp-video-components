@@ -1,8 +1,10 @@
 ## Unreleased
 
-- Add dual camera web server
+- Add multiple camera web server
 - Add multiple camera sensor option in menuconfig
 - Add FPS calculation to DVP and SPI video device
+- Add support for USB UVC streams
+  - The USB camera should be plugged in before the APPs call the function to open the USB UVC video device, and should be unplugged after the APPs call the function to close the UVC video device
 - Example encode function supports multiple resolutions
 - Example simple_video_server uses a new web interface to display and control camera streams
 - Fix compilation error when enabling DVP and MIPI-CSI detection of one sensor

@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2024 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2024-2025 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: ESPRESSIF MIT
  */
@@ -13,6 +13,7 @@
 #include "esp_heap_caps.h"
 #include "esp_video.h"
 #include "esp_video_vfs.h"
+#include "esp_video_device.h"
 #include "esp_cam_sensor.h"
 
 #include "freertos/portmacro.h"
@@ -65,11 +66,27 @@ static const struct esp_video_format_desc_map esp_video_format_desc_maps[] = {
         V4L2_PIX_FMT_YUV422P, "YVU 4:2:2 planar"
     },
     {
+        V4L2_PIX_FMT_YUYV,  "YUV 4:2:2 packed",
+    },
+    {
         V4L2_PIX_FMT_JPEG,   "JPEG"
     },
     {
         V4L2_PIX_FMT_GREY,   "Grey 8"
     },
+};
+
+const char *esp_video_usb_uvc_device_name[] = {
+    ESP_VIDEO_USB_UVC_NAME(0),
+    ESP_VIDEO_USB_UVC_NAME(1),
+    ESP_VIDEO_USB_UVC_NAME(2),
+    ESP_VIDEO_USB_UVC_NAME(3),
+    ESP_VIDEO_USB_UVC_NAME(4),
+    ESP_VIDEO_USB_UVC_NAME(5),
+    ESP_VIDEO_USB_UVC_NAME(6),
+    ESP_VIDEO_USB_UVC_NAME(7),
+    ESP_VIDEO_USB_UVC_NAME(8),
+    ESP_VIDEO_USB_UVC_NAME(9),
 };
 
 /**
@@ -427,12 +444,11 @@ fail_0:
  * @brief Open a video device, this function will initialize hardware.
  *
  * @param name video device name
+ * @param video_ret video object pointer
  *
- * @return
- *      - Video object pointer on success
- *      - NULL if failed
+ * @return ESP_OK on success, others if failed
  */
-struct esp_video *esp_video_open(const char *name)
+esp_err_t esp_video_open(const char *name, struct esp_video **video_ret)
 {
     esp_err_t ret = ESP_OK;
     bool found = false;
@@ -449,7 +465,7 @@ struct esp_video *esp_video_open(const char *name)
 
     if (!found) {
         ESP_LOGE(TAG, "Not find video=%s", name);
-        return NULL;
+        return ESP_ERR_INVALID_ARG;
     }
 
     xSemaphoreTake(video->mutex, portMAX_DELAY);
@@ -465,7 +481,9 @@ struct esp_video *esp_video_open(const char *name)
 
         ret = video->ops->init(video);
         if (ret != ESP_OK) {
-            ESP_LOGE(TAG, "video->ops->init=%x", ret);
+            if (ret != ESP_ERR_NOT_FOUND) {
+                ESP_LOGE(TAG, "video->ops->init=%x", ret);
+            }
             goto exit_0;
         } else {
             int stream_count = video->caps & V4L2_CAP_VIDEO_M2M ? 2 : 1;
@@ -488,9 +506,12 @@ struct esp_video *esp_video_open(const char *name)
 exit_0:
     if (ret != ESP_OK) {
         video->reference--;
+    } else {
+        *video_ret = video;
     }
     xSemaphoreGive(video->mutex);
-    return ret == ESP_OK ? video : NULL;
+
+    return ret;
 }
 
 /**
@@ -1375,7 +1396,7 @@ esp_err_t esp_video_get_m2m_queued_elements(struct esp_video *video,
 
         ret = ESP_OK;
     } else {
-        ret = ESP_ERR_NOT_FOUND;
+        ret = ESP_ERR_NO_MEM;
     }
     portEXIT_CRITICAL_SAFE(&video->stream_lock);
 
@@ -1938,4 +1959,74 @@ void IRAM_ATTR esp_video_skip_buffer(struct esp_video *video, uint32_t type, uin
     ELEMENT_SET_ALLOCATED(element);
     TAILQ_INSERT_HEAD(&stream->queued_list, element, node);
     portEXIT_CRITICAL_SAFE(&video->stream_lock);
+}
+
+/**
+ * @brief Enumerate video frame sizes
+ *
+ * @param video     Video object
+ * @param frmsize   Frame size buffer pointer
+ *
+ * @return
+ *      - ESP_OK on success or others if failed
+ */
+esp_err_t esp_video_enum_framesizes(struct esp_video *video, struct v4l2_frmsizeenum *frmsize)
+{
+    esp_err_t ret;
+    struct esp_video_stream *stream;
+
+    CHECK_VIDEO_OBJ(video);
+
+    stream = esp_video_get_stream(video, frmsize->type);
+    if (!stream) {
+        return ESP_ERR_INVALID_ARG;
+    }
+
+    if (video->ops->enum_framesizes) {
+        ret = video->ops->enum_framesizes(video, frmsize, stream);
+        if (ret != ESP_OK) {
+            ESP_LOGD(TAG, "video->ops->enum_framesizes=%x", ret);
+            return ret;
+        }
+    } else {
+        ESP_LOGD(TAG, "video->ops->enum_framesizes=NULL");
+        return ESP_ERR_NOT_SUPPORTED;
+    }
+
+    return ESP_OK;
+}
+
+/**
+ * @brief Enumerate video frame intervals
+ *
+ * @param video     Video object
+ * @param frmival   Frame interval buffer pointer
+ *
+ * @return
+ *      - ESP_OK on success or others if failed
+ */
+esp_err_t esp_video_enum_frameintervals(struct esp_video *video, struct v4l2_frmivalenum *frmival)
+{
+    esp_err_t ret;
+    struct esp_video_stream *stream;
+
+    CHECK_VIDEO_OBJ(video);
+
+    stream = esp_video_get_stream(video, frmival->type);
+    if (!stream) {
+        return ESP_ERR_INVALID_ARG;
+    }
+
+    if (video->ops->enum_frameintervals) {
+        ret = video->ops->enum_frameintervals(video, frmival, stream);
+        if (ret != ESP_OK) {
+            ESP_LOGD(TAG, "video->ops->enum_frameintervals=%x", ret);
+            return ret;
+        }
+    } else {
+        ESP_LOGD(TAG, "video->ops->enum_frameintervals=NULL");
+        return ESP_ERR_NOT_SUPPORTED;
+    }
+
+    return ESP_OK;
 }

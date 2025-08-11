@@ -109,6 +109,24 @@ static const esp_video_init_spi_config_t s_spi_config = {
 #endif /* CONFIG_EXAMPLE_SPI_CAM_XCLK_USE_LEDC */
 };
 #endif /* EXAMPLE_ENABLE_SPI_CAM_SENSOR */
+
+#if EXAMPLE_ENABLE_USB_UVC_CAM_SENSOR
+static const esp_video_init_usb_uvc_config_t s_usb_uvc_config = {
+    .uvc = {
+        .uvc_dev_num = CONFIG_EXAMPLE_USB_UVC_DEVICES_NUM,
+        .task_stack = CONFIG_EXAMPLE_USB_UVC_TASK_STACK_SIZE,
+        .task_priority = CONFIG_EXAMPLE_USB_UVC_TASK_PRIORITY,
+        .task_affinity = CONFIG_EXAMPLE_USB_UVC_TASK_AFFINITY,
+    },
+    .usb = {
+        .init_usb_host_lib = true,
+        .task_stack = CONFIG_EXAMPLE_USB_LIB_TASK_STACK_SIZE,
+        .task_priority = CONFIG_EXAMPLE_USB_LIB_TASK_PRIORITY,
+        .task_affinity = CONFIG_EXAMPLE_USB_LIB_TASK_AFFINITY,
+    },
+};
+#endif /* EXAMPLE_ENABLE_USB_UVC_CAM_SENSOR */
+
 static const esp_video_init_config_t s_cam_config = {
 #if EXAMPLE_ENABLE_MIPI_CSI_CAM_SENSOR
     .csi      = &s_csi_config,
@@ -122,6 +140,9 @@ static const esp_video_init_config_t s_cam_config = {
 #if EXAMPLE_ENABLE_SPI_CAM_SENSOR
     .spi      = &s_spi_config,
 #endif /* EXAMPLE_ENABLE_SPI_CAM_SENSOR */
+#if EXAMPLE_ENABLE_USB_UVC_CAM_SENSOR
+    .usb_uvc  = &s_usb_uvc_config,
+#endif /* EXAMPLE_ENABLE_USB_UVC_CAM_SENSOR */
 };
 
 #if CONFIG_EXAMPLE_SCCB_I2C_INIT_BY_APP
@@ -197,6 +218,9 @@ esp_err_t example_video_init(void)
 #if EXAMPLE_ENABLE_SPI_CAM_SENSOR
         .spi      = &spi_config,
 #endif /* EXAMPLE_ENABLE_SPI_CAM_SENSOR */
+#if EXAMPLE_ENABLE_USB_UVC_CAM_SENSOR
+        .usb_uvc  = &s_usb_uvc_config,
+#endif /* EXAMPLE_ENABLE_USB_UVC_CAM_SENSOR */
     };
 
     cam_config_ptr = &cam_config;

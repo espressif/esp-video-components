@@ -109,12 +109,11 @@ esp_err_t esp_video_destroy(struct esp_video *video);
  * @brief Open a video device, this function will initialize hardware.
  *
  * @param name video device name
+ * @param video_ret video object pointer
  *
- * @return
- *      - Video object pointer on success
- *      - NULL if failed
+ * @return ESP_OK on success, others if failed
  */
-struct esp_video *esp_video_open(const char *name);
+esp_err_t esp_video_open(const char *name, struct esp_video **video_ret);
 
 /**
  * @brief Close a video device, this function will de-initialize hardware.
@@ -675,6 +674,28 @@ esp_err_t esp_video_get_parm(struct esp_video *video, struct v4l2_streamparm *st
  * @return None
  */
 void esp_video_skip_buffer(struct esp_video *video, uint32_t type, uint8_t *buffer);
+
+/**
+ * @brief Enumerate video frame sizes
+ *
+ * @param video     Video object
+ * @param frmsize   Frame size buffer pointer
+ *
+ * @return
+ *      - ESP_OK on success or others if failed
+ */
+esp_err_t esp_video_enum_framesizes(struct esp_video *video, struct v4l2_frmsizeenum *frmsize);
+
+/**
+ * @brief Enumerate video frame intervals
+ *
+ * @param video     Video object
+ * @param frmival   Frame interval buffer pointer
+ *
+ * @return
+ *      - ESP_OK on success or others if failed
+ */
+esp_err_t esp_video_enum_frameintervals(struct esp_video *video, struct v4l2_frmivalenum *frmival);
 
 #ifdef __cplusplus
 }
