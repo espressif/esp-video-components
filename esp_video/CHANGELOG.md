@@ -1,4 +1,4 @@
-## Unreleased
+## 1.2.0
 
 - Add multiple camera web server
 - Add multiple camera sensor option in menuconfig
