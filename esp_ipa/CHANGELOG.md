@@ -1,3 +1,8 @@
+## 1.1.0
+
+- Modify the exposure adjustment algorithm of the part-anti-flicker mode
+    - If the target gain exceeds the maximum or minimum value, the AGC ignores the anti-flicker and uses all exposure time
+
 ## 1.0.1
 
 - Fix the light flicker issue in the part-anti-flicker mode
