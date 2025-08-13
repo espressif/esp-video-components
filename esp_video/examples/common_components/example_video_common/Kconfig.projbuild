@@ -266,6 +266,7 @@ menu "Example Video Initialization Configuration"
 
             config EXAMPLE_DVP_XCLK_FREQ
                 int "XCLK Frequency (Hz)"
+                default 10000000 if IDF_TARGET_ESP32S3
                 default 20000000
                 help
                     Master clock frequency for DVP camera sensor.
