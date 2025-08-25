@@ -36,6 +36,9 @@
 
 #define UNUSED(x)                   (void)(x)
 
+#define TLINE_NS_UNIT               1000
+#define REG_TO_US(reg, isp)         ((reg) * (isp)->sensor_tline_ns / TLINE_NS_UNIT)
+
 typedef struct esp_video_isp {
     int isp_fd;
     esp_video_isp_stats_t *isp_stats[ISP_METADATA_BUFFER_COUNT];
@@ -55,6 +58,10 @@ typedef struct esp_video_isp {
 
     int32_t prev_gain_index;
     uint32_t sensor_stats_seq;
+
+    uint32_t prev_exposure_val;
+    uint32_t sensor_tline_ns;
+
     struct {
         uint8_t gain        : 1;
         uint8_t exposure    : 1;
@@ -548,12 +555,35 @@ static void config_exposure_and_gain(esp_video_isp_t *isp, esp_ipa_metadata_t *m
         }
     }
 
+    uint32_t exposure_val = 0;
+    if (metadata->flags & IPA_METADATA_FLAGS_ET) {
+        struct v4l2_query_ext_ctrl qctrl;
+
+        qctrl.id = V4L2_CID_EXPOSURE;
+        if (ioctl(isp->cam_fd, VIDIOC_QUERY_EXT_CTRL, &qctrl)) {
+            ESP_LOGE(TAG, "failed to query exposure");
+            metadata->flags &= ~IPA_METADATA_FLAGS_ET;
+        } else {
+            exposure_val = (uint32_t)((double)metadata->exposure * TLINE_NS_UNIT / isp->sensor_tline_ns + 0.5);
+            exposure_val = exposure_val / qctrl.step * qctrl.step;
+            exposure_val = MAX(exposure_val, qctrl.minimum);
+            exposure_val = MIN(exposure_val, qctrl.maximum);
+
+            if (exposure_val == isp->prev_exposure_val) {
+                metadata->flags &= ~IPA_METADATA_FLAGS_ET;
+            } else {
+                ESP_LOGD(TAG, "Exposure time: %"PRIu32 " value: %"PRIi32, metadata->exposure, exposure_val);
+            }
+        }
+    }
+
     if ((metadata->flags & IPA_METADATA_FLAGS_ET) &&
             (metadata->flags & IPA_METADATA_FLAGS_GN) &&
             isp->sensor_attr.group) {
         esp_cam_sensor_gh_exp_gain_t group;
 
-        group.exposure_us = metadata->exposure / 100;
+        group.exposure_us = 0;
+        group.exposure_val = exposure_val;
         group.gain_index = gain_index;
 
         controls.ctrl_class = V4L2_CID_CAMERA_CLASS;
@@ -565,7 +595,8 @@ static void config_exposure_and_gain(esp_video_isp_t *isp, esp_ipa_metadata_t *m
         if (ioctl(isp->cam_fd, VIDIOC_S_EXT_CTRLS, &controls) != 0) {
             ESP_LOGE(TAG, "failed to set group");
         } else {
-            isp->sensor.cur_exposure = metadata->exposure;
+            isp->sensor.cur_exposure = REG_TO_US(exposure_val, isp);
+            isp->prev_exposure_val = exposure_val;
             isp->sensor.cur_gain = target_gain;
             isp->prev_gain_index = gain_index;
         }
@@ -575,12 +606,13 @@ static void config_exposure_and_gain(esp_video_isp_t *isp, esp_ipa_metadata_t *m
             controls.ctrl_class = V4L2_CID_CAMERA_CLASS;
             controls.count      = 1;
             controls.controls   = control;
-            control[0].id       = V4L2_CID_EXPOSURE_ABSOLUTE;
-            control[0].value    = (int32_t)metadata->exposure / 100;
+            control[0].id       = V4L2_CID_EXPOSURE;
+            control[0].value    = exposure_val;
             if (ioctl(isp->cam_fd, VIDIOC_S_EXT_CTRLS, &controls) != 0) {
                 ESP_LOGE(TAG, "failed to set exposure time");
             } else {
-                isp->sensor.cur_exposure = metadata->exposure;
+                isp->sensor.cur_exposure = REG_TO_US(exposure_val, isp);
+                isp->prev_exposure_val = exposure_val;
             }
         }
 
@@ -996,31 +1028,39 @@ static esp_err_t init_cam_dev(const esp_video_isp_config_t *config, esp_video_is
         ESP_LOGD(TAG, "V4L2_CID_GAIN is not supported");
     }
 
-    qctrl.id = V4L2_CID_EXPOSURE_ABSOLUTE;
+    qctrl.id = V4L2_CID_EXPOSURE;
     ret = ioctl(fd, VIDIOC_QUERY_EXT_CTRL, &qctrl);
     if (ret == 0) {
         controls.ctrl_class = V4L2_CID_CAMERA_CLASS;
         controls.count      = 1;
         controls.controls   = control;
-        control[0].id       = V4L2_CID_EXPOSURE_ABSOLUTE;
+        control[0].id       = V4L2_CID_EXPOSURE;
         control[0].value    = qctrl.default_value;
         ret = ioctl(fd, VIDIOC_S_EXT_CTRLS, &controls);
-        ESP_GOTO_ON_FALSE(ret == 0, ESP_ERR_NOT_SUPPORTED, fail_0, TAG, "failed to set exposure time");
+        ESP_GOTO_ON_FALSE(ret == 0, ESP_ERR_NOT_SUPPORTED, fail_0, TAG, "failed to set exposure value");
 
-        isp->sensor.min_exposure = qctrl.minimum * 100;
-        isp->sensor.max_exposure = qctrl.maximum * 100;
-        isp->sensor.step_exposure = qctrl.step * 100;
-        isp->sensor.cur_exposure = control[0].value * 100;
+        esp_cam_sensor_format_t sensor_format;
+        ret = ioctl(fd, VIDIOC_G_SENSOR_FMT, &sensor_format);
+        ESP_GOTO_ON_FALSE(ret == 0, ESP_ERR_NOT_SUPPORTED, fail_0, TAG, "failed to get sensor format");
+
+        isp->sensor_tline_ns = sensor_format.isp_info->isp_v1_info.tline_ns;
+        isp->prev_exposure_val = control[0].value;
+
+        isp->sensor.min_exposure = REG_TO_US(qctrl.minimum, isp);
+        isp->sensor.max_exposure = REG_TO_US(qctrl.maximum, isp);
+        isp->sensor.step_exposure = REG_TO_US(qctrl.step, isp);
+        isp->sensor.cur_exposure = REG_TO_US(control[0].value, isp);
 
         isp->sensor_attr.exposure = 1;
 
         ESP_LOGD(TAG, "Exposure time:");
+        ESP_LOGD(TAG, "  tline:   %"PRIu32, isp->sensor_tline_ns);
         ESP_LOGD(TAG, "  min:     %"PRIi64, qctrl.minimum);
         ESP_LOGD(TAG, "  max:     %"PRIi64, qctrl.maximum);
         ESP_LOGD(TAG, "  step:    %"PRIu64, qctrl.step);
         ESP_LOGD(TAG, "  current: %"PRIi32, control[0].value);
     } else {
-        ESP_LOGD(TAG, "V4L2_CID_EXPOSURE_ABSOLUTE is not supported");
+        ESP_LOGD(TAG, "V4L2_CID_EXPOSURE is not supported");
     }
 
     qctrl.id = V4L2_CID_CAMERA_STATS;

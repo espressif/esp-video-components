@@ -612,7 +612,15 @@ static esp_err_t os02n10_set_para_value(esp_cam_sensor_device_t *dev, uint32_t i
     }
     case ESP_CAM_SENSOR_GROUP_EXP_GAIN: {
         esp_cam_sensor_gh_exp_gain_t *value = (esp_cam_sensor_gh_exp_gain_t *)arg;
-        uint32_t ori_exp = EXPOSURE_V4L2_TO_OS02N10(value->exposure_us, dev->cur_format);
+        uint32_t ori_exp = 0;
+        if (value->exposure_us != 0) {
+            ori_exp = EXPOSURE_V4L2_TO_OS02N10(value->exposure_us, dev->cur_format);
+        } else if (value->exposure_val != 0) {
+            ori_exp = value->exposure_val;
+        } else {
+            ret = ESP_ERR_INVALID_ARG;
+            break;
+        }
         ret = os02n10_set_exp_val(dev, ori_exp);
         ret |= os02n10_set_total_gain_val(dev, value->gain_index);
         os02n10_trigger_gain(dev);
