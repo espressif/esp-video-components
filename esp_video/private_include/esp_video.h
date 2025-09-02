@@ -75,6 +75,8 @@ struct esp_video {
 
     SemaphoreHandle_t mutex;                /*!< Video device mutex lock */
     uint8_t reference;                      /*!< video device open reference count */
+
+    uint8_t inited : 1;                     /*!< video device is initialized */
 };
 
 /**

@@ -371,6 +371,7 @@ struct esp_video *esp_video_create(const char *name, uint8_t id, const struct es
     video->id = id;
     video->caps = caps;
     video->device_caps = device_caps;
+    video->inited = 0;
     SLIST_INSERT_HEAD(&s_video_list, video, node);
 
     ret = snprintf(vfs_name, sizeof(vfs_name), "video%d", id);
@@ -476,31 +477,39 @@ esp_err_t esp_video_open(const char *name, struct esp_video **video_ret)
         goto exit_0;
     }
 
-    if (video->ops->init) {
-        /* video device operation "init" sets buffer information and video format */
+    /**
+     * Only initialize the video device although reference is 1, because the
+     * reference can be set by other tasks.
+     */
+    if (!video->inited) {
+        if (video->ops->init) {
+            /* video device operation "init" sets buffer information and video format */
 
-        ret = video->ops->init(video);
-        if (ret != ESP_OK) {
-            if (ret != ESP_ERR_NOT_FOUND) {
-                ESP_LOGE(TAG, "video->ops->init=%x", ret);
+            ret = video->ops->init(video);
+            if (ret != ESP_OK) {
+                if (ret != ESP_ERR_NOT_FOUND) {
+                    ESP_LOGE(TAG, "video->ops->init=%x", ret);
+                }
+                goto exit_0;
+            } else {
+                int stream_count = video->caps & V4L2_CAP_VIDEO_M2M ? 2 : 1;
+
+                portMUX_INITIALIZE(&video->stream_lock);
+                for (int i = 0; i < stream_count; i++) {
+                    struct esp_video_stream *stream = &video->stream[i];
+
+                    stream->buffer = NULL;
+                    memset(&stream->param, 0, sizeof(struct esp_video_param));
+                    TAILQ_INIT(&stream->queued_list);
+                    TAILQ_INIT(&stream->done_list);
+                }
+
+                video->inited = 1;
             }
-            goto exit_0;
         } else {
-            int stream_count = video->caps & V4L2_CAP_VIDEO_M2M ? 2 : 1;
-
-            portMUX_INITIALIZE(&video->stream_lock);
-            for (int i = 0; i < stream_count; i++) {
-                struct esp_video_stream *stream = &video->stream[i];
-
-                stream->buffer = NULL;
-                memset(&stream->param, 0, sizeof(struct esp_video_param));
-                TAILQ_INIT(&stream->queued_list);
-                TAILQ_INIT(&stream->done_list);
-            }
+            ESP_LOGD(TAG, "video->ops->init=NULL");
+            ret = ESP_ERR_NOT_SUPPORTED;
         }
-    } else {
-        ESP_LOGD(TAG, "video->ops->init=NULL");
-        ret = ESP_ERR_NOT_SUPPORTED;
     }
 
 exit_0:
@@ -541,29 +550,38 @@ esp_err_t esp_video_close(struct esp_video *video)
         goto exit_0;
     }
 
-    if (video->ops->deinit) {
-        ret = video->ops->deinit(video);
-        if (ret != ESP_OK) {
-            ESP_LOGE(TAG, "video->ops->deinit=%x", ret);
-        } else {
-            int stream_count = video->caps & V4L2_CAP_VIDEO_M2M ? 2 : 1;
+    /**
+     * Only deinitialize the video device although reference is 0, because the
+     * reference can be set by other tasks.
+     */
+    if (video->inited) {
+        if (video->ops->deinit) {
+            ret = video->ops->deinit(video);
+            if (ret != ESP_OK) {
+                ESP_LOGE(TAG, "video->ops->deinit=%x", ret);
+            } else {
+                int stream_count = video->caps & V4L2_CAP_VIDEO_M2M ? 2 : 1;
 
-            for (int i = 0; i < stream_count; i++) {
-                struct esp_video_stream *stream = &video->stream[i];
+                for (int i = 0; i < stream_count; i++) {
+                    struct esp_video_stream *stream = &video->stream[i];
 
-                if (stream->ready_sem) {
-                    vSemaphoreDelete(stream->ready_sem);
-                    stream->ready_sem = NULL;
+                    if (stream->ready_sem) {
+                        vSemaphoreDelete(stream->ready_sem);
+                        stream->ready_sem = NULL;
+                    }
+
+                    if (stream->buffer) {
+                        esp_video_buffer_destroy(stream->buffer);
+                        stream->buffer = NULL;
+                    }
                 }
 
-                if (stream->buffer) {
-                    esp_video_buffer_destroy(stream->buffer);
-                    stream->buffer = NULL;
-                }
+                video->inited = 0;
             }
+        } else {
+            ESP_LOGD(TAG, "video->ops->deinit=NULL");
+            ret = ESP_ERR_NOT_SUPPORTED;
         }
-    } else {
-        ESP_LOGD(TAG, "video->ops->deinit=NULL");
     }
 
 exit_0:
