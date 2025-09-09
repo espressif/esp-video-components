@@ -956,132 +956,144 @@ static const sc2336_gain_t sc2336_gain_map[] = {
 static const esp_cam_sensor_isp_info_t sc2336_isp_info_mipi[] = {
     /* For MIPI */
     {
-        .isp_v1_info = {
+        .isp_v1_info = { //0
             .version = SENSOR_ISP_INFO_VERSION_DEFAULT,
             .pclk = 81000000,
-            .vts = 1500,
+            .vts = 1500, // 0x05dc
             .hts = 1800,
+            .tline_ns = 22222,
             .gain_def = 0, // gain index, depend on {0x3e06, 0x3e07, 0x3e09}, since these registers are not set in format reg_list, the default values ​​are used here.
             .exp_def = 0x5d6, // depend on {0x3e00, 0x3e01, 0x3e02}, see format_reg_list to get the default value.
             .bayer_type = ESP_CAM_SENSOR_BAYER_BGGR,
         }
     },
     {
-        .isp_v1_info = {
+        .isp_v1_info = { //1
             .version = SENSOR_ISP_INFO_VERSION_DEFAULT,
             .pclk = 81000000,
-            .vts = 1800,
-            .hts = 900,
+            .vts = 900, //0x0384
+            .hts = 1800,
+            .tline_ns = 22222,
             .gain_def = 0,
             .exp_def = 0x37e,
             .bayer_type = ESP_CAM_SENSOR_BAYER_BGGR,
         },
     },
     {
-        .isp_v1_info = {
+        .isp_v1_info = { //2
             .version = SENSOR_ISP_INFO_VERSION_DEFAULT,
             .pclk = 81000000,
-            .vts = 1800,
-            .hts = 750,
+            .vts = 750, //0x02ee
+            .hts = 1800,
+            .tline_ns = 22222,
             .gain_def = 0,
             .exp_def = 0x2e8,
             .bayer_type = ESP_CAM_SENSOR_BAYER_BGGR,
         },
     },
     {
-        .isp_v1_info = {
+        .isp_v1_info = { //3
             .version = SENSOR_ISP_INFO_VERSION_DEFAULT,
             .pclk = 81000000,
-            .vts = 1125,
-            .hts = 1200,
+            .vts = 1200, //0x04b0
+            .hts = 1125,
+            .tline_ns = 33333,
             .gain_def = 0,
             .exp_def = 0x4af,
             .bayer_type = ESP_CAM_SENSOR_BAYER_BGGR,
         },
     },
     {
-        .isp_v1_info = {
+        .isp_v1_info = { //4
             .version = SENSOR_ISP_INFO_VERSION_DEFAULT,
             .pclk = 66000000,
-            .vts = 2250,
-            .hts = 1200,
+            .vts = 1200, //0x04b0
+            .hts = 2250,
+            .tline_ns = 33333,
             .gain_def = 0,
             .exp_def = 0x4af,
             .bayer_type = ESP_CAM_SENSOR_BAYER_BGGR,
         },
     },
     {
-        .isp_v1_info = {
+        .isp_v1_info = { //5
             .version = SENSOR_ISP_INFO_VERSION_DEFAULT,
             .pclk = 81000000,
-            .vts = 2250,
-            .hts = 1200,
+            .vts = 1200, //0x04b0
+            .hts = 2250,
+            .tline_ns = 27777,
             .gain_def = 0,
             .exp_def = 0x4aa,
             .bayer_type = ESP_CAM_SENSOR_BAYER_BGGR,
         },
     },
     {
-        .isp_v1_info = {
+        .isp_v1_info = { //6
             .version = SENSOR_ISP_INFO_VERSION_DEFAULT,
             .pclk = 49500000,
-            .vts = 2200,
+            .vts = 1000, //0x03e8
             .hts = 750,
+            .tline_ns = 33333,
             .gain_def = 0,
             .exp_def = 0x3e2,
             .bayer_type = ESP_CAM_SENSOR_BAYER_BGGR,
         }
     },
     {
-        .isp_v1_info = {
+        .isp_v1_info = { //7
             .version = SENSOR_ISP_INFO_VERSION_DEFAULT,
             .pclk = 67200000,
-            .vts = 1000,
+            .vts = 1250, //0x04e2
             .hts = 2240,
+            .tline_ns = 16000,
             .gain_def = 0,
             .exp_def = 0x207,
             .bayer_type = ESP_CAM_SENSOR_BAYER_BGGR,
         }
     },
     {
-        .isp_v1_info = {
+        .isp_v1_info = { //8
             .version = SENSOR_ISP_INFO_VERSION_DEFAULT,
             .pclk = 84000000,
-            .vts = 1250,
+            .vts = 1250, //0x04e2
             .hts = 2240,
+            .tline_ns = 26666,
             .gain_def = 0,
             .exp_def = 0x4dc,
             .bayer_type = ESP_CAM_SENSOR_BAYER_BGGR,
         }
     },
     {
-        .isp_v1_info = {
+        .isp_v1_info = { //9
             .version = SENSOR_ISP_INFO_VERSION_DEFAULT,
             .pclk = 84000000,
-            .vts = 1250,
+            .vts = 1250, //0x04e2
             .hts = 2240,
+            .tline_ns = 26666,
             .gain_def = 0,
             .exp_def = 0x4dc,
             .bayer_type = ESP_CAM_SENSOR_BAYER_BGGR,
         }
     },
     {
-        .isp_v1_info = {
+        .isp_v1_info = { //10
             .version = SENSOR_ISP_INFO_VERSION_DEFAULT,
             .pclk = 84000000,
-            .vts = 1250,
+            .vts = 1250, //0x04e2
             .hts = 2240,
+            .tline_ns = 26666,
             .gain_def = 0,
             .exp_def = 0x4dc,
             .bayer_type = ESP_CAM_SENSOR_BAYER_BGGR,
         }
     },
     {
-        .isp_v1_info = {
+        .isp_v1_info = { //11
             .version = SENSOR_ISP_INFO_VERSION_DEFAULT,
             .pclk = 84000000,
-            .vts = 1000,
+            .vts = 1000, //0x03e8
             .hts = 2400,
+            .tline_ns = 33333,
             .gain_def = 0,
             .exp_def = 0x3e2,
             .bayer_type = ESP_CAM_SENSOR_BAYER_BGGR,

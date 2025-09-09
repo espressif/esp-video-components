@@ -318,6 +318,7 @@ typedef struct {
     int vts;               /*!< VTS = V_Size + V_Blank, also known as vmax */
     uint32_t exp_def;      /*!< Exposure default */
     uint32_t gain_def;     /*!< Gain default */
+    uint32_t tline_ns;     /*!< One line exposure time in ns */
     esp_cam_sensor_bayer_pattern_t bayer_type;
 } esp_cam_sensor_isp_info_v1_t;
 
