@@ -28,6 +28,11 @@ static const char *TAG = "esp_video_cam";
 
 /**
  * Todo: AEG-1094
+ *
+ * @note The order of the control map table is important, because the control map table is used to
+ *       get the control ID map pointer based on V4L2 control ID. Put the control ID that is most
+ *       frequently used at the beginning of the table which can improve the performance of the
+ *       control ID map pointer lookup.
  */
 static const struct control_map s_sensor_control_map_table[] = {
     {
@@ -35,8 +40,8 @@ static const struct control_map s_sensor_control_map_table[] = {
         .v4l2_id = V4L2_CID_GAIN,
     },
     {
-        .esp_cam_priv_id = ESP_CAM_SENSOR_EXPOSURE_US,
-        .v4l2_id = V4L2_CID_EXPOSURE_ABSOLUTE,
+        .esp_cam_priv_id = ESP_CAM_SENSOR_EXPOSURE_VAL,
+        .v4l2_id = V4L2_CID_EXPOSURE,
     },
     {
         .esp_cam_priv_id = ESP_CAM_SENSOR_STATS,
@@ -51,8 +56,8 @@ static const struct control_map s_sensor_control_map_table[] = {
         .v4l2_id = V4L2_CID_CAMERA_GROUP
     },
     {
-        .esp_cam_priv_id = ESP_CAM_SENSOR_EXPOSURE_VAL,
-        .v4l2_id = V4L2_CID_EXPOSURE,
+        .esp_cam_priv_id = ESP_CAM_SENSOR_EXPOSURE_US,
+        .v4l2_id = V4L2_CID_EXPOSURE_ABSOLUTE,
     },
     {
         .esp_cam_priv_id = ESP_CAM_SENSOR_JPEG_QUALITY,

@@ -452,9 +452,15 @@ typedef struct {
  * Group hold refers to the packing of a group of registers to be effective at a specific time within a frame.
  * When the exposure time and gain need to be updated at the same time,
  * the group hold can be used to ensure that all of them take effect at the same time.
+ *
+ * @note The camera sensor driver should first check if exposure_val is 0. If it is not 0, the
+ *       exposure value has been set by the user, and the driver should set this value directly
+ *       to the sensor. If exposure_val is 0, then exposure_us should be used to calculate the
+ *       exposure value, which the driver then sets to the sensor.
  */
 typedef struct {
-    uint32_t exposure_us; /*!< Exposure time in us */
+    uint32_t exposure_us; /*!< Exposure time in us, 0 if not used */
+    uint32_t exposure_val; /*!< Exposure value, 0 if not used */
     uint32_t gain_index;  /*!< the index of gain map table */
 } esp_cam_sensor_gh_exp_gain_t;
 
