@@ -808,17 +808,23 @@ void app_main(void)
             .dev_name = ESP_VIDEO_DVP_DEVICE_NAME,
         },
 #endif /* EXAMPLE_ENABLE_DVP_CAM_SENSOR */
-#if EXAMPLE_ENABLE_SPI_CAM_SENSOR
+#if EXAMPLE_ENABLE_SPI_CAM_0_SENSOR
         {
             .dev_name = ESP_VIDEO_SPI_DEVICE_NAME,
-        }
-#endif /* EXAMPLE_ENABLE_SPI_CAM_SENSOR */
+        },
+#endif /* EXAMPLE_ENABLE_SPI_CAM_0_SENSOR */
+#if EXAMPLE_ENABLE_SPI_CAM_1_SENSOR
+        {
+            .dev_name = ESP_VIDEO_SPI_DEVICE_1_NAME,
+        },
+#endif /* EXAMPLE_ENABLE_SPI_CAM_1_SENSOR */
 #if EXAMPLE_ENABLE_USB_UVC_CAM_SENSOR
         {
             .dev_name = ESP_VIDEO_USB_UVC_DEVICE_NAME(0),
-        }
+        },
 #endif /* EXAMPLE_ENABLE_USB_UVC_CAM_SENSOR */
     };
+
     int config_count = sizeof(config) / sizeof(config[0]);
 
     assert(config_count > 0);

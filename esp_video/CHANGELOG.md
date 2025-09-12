@@ -1,5 +1,6 @@
 ## Unreleased
 
+- Add the second SPI video device
 - Improve AEC controller time precision
 
 ## 1.2.0

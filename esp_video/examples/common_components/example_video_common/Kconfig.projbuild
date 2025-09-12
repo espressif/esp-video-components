@@ -47,7 +47,7 @@ menu "Example Video Initialization Configuration"
 
     menu "Select and Set Camera Sensor Interface"
         menuconfig EXAMPLE_ENABLE_MIPI_CSI_CAM_SENSOR
-            bool "MIPI-CSI"
+            bool "MIPI-CSI Camera Sensor"
             default y
             depends on ESP_VIDEO_ENABLE_MIPI_CSI_VIDEO_DEVICE
             help
@@ -228,7 +228,7 @@ menu "Example Video Initialization Configuration"
         endif
 
         menuconfig EXAMPLE_ENABLE_DVP_CAM_SENSOR
-            bool "DVP"
+            bool "DVP Camera Sensor"
             default y if IDF_TARGET_ESP32S3
             default n
             depends on ESP_VIDEO_ENABLE_DVP_VIDEO_DEVICE
@@ -426,18 +426,18 @@ menu "Example Video Initialization Configuration"
             endif
         endif
 
-        menuconfig EXAMPLE_ENABLE_SPI_CAM_SENSOR
-            bool "SPI"
+        menuconfig EXAMPLE_ENABLE_SPI_CAM_0_SENSOR
+            bool "SPI Camera Sensor 0"
             default n if IDF_TARGET_ESP32P4 || IDF_TARGET_ESP32S3
             default y
             depends on ESP_VIDEO_ENABLE_SPI_VIDEO_DEVICE
             help
-                Serial Peripheral Interface for camera sensors.
+                Serial Peripheral Interface for camera sensors 0.
                 Typically used for lower resolution sensors or special applications.
                 Requires fewer GPIO pins than DVP but has lower bandwidth.
     
-        if EXAMPLE_ENABLE_SPI_CAM_SENSOR
-            config EXAMPLE_SPI_SCCB_I2C_PORT
+        if EXAMPLE_ENABLE_SPI_CAM_0_SENSOR
+            config EXAMPLE_SPI_CAM_0_SCCB_I2C_PORT
                 int "SCCB(I2C) Port Number"
                 default 0
                 range 0 2 if IDF_TARGET_ESP32P4
@@ -450,7 +450,7 @@ menu "Example Video Initialization Configuration"
                     SCCB (Serial Camera Control Bus) is an I2C-compatible
                     protocol used for camera sensor configuration.
 
-            config EXAMPLE_SPI_SCCB_I2C_FREQ
+            config EXAMPLE_SPI_CAM_0_SCCB_I2C_FREQ
                 int "SCCB(I2C) Frequency (100K-400K Hz)"
                 default 100000
                 range 100000 400000
@@ -464,7 +464,7 @@ menu "Example Video Initialization Configuration"
                     Higher frequencies reduce sensor initialization time but may
                     cause issues with some sensors or longer cable connections.
 
-            config EXAMPLE_SPI_CAM_SPI_PORT
+            config EXAMPLE_SPI_CAM_0_SPI_PORT
                 int "SPI Port Number"
                 default 2 if IDF_TARGET_ESP32P4 || IDF_TARGET_ESP32S3
                 default 1
@@ -473,24 +473,24 @@ menu "Example Video Initialization Configuration"
                 help
                     SPI peripheral number for camera data communication.
 
-            choice EXAMPLE_SPI_CAM_XCLK_SOURCE
+            choice EXAMPLE_SPI_CAM_0_XCLK_SOURCE
                 prompt "Select XCLK Source"
-                default EXAMPLE_SPI_CAM_XCLK_USE_LEDC if CAMERA_XCLK_USE_LEDC
-                default EXAMPLE_SPI_CAM_XCLK_USE_CLOCK_ROUTER if CAMERA_XCLK_USE_ESP_CLOCK_ROUTER
+                default EXAMPLE_SPI_CAM_0_XCLK_USE_LEDC if CAMERA_XCLK_USE_LEDC
+                default EXAMPLE_SPI_CAM_0_XCLK_USE_CLOCK_ROUTER if CAMERA_XCLK_USE_ESP_CLOCK_ROUTER
                 help
                     Select the clock source for generating camera sensor XCLK.
 
                     - LEDC Timer: Uses LED Controller timer for clock generation
                     - ESP Clock Router: Uses dedicated clock routing hardware
 
-                config EXAMPLE_SPI_CAM_XCLK_USE_LEDC
+                config EXAMPLE_SPI_CAM_0_XCLK_USE_LEDC
                     bool "LEDC Timer"
                     depends on CAMERA_XCLK_USE_LEDC
                     help
                         Use LED Controller timer to generate camera clock.
                         Provides good accuracy and is available on all ESP32 variants.
 
-                config EXAMPLE_SPI_CAM_XCLK_USE_CLOCK_ROUTER
+                config EXAMPLE_SPI_CAM_0_XCLK_USE_CLOCK_ROUTER
                     bool "ESP Clock Router"
                     depends on CAMERA_XCLK_USE_ESP_CLOCK_ROUTER
                     help
@@ -498,22 +498,22 @@ menu "Example Video Initialization Configuration"
                         Provides better performance and lower jitter when available.
             endchoice
 
-            config EXAMPLE_SPI_CAM_XCLK_FREQ
+            config EXAMPLE_SPI_CAM_0_XCLK_FREQ
                 int "XCLK Frequency (Hz)"
                 default 24000000 if IDF_TARGET_ESP32P4 || IDF_TARGET_ESP32C5
                 default 20000000
                 help
                     Master clock frequency for SPI camera sensor.
 
-            if EXAMPLE_SPI_CAM_XCLK_USE_LEDC
-                config EXAMPLE_SPI_CAM_XCLK_TIMER
+            if EXAMPLE_SPI_CAM_0_XCLK_USE_LEDC
+                config EXAMPLE_SPI_CAM_0_XCLK_TIMER
                     int "XCLK LEDC Timer Number"
                     default 0
                     range 0 3
                     help
                         LEDC timer number for camera clock generation.
 
-                config EXAMPLE_SPI_CAM_XCLK_TIMER_CHANNEL
+                config EXAMPLE_SPI_CAM_0_XCLK_TIMER_CHANNEL
                     int "XCLK LEDC Timer Channel"
                     default 0
                     range 0 7 if IDF_TARGET_ESP32P4 || IDF_TARGET_ESP32S3
@@ -523,7 +523,7 @@ menu "Example Video Initialization Configuration"
             endif
 
             if EXAMPLE_SELECT_CUSTOMIZED_DEV_BOARD
-                config EXAMPLE_SPI_SCCB_I2C_SCL_PIN
+                config EXAMPLE_SPI_CAM_0_SCCB_I2C_SCL_PIN
                     int "SCCB(I2C) SCL Pin"
                     default 8 if IDF_TARGET_ESP32P4
                     default 5
@@ -537,7 +537,7 @@ menu "Example Video Initialization Configuration"
                     help
                         GPIO pin for I2C clock signal to camera sensor.
 
-                config EXAMPLE_SPI_SCCB_I2C_SDA_PIN
+                config EXAMPLE_SPI_CAM_0_SCCB_I2C_SDA_PIN
                     int "SCCB(I2C) SDA Pin"
                     default 7 if IDF_TARGET_ESP32P4
                     default 4
@@ -551,7 +551,7 @@ menu "Example Video Initialization Configuration"
                     help
                         GPIO pin for I2C data signal to camera sensor.
 
-                config EXAMPLE_SPI_CAM_SENSOR_RESET_PIN
+                config EXAMPLE_SPI_CAM_0_SENSOR_RESET_PIN
                     int "Reset Pin"
                     default -1
                     range -1 54 if IDF_TARGET_ESP32P4
@@ -564,7 +564,7 @@ menu "Example Video Initialization Configuration"
                         GPIO pin for camera sensor hardware reset.
                         Set to -1 if not connected or not required.
 
-                config EXAMPLE_SPI_CAM_SENSOR_PWDN_PIN
+                config EXAMPLE_SPI_CAM_0_SENSOR_PWDN_PIN
                     int "Power Down Pin"
                     default -1
                     range -1 54 if IDF_TARGET_ESP32P4
@@ -577,7 +577,7 @@ menu "Example Video Initialization Configuration"
                         GPIO pin for camera sensor power-down control.
                         Set to -1 if not connected or not required.
 
-                config EXAMPLE_SPI_CAM_XCLK_PIN
+                config EXAMPLE_SPI_CAM_0_XCLK_PIN
                     int "XCLK Output Pin"
                     default 20 if IDF_TARGET_ESP32P4
                     default 15 if IDF_TARGET_ESP32S3
@@ -593,7 +593,7 @@ menu "Example Video Initialization Configuration"
                         GPIO pin for camera sensor master clock output.
                         Set to -1 if not connected or not required.
 
-                config EXAMPLE_SPI_CAM_CS_PIN
+                config EXAMPLE_SPI_CAM_0_CS_PIN
                     int "Chip Select Pin"
                     default 37 if IDF_TARGET_ESP32P4
                     default 6 if IDF_TARGET_ESP32S3
@@ -609,7 +609,7 @@ menu "Example Video Initialization Configuration"
                     help
                         GPIO pin for SPI chip select signal to camera sensor.
 
-                config EXAMPLE_SPI_CAM_SCLK_PIN
+                config EXAMPLE_SPI_CAM_0_SCLK_PIN
                     int "Clock Pin"
                     default 4 if IDF_TARGET_ESP32P4
                     default 13 if IDF_TARGET_ESP32S3
@@ -623,7 +623,7 @@ menu "Example Video Initialization Configuration"
                     help
                         GPIO pin for SPI clock signal to camera sensor.
 
-                config EXAMPLE_SPI_CAM_DATA0_IO_PIN
+                config EXAMPLE_SPI_CAM_0_DATA0_IO_PIN
                     int "Data0 I/O Pin"
                     default 21 if IDF_TARGET_ESP32P4
                     default 16 if IDF_TARGET_ESP32S3
@@ -638,6 +638,7 @@ menu "Example Video Initialization Configuration"
                         GPIO pin for SPI data input/output to camera sensor.
             endif
         endif
+
         menuconfig EXAMPLE_ENABLE_USB_UVC_CAM_SENSOR
             bool "USB-UVC"
             depends on ESP_VIDEO_ENABLE_USB_UVC_VIDEO_DEVICE
@@ -795,6 +796,174 @@ menu "Example Video Initialization Configuration"
 
                     Note: USB lib task handles time-critical USB operations, so core affinity
                     can impact performance. Core 1 is only available on dual-core ESP32 variants.
+        endif
+
+        menuconfig EXAMPLE_ENABLE_SPI_CAM_1_SENSOR
+            bool "SPI Camera Sensor 1"
+            default n
+            depends on ESP_VIDEO_ENABLE_THE_SECOND_SPI_VIDEO_DEVICE
+            help
+                Serial Peripheral Interface for camera sensors 1.
+                Typically used for lower resolution sensors or special applications.
+                Requires fewer GPIO pins than DVP but has lower bandwidth.
+    
+        if EXAMPLE_ENABLE_SPI_CAM_1_SENSOR
+            config EXAMPLE_SPI_CAM_1_SCCB_I2C_PORT
+                int "SCCB(I2C) Port Number"
+                default 1
+                range 0 2 if IDF_TARGET_ESP32P4
+                range 0 1 if IDF_TARGET_ESP32S3
+                depends on !EXAMPLE_SCCB_I2C_INIT_BY_APP
+                help
+                    I2C port number for camera sensor control communication.
+
+                    SCCB (Serial Camera Control Bus) is an I2C-compatible
+                    protocol used for camera sensor configuration.
+
+            config EXAMPLE_SPI_CAM_1_SCCB_I2C_FREQ
+                int "SCCB(I2C) Frequency (100K-400K Hz)"
+                default 100000
+                range 100000 400000
+                help
+                    I2C clock frequency for camera sensor communication.
+
+                    Recommended values:
+                    - 100000 Hz (100kHz): Standard speed, most compatible
+                    - 400000 Hz (400kHz): Fast mode, reduces initialization time
+
+                    Higher frequencies reduce sensor initialization time but may
+                    cause issues with some sensors or longer cable connections.
+
+            config EXAMPLE_SPI_CAM_1_SPI_PORT
+                int "SPI Port Number"
+                default 1
+                range 0 2
+                help
+                    SPI peripheral number for camera data communication.
+
+            choice EXAMPLE_SPI_CAM_1_XCLK_SOURCE
+                prompt "Select XCLK Source"
+                default EXAMPLE_SPI_CAM_1_XCLK_USE_LEDC
+                help
+                    Select the clock source for generating camera sensor XCLK.
+
+                    - LEDC Timer: Uses LED Controller timer for clock generation
+                    - ESP Clock Router: Uses dedicated clock routing hardware
+
+                config EXAMPLE_SPI_CAM_1_XCLK_USE_LEDC
+                    bool "LEDC Timer"
+                    depends on CAMERA_XCLK_USE_LEDC
+                    help
+                        Use LED Controller timer to generate camera clock.
+                        Provides good accuracy and is available on all ESP32 variants.
+
+                config EXAMPLE_SPI_CAM_1_XCLK_USE_CLOCK_ROUTER
+                    bool "ESP Clock Router"
+                    depends on CAMERA_XCLK_USE_ESP_CLOCK_ROUTER
+                    help
+                        Use dedicated clock routing hardware for camera clock.
+                        Provides better performance and lower jitter when available.
+            endchoice
+
+            config EXAMPLE_SPI_CAM_1_XCLK_FREQ
+                int "XCLK Frequency (Hz)"
+                default 24000000 if EXAMPLE_SPI_CAM_1_XCLK_USE_CLOCK_ROUTER
+                default 20000000 if EXAMPLE_SPI_CAM_1_XCLK_USE_LEDC
+                help
+                    Master clock frequency for SPI camera sensor.
+
+            if EXAMPLE_SPI_CAM_1_XCLK_USE_LEDC
+                config EXAMPLE_SPI_CAM_1_XCLK_TIMER
+                    int "XCLK LEDC Timer Number"
+                    default 1
+                    range 0 3
+                    help
+                        LEDC timer number for camera clock generation.
+
+                config EXAMPLE_SPI_CAM_1_XCLK_TIMER_CHANNEL
+                    int "XCLK LEDC Timer Channel"
+                    default 1
+                    range 0 7
+                    help
+                        LEDC timer channel for camera clock output.
+            endif
+
+            if EXAMPLE_SELECT_CUSTOMIZED_DEV_BOARD
+                config EXAMPLE_SPI_CAM_1_SCCB_I2C_SCL_PIN
+                    int "SCCB(I2C) SCL Pin"
+                    default 5 if IDF_TARGET_ESP32P4
+                    default 1 if IDF_TARGET_ESP32S3
+                    range 0 54 if IDF_TARGET_ESP32P4
+                    range 0 48 if IDF_TARGET_ESP32S3
+                    depends on !EXAMPLE_SCCB_I2C_INIT_BY_APP
+                    help
+                        GPIO pin for I2C clock signal to camera sensor.
+
+                config EXAMPLE_SPI_CAM_1_SCCB_I2C_SDA_PIN
+                    int "SCCB(I2C) SDA Pin"
+                    default 6 if IDF_TARGET_ESP32P4
+                    default 2 if IDF_TARGET_ESP32S3
+                    range 0 54 if IDF_TARGET_ESP32P4
+                    range 0 48 if IDF_TARGET_ESP32S3
+                    depends on !EXAMPLE_SCCB_I2C_INIT_BY_APP
+                    help
+                        GPIO pin for I2C data signal to camera sensor.
+
+                config EXAMPLE_SPI_CAM_1_SENSOR_RESET_PIN
+                    int "Reset Pin"
+                    default -1
+                    range -1 54 if IDF_TARGET_ESP32P4
+                    range -1 48 if IDF_TARGET_ESP32S3
+                    help
+                        GPIO pin for camera sensor hardware reset.
+                        Set to -1 if not connected or not required.
+
+                config EXAMPLE_SPI_CAM_1_SENSOR_PWDN_PIN
+                    int "Power Down Pin"
+                    default -1
+                    range -1 54 if IDF_TARGET_ESP32P4
+                    range -1 48 if IDF_TARGET_ESP32S3
+                    help
+                        GPIO pin for camera sensor power-down control.
+                        Set to -1 if not connected or not required.
+
+                config EXAMPLE_SPI_CAM_1_XCLK_PIN
+                    int "XCLK Output Pin"
+                    default 23 if IDF_TARGET_ESP32P4
+                    default 39 if IDF_TARGET_ESP32S3
+                    range -1 54 if IDF_TARGET_ESP32P4
+                    range -1 48 if IDF_TARGET_ESP32S3
+                    help
+                        GPIO pin for camera sensor master clock output.
+                        Set to -1 if not connected or not required.
+
+                config EXAMPLE_SPI_CAM_1_CS_PIN
+                    int "Chip Select Pin"
+                    default 38 if IDF_TARGET_ESP32P4
+                    default 42 if IDF_TARGET_ESP32S3
+                    range 0 54 if IDF_TARGET_ESP32P4
+                    range 0 48 if IDF_TARGET_ESP32S3
+                    help
+                        GPIO pin for SPI chip select signal to camera sensor.
+
+                config EXAMPLE_SPI_CAM_1_SCLK_PIN
+                    int "Clock Pin"
+                    default 22 if IDF_TARGET_ESP32P4
+                    default 43 if IDF_TARGET_ESP32S3
+                    range 0 54 if IDF_TARGET_ESP32P4
+                    range 0 48 if IDF_TARGET_ESP32S3
+                    help
+                        GPIO pin for SPI clock signal to camera sensor.
+
+                config EXAMPLE_SPI_CAM_1_DATA0_IO_PIN
+                    int "Data0 I/O Pin"
+                    default 3 if IDF_TARGET_ESP32P4
+                    default 40 if IDF_TARGET_ESP32S3
+                    range 0 54 if IDF_TARGET_ESP32P4
+                    range 0 48 if IDF_TARGET_ESP32S3
+                    help
+                        GPIO pin for SPI data input/output to camera sensor.
+            endif
         endif
     endmenu
 

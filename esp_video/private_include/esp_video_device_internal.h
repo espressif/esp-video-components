@@ -291,34 +291,35 @@ esp_err_t esp_video_destroy_isp_video_device(void);
  *
  * @param cam_dev       Camera sensor device
  * @param config        SPI video device configuration
+ * @param index         SPI video device index
  *
  * @return
  *      - ESP_OK on success
  *      - Others if failed
  */
-esp_err_t esp_video_create_spi_video_device(esp_cam_sensor_device_t *cam_dev, const esp_video_spi_device_config_t *config);
+esp_err_t esp_video_create_spi_video_device(esp_cam_sensor_device_t *cam_dev, const esp_video_spi_device_config_t *config, uint8_t index);
 
 /**
  * @brief Destroy SPI video device
  *
- * @param None
+ * @param index         SPI video device index
  *
  * @return
  *      - ESP_OK on success
  *      - Others if failed
  */
-esp_err_t esp_video_destroy_spi_video_device(void);
+esp_err_t esp_video_destroy_spi_video_device(uint8_t index);
 
 /**
  * @brief Get the sensor connected to SPI video device
  *
- * @param None
+ * @param index         SPI video device index
  *
  * @return
  *      - Sensor pointer on success
  *      - NULL if failed
  */
-esp_cam_sensor_device_t *esp_video_get_spi_video_device_sensor(void);
+esp_cam_sensor_device_t *esp_video_get_spi_video_device_sensor(uint8_t index);
 #endif
 
 #if CONFIG_ESP_VIDEO_ENABLE_USB_UVC_VIDEO_DEVICE

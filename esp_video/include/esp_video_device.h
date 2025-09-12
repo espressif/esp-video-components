@@ -25,6 +25,20 @@ extern "C" {
 #define ESP_VIDEO_SPI_DEVICE_ID             3
 #define ESP_VIDEO_SPI_DEVICE_NAME           "/dev/video3"
 
+#define ESP_VIDEO_SPI_DEVICE_0_ID           ESP_VIDEO_SPI_DEVICE_ID
+#define ESP_VIDEO_SPI_DEVICE_0_NAME         ESP_VIDEO_SPI_DEVICE_NAME
+
+#define ESP_VIDEO_SPI_DEVICE_1_ID           4
+#define ESP_VIDEO_SPI_DEVICE_1_NAME         "/dev/video4"
+
+#if CONFIG_ESP_VIDEO_ENABLE_THE_SECOND_SPI_VIDEO_DEVICE
+#define ESP_VIDEO_SPI_DEVICE_NUM            2
+#elif CONFIG_ESP_VIDEO_ENABLE_SPI_VIDEO_DEVICE
+#define ESP_VIDEO_SPI_DEVICE_NUM            1
+#else
+#define ESP_VIDEO_SPI_DEVICE_NUM            0
+#endif /* CONFIG_ESP_VIDEO_ENABLE_THE_SECOND_SPI_VIDEO_DEVICE */
+
 /**
  * @brief USB UVC devices 40-49
  */
