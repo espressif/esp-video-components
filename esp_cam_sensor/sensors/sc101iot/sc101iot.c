@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2024 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2024-2025 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -349,7 +349,9 @@ static esp_err_t sc101iot_power_on(esp_cam_sensor_device_t *dev)
     esp_err_t ret = ESP_OK;
 
     if (dev->xclk_pin >= 0) {
+        ESP_LOGW(TAG, "In delay");
         SC101IOT_ENABLE_OUT_XCLK(dev->xclk_pin, dev->xclk_freq_hz);
+        delay_ms(5);
     }
 
     if (dev->pwdn_pin >= 0) {

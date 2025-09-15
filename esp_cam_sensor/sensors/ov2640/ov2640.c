@@ -327,6 +327,7 @@ static esp_err_t ov2640_get_sensor_id(esp_cam_sensor_device_t *dev, esp_cam_sens
 {
     esp_err_t ret = ESP_FAIL;
     uint8_t pid = 0;
+
     if (ov2640_set_bank(dev->sccb_handle, BANK_SENSOR) == ESP_OK) {
         ov2640_read_reg(dev->sccb_handle, BANK_SENSOR, REG_PID, &pid);
     }
@@ -787,6 +788,7 @@ static esp_err_t ov2640_power_on(esp_cam_sensor_device_t *dev)
 
     if (dev->xclk_pin >= 0) {
         OV2640_ENABLE_OUT_CLOCK(dev->xclk_pin, dev->xclk_freq_hz);
+        delay_ms(5);
     }
 
     if (dev->pwdn_pin >= 0) {
