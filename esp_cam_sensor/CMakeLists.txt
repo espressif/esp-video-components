@@ -7,12 +7,8 @@ if(CONFIG_SPIRAM)
 endif()
 
 set(include_dirs "include")
-set(requires "driver" "esp_sccb_intf" "esp_driver_cam")
-set(priv_requires "esp_driver_gpio" "esp_timer")
-
-if(CONFIG_CAMERA_XCLK_USE_LEDC)
-    list(APPEND requires "esp_driver_ledc")
-endif()
+set(requires "esp_sccb_intf" "esp_driver_cam" "esp_driver_gpio" "esp_driver_ledc" "esp_driver_spi")
+set(priv_requires "esp_timer")
 
 if(CONFIG_CAMERA_OV2640)
     list(APPEND srcs "sensors/ov2640/ov2640.c")

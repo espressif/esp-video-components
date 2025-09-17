@@ -1,7 +1,8 @@
 # Changelog
 
-## Unreleased
+## 1.4.0
 
+- Update driver dependency, not rely on old `driver` component anymore
 - Added line exposure time info in camera drivers.
 - Added OS02N10 MIPI camera sensor driver.
 - Added exposure value to "esp_cam_sensor_gh_exp_gain_t" to let the application set the exposure value instead of the exposure time
