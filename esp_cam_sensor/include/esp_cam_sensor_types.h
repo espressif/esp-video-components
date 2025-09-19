@@ -437,7 +437,8 @@ typedef struct {
 typedef struct {
     uint32_t flags;
     uint32_t seq;
-    uint16_t agc_gain; /*!< AGC gain output to sensor */
+    uint32_t aec_exp;  /*!< AEC exposure output to sensor */
+    volatile float agc_gain; /*!< AGC gain output to sensor */
     union {
         struct {
             uint8_t red_avg;

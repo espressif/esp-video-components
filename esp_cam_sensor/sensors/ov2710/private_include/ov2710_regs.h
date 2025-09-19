@@ -25,6 +25,9 @@ extern "C" {
 #define OV2710_REG_BLUE_BEFORE_GAIN_AVERAGE     0x5198  /* R Bit[7:0]: Before AWB gain's blue data average*/
 #define OV2710_REG_AEC_AGC_ADJ_MSB              0x350A
 #define OV2710_REG_AEC_AGC_ADJ_LSB              0x350B
+#define OV2710_REG_AEC_EXPO_H                   0x3500
+#define OV2710_REG_AEC_EXPO_M                   0x3501
+#define OV2710_REG_AEC_EXPO_L                   0x3502
 
 #ifdef __cplusplus
 }

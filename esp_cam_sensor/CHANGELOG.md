@@ -12,6 +12,7 @@
 - Added exposure value to "esp_cam_sensor_gh_exp_gain_t" to let the application set the exposure value instead of the exposure time
 - Added detect delay in DVP camera sensors driver.
 - Changed `ledc_timer_t` to `ledc_channel_t` in `xclk_generator_ledc_t`.
+- Added luma para in ov2710 driver.
 
 ## 1.3.0
 - Changed YUV422 sequence for SC030IOT, SC101IOT, GC0308, and BF3A03 sensors to depend on CONFIG_CAMERA_SENSOR_SWAP_PIXEL_BYTE_ORDER
