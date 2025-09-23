@@ -3,6 +3,7 @@
 - Add the second SPI video device
 - Improve AEC controller time precision
 - Fix the CSI video device initializes twice when starting up
+- Update to use esp_cam_sensor v1.4.x
 
 ## 1.2.0
 

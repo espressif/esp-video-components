@@ -53,7 +53,7 @@ struct esp_cam_sensor_xclk {
  * @brief XCLK generator instance type implemented by LEDC
  */
 typedef struct xclk_generator_ledc_t {
-    ledc_timer_t ledc_channel;
+    ledc_channel_t ledc_channel;
     esp_cam_sensor_xclk_t base;
 } xclk_generator_ledc_t;
 
