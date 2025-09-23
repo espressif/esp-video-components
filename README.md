@@ -11,4 +11,4 @@ This is the repository for a some video related components, which aims to be upl
 
 ## License
 
-To be added.
+[Apache-2.0](./LICENSE)
