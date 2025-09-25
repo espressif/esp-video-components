@@ -4,6 +4,7 @@
 - Add WBG(white balance gain) ioctl command to ISP video device
 - Add BLC(Black level correction) ioctl command to ISP video device
 - JPEG video device supports YUV420 and YUV444 for ESP32-P4 ECO5
+- Add the parameter "intf" to select SPI or parallel I/O for the SPI interface camera sensor
 
 ## 1.3.1
 

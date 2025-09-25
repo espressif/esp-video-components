@@ -178,6 +178,7 @@ static esp_err_t spi_video_start(struct esp_video *video, uint32_t type)
     ESP_RETURN_ON_ERROR(esp_cam_sensor_get_format(cam_dev, &sensor_format), TAG, "failed to get sensor format");
 
     esp_cam_ctlr_spi_config_t spi_config = {
+        .intf = spi_video->spi_config.intf,
         .spi_port = spi_video->spi_config.spi_port,
         .spi_cs_pin = spi_video->spi_config.spi_cs_pin,
         .spi_sclk_pin = spi_video->spi_config.spi_sclk_pin,
@@ -186,6 +187,7 @@ static esp_err_t spi_video_start(struct esp_video *video, uint32_t type)
         .h_res = CAPTURE_VIDEO_GET_FORMAT_WIDTH(video),
         .v_res = CAPTURE_VIDEO_GET_FORMAT_HEIGHT(video),
         .frame_info = sensor_format.spi_info.frame_info,
+        .frame_buffer_count = CAPTURE_VIDEO_BUF_COUNT(video),
         .auto_decode_dis = 1,
     };
 

@@ -76,6 +76,12 @@ extern "C" {
  * @brief SPI camera sensor common configuration
  */
 #if CONFIG_EXAMPLE_ENABLE_SPI_CAM_0_SENSOR
+#if CONFIG_EXAMPLE_SPI_CAM_0_INTERFACE_PARLIO
+#define EXAMPLE_SPI_CAM_0_INTERFACE_PARLIO               1
+#else
+#define EXAMPLE_SPI_CAM_0_INTERFACE_PARLIO               0
+#endif /* CONFIG_EXAMPLE_SPI_CAM_0_INTERFACE_PARLIO */
+
 #define EXAMPLE_ENABLE_SPI_CAM_SENSOR                   1
 #define EXAMPLE_ENABLE_SPI_CAM_0_SENSOR                 1
 #if CONFIG_EXAMPLE_SCCB_I2C_INIT_BY_APP

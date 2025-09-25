@@ -97,6 +97,12 @@ static const esp_video_init_spi_config_t s_spi_config[] = {
         .reset_pin = EXAMPLE_SPI_CAM_0_SENSOR_RESET_PIN,
         .pwdn_pin  = EXAMPLE_SPI_CAM_0_SENSOR_PWDN_PIN,
 
+#if EXAMPLE_SPI_CAM_0_INTERFACE_PARLIO
+        .intf = ESP_CAM_CTLR_SPI_CAM_INTF_PARLIO,
+#else
+        .intf = ESP_CAM_CTLR_SPI_CAM_INTF_SPI,
+#endif /* EXAMPLE_SPI_CAM_0_INTERFACE_PARLIO */
+
         .spi_port = EXAMPLE_SPI_CAM_0_SPI_PORT,
         .spi_cs_pin = EXAMPLE_SPI_CAM_0_CS_PIN,
         .spi_sclk_pin = EXAMPLE_SPI_CAM_0_SCLK_PIN,
@@ -130,6 +136,7 @@ static const esp_video_init_spi_config_t s_spi_config[] = {
         .reset_pin = EXAMPLE_SPI_CAM_1_SENSOR_RESET_PIN,
         .pwdn_pin = EXAMPLE_SPI_CAM_1_SENSOR_PWDN_PIN,
 
+        .intf = ESP_CAM_CTLR_SPI_CAM_INTF_SPI,
         .spi_port = EXAMPLE_SPI_CAM_1_SPI_PORT,
         .spi_cs_pin = EXAMPLE_SPI_CAM_1_CS_PIN,
         .spi_sclk_pin = EXAMPLE_SPI_CAM_1_SCLK_PIN,

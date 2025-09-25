@@ -223,5 +223,68 @@ menu "Espressif Camera Sensors Configurations"
                 - 16-25: High priority, use only for time-critical applications
 
                 Default value of 10 provides good balance for most applications.
+
+        config CAM_CTLR_SPI_ENABLE_PARLIO
+            bool "Use Parallel I/O to simulate SPI interface"
+            default n
+            depends on IDF_TARGET_ESP32P4 || IDF_TARGET_ESP32C5 || IDF_TARGET_ESP32C6
+            help
+                Enable Parallel I/O (PARLIO) support for camera controller SPI interface.
+
+                When enabled, the SPI camera interface driver use to parallel IO to receive the
+                camera sensor picture stream data.
+
+                Benefits of enabling PARLIO:
+                - The SPI can be used in other use cases, such as LCD display, etc.
+                - Better performance for high-resolution or high-framerate applications, because
+                  the parallel IO can support 2-bit data transfer.
+
+                Use cases:
+                - Hardware has no enough SPI ports to use for camera sensor, or the SPI port is
+                  used by other peripherals.
+                - Require high-speed data transfer compared to standard SPI which only supports
+                  1-bit data transfer.
+
+                Note: This feature is hardware-dependent and requires parallel IO hardware support.
+                So this feature is only available for ESP32-P4, ESP32-C5 and ESP32-C6 series.
+
+        config CAM_CTLR_PARLIO_MESSAGE_TASK_STACK_SIZE
+            int "Parlio message task stack size (bytes)"
+            default 4096
+            depends on CAM_CTLR_SPI_ENABLE_PARLIO
+            help
+                Configure the stack size for the camera controller parlio message processing task.
+
+                This task handles the incoming parlio message data when parlio SPI camera driver is enabled.
+                The stack size should be sufficient to handle message processing operations without
+                causing stack overflow.
+
+                Considerations:
+                - Larger messages processing operations may require more stack space
+                - Complex message processing operations need additional stack
+                - Default 4096 bytes suits most standard use cases
+
+                Increase if experiencing stack overflow during message processing operations.
+
+        config CAM_CTLR_PARLIO_MESSAGE_TASK_PRIORITY
+            int "Parlio message task priority"
+            default 23
+            depends on CAM_CTLR_SPI_ENABLE_PARLIO
+            range 2 25
+            help
+                Set the priority level for the camera controller parlio message processing task.
+
+                The parlio message task processes incoming parlio message data in the background. Priority selection
+                should balance message processing speed with other system tasks to avoid blocking
+                critical operations.
+
+                Priority guidelines:
+                - Higher values = higher priority (range: 2-25)
+                - 2-5: Low priority, suitable for non-critical applications
+                - 6-15: Medium priority, balanced performance (recommended)
+                - 16-25: High priority, use only for time-critical applications
+
+                Consider to the message process operations may not cost much time, so default value of 23 provides
+                good performance for most applications.
     endmenu
 endmenu

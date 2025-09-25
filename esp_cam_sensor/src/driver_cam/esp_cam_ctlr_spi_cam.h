@@ -11,6 +11,7 @@
 #include "freertos/queue.h"
 #include "freertos/task.h"
 #include "driver/spi_slave.h"
+#include "driver/parlio_rx.h"
 #include "esp_cam_ctlr_interface.h"
 #include "esp_cam_ctlr_spi.h"
 #include "esp_cam_sensor_types.h"
@@ -45,13 +46,36 @@ typedef struct esp_cam_ctlr_spi_cam {
     esp_cam_ctlr_evt_cbs_t cbs;                         /*!< Camera controller callback functions */
     void *cbs_user_data;                                /*!< Camera controller callback private data */
 
-    spi_host_device_t spi_port;                         /*!< SPI port */
+    esp_cam_ctlr_spi_cam_intf_t intf;                   /*!< SPI CAM interface type */
+
+    /**
+     * Peripheral interface private data
+     */
+    union {
+#if CONFIG_CAM_CTLR_SPI_ENABLE_PARLIO
+        struct {
+            parlio_rx_unit_handle_t rx_unit;            /*!< PARLIO RX unit */
+            parlio_rx_delimiter_handle_t rx_delimiter;  /*!< PARLIO delimiter */
+
+            QueueHandle_t ms_queue;                     /*!< Message queue */
+            TaskHandle_t ms_task;                       /*!< Message task handle */
+
+            uint32_t frame_size;                        /*!< Frame size without cache alignment */
+        } parlio;
+#endif /* CONFIG_CAM_CTLR_SPI_ENABLE_PARLIO */
+
+        struct {
+            spi_host_device_t port;                     /*!< SPI port */
+        } spi;
+    };
+
     gpio_num_t spi_cs_pin;                              /*!< SPI CS pin */
+    spi_slave_transaction_t spi_trans;                  /*!< SPI transaction, parlio also uses this transaction to reduce repetitive processing code */
+
     const esp_cam_sensor_spi_frame_info *frame_info;    /*!< Frame information */
 
     esp_cam_ctlr_spi_cam_fsm_t fsm;                     /*!< SPI CAM finite state machine */
 
-    spi_slave_transaction_t spi_trans;                  /*!< SPI transaction */
     uint8_t drop_frame_count;                           /*!< Drop frame count after start SPI sensor */
     uint8_t dropped_frame_count;                        /*!< Dropped frame count after start SPI sensor */
 
@@ -70,11 +94,11 @@ typedef struct esp_cam_ctlr_spi_cam {
 #endif
 #else
     uint8_t *spi_ll_buffer;                             /*!< SPI sensor low level buffer */
-    uint16_t spi_ll_buffer_size;                        /*!< SPI sensor low level buffer size */
+    uint32_t spi_ll_buffer_size;                        /*!< SPI sensor low level buffer size */
 #endif
 
     uint32_t fb_lines;                                  /*!< Input vertical resolution, i.e. the number of lines in a frame */
-    uint32_t fb_size_in_bytes;                          /*!< SPI sensor frame buffer size with frame header and line header */
+    uint32_t fb_size_in_bytes;                          /*!< SPI sensor frame buffer size with frame header and line header, this is cache aligned */
     uint32_t bf_size_in_bytes;                          /*!< SPI sensor backup buffer size without frame header and line header, this is used when auto_decode_dis=0 */
 
     struct {
