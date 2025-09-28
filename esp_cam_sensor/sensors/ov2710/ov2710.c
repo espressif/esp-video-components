@@ -645,7 +645,7 @@ esp_cam_sensor_device_t *ov2710_detect(esp_cam_sensor_config_t *config)
 
 #if CONFIG_CAMERA_OV2710_STATS_UPDATE_EN
     // Init cam privae pata
-    cam_ov2710->ov2710_para.stats.flags = ESP_CAM_SENSOR_STATS_FLAG_WB_GAIN | ESP_CAM_SENSOR_STATS_FLAG_AGC_GAIN;
+    cam_ov2710->ov2710_para.stats.flags = ESP_CAM_SENSOR_STATS_FLAG_WB_GAIN | ESP_CAM_SENSOR_STATS_FLAG_AGC_GAIN | ESP_CAM_SENSOR_STATS_FLAG_EXPOSURE;
     cam_ov2710->wb_timer_handle = xTimerCreate("wb_t", CONFIG_CAMERA_OV2710_STATS_UPDATE_INTERVAL / portTICK_PERIOD_MS, pdTRUE,
                                   (void *)dev, wb_timer_callback);
     if (!cam_ov2710->wb_timer_handle) {

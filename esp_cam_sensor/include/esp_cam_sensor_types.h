@@ -74,6 +74,7 @@ typedef enum {
 
 #define ESP_CAM_SENSOR_STATS_FLAG_WB_GAIN           (1 <<  0)
 #define ESP_CAM_SENSOR_STATS_FLAG_AGC_GAIN          (1 <<  1)
+#define ESP_CAM_SENSOR_STATS_FLAG_EXPOSURE          (1 <<  2)
 
 #define ESP_CAM_SENSOR_PARAM_TYPE_NUMBER            1
 #define ESP_CAM_SENSOR_PARAM_TYPE_BITMASK           2
