@@ -1,4 +1,4 @@
-## Unreleased
+## 1.3.0
 
 - Add RISC-V software swap byte function for DVP video device
 - Add the customized video class to call esp_cam_sensor ioctl commands directly
@@ -7,6 +7,8 @@
 - Improve AEC controller time precision
 - Fix the CSI video device initializes twice when starting up
 - Update to use esp_cam_sensor v1.4.x
+- Update to use esp_ipa v1.2.x
+- Update to use newer version of usb_host_uvc 2.3.x
 
 ## 1.2.0
 

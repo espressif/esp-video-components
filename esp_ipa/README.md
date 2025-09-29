@@ -399,6 +399,7 @@ Developers can refer to the configuration files in [esp_cam_sensor](https://gith
 {
     "gamma":
     {
+        "model": 0,
         "use_gamma_param": true,
         "luma_env": "ae.luma.avg",
         "luma_min_step": 16.0,
@@ -408,6 +409,7 @@ Developers can refer to the configuration files in [esp_cam_sensor](https://gith
 
 | Parameter | Type | Range | Description | 
 |:-:|:-:|:-:|:-|
+| model | Integer | {0,1} | GAMMA data process model |
 | gamma | Object | / | GAMMA configuration parameters object |
 | use_gamma_param | bool | true/false | true: use the given gamma parameter to generate gamma Y table; false: use the given gamma Y table |
 | luma_env | String | / | Lumina variable name |
@@ -739,13 +741,38 @@ Developers can refer to the configuration files in [esp_cam_sensor](https://gith
 ```json
 "atc":
 {
-    "init_value": 48
+    "model": 0,
+    "init_value": 48,
+    "delay_frames": 5,
+    "luma_env": "env.luma.avg",
+    "min_ae_value_step": 5,
+    "luma_lut":
+    [
+        {
+            "luma": 100,
+            "ae_value": 75
+        },
+        {
+            "luma": 200,
+            "ae_value": 100
+        },
+        {
+            "luma": 300,
+            "ae_value": 150
+        }
+    ]
 }
 ```
 | Parameter | Type | Range | Description |
 |:-:|:-:|:-:|:-|
+| model | Integer | {0} | ATC data process model |
 | init_value | Integer | >0 | Auto sensor AE target control initialization value |
-
+| delay_frames | Integer | >0 | Frames number btween AE target level changing |
+| luma_env | String | / | Lumina variable name |
+| min_step | Integer | >0 | Minimum AE target level step: Only when the AE target level step is larger than or equal to this value is the AE target level set into the sensor |
+| luma_lut | Array | / | The luma value and AE target level mapping table adopted the principle of linear interpolation |
+| luma | Integer | >0 | Luma value threshold |
+| ae_value | Integer | >0 | AE target level value |
 ---
 
 #### 3.2.7 Auto Focus Control

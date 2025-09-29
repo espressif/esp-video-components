@@ -1264,11 +1264,63 @@ TEST_CASE("Auto sensor target control test", "[IPA]")
     esp_ipa_pipeline_handle_t handle = NULL;
     esp_ipa_metadata_t metadata = {0};
     const esp_ipa_config_t *ipa_config = esp_ipa_pipeline_get_config(IPA_TARGET_NAME);
+    const esp_ipa_atc_config_t *atc_config = ipa_config->atc;
 
     TEST_ESP_OK(esp_ipa_pipeline_create(ipa_config, &handle));
     TEST_ESP_OK(esp_ipa_pipeline_init(handle, &s_esp_ipa_sensor, &metadata));
     TEST_ASSERT_EQUAL_HEX32(IPA_METADATA_FLAGS_AETL, metadata.flags & IPA_METADATA_FLAGS_AETL);
     TEST_ASSERT_EQUAL_INT32(100, metadata.ae_target_level);
+
+    for (int i = 0; i < atc_config->delay_frames + 1; i++) {
+        esp_ipa_stats_t stats = {0};
+        metadata.flags = 0;
+        esp_ipa_set_float(handle->ipa_array[0], "etc_env_luma", 100.0 + i * atc_config->min_ae_value_step);
+
+        TEST_ESP_OK(esp_ipa_pipeline_process(handle, &stats, &s_esp_ipa_sensor, &metadata));
+        if (i < atc_config->delay_frames) {
+            TEST_ASSERT_EQUAL_HEX32(0, metadata.flags & IPA_METADATA_FLAGS_AETL);
+        } else {
+            TEST_ASSERT_EQUAL_HEX32(IPA_METADATA_FLAGS_AETL, metadata.flags & IPA_METADATA_FLAGS_AETL);
+            TEST_ASSERT_NOT_EQUAL_INT32(100, metadata.ae_target_level);
+        }
+    }
+
+    for (int i = 0; i < 10; i++) {
+        esp_ipa_stats_t stats = {0};
+        metadata.flags = 0;
+        esp_ipa_set_float(handle->ipa_array[0], "etc_env_luma", 200.0);
+
+        TEST_ESP_OK(esp_ipa_pipeline_process(handle, &stats, &s_esp_ipa_sensor, &metadata));
+        if (i == 0) {
+            TEST_ASSERT_EQUAL_HEX32(IPA_METADATA_FLAGS_AETL, metadata.flags & IPA_METADATA_FLAGS_AETL);
+            TEST_ASSERT_EQUAL_INT32(200, metadata.ae_target_level);
+        } else {
+            TEST_ASSERT_EQUAL_HEX32(0, metadata.flags & IPA_METADATA_FLAGS_AETL);
+        }
+    }
+
+    for (int i = 0; i < 10; i++) {
+        esp_ipa_stats_t stats = {0};
+        metadata.flags = 0;
+        esp_ipa_set_float(handle->ipa_array[0], "etc_env_luma", 300.0);
+
+        TEST_ESP_OK(esp_ipa_pipeline_process(handle, &stats, &s_esp_ipa_sensor, &metadata));
+        if (i == 0) {
+            TEST_ASSERT_EQUAL_HEX32(IPA_METADATA_FLAGS_AETL, metadata.flags & IPA_METADATA_FLAGS_AETL);
+            TEST_ASSERT_EQUAL_INT32(300, metadata.ae_target_level);
+        } else {
+            TEST_ASSERT_EQUAL_HEX32(0, metadata.flags & IPA_METADATA_FLAGS_AETL);
+        }
+    }
+
+    for (int i = 0; i < 10; i++) {
+        esp_ipa_stats_t stats = {0};
+        metadata.flags = 0;
+        esp_ipa_set_float(handle->ipa_array[0], "etc_env_luma", 400.0);
+
+        TEST_ESP_OK(esp_ipa_pipeline_process(handle, &stats, &s_esp_ipa_sensor, &metadata));
+        TEST_ASSERT_EQUAL_HEX32(0, metadata.flags & IPA_METADATA_FLAGS_AETL);
+    }
 
     TEST_ESP_OK(esp_ipa_pipeline_destroy(handle));
 }

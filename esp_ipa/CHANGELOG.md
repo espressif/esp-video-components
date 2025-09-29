@@ -1,3 +1,8 @@
+## 1.2.0
+
+- Add ATC model 0 algorithm
+- Package the libesp_ipa.a library that compiled based on esp-idf master(v6.0.0)
+
 ## 1.1.0
 
 - Modify the exposure adjustment algorithm of the part-anti-flicker mode

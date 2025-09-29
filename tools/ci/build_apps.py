@@ -107,12 +107,16 @@ if __name__ == '__main__':
 
     apps_to_build = find_all_apps(root=root, manifest_files=manifests, modified_components=modified_components, modified_files=modified_files, targets=targets)
 
+    ignore_warning_strs = []
+    for f in DEFAULT_IGNORE_WARNING_FILEPATH:
+        ignore_warning_strs.extend(open(f).read().splitlines())
+
     ret_code = build_apps(
         apps_to_build,
         collect_size_info='size_info.txt',
         dry_run=False,
         keep_going=True,
-        ignore_warning_strs=DEFAULT_IGNORE_WARNING_FILEPATH,
+        ignore_warning_strs=ignore_warning_strs,
         copy_sdkconfig=True
     )
 

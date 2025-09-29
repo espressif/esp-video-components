@@ -436,6 +436,7 @@
             "init_value": 48,
             "delay_frames": 3,
             "luma_env": "env.luma.avg",
+            "min_ae_value_step": 5,
             "luma_lut":
             [
                 {

@@ -97,6 +97,21 @@ typedef enum esp_ipa_af_model {
     ESP_IPA_AF_MODEL_0 = 0,                     /*!< AF data process model type 0 */
 } esp_ipa_af_model_t;
 
+/**
+ * @brief ATC data model type
+ */
+typedef enum esp_ipa_atc_model {
+    ESP_IPA_ATC_MODEL_0 = 0,                     /*!< ATC data process model type 0 */
+} esp_ipa_atc_model_t;
+
+/**
+ * @brief GAMMA model type
+ */
+typedef enum esp_ipa_aen_gamma_model {
+    ESP_IPA_AEN_GAMMA_MODEL_0 = 0,             /*!< GAMMA model type 0 */
+    ESP_IPA_AEN_GAMMA_MODEL_1,                 /*!< GAMMA model type 1 */
+} esp_ipa_aen_gamma_model_t;
+
 struct esp_ipa;
 struct esp_ipa_pipeline;
 
@@ -425,6 +440,8 @@ typedef struct esp_ipa_aen_gamma_unit {
  * @brief GAMMA parameter for auto enhancement algorithm
  */
 typedef struct esp_ipa_aen_gamma_config {
+    esp_ipa_aen_gamma_model_t model;            /*!< GAMMA model */
+
     bool use_gamma_param;                       /*!< true: use variable "gamma_param" to generate gamma mapping table; false: using variable "gamma" */
 
     const char *luma_env;                       /*!< Luma environment variable name */
@@ -499,11 +516,24 @@ typedef struct esp_ipa_ian_luma_ae_config {
 } esp_ipa_ian_luma_ae_config_t;
 
 /**
+ * @brief Environment light luma and scene analyze configuration
+ */
+typedef struct esp_ipa_ian_env_luma_config {
+    float k;                                    /*!< Environment light luma and scene analyze configuration */
+
+    const float *speed_param;                   /*!< Environment light luma speed parameter array */
+    uint8_t speed_param_size;                   /*!< Environment light luma speed parameter array size */
+
+    const uint8_t weight[ISP_AE_REGIONS];       /*!< Environment light luma weight table */
+} esp_ipa_ian_luma_env_config;
+
+/**
  * @brief Light luma and scene analyze configuration
  */
 typedef struct esp_ipa_ian_luma_config {
     const esp_ipa_ian_luma_hist_config_t *hist; /*!< Light luma and scene histogram analyze configuration */
     const esp_ipa_ian_luma_ae_config_t *ae;     /*!< Light luma and scene AE analyze configuration */
+    const esp_ipa_ian_luma_env_config *env;   /*!< Environment light luma and scene analyze configuration */
 } esp_ipa_ian_luma_config_t;
 
 /**
@@ -644,10 +674,29 @@ typedef struct esp_ipa_agc_config {
 } esp_ipa_agc_config_t;
 
 /**
+ * @brief ATC luma lookup table
+ */
+typedef struct esp_ipa_atc_luma_lut {
+    float luma;                                 /*!< ATC speed parameter array */
+    int32_t ae_value;                           /*!< ATC speed parameter array number */
+} esp_ipa_atc_luma_lut_t;
+
+/**
  * @brief Auto sensor AE target level control algorithm configuration
  */
 typedef struct esp_ipa_atc_config {
+    esp_ipa_atc_model_t model;                  /*!< ATC data model type */
+
     uint32_t init_value;                        /*!< Sensor AE target level initialization value */
+    uint8_t delay_frames;                       /*!< Sensor AE target level delay frames */
+
+    const char *luma_env;                       /*!< Sensor AE target level luma environment variable name */
+
+    /* Configuration parameters used in model_0 */
+
+    uint32_t min_ae_value_step;                 /*!< ATC AE target level minimum step */
+    const esp_ipa_atc_luma_lut_t *luma_lut;     /*!< ATC luma lookup table */
+    uint32_t luma_lut_size;                     /*!< ATC luma lookup table size */
 
     bool enable_log;                            /*!< Enable Auto sensor AE target level control algorithm log */
 } esp_ipa_atc_config_t;
