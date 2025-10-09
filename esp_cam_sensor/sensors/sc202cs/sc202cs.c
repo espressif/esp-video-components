@@ -49,8 +49,6 @@ struct sc202cs_cam {
 #define SC202CS_FETCH_EXP_M(val)     (((val) >> 4) & 0xFF)
 #define SC202CS_FETCH_EXP_L(val)     (((val) & 0xF) << 4)
 
-#define SC202CS_PID         0xeb52
-#define SC202CS_SENSOR_NAME "SC202CS"
 #ifndef portTICK_RATE_MS
 #define portTICK_RATE_MS portTICK_PERIOD_MS
 #endif

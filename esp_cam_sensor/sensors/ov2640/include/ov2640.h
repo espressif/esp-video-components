@@ -12,6 +12,8 @@ extern "C" {
 #include "esp_cam_sensor_types.h"
 
 #define OV2640_SCCB_ADDR   0x30
+#define OV2640_PID         0x26
+#define OV2640_SENSOR_NAME "OV2640"
 
 /**
  * @brief Power on camera sensor device and detect the device connected to the designated sccb bus.

@@ -21,8 +21,6 @@
 #define SC101IOT_ENABLE_OUT_XCLK(pin,clk)
 #define SC101IOT_DISABLE_OUT_XCLK(pin)
 
-#define SC101IOT_PID         0xda4a
-#define SC101IOT_SENSOR_NAME "SC101IOT"
 #ifndef portTICK_RATE_MS
 #define portTICK_RATE_MS portTICK_PERIOD_MS
 #endif

@@ -71,9 +71,6 @@ typedef enum {
 #define BF3925_AEC_TARGET_MAX (0x78)
 #define BF3925_AEC_TARGET_DEFAULT (0x4a)
 
-#define BF3925_PID         0x3925
-#define BF3925_SENSOR_NAME "BF3925"
-
 #ifndef portTICK_RATE_MS
 #define portTICK_RATE_MS portTICK_PERIOD_MS
 #endif

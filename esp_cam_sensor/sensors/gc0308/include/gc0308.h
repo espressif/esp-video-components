@@ -13,6 +13,8 @@ extern "C" {
 #include "gc0308_types.h"
 
 #define GC0308_SCCB_ADDR   0x21
+#define GC0308_PID         0x9b
+#define GC0308_SENSOR_NAME "GC0308"
 
 /**
  * @brief Power on camera sensor device and detect the device connected to the designated sccb bus.

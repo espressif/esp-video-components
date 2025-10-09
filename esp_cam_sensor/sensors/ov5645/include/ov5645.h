@@ -13,6 +13,8 @@ extern "C" {
 #include "ov5645_types.h"
 
 #define OV5645_SCCB_ADDR   0x3C
+#define OV5645_PID         0x5645
+#define OV5645_SENSOR_NAME "OV5645"
 
 /**
  * @brief Power on camera sensor device and detect the device connected to the designated sccb bus.

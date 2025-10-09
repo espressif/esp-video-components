@@ -67,8 +67,6 @@ struct sc2336_cam {
 #define SC2336_GROUP_HOLD_END          0x30
 #define SC2336_GROUP_HOLD_DELAY_FRAMES 0x01
 
-#define SC2336_PID         0xcb3a
-#define SC2336_SENSOR_NAME "SC2336"
 #ifndef portTICK_RATE_MS
 #define portTICK_RATE_MS portTICK_PERIOD_MS
 #endif

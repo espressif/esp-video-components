@@ -62,8 +62,6 @@ struct sc035hgs_cam {
 #define SC035HGS_GROUP_HOLD_LUNCH   0x30
 #define SC035HGS_EXP_MAX_OFFSET     0x06
 
-#define SC035HGS_PID         0x0031
-#define SC035HGS_SENSOR_NAME "SC035HGS"
 #ifndef portTICK_RATE_MS
 #define portTICK_RATE_MS portTICK_PERIOD_MS
 #endif

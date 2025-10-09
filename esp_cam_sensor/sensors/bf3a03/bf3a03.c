@@ -42,9 +42,6 @@ typedef enum {
 #define BF3A03_ENABLE_OUT_XCLK(pin,clk)
 #define BF3A03_DISABLE_OUT_XCLK(pin)
 
-#define BF3A03_PID         0x3a03
-#define BF3A03_SENSOR_NAME "BF3A03"
-
 #ifndef portTICK_RATE_MS
 #define portTICK_RATE_MS portTICK_PERIOD_MS
 #endif

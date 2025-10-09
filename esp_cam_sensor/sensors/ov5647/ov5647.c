@@ -21,8 +21,6 @@
 #define OV5647_ENABLE_OUT_CLOCK(pin,clk)
 #define OV5647_DISABLE_OUT_CLOCK(pin)
 
-#define OV5647_PID         0x5647
-#define OV5647_SENSOR_NAME "OV5647"
 #define OV5647_AE_TARGET_DEFAULT (0x50)
 
 #ifndef portTICK_RATE_MS

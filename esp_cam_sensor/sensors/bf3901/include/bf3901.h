@@ -13,6 +13,8 @@ extern "C" {
 #include "bf3901_types.h"
 
 #define BF3901_SCCB_ADDR   0x6E
+#define BF3901_PID         0x3901
+#define BF3901_SENSOR_NAME "BF3901"
 
 /**
  * @brief Power on camera sensor device and detect the device connected to the designated sccb bus.

@@ -78,9 +78,6 @@ typedef enum {
 #define GC2145_DISABLE_OUT_XCLK(pin)
 #define GC2145_AEC_TARGET_DEFAULT (0x7b)
 
-#define GC2145_PID         0x2145
-#define GC2145_SENSOR_NAME "GC2145"
-
 #ifndef portTICK_RATE_MS
 #define portTICK_RATE_MS portTICK_PERIOD_MS
 #endif

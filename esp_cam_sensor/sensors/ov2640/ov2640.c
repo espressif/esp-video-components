@@ -30,8 +30,6 @@ struct ov2640_cam {
 #define OV2640_ENABLE_OUT_CLOCK(pin,clk)
 #define OV2640_DISABLE_OUT_CLOCK(pin)
 
-#define OV2640_PID         0x26
-#define OV2640_SENSOR_NAME "OV2640"
 #ifndef portTICK_RATE_MS
 #define portTICK_RATE_MS portTICK_PERIOD_MS
 #endif

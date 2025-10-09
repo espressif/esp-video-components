@@ -13,6 +13,8 @@ extern "C" {
 #include "sc035hgs_types.h"
 
 #define SC035HGS_SCCB_ADDR   0x30
+#define SC035HGS_PID         0x0031
+#define SC035HGS_SENSOR_NAME "SC035HGS"
 
 /**
  * @brief Power on camera sensor device and detect the device connected to the designated sccb bus.

@@ -13,6 +13,8 @@ extern "C" {
 #include "ov2710_types.h"
 
 #define OV2710_SCCB_ADDR   0x36
+#define OV2710_PID         0x2710
+#define OV2710_SENSOR_NAME "OV2710"
 
 /**
  * @brief Power on camera sensor device and detect the device connected to the designated sccb bus.

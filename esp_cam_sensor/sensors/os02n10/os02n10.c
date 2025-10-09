@@ -51,8 +51,6 @@ struct os02n10_cam {
 #define OS02N10_FETCH_EXP_H(val)     (((val) >> 8) & 0xFF)
 #define OS02N10_FETCH_EXP_L(val)     ((val) & 0xFF)
 
-#define OS02N10_PID         0x534e
-#define OS02N10_SENSOR_NAME "OS02N10"
 #ifndef portTICK_RATE_MS
 #define portTICK_RATE_MS portTICK_PERIOD_MS
 #endif
