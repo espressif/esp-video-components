@@ -19,6 +19,7 @@ if(CONFIG_IDF_TARGET_ESP32P4)
 
     if(CONFIG_ESP_VIDEO_ENABLE_SWAP_BYTE)
         list(APPEND srcs "src/data_reprocessing/esp32p4/esp_video_swap_byte.c")
+        list(APPEND srcs "src/data_reprocessing/esp32p4/esp_video_swap_byte.S")
     endif()
 endif()
 

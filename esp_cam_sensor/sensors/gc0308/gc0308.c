@@ -274,7 +274,20 @@ static esp_err_t gc0308_query_para_desc(esp_cam_sensor_device_t *dev, esp_cam_se
 
 static esp_err_t gc0308_get_para_value(esp_cam_sensor_device_t *dev, uint32_t id, void *arg, size_t size)
 {
-    return ESP_ERR_NOT_SUPPORTED;
+    esp_err_t ret = ESP_OK;
+
+    switch (id) {
+#if CONFIG_CAMERA_SENSOR_SWAP_PIXEL_BYTE_ORDER
+    case ESP_CAM_SENSOR_DATA_SEQ:
+        *(uint32_t *)arg = ESP_CAM_SENSOR_DATA_SEQ_BYTE_SWAPPED;
+        break;
+#endif
+    default:
+        ret = ESP_ERR_NOT_SUPPORTED;
+        break;
+    }
+
+    return ret;
 }
 
 static esp_err_t gc0308_set_para_value(esp_cam_sensor_device_t *dev, uint32_t id, const void *arg, size_t size)
