@@ -34,7 +34,7 @@
   script:
     - echo "MODIFIED_FILES $MODIFIED_FILES"
     - pip install --upgrade idf-component-manager
-    - pip install idf_build_apps==1.1.4
+    - pip install idf_build_apps==$IDF_BUILD_APPS_VERSION
     - export PEDANTIC_FLAGS="-DIDF_CI_BUILD -Werror -Werror=deprecated-declarations -Werror=unused-variable -Werror=unused-but-set-variable -Werror=unused-function"
     - export EXTRA_CFLAGS="${PEDANTIC_FLAGS} -Wstrict-prototypes"
     - export EXTRA_CXXFLAGS="${PEDANTIC_FLAGS}"
@@ -46,9 +46,22 @@ build_test_esp32p4:
     - .rules:build:test_apps
   variables:
     IDF_TARGETS: "esp32p4"
+    IDF_BUILD_APPS_VERSION: "1.1.4"
   parallel:
     matrix:
-      - IMAGE: [espressif/idf:release-v5.4, espressif/idf:release-v5.5, espressif/idf:latest]
+      - IMAGE: [espressif/idf:release-v5.4, espressif/idf:release-v5.5]
+
+build_test_esp32p4_idf_latest:
+  extends:
+    - .build_examples_template
+    - .rules:build:test_apps
+    - .rules:build:idf_latest
+  variables:
+    IDF_TARGETS: "esp32p4"
+    IDF_BUILD_APPS_VERSION: "2.13.1"
+  parallel:
+    matrix:
+      - IMAGE: [espressif/idf:latest]
 
 build_test_s3_c3_c6:
   extends:
@@ -56,9 +69,22 @@ build_test_s3_c3_c6:
     - .rules:build:test_apps
   variables:
     IDF_TARGETS: "esp32s3;esp32c3;esp32c6"
+    IDF_BUILD_APPS_VERSION: "1.1.4"
   parallel:
     matrix:
-      - IMAGE: [espressif/idf:release-v5.4, espressif/idf:release-v5.5, espressif/idf:latest]
+      - IMAGE: [espressif/idf:release-v5.4, espressif/idf:release-v5.5]
+
+build_test_s3_c3_c6_idf_latest:
+  extends:
+    - .build_examples_template
+    - .rules:build:test_apps
+    - .rules:build:idf_latest
+  variables:
+    IDF_TARGETS: "esp32s3;esp32c3;esp32c6"
+    IDF_BUILD_APPS_VERSION: "2.13.1"
+  parallel:
+    matrix:
+      - IMAGE: [espressif/idf:latest]
 
 build_test_c5_c61:
   extends:
@@ -66,6 +92,19 @@ build_test_c5_c61:
     - .rules:build:test_apps
   variables:
     IDF_TARGETS: "esp32c5;esp32c61"
+    IDF_BUILD_APPS_VERSION: "1.1.4"
   parallel:
     matrix:
-      - IMAGE: [espressif/idf:release-v5.5, espressif/idf:latest]
+      - IMAGE: [espressif/idf:release-v5.5]
+
+build_test_c5_c61_idf_latest:
+  extends:
+    - .build_examples_template
+    - .rules:build:test_apps
+    - .rules:build:idf_latest
+  variables:
+    IDF_TARGETS: "esp32c5;esp32c61"
+    IDF_BUILD_APPS_VERSION: "2.13.1"
+  parallel:
+    matrix:
+      - IMAGE: [espressif/idf:latest]
