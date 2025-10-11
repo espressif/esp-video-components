@@ -7,7 +7,11 @@ import typing as t
 import argparse
 from pathlib import Path
 from idf_build_apps.constants import SUPPORTED_TARGETS
-from idf_build_apps import App, build_apps, find_apps, setup_logging, LOGGER
+from idf_build_apps import App, build_apps, find_apps, setup_logging
+from idf_build_apps import __version__ as idf_build_apps_version
+
+if idf_build_apps_version == '1.1.4':
+    from idf_build_apps import LOGGER
 
 DEFAULT_CONFIG_RULES_STR = ['sdkconfig.ci=default', 'sdkconfig.ci.*=', '=default']
 DEFAULT_IGNORE_WARNING_FILEPATH = [os.path.join('tools', 'ci', 'ignore_build_warnings.txt')]
@@ -37,20 +41,35 @@ def get_mr_components(modified_files: str) -> str:
     return list(components)
 
 def find_all_apps(root: str, manifest_files: list[str], modified_components: list[str], modified_files: list[str], targets: list[str]):
-    apps = find_apps(
-        paths=root,
-        target='all',
-        build_dir=f'build_@t_@w',
-        build_log_path='build_log.txt',
-        size_json_path='size.json',
-        recursive=True,
-        check_warnings=True,
-        config_rules_str=DEFAULT_CONFIG_RULES_STR,
-        default_build_targets=SUPPORTED_TARGETS + PREVIEW_TARGETS,
-        modified_components=modified_components,
-        modified_files=modified_files,
-        manifest_files=manifest_files,
-    )
+    if idf_build_apps_version == '1.1.4':
+        apps = find_apps(
+            paths=root,
+            target='all',
+            build_dir=f'build_@t_@w',
+            build_log_path='build_log.txt',
+            size_json_path='size.json',
+            recursive=True,
+            check_warnings=True,
+            config_rules_str=DEFAULT_CONFIG_RULES_STR,
+            default_build_targets=SUPPORTED_TARGETS + PREVIEW_TARGETS,
+            modified_components=modified_components,
+            modified_files=modified_files,
+            manifest_files=manifest_files,
+        )
+    else:
+        apps = find_apps(
+            paths=root,
+            target='all',
+            build_dir=f'build_@t_@w',
+            build_log_filename='build_log.txt',
+            recursive=True,
+            check_warnings=True,
+            config_rules_str=DEFAULT_CONFIG_RULES_STR,
+            default_build_targets=SUPPORTED_TARGETS + PREVIEW_TARGETS,
+            modified_components=modified_components,
+            modified_files=modified_files,
+            manifest_files=manifest_files,
+        )
 
     match_apps = []
     for app in apps:
