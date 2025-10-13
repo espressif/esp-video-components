@@ -54,6 +54,8 @@ static const char *TAG = "ov2710";
 static portMUX_TYPE s_stats_mutex = portMUX_INITIALIZER_UNLOCKED;
 #endif
 
+#define OV2710_GAIN_V(_v, _b)   ((uint32_t)(((_v) >> ((_b))) & 0x01) + 1)
+
 static const esp_cam_sensor_isp_info_t ov2710_isp_info[] = {
     /* For MIPI */
     {
@@ -62,6 +64,7 @@ static const esp_cam_sensor_isp_info_t ov2710_isp_info[] = {
             .pclk = 80000000,
             .vts = 1322,
             .hts = 2420,
+            .tline_ns = 30222,
             .bayer_type = ESP_CAM_SENSOR_BAYER_BGGR,
         }
     },
@@ -71,6 +74,7 @@ static const esp_cam_sensor_isp_info_t ov2710_isp_info[] = {
             .pclk = 80000000,
             .vts = 1322,
             .hts = 2420,
+            .tline_ns = 26666,
             .bayer_type = ESP_CAM_SENSOR_BAYER_BGGR,
         },
     },
@@ -161,7 +165,8 @@ static esp_err_t ov2710_set_reg_bits(esp_sccb_io_handle_t sccb_handle, uint16_t 
 #if CONFIG_CAMERA_OV2710_STATS_UPDATE_EN
 static void wb_timer_callback(TimerHandle_t timer)
 {
-    uint8_t read_v[5] = {0};
+    uint8_t read_v[8] = {0};
+    uint8_t read_v2 = 0;
     esp_cam_sensor_device_t *dev = (esp_cam_sensor_device_t *)pvTimerGetTimerID(timer);
     struct ov2710_cam *cam_ov2710 = (struct ov2710_cam *)dev->priv;
 
@@ -170,14 +175,28 @@ static void wb_timer_callback(TimerHandle_t timer)
     ov2710_read(dev->sccb_handle, OV2710_REG_BLUE_BEFORE_GAIN_AVERAGE, &read_v[2]);
     ov2710_read(dev->sccb_handle, OV2710_REG_AEC_AGC_ADJ_MSB, &read_v[3]);
     ov2710_read(dev->sccb_handle, OV2710_REG_AEC_AGC_ADJ_LSB, &read_v[4]);
+    ov2710_read(dev->sccb_handle, OV2710_REG_AEC_EXPO_H, &read_v[5]);
+    ov2710_read(dev->sccb_handle, OV2710_REG_AEC_EXPO_M, &read_v[6]);
+    ov2710_read(dev->sccb_handle, OV2710_REG_AEC_EXPO_L, &read_v[7]);
+    // ov2710_read(dev->sccb_handle, 0x568A, &read_v2);
+    ov2710_read(dev->sccb_handle, 0x5690, &read_v2);
 
     portENTER_CRITICAL(&s_stats_mutex);
     cam_ov2710->ov2710_para.stats.wb_avg.red_avg = read_v[0];
     cam_ov2710->ov2710_para.stats.wb_avg.green_avg = read_v[1];
     cam_ov2710->ov2710_para.stats.wb_avg.blue_avg = read_v[2];
-    cam_ov2710->ov2710_para.stats.agc_gain = ((read_v[3] & 0x01) + 1) * ((read_v[4] & 0x80) + 1) * ((read_v[4] & 0x40) + 1) * ((read_v[4] & 0x20) + 1) * ((read_v[4] & 0x10) + 1) * ((read_v[4] & 0x0f) / 16 + 1);
+    cam_ov2710->ov2710_para.stats.agc_gain = ((float)(read_v[4] & 0xf) / 16.0 + 1.0) * \
+            OV2710_GAIN_V(read_v[3], 0) * \
+            OV2710_GAIN_V(read_v[4], 7) * \
+            OV2710_GAIN_V(read_v[4], 6) * \
+            OV2710_GAIN_V(read_v[4], 5) * \
+            OV2710_GAIN_V(read_v[4], 4);
+
+    cam_ov2710->ov2710_para.stats.aec_exp = ((uint32_t)(read_v[5] & 0x0f) << 16) | ((uint32_t)read_v[6] << 8) | ((uint32_t)read_v[7]);
     cam_ov2710->ov2710_para.stats.seq++;
     portEXIT_CRITICAL(&s_stats_mutex);
+    ESP_LOGD(TAG, "_gain=%f, avg=0x%"PRIx8", _exp=0x%" PRIx32, cam_ov2710->ov2710_para.stats.agc_gain, read_v2, cam_ov2710->ov2710_para.stats.aec_exp);
+    ESP_LOGD(TAG, "_luma=%f", (float)read_v2 * 1000 / cam_ov2710->ov2710_para.stats.agc_gain / cam_ov2710->ov2710_para.stats.aec_exp);
 }
 #endif
 
@@ -626,7 +645,7 @@ esp_cam_sensor_device_t *ov2710_detect(esp_cam_sensor_config_t *config)
 
 #if CONFIG_CAMERA_OV2710_STATS_UPDATE_EN
     // Init cam privae pata
-    cam_ov2710->ov2710_para.stats.flags = ESP_CAM_SENSOR_STATS_FLAG_WB_GAIN | ESP_CAM_SENSOR_STATS_FLAG_AGC_GAIN;
+    cam_ov2710->ov2710_para.stats.flags = ESP_CAM_SENSOR_STATS_FLAG_WB_GAIN | ESP_CAM_SENSOR_STATS_FLAG_AGC_GAIN | ESP_CAM_SENSOR_STATS_FLAG_EXPOSURE;
     cam_ov2710->wb_timer_handle = xTimerCreate("wb_t", CONFIG_CAMERA_OV2710_STATS_UPDATE_INTERVAL / portTICK_PERIOD_MS, pdTRUE,
                                   (void *)dev, wb_timer_callback);
     if (!cam_ov2710->wb_timer_handle) {
