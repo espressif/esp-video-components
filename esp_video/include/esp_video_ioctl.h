@@ -34,6 +34,15 @@ extern "C" {
 #define V4L2_CID_CAMERA_GROUP           (V4L2_CID_CAMERA_CLASS_BASE + 42)
 #define V4L2_CID_MOTOR_START_TIME       (V4L2_CID_CAMERA_CLASS_BASE + 43)
 
+/**
+ * @brief Use this class to call esp_cam_sensor ioctl commands directly, this is only
+ * used for camera sensor, not for motor controller.
+ *
+ * @note Please note that this class only supports "p_u8" and "size" fields of v4l2_ext_control,
+ * other fields are not supported.
+ */
+#define V4L2_CTRL_CLASS_ESP_CAM_IOCTL   (0x00a70000)
+
 #ifdef __cplusplus
 }
 #endif

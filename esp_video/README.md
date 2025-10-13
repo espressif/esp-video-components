@@ -38,6 +38,29 @@ Now we have implementations based on:
 - (1): if camera output pixel format is RAW8, ISP can transform it to other pixel format: RGB565, RGB888, YUV420 and YUV422
 - (2): select option `ESP_VIDEO_ENABLE_THE_SECOND_SPI_VIDEO_DEVICE` to enable the second SPI video device
 
+## V4L2 Control Classes
+
+### 1. V4L2_CTRL_CLASS_ESP_CAM_IOCTL
+
+This video control class allows users to call the camera sensor (excluding motor) ioctl commands of `esp_cam_sensor` directly,
+enabling them to utilize the camera sensor's special actions. The following code is to read the camera sensor ID:
+
+```c
+esp_cam_sensor_id_t chip_id;
+struct v4l2_ext_controls controls;
+struct v4l2_ext_control control[1];
+
+controls.ctrl_class = V4L2_CTRL_CLASS_ESP_CAM_IOCTL;
+controls.count      = 1;
+controls.controls   = control;
+control[0].id       = ESP_CAM_SENSOR_IOC_G_CHIP_ID;
+control[0].p_u8     = (uint8_t *)&chip_id;
+control[0].size     = sizeof(chip_id);
+ioctl(fd, VIDIOC_G_EXT_CTRLS, &controls);
+```
+
+Please note that this class only supports "p_u8" and "size" fields of v4l2_ext_control, other fields are not supported.
+
 ## V4L2 Control IDs
 
 | ID | Class | Type | Permission | Description |

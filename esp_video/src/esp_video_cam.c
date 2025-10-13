@@ -147,6 +147,7 @@ static const struct control_map *get_v4l2_ext_control_map(uint32_t v4l2_id, bool
  * @brief Get control internal operation parameters
  *
  * @param cam      Camera device pointer
+ * @param controls V4L2 external control class pointer
  * @param ctrl     V4L2 external control pointer
  * @param qdesc    Camera sensor device query description pointer
  * @param buf_ptr  Actual data buffer pointer
@@ -158,19 +159,32 @@ static const struct control_map *get_v4l2_ext_control_map(uint32_t v4l2_id, bool
  *      - ESP_OK on success
  *      - Others if failed
  */
-static esp_err_t get_opt_value_desc(esp_video_cam_t *cam, struct v4l2_ext_control *ctrl, esp_cam_sensor_param_desc_t *qdesc,
-                                    void **buf_ptr, size_t *buf_size, bool *ioctl, cam_dev_type_t *dev_type)
+static esp_err_t get_opt_value_desc(esp_video_cam_t *cam, const struct v4l2_ext_controls *controls, struct v4l2_ext_control *ctrl,
+                                    esp_cam_sensor_param_desc_t *qdesc, void **buf_ptr, size_t *buf_size, bool *ioctl, cam_dev_type_t *dev_type)
 {
     esp_err_t ret;
     const struct control_map *control_map;
 
-    control_map = get_v4l2_ext_control_map(ctrl->id, ioctl, dev_type);
-    if (!control_map) {
-        ESP_LOGE(TAG, "ctrl id=%" PRIx32 " is not supported", ctrl->id);
-        return ESP_ERR_NOT_SUPPORTED;
+    if (controls->ctrl_class == V4L2_CTRL_CLASS_ESP_CAM_IOCTL) {
+        *ioctl = true;
+        *dev_type = CAM_DEV_SENSOR;
+
+        qdesc->id = ctrl->id;
+
+        *buf_ptr = ctrl->p_u8;
+        *buf_size = ctrl->size;
+
+        return ESP_OK;
+    } else {
+        control_map = get_v4l2_ext_control_map(ctrl->id, ioctl, dev_type);
+        if (!control_map) {
+            ESP_LOGE(TAG, "ctrl id=%" PRIx32 " is not supported", ctrl->id);
+            return ESP_ERR_NOT_SUPPORTED;
+        }
+
+        qdesc->id = control_map->esp_cam_priv_id;
     }
 
-    qdesc->id = control_map->esp_cam_priv_id;
     if (*ioctl == false) {
         if (*dev_type == CAM_DEV_SENSOR) {
             ret = esp_cam_sensor_query_para_desc(cam->sensor, qdesc);
@@ -252,7 +266,7 @@ esp_err_t esp_video_cam_set_ext_ctrls(esp_video_cam_t *cam, const struct v4l2_ex
         esp_cam_sensor_param_desc_t qdesc;
         struct v4l2_ext_control *ctrl = &controls->controls[i];
 
-        ret = get_opt_value_desc(cam, ctrl, &qdesc, &value_ptr, &value_size, &ioctl, &dev_type);
+        ret = get_opt_value_desc(cam, controls, ctrl, &qdesc, &value_ptr, &value_size, &ioctl, &dev_type);
         if (ret != ESP_OK) {
             break;
         }
@@ -354,7 +368,7 @@ esp_err_t esp_video_cam_get_ext_ctrls(esp_video_cam_t *cam, struct v4l2_ext_cont
         esp_cam_sensor_param_desc_t qdesc;
         struct v4l2_ext_control *ctrl = &controls->controls[i];
 
-        ret = get_opt_value_desc(cam, ctrl, &qdesc, &value_ptr, &value_size, &ioctl, &dev_type);
+        ret = get_opt_value_desc(cam, controls, ctrl, &qdesc, &value_ptr, &value_size, &ioctl, &dev_type);
         if (ret != ESP_OK) {
             break;
         }

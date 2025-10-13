@@ -1,5 +1,6 @@
 ## Unreleased
 
+- Add the customized video class to call esp_cam_sensor ioctl commands directly
 - Add the second SPI video device
 - Improve AEC controller time precision
 - Fix the CSI video device initializes twice when starting up

@@ -157,11 +157,10 @@ static esp_err_t camera_capture_stream(void)
 {
     int fd;
     esp_err_t ret;
+    esp_cam_sensor_id_t chip_id;
     struct v4l2_capability capability;
-#if CONFIG_EXAMPLE_ENABLE_CAM_SENSOR_PIC_VFLIP || CONFIG_EXAMPLE_ENABLE_CAM_SENSOR_PIC_HFLIP
     struct v4l2_ext_controls controls;
     struct v4l2_ext_control control[1];
-#endif
     const int type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
 
     fd = open(EXAMPLE_CAM_DEV_PATH, O_RDONLY);
@@ -221,6 +220,18 @@ static esp_err_t camera_capture_stream(void)
         if (capability.device_caps & V4L2_CAP_TIMEPERFRAME) {
             ESP_LOGI(TAG, "\tTIMEPERFRAME");
         }
+    }
+
+    controls.ctrl_class = V4L2_CTRL_CLASS_ESP_CAM_IOCTL;
+    controls.count      = 1;
+    controls.controls   = control;
+    control[0].id       = ESP_CAM_SENSOR_IOC_G_CHIP_ID;
+    control[0].p_u8     = (uint8_t *)&chip_id;
+    control[0].size     = sizeof(chip_id);
+    if (ioctl(fd, VIDIOC_G_EXT_CTRLS, &controls) != 0) {
+        ESP_LOGE(TAG, "failed to get chip id");
+    } else {
+        ESP_LOGI(TAG, "chip id: 0x%" PRIx16, chip_id.pid);
     }
 
 #if CONFIG_EXAMPLE_ENABLE_CAM_SENSOR_PIC_VFLIP
