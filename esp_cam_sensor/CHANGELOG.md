@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.5.0
+
+- Added OV02C10 MIPI camera sensor driver with support for 1288x728 and 1920x1080 resolutions at 30fps (1-lane and 2-lane modes).
+
 ## 1.4.0
 
 - Update driver dependency, not rely on old `driver` component anymore
