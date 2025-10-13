@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- Added option to return byte swap flags for GC0308
+
 ## 1.4.0
 
 - Update driver dependency, not rely on old `driver` component anymore

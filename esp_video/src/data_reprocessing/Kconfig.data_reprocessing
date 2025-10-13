@@ -222,11 +222,10 @@ menuconfig ESP_VIDEO_ENABLE_SWAP_SHORT
 
     endif # ESP_VIDEO_ENABLE_SWAP_SHORT
 
-config ESP_VIDEO_ENABLE_SWAP_BYTE
+menuconfig ESP_VIDEO_ENABLE_SWAP_BYTE
     bool "Enable 8-bit data swapping"
     default y
     select ESP_VIDEO_ENABLE_DATA_PREPROCESSING
-    select ESP_VIDEO_ENABLE_BITSCRAMBLER
     depends on SOC_BITSCRAMBLER_SUPPORTED && ESP_VIDEO_ENABLE_DVP_VIDEO_DEVICE
     help
         Enable swapping of 8-bit (byte) data for DVP video streams.
@@ -245,4 +244,54 @@ config ESP_VIDEO_ENABLE_SWAP_BYTE
 
         Required for proper color reproduction with many DVP camera modules.
         Uses hardware bitscrambler for efficient processing without CPU overhead.
+
+if ESP_VIDEO_ENABLE_SWAP_BYTE
+    choice ESP_VIDEO_ENABLE_SWAP_BYTE_IMPL
+        prompt "8-bit swap implementation method"
+        default ESP_VIDEO_ENABLE_SWAP_BYTE_RISCV
+        help
+            Select the implementation method for 8-bit data swapping.
+
+            Performance comparison (typical):
+            - RISC-V Assembly: Fast, uses CPU cores
+            - Hardware Bitscrambler: Fastest, offloads CPU but uses peripheral
+
+            Choose based on your performance requirements and available peripherals.
+
+        config ESP_VIDEO_ENABLE_SWAP_BYTE_RISCV
+            bool "RISC-V assembly instructions"
+            help
+                Use optimized RISC-V assembly instructions for data swapping.
+
+                Benefits:
+                - Fast execution speed
+                - Low latency processing
+                - No peripheral dependencies
+
+                Trade-offs:
+                - Uses CPU cycles
+                - May affect other real-time tasks
+
+                Best for: High-performance applications where speed is critical.
+
+        config ESP_VIDEO_ENABLE_SWAP_BYTE_BITSCRAMBLER
+            bool "Hardware bitscrambler - Experimental"
+            select ESP_VIDEO_ENABLE_BITSCRAMBLER
+            depends on SOC_BITSCRAMBLER_SUPPORTED
+            help
+                Use dedicated hardware bitscrambler peripheral for data swapping.
+
+                Benefits:
+                - Offloads CPU processing
+                - Allows CPU to handle other tasks
+                - No impact on real-time performance
+
+                Trade-offs:
+                - Faster than CPU-based methods without latency
+                - Requires available peripheral
+                - Experimental feature
+
+                Best for: Applications where CPU resources are constrained.
+    endchoice # ESP_VIDEO_ENABLE_SWAP_BYTE_IMPL
+endif #ESP_VIDEO_ENABLE_SWAP_BYTE
 endmenu
