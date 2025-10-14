@@ -1,9 +1,8 @@
 # Changelog
 
-## Unreleased
+## 1.5.0
 
-- Added option to return byte swap flags for GC0308
-- Added luma para in ov2710 driver.
+- Added OV02C10 MIPI camera sensor driver with support for 1288x728 and 1920x1080 resolutions at 30fps (1-lane and 2-lane modes).
 
 ## 1.4.0
 
