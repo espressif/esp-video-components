@@ -378,7 +378,27 @@ static esp_err_t dvp_video_set_format(struct esp_video *video, const struct v4l2
 
 static esp_err_t dvp_video_notify(struct esp_video *video, enum esp_video_event event, void *arg)
 {
-    return ESP_OK;
+    esp_err_t ret = ESP_OK;
+
+#if CONFIG_ESP_VIDEO_ENABLE_SWAP_BYTE_RISCV
+    struct dvp_video *dvp_video = VIDEO_PRIV_DATA(struct dvp_video *, video);
+
+    if (event == ESP_VIDEO_DATA_PREPROCESSING && dvp_video->swap_byte) {
+        struct esp_video_buffer_element *element = CAPTURE_VIDEO_GET_FIRST_DONE_ELEMENT_PTR(video);
+
+        if (element) {
+            size_t ret_size;
+
+            ret = esp_video_swap_byte_process(dvp_video->swap_byte, element->buffer, element->valid_size,
+                                              element->buffer, CAPTURE_VIDEO_BUF_SIZE(video), &ret_size);
+            if (ret == ESP_OK) {
+                element->valid_size = ret_size;
+            }
+        }
+    }
+#endif
+
+    return ret;
 }
 
 static esp_err_t dvp_video_set_ext_ctrl(struct esp_video *video, const struct v4l2_ext_controls *ctrls)

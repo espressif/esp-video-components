@@ -906,6 +906,10 @@ static void get_sensor_state(esp_video_isp_t *isp, int index)
                     isp->sensor.cur_gain = sensor_stats.agc_gain;
                 }
 
+                if (sensor_stats.flags & ESP_CAM_SENSOR_STATS_FLAG_EXPOSURE) {
+                    isp->sensor.cur_exposure = sensor_stats.aec_exp;
+                }
+
                 if (sensor_stats.flags & ESP_CAM_SENSOR_STATS_FLAG_WB_GAIN) {
                     isp_awb_stat_result_t *awb = &isp->isp_stats[index]->awb.awb_result;
 

@@ -178,4 +178,6 @@ void esp_video_swap_short_free(esp_video_swap_short_t *swap_short)
 #if CONFIG_ESP_VIDEO_ENABLE_SWAP_SHORT_BITSCRAMBLER
     bitscrambler_free((bitscrambler_handle_t)swap_short->priv);
 #endif
+
+    heap_caps_free(swap_short);
 }
