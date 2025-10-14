@@ -65,7 +65,6 @@ struct ov02c10_cam {
     ((int32_t)(((double)v) * 1000000 / (sf)->fps / (sf)->isp_info->isp_v1_info.vts / EXPOSURE_V4L2_UNIT_US + 0.5))
  
  #define OV02C10_PID         0x5602
- #define OV02C10_SENSOR_NAME "OV02C10"
  #define OV02C10_AE_TARGET_DEFAULT (0x50)
  
  #ifndef portTICK_RATE_MS
@@ -1257,7 +1256,7 @@ static esp_err_t ov02c10_query_para_desc(esp_cam_sensor_device_t *dev, esp_cam_s
         qdesc->type = ESP_CAM_SENSOR_PARAM_TYPE_NUMBER;
         qdesc->number.minimum = s_ov02c10_exp_min;
         qdesc->number.maximum = dev->cur_format->isp_info->isp_v1_info.vts - OV02C10_EXP_MAX_OFFSET; // max = VTS-6 = height+vblank-6, so when update vblank, exposure_max must be updated
-        qdesc->number.step = 1;;
+        qdesc->number.step = 1;
         qdesc->default_value = dev->cur_format->isp_info->isp_v1_info.exp_def;
         break;
     case ESP_CAM_SENSOR_EXPOSURE_US:
