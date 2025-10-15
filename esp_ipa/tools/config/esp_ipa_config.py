@@ -179,6 +179,44 @@ class ipa_unit_ian_c(ipa_unit_c):
                     '''%(name)
                 )
 
+            if hasattr(obj, 'env'):
+                env = obj.env
+
+                if len(env.weight) != 25:
+                    fatal_error('env.weight size must be 25, but got %d'%(len(env.weight)))
+
+                weight_text = ''
+                for w in env.weight:
+                    weight_text += '%d,'%(w)
+
+                def speed_param_code(name, obj):
+                    speed_param_text = str()
+                    for i in obj.speed_param:
+                        speed_param_text += '%f, '%(i)
+                    return speed_param_text
+
+                luma_text += cfmt_string('''
+                    static const float s_esp_ipa_ian_luma_env_speed_param_%s_config[] = {
+                        %s
+                    };'''%(name, speed_param_code(name, env))
+                )
+
+                luma_text += cfmt_string('''
+                    static const esp_ipa_ian_luma_env_config s_esp_ipa_ian_luma_env_%s_config = {
+                        .k = %f,
+                        .speed_param = s_esp_ipa_ian_luma_env_speed_param_%s_config,
+                        .speed_param_size = ARRAY_SIZE(s_esp_ipa_ian_luma_env_speed_param_%s_config),
+                        .weight = {
+                            %s
+                        },
+                    };'''%(name, env.k, name, name, weight_text)
+                )
+
+                luma_sub_text += cfmt_string('''
+                   .env = &s_esp_ipa_ian_luma_env_%s_config,
+                    '''%(name)
+                )
+
             luma_text += cfmt_string('''
                 static const esp_ipa_ian_luma_config_t s_esp_ipa_ian_luma_%s_config = {
                     %s
@@ -519,13 +557,17 @@ class ipa_unit_aen_c(ipa_unit_c):
                     '''%(name, gamma_table_str)
                 )
 
+            if not hasattr(gamma, 'model'):
+                gamma.model = 0
+
             gamma_text = cfmt_string('''
+                .model = %d,
                 .use_gamma_param = %s,
                 .luma_env = \"%s\",
                 .luma_min_step = %0.4f,
                 .gamma_table = s_esp_ipa_aen_gamma_%s_table,
                 .gamma_table_size = %d,
-                '''%(use_gamma_param_str, gamma.luma_env, gamma.luma_min_step, name, len(gamma.table))
+                '''%(gamma.model, use_gamma_param_str, gamma.luma_env, gamma.luma_min_step, name, len(gamma.table))
             )
 
             return (gamma_text, gamma_table_text)
@@ -861,11 +903,41 @@ class ipa_unit_customized_c(ipa_unit_c):
 class ipa_unit_atc_c(ipa_unit_c):
     @staticmethod
     def decode_atc(name, obj):
-        atc_code = cfmt_string('''
+        if not hasattr(obj, 'model'):
+            obj.model = 0
+
+        def luma_lut_code(name, obj):
+            luma_lut_text = str()
+            for i in obj.luma_lut:
+                luma_lut_text += ('''
+                    {
+                        .luma = %f,
+                        .ae_value = %d
+                    },'''%(i.luma, i.ae_value)
+                )
+            return luma_lut_text
+
+        atc_code = str()
+        atc_obj_code = str()
+        if hasattr(obj, 'luma_lut'):
+            atc_code += cfmt_string('''
+                static const esp_ipa_atc_luma_lut_t s_ipa_atc_luma_lut_%s_config[] = {
+                    %s
+                };'''%(name, luma_lut_code(name, obj))
+            )
+
+        atc_code += cfmt_string('''
             static const esp_ipa_atc_config_t s_ipa_atc_%s_config = {
+                .model = %d,
                 .init_value = %d,
+                .delay_frames = %d,
+                .luma_env = \"%s\",
+                .min_ae_value_step = %d,
+                .luma_lut = s_ipa_atc_luma_lut_%s_config,
+                .luma_lut_size = ARRAY_SIZE(s_ipa_atc_luma_lut_%s_config)
             };
-            '''%(name, obj.init_value)
+            '''%(name, obj.model, obj.init_value, obj.delay_frames, obj.luma_env, obj.min_ae_value_step,
+                 name, name)
         )
 
         return atc_code

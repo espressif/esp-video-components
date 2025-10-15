@@ -127,12 +127,47 @@
                         1, 1, 1, 1, 1,
                         1, 1, 1, 1, 1
                     ]
+                },
+                "env":
+                {
+                    "k": 1000000,
+                    "speed_param":
+                    [
+                        0.25, 0.25, 0.25, 0.25
+                    ],
+                    "weight":
+                    [
+                        1, 1, 1, 1, 1,
+                        1, 1, 1, 1, 1,
+                        1, 1, 1, 1, 1,
+                        1, 1, 1, 1, 1,
+                        1, 1, 1, 1, 1
+                    ]
                 }
             }
         },
         "atc":
         {
-            "init_value": 100
+            "model": 0,
+            "init_value": 100,
+            "delay_frames": 5,
+            "luma_env": "etc_env_luma",
+            "min_ae_value_step": 10,
+            "luma_lut":
+            [
+                {
+                    "luma": 100,
+                    "ae_value": 100
+                },
+                {
+                    "luma": 200,
+                    "ae_value": 200
+                },
+                {
+                    "luma": 300,
+                    "ae_value": 300
+                }
+            ]
         },
         "awb":
         {

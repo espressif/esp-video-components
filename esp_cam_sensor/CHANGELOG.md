@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 1.5.0
 
 - Added option to return byte swap flags for GC0308
 - Added luma para in ov2710 driver.
