@@ -82,6 +82,12 @@ if(CONFIG_CAMERA_OV2710)
     list(APPEND priv_include_dirs "sensors/ov2710/private_include")
 endif()
 
+if(CONFIG_CAMERA_OV3660)
+    list(APPEND srcs "sensors/ov3660/ov3660.c")
+    list(APPEND include_dirs "sensors/ov3660/include")
+    list(APPEND priv_include_dirs "sensors/ov3660/private_include")
+endif()
+
 if(CONFIG_CAMERA_SC035HGS)
     list(APPEND srcs "sensors/sc035hgs/sc035hgs.c")
     list(APPEND include_dirs "sensors/sc035hgs/include")
@@ -165,6 +171,10 @@ endif()
 
 if(CONFIG_CAMERA_OV2710_AUTO_DETECT_MIPI_INTERFACE_SENSOR)
     target_link_libraries(${COMPONENT_LIB} INTERFACE "-u ov2710_detect")
+endif()
+
+if(CONFIG_CAMERA_OV3660_AUTO_DETECT_DVP_INTERFACE_SENSOR)
+    target_link_libraries(${COMPONENT_LIB} INTERFACE "-u ov3660_detect")
 endif()
 
 if(CONFIG_CAMERA_SC035HGS_AUTO_DETECT_MIPI_INTERFACE_SENSOR)

@@ -4,6 +4,7 @@
 
 - Added option to return byte swap flags for GC0308
 - Added luma para in ov2710 driver.
+- Added OV3660 DVP camera sensor driver.
 
 ## 1.4.0
 
