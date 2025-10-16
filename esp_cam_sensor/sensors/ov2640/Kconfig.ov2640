@@ -1,7 +1,7 @@
 menuconfig CAMERA_OV2640
     bool "OV2640"
     default n
-    depends on SOC_LCDCAM_CAM_SUPPORTED
+    depends on SOC_LCDCAM_SUPPORTED
     help
         Enable support for the OV2640 CMOS image sensor.
 

@@ -1,7 +1,7 @@
 menuconfig CAMERA_BF3925
     bool "BF3925"
     default n
-    depends on SOC_LCDCAM_CAM_SUPPORTED
+    depends on SOC_LCDCAM_SUPPORTED
     help
         Enable support for the BF3925 CMOS image sensor.
 

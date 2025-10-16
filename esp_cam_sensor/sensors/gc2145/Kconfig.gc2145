@@ -1,7 +1,7 @@
 menuconfig CAMERA_GC2145
     bool "GC2145"
     default n
-    depends on SOC_MIPI_CSI_SUPPORTED || SOC_LCDCAM_CAM_SUPPORTED
+    depends on SOC_MIPI_CSI_SUPPORTED || SOC_LCDCAM_SUPPORTED
     help
         Enable support for the GC2145 CMOS image sensor.
 
@@ -10,7 +10,7 @@ if CAMERA_GC2145
         config CAMERA_GC2145_AUTO_DETECT_DVP_INTERFACE_SENSOR
             bool "Detect for DVP interface sensor"
             default n
-            depends on SOC_LCDCAM_CAM_SUPPORTED
+            depends on SOC_LCDCAM_SUPPORTED
             help
                 When enabled, the GC2145 sensor will be automatically detected
                 and initialized on the DVP interface at startup without requiring
@@ -66,7 +66,7 @@ if CAMERA_GC2145
     choice CAMERA_GC2145_DVP_DEFAULT_FMT
         prompt "Select default output format for DVP interface"
         default CAMERA_GC2145_DVP_RGB565_640X480_15FPS
-        depends on SOC_LCDCAM_CAM_SUPPORTED
+        depends on SOC_LCDCAM_SUPPORTED
         help
             Select the default video format to use when the sensor initializes on DVP interface.
             Format can be changed at runtime when streaming is stopped.
@@ -90,7 +90,7 @@ if CAMERA_GC2145
 
     config CAMERA_GC2145_DVP_IF_FORMAT_INDEX_DEFAULT
         int
-        depends on SOC_LCDCAM_CAM_SUPPORTED
+        depends on SOC_LCDCAM_SUPPORTED
         default 0 if CAMERA_GC2145_DVP_RGB565_640X480_15FPS
         default 1 if CAMERA_GC2145_DVP_RGB565_1600X1200_13FPS
         default 2 if CAMERA_GC2145_DVP_RGB565_800X600_20FPS

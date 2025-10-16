@@ -1,7 +1,7 @@
 menuconfig CAMERA_SC101IOT
     bool "SC101IOT"
     default n
-    depends on SOC_LCDCAM_CAM_SUPPORTED
+    depends on SOC_LCDCAM_SUPPORTED
     help
         Enabling this option will add the support for SC101IOT.
 

@@ -1,7 +1,7 @@
 menuconfig CAMERA_GC0308
     bool "GC0308"
     default n
-    depends on SOC_LCDCAM_CAM_SUPPORTED
+    depends on SOC_LCDCAM_SUPPORTED
     help
         Enable support for the GC0308 CMOS image sensor.
 

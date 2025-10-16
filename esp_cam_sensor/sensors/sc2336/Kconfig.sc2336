@@ -1,7 +1,7 @@
 menuconfig CAMERA_SC2336
     bool "SC2336"
     default n
-    depends on SOC_MIPI_CSI_SUPPORTED || SOC_LCDCAM_CAM_SUPPORTED
+    depends on SOC_MIPI_CSI_SUPPORTED || SOC_LCDCAM_SUPPORTED
     help
         Enable support for the SC2336 CMOS image sensor.
 
@@ -10,7 +10,7 @@ if CAMERA_SC2336
         config CAMERA_SC2336_AUTO_DETECT_DVP_INTERFACE_SENSOR
             bool "Detect for DVP interface sensor"
             default n
-            depends on SOC_LCDCAM_CAM_SUPPORTED
+            depends on SOC_LCDCAM_SUPPORTED
             help
                 When enabled, the SC2336 sensor will be automatically detected
                 and initialized on the DVP interface at startup without requiring
@@ -123,7 +123,7 @@ if CAMERA_SC2336
     choice CAMERA_SC2336_DVP_DEFAULT_FMT
         prompt "Select default output format for DVP interface"
         default CAMERA_SC2336_DVP_RAW10_1280X720_30FPS
-        depends on SOC_LCDCAM_CAM_SUPPORTED
+        depends on SOC_LCDCAM_SUPPORTED
         help
             This option allows you to select the default video format for the SC2336 sensor
             when it is initialized on the DVP interface. The selected format will be used
@@ -139,7 +139,7 @@ if CAMERA_SC2336
 
     config CAMERA_SC2336_DVP_IF_FORMAT_INDEX_DEFAULT
         int
-        depends on SOC_LCDCAM_CAM_SUPPORTED
+        depends on SOC_LCDCAM_SUPPORTED
         default 0 if CAMERA_SC2336_DVP_RAW10_1280X720_30FPS
         help
             Sets the configuration loaded by default for the DVP interface.
