@@ -71,6 +71,20 @@ static const esp_cam_sensor_format_t ov5640_format_info_dvp[] = {
         .mipi_info = {0},
         .reserved = NULL,
     },
+    {
+        .name = "DVP_8bit_24Minput_RGB565_800x600_10fps",
+        .format = ESP_CAM_SENSOR_PIXFORMAT_RGB565,
+        .port = ESP_CAM_SENSOR_DVP,
+        .xclk = 24000000,
+        .width = 800,
+        .height = 600,
+        .regs = ov5640_dvp_yuv422_svga_10fps,
+        .regs_size = ARRAY_SIZE(ov5640_dvp_yuv422_svga_10fps),
+        .fps = 10,
+        .isp_info = NULL,
+        .mipi_info = {0},
+        .reserved = NULL,
+    }
 };
 #endif
 

@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.5.1
+
+- Added byte swap option and RGB565 format support for OV5640.
+
 ## 1.5.0
 
 - Added option to return byte swap flags for GC0308

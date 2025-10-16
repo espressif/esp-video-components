@@ -24,7 +24,7 @@ menu "Espressif Camera Sensors Configurations"
             bool "Enable pixel byte order swapping"
             default y if IDF_TARGET_ESP32P4
             default n if IDF_TARGET_ESP32S3
-            depends on CAMERA_OV2640 || CAMERA_BF3901 || CAMERA_GC0308 || CAMERA_SC030IOT || CAMERA_SC101IOT || CAMERA_BF3A03
+            depends on CAMERA_OV2640 || CAMERA_BF3901 || CAMERA_GC0308 || CAMERA_SC030IOT || CAMERA_SC101IOT || CAMERA_BF3A03 || CAMERA_OV5640
             help
                 Enable pixel byte order swapping to match display or processing requirements.
 
