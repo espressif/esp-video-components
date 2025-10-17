@@ -293,8 +293,9 @@ static void destroy_sccb_device(esp_sccb_io_handle_t handle, esp_video_init_sccb
                 mark[i2c_port].handle = NULL;
 
                 s_sensor_sccb_mask[i2c_port].handle = NULL;
-                s_sensor_sccb_mask[i2c_port].sccb_io[0] = NULL;
-                s_sensor_sccb_mask[i2c_port].sccb_io[1] = NULL;
+                for (int j = 0; j < ESP_VIDEO_INIT_DEV_NUMS; j++) {
+                    s_sensor_sccb_mask[i2c_port].sccb_io[j] = NULL;
+                }
             }
         }
     } else {
