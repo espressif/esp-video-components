@@ -300,6 +300,54 @@ Developers can refer to the configuration files in [esp_cam_sensor](https://gith
 
 ---
 
+```json
+"acc":
+{
+    "blc": {}
+}
+```
+
+| Parameter | Type | Range | Description |
+|:-:|:-:|:-:|:-|
+| blc | Object | / | Black level correction(BLC) configuration parameters |
+
+---
+
+```json
+"lsc":
+{
+    "model": 0,
+    "stretch": true,
+    "blc_table":
+    [
+        {
+            "gain": 1,
+            "blc_param": {
+                "blc_top_left": 16,
+                "blc_top_right": 16,
+                "blc_bottom_left": 16,
+                "blc_bottom_right": 16
+            }
+        },
+        ...
+    ]
+}
+```
+
+| Parameter | Type | Range | Description |
+|:-:|:-:|:-:|:-|
+| model | Integer | 0 | BLC data process model |
+| stretch | Bool | true or false | Stretch configurations for each channel of the raw Bayer image |
+| blc_table | Array | / | The BLC parameters and gain mapping table adopted the principle of nearest neighbor indexing |
+| gain | Float | >0 | Sensor gain |
+| blc_param | Object | / | The BLC parameters |
+| blc_top_left | Integer | <div style="white-space: nowrap;">ESP32-P4: (0,255)</div> | Black level threshold for top left channel of the raw Bayer image |
+| blc_top_right | Integer | <div style="white-space: nowrap;">ESP32-P4: (0,255)</div> | Black level threshold for top right channel of the raw Bayer image |
+| blc_bottom_left | Integer | <div style="white-space: nowrap;">ESP32-P4: (0,255)</div> | Black level threshold for bottom left channel of the raw Bayer image |
+| blc_bottom_right | Integer | <div style="white-space: nowrap;">ESP32-P4: (0,255)</div> | Black level threshold for bottom right channel of the raw Bayer image |
+
+---
+
 #### 3.2.3 Auto Denoising
 
 ---

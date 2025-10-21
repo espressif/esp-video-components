@@ -786,6 +786,34 @@ static void config_motor_position(esp_video_isp_t *isp, esp_ipa_metadata_t *meta
 }
 #endif
 
+#if ESP_VIDEO_ISP_DEVICE_BLC
+static void config_blc(esp_video_isp_t *isp, esp_ipa_metadata_t *metadata)
+{
+    if (metadata->flags & IPA_METADATA_FLAGS_BLC) {
+        struct v4l2_ext_controls controls;
+        struct v4l2_ext_control control[1];
+        esp_video_isp_blc_t blc;
+        esp_ipa_blc_t *ipa_blc = &metadata->blc;
+
+        blc.enable = true;
+        blc.stretch_enable = ipa_blc->stretch;
+        blc.top_left_offset = ipa_blc->top_left_chan_offset;
+        blc.top_right_offset = ipa_blc->top_right_chan_offset;
+        blc.bottom_left_offset = ipa_blc->bottom_left_chan_offset;
+        blc.bottom_right_offset = ipa_blc->bottom_right_chan_offset;
+
+        controls.ctrl_class = V4L2_CID_USER_CLASS;
+        controls.count      = 1;
+        controls.controls   = control;
+        control[0].id       = V4L2_CID_USER_ESP_ISP_BLC;
+        control[0].p_u8     = (uint8_t *)&blc;
+        if (ioctl(isp->isp_fd, VIDIOC_S_EXT_CTRLS, &controls) != 0) {
+            ESP_LOGE(TAG, "failed to set BLC");
+        }
+    }
+}
+#endif
+
 static void config_isp_and_camera(esp_video_isp_t *isp, esp_ipa_metadata_t *metadata)
 {
     config_statistics_region(isp, metadata);
@@ -805,7 +833,9 @@ static void config_isp_and_camera(esp_video_isp_t *isp, esp_ipa_metadata_t *meta
 #endif
     config_awb(isp, metadata);
     config_af(isp, metadata);
-
+#if ESP_VIDEO_ISP_DEVICE_BLC
+    config_blc(isp, metadata);
+#endif
     config_sensor_ae_target_level(isp, metadata);
     config_exposure_and_gain(isp, metadata);
 #if CONFIG_ESP_VIDEO_ISP_PIPELINE_CONTROL_CAMERA_MOTOR

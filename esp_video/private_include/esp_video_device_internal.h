@@ -22,7 +22,6 @@
 extern "C" {
 #endif
 
-
 /**
  * @brief MIPI-CSI state
  */

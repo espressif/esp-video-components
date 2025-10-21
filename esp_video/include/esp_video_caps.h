@@ -10,21 +10,30 @@
 extern "C" {
 #endif
 
+#if CONFIG_IDF_TARGET_ESP32P4
 /**
  * @brief ISP video device configuration
  */
-#if CONFIG_SOC_ISP_LSC_SUPPORTED && (CONFIG_ESP32P4_REV_MIN_FULL >= 100)
+#if CONFIG_ESP32P4_REV_MIN_FULL >= 100
+#if CONFIG_SOC_ISP_LSC_SUPPORTED
 #define ESP_VIDEO_ISP_DEVICE_LSC    1       /*!< ISP video device enable LSC */
-#endif
+#endif /* CONFIG_SOC_ISP_LSC_SUPPORTED */
+#endif /* CONFIG_ESP32P4_REV_MIN_FULL >= 100 */
 
 /**
  * @brief ISP video device configuration
  */
+#if CONFIG_ESP32P4_REV_MIN_FULL >= 300
 #if CONFIG_SOC_ISP_WBG_SUPPORTED
 #define ESP_VIDEO_ISP_DEVICE_WBG    1       /*!< ISP video device enable WBG */
 #define ESP_VIDEO_ISP_WBG_DEC_BITS  8       /*!< WBG Decimal part */
-#endif
+#endif /* CONFIG_SOC_ISP_WBG_SUPPORTED */
 
+#if CONFIG_SOC_ISP_BLC_SUPPORTED
+#define ESP_VIDEO_ISP_DEVICE_BLC    1       /*!< ISP video device enable BLC */
+#endif /* CONFIG_SOC_ISP_BLC_SUPPORTED */
+#endif /* CONFIG_ESP32P4_REV_MIN_FULL >= 300 */
+#endif /* CONFIG_IDF_TARGET_ESP32P4 */
 
 #ifdef __cplusplus
 }
