@@ -7,6 +7,7 @@ menu "Espressif Camera Sensors Configurations"
             rsource "sensors/bf20a6/Kconfig.bf20a6"
             rsource "sensors/gc0308/Kconfig.gc0308"
             rsource "sensors/gc2145/Kconfig.gc2145"
+            rsource "sensors/mt9d111/Kconfig.mt9d111"
             rsource "sensors/os02n10/Kconfig.os02n10"
             rsource "sensors/ov2640/Kconfig.ov2640"
             rsource "sensors/ov2710/Kconfig.ov2710"
@@ -25,7 +26,7 @@ menu "Espressif Camera Sensors Configurations"
             bool "Enable pixel byte order swapping"
             default y if IDF_TARGET_ESP32P4
             default n if IDF_TARGET_ESP32S3
-            depends on CAMERA_OV2640 || CAMERA_BF3901 || CAMERA_GC0308 || CAMERA_SC030IOT || CAMERA_SC101IOT || CAMERA_BF3A03 || CAMERA_OV5640 || CAMERA_GC2145
+            depends on CAMERA_OV2640 || CAMERA_BF3901 || CAMERA_GC0308 || CAMERA_SC030IOT || CAMERA_SC101IOT || CAMERA_BF3A03 || CAMERA_OV5640 || CAMERA_GC2145 || CAMERA_MT9D111
             help
                 Enable pixel byte order swapping to match display or processing requirements.
 
@@ -47,7 +48,7 @@ menu "Espressif Camera Sensors Configurations"
                 - ESP32-P4: Default enabled
                 - ESP32-S3: Default disabled
 
-                Note: This option only applies to OV2640 and BF3901 sensors.
+                Note: This option only applies to OV2640 BF3901 GC0308 SC030IOT BF3A03 OV5640 GC2145 and MT9D111 sensors.
                 For other sensors, use ESP_VIDEO_ENABLE_SWAP_BYTE (ESP32-P4 only).
 
         config CAMERA_SENSOR_XCLK_INPUT_24M

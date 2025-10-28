@@ -58,6 +58,12 @@ if(CONFIG_CAMERA_GC2145)
     list(APPEND priv_include_dirs "sensors/gc2145/private_include")
 endif()
 
+if(CONFIG_CAMERA_MT9D111)
+    list(APPEND srcs "sensors/mt9d111/mt9d111.c")
+    list(APPEND include_dirs "sensors/mt9d111/include")
+    list(APPEND priv_include_dirs "sensors/mt9d111/private_include")
+endif()
+
 if(CONFIG_CAMERA_OS02N10)
     list(APPEND srcs "sensors/os02n10/os02n10.c")
     list(APPEND include_dirs "sensors/os02n10/include")
@@ -161,6 +167,10 @@ endif()
 
 if(CONFIG_CAMERA_GC2145_AUTO_DETECT_MIPI_INTERFACE_SENSOR OR CONFIG_CAMERA_GC2145_AUTO_DETECT_DVP_INTERFACE_SENSOR)
     target_link_libraries(${COMPONENT_LIB} INTERFACE "-u gc2145_detect")
+endif()
+
+if(CONFIG_CAMERA_MT9D111_AUTO_DETECT_DVP_INTERFACE_SENSOR)
+    target_link_libraries(${COMPONENT_LIB} INTERFACE "-u mt9d111_detect")
 endif()
 
 if(CONFIG_CAMERA_OS02N10_AUTO_DETECT_MIPI_INTERFACE_SENSOR)

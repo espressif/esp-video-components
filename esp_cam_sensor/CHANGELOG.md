@@ -7,6 +7,7 @@
 - Added the parallel I/O implementation for SPI camera interface driver.
 - Added QVGA YUV422 support in GC2145 DVP driver.
 - Added bf20a6 DVP driver.
+- Added MT9D111 DVP camera driver.
 
 ## 1.5.2
 
