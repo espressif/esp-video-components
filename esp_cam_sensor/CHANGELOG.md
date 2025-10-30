@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- Revised the default exposure value for SC2336.
+
 ## 1.5.1
 
 - Added byte swap option and RGB565 format support for OV5640.
