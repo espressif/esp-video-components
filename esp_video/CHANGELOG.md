@@ -1,6 +1,7 @@
 ## Unreleased
 
 - Add the initialization parameter "dont_init_ldo" to disable LDO initialization for the MIPI-CSI video device
+- Add WBG(white balance gain) ioctl command to ISP video device
 
 ## 1.3.1
 
