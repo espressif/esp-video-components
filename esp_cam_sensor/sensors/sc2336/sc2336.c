@@ -963,7 +963,7 @@ static const esp_cam_sensor_isp_info_t sc2336_isp_info_mipi[] = {
             .hts = 1800,
             .tline_ns = 22222,
             .gain_def = 0, // gain index, depend on {0x3e06, 0x3e07, 0x3e09}, since these registers are not set in format reg_list, the default values ​​are used here.
-            .exp_def = 0x5d6, // depend on {0x3e00, 0x3e01, 0x3e02}, see format_reg_list to get the default value.
+            .exp_def = 0x37e, // depend on {0x3e00, 0x3e01, 0x3e02}, see format_reg_list to get the default value.
             .bayer_type = ESP_CAM_SENSOR_BAYER_BGGR,
         }
     },
@@ -987,7 +987,7 @@ static const esp_cam_sensor_isp_info_t sc2336_isp_info_mipi[] = {
             .hts = 1800,
             .tline_ns = 22222,
             .gain_def = 0,
-            .exp_def = 0x2e8,
+            .exp_def = 0x37e,
             .bayer_type = ESP_CAM_SENSOR_BAYER_BGGR,
         },
     },
@@ -999,7 +999,7 @@ static const esp_cam_sensor_isp_info_t sc2336_isp_info_mipi[] = {
             .hts = 1125,
             .tline_ns = 33333,
             .gain_def = 0,
-            .exp_def = 0x4af,
+            .exp_def = 0x37e,
             .bayer_type = ESP_CAM_SENSOR_BAYER_BGGR,
         },
     },
@@ -1011,7 +1011,7 @@ static const esp_cam_sensor_isp_info_t sc2336_isp_info_mipi[] = {
             .hts = 2250,
             .tline_ns = 33333,
             .gain_def = 0,
-            .exp_def = 0x4af,
+            .exp_def = 0x37e,
             .bayer_type = ESP_CAM_SENSOR_BAYER_BGGR,
         },
     },
@@ -1023,7 +1023,7 @@ static const esp_cam_sensor_isp_info_t sc2336_isp_info_mipi[] = {
             .hts = 2250,
             .tline_ns = 27777,
             .gain_def = 0,
-            .exp_def = 0x4aa,
+            .exp_def = 0x37e,
             .bayer_type = ESP_CAM_SENSOR_BAYER_BGGR,
         },
     },
@@ -1035,7 +1035,7 @@ static const esp_cam_sensor_isp_info_t sc2336_isp_info_mipi[] = {
             .hts = 750,
             .tline_ns = 33333,
             .gain_def = 0,
-            .exp_def = 0x3e2,
+            .exp_def = 0x37e,
             .bayer_type = ESP_CAM_SENSOR_BAYER_BGGR,
         }
     },
@@ -1047,7 +1047,7 @@ static const esp_cam_sensor_isp_info_t sc2336_isp_info_mipi[] = {
             .hts = 2240,
             .tline_ns = 16000,
             .gain_def = 0,
-            .exp_def = 0x207,
+            .exp_def = 0x37e,
             .bayer_type = ESP_CAM_SENSOR_BAYER_BGGR,
         }
     },
@@ -1059,7 +1059,7 @@ static const esp_cam_sensor_isp_info_t sc2336_isp_info_mipi[] = {
             .hts = 2240,
             .tline_ns = 26666,
             .gain_def = 0,
-            .exp_def = 0x4dc,
+            .exp_def = 0x37e,
             .bayer_type = ESP_CAM_SENSOR_BAYER_BGGR,
         }
     },
@@ -1071,7 +1071,7 @@ static const esp_cam_sensor_isp_info_t sc2336_isp_info_mipi[] = {
             .hts = 2240,
             .tline_ns = 26666,
             .gain_def = 0,
-            .exp_def = 0x4dc,
+            .exp_def = 0x37e,
             .bayer_type = ESP_CAM_SENSOR_BAYER_BGGR,
         }
     },
@@ -1083,7 +1083,7 @@ static const esp_cam_sensor_isp_info_t sc2336_isp_info_mipi[] = {
             .hts = 2240,
             .tline_ns = 26666,
             .gain_def = 0,
-            .exp_def = 0x4dc,
+            .exp_def = 0x37e,
             .bayer_type = ESP_CAM_SENSOR_BAYER_BGGR,
         }
     },
@@ -1095,7 +1095,7 @@ static const esp_cam_sensor_isp_info_t sc2336_isp_info_mipi[] = {
             .hts = 2400,
             .tline_ns = 33333,
             .gain_def = 0,
-            .exp_def = 0x3e2,
+            .exp_def = 0x37e,
             .bayer_type = ESP_CAM_SENSOR_BAYER_BGGR,
         }
     },
