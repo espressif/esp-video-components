@@ -35,6 +35,10 @@ extern "C" {
 #define ESP_VIDEO_ISP_DEVICE_BLC    1       /*!< ISP video device enable BLC */
 #endif /* CONFIG_SOC_ISP_BLC_SUPPORTED */
 
+#if CONFIG_SOC_ISP_CROP_SUPPORTED
+#define ESP_VIDEO_ISP_DEVICE_CROP   1       /*!< ISP video device enable crop */
+#endif /* CONFIG_SOC_ISP_CROP_SUPPORTED */
+
 #if CONFIG_SOC_JPEG_CODEC_SUPPORTED
 #define ESP_VIDEO_JPEG_DEVICE_YUV420    1   /*!< JPEG video device supports YUV420 format */
 #define ESP_VIDEO_JPEG_DEVICE_YUV444    1   /*!< JPEG video device supports YUV444 format */

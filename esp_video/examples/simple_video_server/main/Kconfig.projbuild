@@ -60,4 +60,39 @@ menu "Example Configuration"
             This hostname will be used for network identification and can be
             accessed as "esp-web.local" on the local network (if mDNS is supported
             by the client device).
+
+    config EXAMPLE_ENABLE_MIPI_CSI_CROP
+        bool "Enable crop for MIPI-CSI video device"
+        default n
+        depends on EXAMPLE_ENABLE_MIPI_CSI_CAM_SENSOR && SOC_ISP_CROP_SUPPORTED
+    
+    if EXAMPLE_ENABLE_MIPI_CSI_CROP
+        config EXAMPLE_MIPI_CSI_CROP_TOP_LEFT_H
+            int "Crop region top-left horizontal coordinate"
+            default 0
+            help
+                Horizontal coordinate of the top-left corner for the crop.
+                Must be an even number and less than bottom-right horizontal coordinate.
+
+        config EXAMPLE_MIPI_CSI_CROP_TOP_LEFT_V
+            int "Crop region top-left vertical coordinate"
+            default 0
+            help
+                Vertical coordinate of the top-left corner for the crop.
+                Must be an even number and less than bottom-right vertical coordinate.
+
+        config EXAMPLE_MIPI_CSI_CROP_WIDTH
+            int "Crop region width"
+            default 640
+            help
+                Width of the crop region in pixels.
+                Must be greater than 0 and not exceed the sensor output width.
+
+        config EXAMPLE_MIPI_CSI_CROP_HEIGHT
+            int "Crop region height"
+            default 480
+            help
+                Height of the crop region in pixels.
+                Must be greater than 0 and not exceed the sensor output height.
+    endif
 endmenu
