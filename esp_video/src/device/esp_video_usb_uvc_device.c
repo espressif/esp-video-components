@@ -223,8 +223,23 @@ static esp_err_t uvc_video_init(struct esp_video *video)
     ESP_GOTO_ON_ERROR(uvc_host_get_frame_list(device->dev_addr, device->stream_index, (uvc_host_frame_info_t (*)[1])device->frame_info, &list_size),
                       fail1, TAG, "Failed to get frame info");
 
-#if 0
+    // For simplicity, we select a fixed stream format here: 640x480 @ 30fps MJPEG
+    const uvc_host_stream_format_t stream_format = {
+        .h_res = 640,
+        .v_res = 480,
+        .fps = 30,
+        .format = UVC_VS_FORMAT_MJPEG,
+    };
+    int info_index = 0;
     for (int i = 0; i < device->frame_info_num; i++) {
+        if ((device->frame_info[i].h_res == stream_format.h_res) &&
+            (device->frame_info[i].v_res == stream_format.v_res) &&
+            (device->frame_info[i].format == stream_format.format) &&
+            (UVC_INTERVAL_DENOMINATOR / device->frame_info[i].default_interval == stream_format.fps)) {
+            info_index = i;
+            break;
+        }
+#if 0
         ESP_LOGI(TAG, "Frame info %d: format=%d, h_res=%d, v_res=%d, default_interval=%d, interval_type=%d", i,
                  device->frame_info[i].format, device->frame_info[i].h_res, device->frame_info[i].v_res, device->frame_info[i].default_interval,
                  device->frame_info[i].interval_type);
@@ -237,9 +252,9 @@ static esp_err_t uvc_video_init(struct esp_video *video)
                 ESP_LOGI(TAG, "\tinterval[%d] = %d", j, device->frame_info[i].interval[j]);
             }
         }
-    }
 #endif
-
+    }
+    
     uvc_host_stream_config_t stream_config = {
         .event_cb = uvc_event_callback,
         .frame_cb = uvc_frame_callback,
@@ -251,10 +266,10 @@ static esp_err_t uvc_video_init(struct esp_video *video)
             .uvc_stream_index = device->stream_index,
         },
         .vs_format = {
-            .h_res = device->frame_info[0].h_res,
-            .v_res = device->frame_info[0].v_res,
-            .fps = 10 * 1000 * 1000 / device->frame_info[0].default_interval,
-            .format = device->frame_info[0].format,
+            .h_res = device->frame_info[info_index].h_res,
+            .v_res = device->frame_info[info_index].v_res,
+            .fps = 10 * 1000 * 1000 / device->frame_info[info_index].default_interval,
+            .format = device->frame_info[info_index].format,
         },
         .advanced = {
             .number_of_frame_buffers = UVC_DEVICE_FRAME_COUNT,
