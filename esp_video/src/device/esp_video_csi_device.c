@@ -60,6 +60,8 @@ struct csi_video {
 #endif
 
     esp_video_cam_t cam;
+
+    uint32_t dont_init_ldo      : 1;
 };
 
 static const char *TAG = "csi_video";
@@ -363,7 +365,9 @@ static esp_err_t csi_video_init(struct esp_video *video)
     };
     struct csi_video *csi_video = VIDEO_PRIV_DATA(struct csi_video *, video);
 
-    ESP_RETURN_ON_ERROR(esp_ldo_acquire_channel(&ldo_cfg, &csi_video->ldo_handle), TAG, "failed to init LDO");
+    if (!csi_video->dont_init_ldo) {
+        ESP_RETURN_ON_ERROR(esp_ldo_acquire_channel(&ldo_cfg, &csi_video->ldo_handle), TAG, "failed to init LDO");
+    }
 
     ESP_GOTO_ON_ERROR(esp_cam_sensor_set_format(csi_video->cam.sensor, NULL), fail_0, TAG, "failed to set basic format");
     ESP_GOTO_ON_ERROR(init_config(video), fail_0, TAG, "failed to initialize config");
@@ -371,8 +375,10 @@ static esp_err_t csi_video_init(struct esp_video *video)
     return ESP_OK;
 
 fail_0:
-    esp_ldo_release_channel(csi_video->ldo_handle);
-    csi_video->ldo_handle = NULL;
+    if (!csi_video->dont_init_ldo) {
+        esp_ldo_release_channel(csi_video->ldo_handle);
+        csi_video->ldo_handle = NULL;
+    }
     return ret;
 }
 
@@ -478,8 +484,10 @@ static esp_err_t csi_video_deinit(struct esp_video *video)
 {
     struct csi_video *csi_video = VIDEO_PRIV_DATA(struct csi_video *, video);
 
-    ESP_RETURN_ON_ERROR(esp_ldo_release_channel(csi_video->ldo_handle), TAG, "failed to release LDO");
-    csi_video->ldo_handle = NULL;
+    if (!csi_video->dont_init_ldo) {
+        ESP_RETURN_ON_ERROR(esp_ldo_release_channel(csi_video->ldo_handle), TAG, "failed to release LDO");
+        csi_video->ldo_handle = NULL;
+    }
 
     return ESP_OK;
 }
@@ -699,7 +707,7 @@ static const struct esp_video_ops s_csi_video_ops = {
  *      - ESP_OK on success
  *      - Others if failed
  */
-esp_err_t esp_video_create_csi_video_device(esp_cam_sensor_device_t *sensor)
+esp_err_t esp_video_create_csi_video_device(esp_cam_sensor_device_t *sensor, const esp_video_csi_device_config_t *config)
 {
     struct esp_video *video;
     struct csi_video *csi_video;
@@ -712,6 +720,7 @@ esp_err_t esp_video_create_csi_video_device(esp_cam_sensor_device_t *sensor)
     }
 
     csi_video->cam.sensor = sensor;
+    csi_video->dont_init_ldo = config->dont_init_ldo;
 
     video = esp_video_create(CSI_NAME, ESP_VIDEO_MIPI_CSI_DEVICE_ID, &s_csi_video_ops, csi_video, caps, device_caps);
     if (!video) {

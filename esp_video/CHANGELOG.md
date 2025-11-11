@@ -1,3 +1,7 @@
+## Unreleased
+
+- Add the initialization parameter "dont_init_ldo" to disable LDO initialization for the MIPI-CSI video device
+
 ## 1.3.1
 
 - Fix array bounds check failure in destroy_sccb_device() when compile option is PTIMIZATION_SIZE

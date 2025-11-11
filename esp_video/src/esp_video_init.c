@@ -417,7 +417,10 @@ esp_err_t esp_video_init(const esp_video_init_config_t *config)
                 continue;
             }
 
-            ret = esp_video_create_csi_video_device(cam_dev);
+            esp_video_csi_device_config_t csi_dev_config = {
+                .dont_init_ldo = config->csi->dont_init_ldo,
+            };
+            ret = esp_video_create_csi_video_device(cam_dev, &csi_dev_config);
             if (ret != ESP_OK) {
                 ESP_LOGE(TAG, "failed to create MIPI-CSI video device");
                 return ret;

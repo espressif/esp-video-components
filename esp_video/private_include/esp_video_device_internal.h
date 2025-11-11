@@ -70,6 +70,13 @@ typedef struct esp_video_usb_uvc_device_config {
 
 #if CONFIG_ESP_VIDEO_ENABLE_MIPI_CSI_VIDEO_DEVICE
 /**
+ * @brief MIPI CSI video device configuration
+ */
+typedef struct esp_video_csi_device_config {
+    bool dont_init_ldo;                     /*!< If true, MIPI-CSI video device will not initialize the LDO; otherwise, MIPI-CSI video device will initialize the LDO */
+} esp_video_csi_device_config_t;
+
+/**
  * @brief Create MIPI CSI video device
  *
  * @param cam_dev camera sensor device
@@ -78,7 +85,7 @@ typedef struct esp_video_usb_uvc_device_config {
  *      - ESP_OK on success
  *      - Others if failed
  */
-esp_err_t esp_video_create_csi_video_device(esp_cam_sensor_device_t *cam_dev);
+esp_err_t esp_video_create_csi_video_device(esp_cam_sensor_device_t *cam_dev, const esp_video_csi_device_config_t *config);
 
 /**
  * @brief Destroy MIPI-CSI video device
