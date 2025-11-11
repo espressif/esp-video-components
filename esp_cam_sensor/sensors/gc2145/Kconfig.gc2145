@@ -9,6 +9,7 @@ if CAMERA_GC2145
     menu "Auto detect GC2145"
         config CAMERA_GC2145_AUTO_DETECT_DVP_INTERFACE_SENSOR
             bool "Detect for DVP interface sensor"
+            default y if IDF_TARGET_ESP32S3
             default n
             depends on SOC_LCDCAM_CAM_SUPPORTED
             help
@@ -86,6 +87,11 @@ if CAMERA_GC2145
             help
                 RGB565 color format at 800x600 resolution (SVGA) with 20fps framerate.
                 Requires 8-bit DVP interface and 20MHz input clock.
+        config CAMERA_GC2145_DVP_YUV422_320X240_13FPS
+            bool "YUV422 320X240 13fps, DVP 8-bit, 10M input"
+            help
+                YUV422 color format at 320x240 resolution (QVGA) with 13fps framerate.
+                Requires 8-bit DVP interface and 10MHz input clock.
     endchoice # CAMERA_GC2145_DVP_DEFAULT_FMT
 
     config CAMERA_GC2145_DVP_IF_FORMAT_INDEX_DEFAULT
@@ -94,6 +100,7 @@ if CAMERA_GC2145
         default 0 if CAMERA_GC2145_DVP_RGB565_640X480_15FPS
         default 1 if CAMERA_GC2145_DVP_RGB565_1600X1200_13FPS
         default 2 if CAMERA_GC2145_DVP_RGB565_800X600_20FPS
+        default 3 if CAMERA_GC2145_DVP_YUV422_320X240_13FPS
         help
             Sets the default configuration for the DVP interface.
             Use query_support_formats() API to get more format options.
