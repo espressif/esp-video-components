@@ -68,6 +68,20 @@ static esp_err_t jpeg_get_input_format_from_v4l2(uint32_t v4l2_format, jpeg_enc_
         *src_bpp = 16;
         *sub_sample = JPEG_DOWN_SAMPLING_YUV422;
         break;
+#if ESP_VIDEO_JPEG_DEVICE_YUV420
+    case V4L2_PIX_FMT_YUV420:
+        *src_type = JPEG_ENCODE_IN_FORMAT_YUV420;
+        *src_bpp = 12;
+        *sub_sample = JPEG_DOWN_SAMPLING_YUV420;
+        break;
+#endif
+#if ESP_VIDEO_JPEG_DEVICE_YUV444
+    case V4L2_PIX_FMT_YUV444:
+        *src_type = JPEG_ENCODE_IN_FORMAT_YUV444;
+        *src_bpp = 24;
+        *sub_sample = JPEG_DOWN_SAMPLING_YUV444;
+        break;
+#endif
     case V4L2_PIX_FMT_GREY:
         *src_type = JPEG_ENCODE_IN_FORMAT_GRAY;
         *src_bpp = 8;
