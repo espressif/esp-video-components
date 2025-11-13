@@ -83,6 +83,7 @@ extern "C" {
 #define CAPTURE_VIDEO_STREAM(v)             ((v)->stream)
 #define CAPTURE_VIDEO_BUF_SIZE(v)           STREAM_BUFFER_SIZE(CAPTURE_VIDEO_STREAM(v))
 #define CAPTURE_VIDEO_BUF_COUNT(v)          STREAM_BUFFER_COUNT(CAPTURE_VIDEO_STREAM(v))
+#define CAPTURE_VIDEO_BUF(v)                (CAPTURE_VIDEO_STREAM(v)->buffer)
 
 #define CAPTURE_VIDEO_DONE_BUF(v, b, n)     esp_video_done_buffer(v, V4L2_BUF_TYPE_VIDEO_CAPTURE, b, n)
 #define CAPTURE_VIDEO_SKIP_BUF(v, b)        esp_video_skip_buffer(v, V4L2_BUF_TYPE_VIDEO_CAPTURE, b)
