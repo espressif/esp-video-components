@@ -1,8 +1,9 @@
 # Changelog
 
-## Unreleased
+## 1.5.2
 
 - Revised the default exposure value for SC2336.
+- Fixed compilation issues when using ESP-IDF v6.0.
 
 ## 1.5.1
 
