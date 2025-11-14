@@ -54,7 +54,7 @@ esp_err_t esp_sccb_transmit_reg_a8v16(esp_sccb_io_handle_t io_handle, uint8_t re
     data[1] = (reg_val & 0xff00) >> 8;
     data[2] = reg_val & 0xff;
 
-    ESP_RETURN_ON_ERROR(io_handle->transmit_reg_a8v16(io_handle, data, 4, ESP_SCCB_TRANS_DEALY), TAG, "failed to transmit_reg_a8v16");
+    ESP_RETURN_ON_ERROR(io_handle->transmit_reg_a8v16(io_handle, data, 3, ESP_SCCB_TRANS_DEALY), TAG, "failed to transmit_reg_a8v16");
     reg_val = __builtin_bswap16(reg_val);
     return ret;
 }
