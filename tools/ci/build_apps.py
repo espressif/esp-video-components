@@ -17,18 +17,35 @@ DEFAULT_CONFIG_RULES_STR = ['sdkconfig.ci=default', 'sdkconfig.ci.*=', '=default
 DEFAULT_IGNORE_WARNING_FILEPATH = [os.path.join('tools', 'ci', 'ignore_build_warnings.txt')]
 PREVIEW_TARGETS = []
 
+CI_BUILD_ALL_FILES = ['esp_cam_sensor/CMakeLists.txt', 'esp_ipa/CMakeLists.txt', 'esp_video/CMakeLists.txt', 'esp_sccb_intf/CMakeLists.txt']
+
 logger = logging.getLogger('idf_build_apps')
 
 def get_mr_files(modified_files: str) -> str:
     if modified_files is None:
         return ''
-    return modified_files.split(' ')
+    modified_files = modified_files.split(' ')
+
+    # If change to CI related files, we need to build all components
+    for f in modified_files:
+        if '.gitlab/ci/' in f:
+            modified_files = CI_BUILD_ALL_FILES
+            break
+
+    return modified_files
 
 def get_mr_components(modified_files: str) -> str:
     if modified_files is None:
         return ''
     components: t.Set[str] = set()
     modified_files = modified_files.split(' ')
+
+    # If change to CI related files, we need to build all components
+    for f in modified_files:
+        if '.gitlab/ci/' in f:
+            modified_files = CI_BUILD_ALL_FILES
+            break
+
     for f in modified_files:
         file = Path(f)
         if (
@@ -69,6 +86,7 @@ def find_all_apps(root: str, manifest_files: list[str], modified_components: lis
             modified_components=modified_components,
             modified_files=modified_files,
             manifest_files=manifest_files,
+            verbose=1,
         )
 
     match_apps = []
@@ -111,14 +129,25 @@ if __name__ == '__main__':
     for f in DEFAULT_IGNORE_WARNING_FILEPATH:
         ignore_warning_strs.extend(open(f).read().splitlines())
 
-    ret_code = build_apps(
-        apps_to_build,
-        collect_size_info='size_info.txt',
-        dry_run=False,
-        keep_going=True,
-        ignore_warning_strs=ignore_warning_strs,
-        copy_sdkconfig=True
-    )
+    if idf_build_apps_version == '1.1.4':
+        ret_code = build_apps(
+            apps_to_build,
+            collect_size_info='size_info.txt',
+            dry_run=False,
+            keep_going=True,
+            ignore_warning_strs=ignore_warning_strs,
+            copy_sdkconfig=True,
+        )
+    else:
+        ret_code = build_apps(
+            apps_to_build,
+            collect_size_info='size_info.txt',
+            dry_run=False,
+            keep_going=True,
+            ignore_warning_strs=ignore_warning_strs,
+            copy_sdkconfig=True,
+            verbose=1,
+        )
 
     sys.exit(ret_code)
 

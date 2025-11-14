@@ -1,4 +1,4 @@
-test_apps/dummy:
+esp_ipa/test_apps/dummy:
   enable:
     - if: IDF_TARGET == "esp32p4"
       reason: only support on esp32p4
