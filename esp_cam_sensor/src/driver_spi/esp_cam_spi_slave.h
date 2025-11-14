@@ -6,6 +6,7 @@
 
 #pragma once
 
+#include "freertos/FreeRTOS.h"
 #include "driver/spi_slave.h"
 
 #ifdef __cplusplus
