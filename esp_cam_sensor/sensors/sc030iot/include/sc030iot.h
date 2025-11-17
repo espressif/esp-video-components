@@ -13,6 +13,8 @@ extern "C" {
 #include "sc030iot_types.h"
 
 #define SC030IOT_SCCB_ADDR   0x68
+#define SC030IOT_PID         0x9a46
+#define SC030IOT_SENSOR_NAME "SC030IOT"
 
 /**
  * @brief Power on camera sensor device and detect the device connected to the designated sccb bus.

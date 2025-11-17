@@ -13,6 +13,8 @@ extern "C" {
 #include "gc2145_types.h"
 
 #define GC2145_SCCB_ADDR   0x3C
+#define GC2145_PID         0x2145
+#define GC2145_SENSOR_NAME "GC2145"
 
 /**
  * @brief Power on camera sensor device and detect the device connected to the designated sccb bus.

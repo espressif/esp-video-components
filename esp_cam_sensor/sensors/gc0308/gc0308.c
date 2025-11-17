@@ -21,8 +21,6 @@
 #define GC0308_ENABLE_OUT_XCLK(pin,clk)
 #define GC0308_DISABLE_OUT_XCLK(pin)
 
-#define GC0308_PID         0x9b
-#define GC0308_SENSOR_NAME "GC0308"
 #ifndef portTICK_RATE_MS
 #define portTICK_RATE_MS portTICK_PERIOD_MS
 #endif

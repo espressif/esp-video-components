@@ -18,6 +18,8 @@ extern "C" {
 #else
 #define OS02N10_SCCB_ADDR 0x3c // SCCB ID select to 0x3c if SID pin set to 0
 #endif
+#define OS02N10_PID         0x534e
+#define OS02N10_SENSOR_NAME "OS02N10"
 
 /**
  * @brief Power on camera sensor device and detect the device connected to the designated sccb bus.

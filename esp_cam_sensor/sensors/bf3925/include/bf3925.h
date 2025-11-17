@@ -13,6 +13,8 @@ extern "C" {
 #include "bf3925_types.h"
 
 #define BF3925_SCCB_ADDR   0x6E
+#define BF3925_PID         0x3925
+#define BF3925_SENSOR_NAME "BF3925"
 
 /**
  * @brief Power on camera sensor device and detect the device connected to the designated sccb bus.

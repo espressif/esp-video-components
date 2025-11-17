@@ -13,6 +13,8 @@ extern "C" {
 #include "bf3a03_types.h"
 
 #define BF3A03_SCCB_ADDR   0x6E
+#define BF3A03_PID         0x3a03
+#define BF3A03_SENSOR_NAME "BF3A03"
 
 /**
  * @brief Power on camera sensor device and detect the device connected to the designated sccb bus.

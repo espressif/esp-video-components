@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- Moved the sensor ID to the public attribute header file.
+
 ## 1.5.2
 
 - Revised the default exposure value for SC2336.

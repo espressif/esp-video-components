@@ -39,8 +39,6 @@ struct ov2710_cam {
 #define OV2710_ENABLE_OUT_XCLK(pin,clk)
 #define OV2710_DISABLE_OUT_XCLK(pin)
 
-#define OV2710_PID         0x2710
-#define OV2710_SENSOR_NAME "OV2710"
 #ifndef portTICK_RATE_MS
 #define portTICK_RATE_MS portTICK_PERIOD_MS
 #endif

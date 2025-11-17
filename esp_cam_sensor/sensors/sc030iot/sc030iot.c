@@ -21,8 +21,6 @@
 #define SC030IOT_ENABLE_OUT_XCLK(pin,clk)
 #define SC030IOT_DISABLE_OUT_XCLK(pin)
 
-#define SC030IOT_PID         0x9a46
-#define SC030IOT_SENSOR_NAME "SC030IOT"
 #ifndef portTICK_RATE_MS
 #define portTICK_RATE_MS portTICK_PERIOD_MS
 #endif

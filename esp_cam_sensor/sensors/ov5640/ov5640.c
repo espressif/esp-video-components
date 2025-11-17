@@ -21,8 +21,6 @@
 #define OV5640_ENABLE_OUT_XCLK(pin,clk)
 #define OV5640_DISABLE_OUT_XCLK(pin)
 
-#define OV5640_PID         0x5640
-#define OV5640_SENSOR_NAME "OV5640"
 #ifndef portTICK_RATE_MS
 #define portTICK_RATE_MS portTICK_PERIOD_MS
 #endif

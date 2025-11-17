@@ -13,6 +13,8 @@ extern "C" {
 #include "sc2336_types.h"
 
 #define SC2336_SCCB_ADDR   0x30
+#define SC2336_PID         0xcb3a
+#define SC2336_SENSOR_NAME "SC2336"
 
 /**
  * @brief Power on camera sensor device and detect the device connected to the designated sccb bus.

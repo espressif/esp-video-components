@@ -13,6 +13,8 @@ extern "C" {
 #include "sc202cs_types.h"
 
 #define SC202CS_SCCB_ADDR   0x36
+#define SC202CS_PID         0xeb52
+#define SC202CS_SENSOR_NAME "SC202CS"
 
 /**
  * @brief Power on camera sensor device and detect the device connected to the designated sccb bus.
