@@ -25,6 +25,9 @@ static const esp_video_init_csi_config_t s_csi_config = {
     },
     .reset_pin = EXAMPLE_MIPI_CSI_CAM_SENSOR_RESET_PIN,
     .pwdn_pin  = EXAMPLE_MIPI_CSI_CAM_SENSOR_PWDN_PIN,
+#if CONFIG_EXAMPLE_MIPI_CSI_VIDEO_DEVICE_DONT_INIT_LDO
+    .dont_init_ldo = true,
+#endif /* CONFIG_EXAMPLE_MIPI_CSI_VIDEO_DEVICE_DONT_INIT_LDO */
 };
 
 #if EXAMPLE_ENABLE_MIPI_CSI_CAM_MOTOR

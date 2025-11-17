@@ -225,6 +225,13 @@ menu "Example Video Initialization Configuration"
                             Set to -1 if not connected or motor doesn't require it.
                 endif
             endif
+
+            config EXAMPLE_MIPI_CSI_VIDEO_DEVICE_DONT_INIT_LDO
+                bool "MIPI-CSI Video Device Don't Initialize LDO"
+                default n
+                help
+                    If select this option, MIPI-CSI video device will not initialize
+                    the LDO and users should initialize the LDO in the application.
         endif
 
         menuconfig EXAMPLE_ENABLE_DVP_CAM_SENSOR
