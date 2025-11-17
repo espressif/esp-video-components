@@ -1,3 +1,7 @@
+## 0.0.6
+
+- Fix `transmit_reg_a8v16()` transmission length
+
 ## 0.0.5
 
 - Added support for transmitting / receiving 16-bit value
