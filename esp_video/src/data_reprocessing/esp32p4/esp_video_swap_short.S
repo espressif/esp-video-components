@@ -4,6 +4,9 @@
  * SPDX-License-Identifier: ESPRESSIF MIT
  */
 
+#include "sdkconfig.h"
+#include "esp_idf_version.h"
+
 /**
  * @brief Swap short data based on RISC-V instruction
  *
@@ -80,6 +83,7 @@ esp_video_swap_short_riscv_loop:
 
     ret
 
+#if CONFIG_ESP_VIDEO_ENABLE_SWAP_SHORT_PIE
 /**
  * @brief Swap short data based on PIE
  *
@@ -106,11 +110,21 @@ esp_video_swap_short_pie_loop:
     esp.vld.128.ip q1, a0, 16
 
     esp.vsr.u32 q4, q0
+
+    /** IDF v5.4.x only supports "esp.vsl.32" for ESP32-P4 ECO5 */
+#if CONFIG_ESP32P4_SELECTS_REV_LESS_V3 || (ESP_IDF_VERSION < ESP_IDF_VERSION_VAL(5, 4, 4))
     esp.vsl.32  q5, q0
+#else
+    esp.vsl.u32 q5, q0
+#endif
     esp.orq     q0, q4, q5
 
     esp.vsr.u32 q4, q1
+#if CONFIG_ESP32P4_SELECTS_REV_LESS_V3 || (ESP_IDF_VERSION < ESP_IDF_VERSION_VAL(5, 4, 4))
     esp.vsl.32  q5, q1
+#else
+    esp.vsl.u32 q5, q1
+#endif
     esp.orq     q1, q4, q5
 
     esp.vst.128.ip q0, a2, 16
@@ -119,3 +133,4 @@ esp_video_swap_short_pie_loop:
     bltu    a0, a1, esp_video_swap_short_pie_loop
 
     ret
+#endif

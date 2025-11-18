@@ -15,18 +15,13 @@
 #include "esp_video_device.h"
 #include "hal/cam_ctlr_types.h"
 #include "esp_cam_ctlr_spi.h"
+#include "esp_video_caps.h"
 #include "linux/videodev2.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-/**
- * @brief ISP video device configuration
- */
-#if CONFIG_SOC_ISP_LSC_SUPPORTED && (CONFIG_ESP32P4_REV_MIN_FULL >= 100)
-#define ESP_VIDEO_ISP_DEVICE_LSC    1       /*!< ISP video device enable LSC */
-#endif
 
 /**
  * @brief MIPI-CSI state

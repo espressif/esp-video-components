@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2024 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2024-2025 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: ESPRESSIF MIT
  */
@@ -144,6 +144,10 @@ struct isp_video {
     uint8_t gamma_enable            : 1;
     uint8_t demosaic_enable         : 1;
 
+#if ESP_VIDEO_ISP_DEVICE_WBG
+    uint8_t wbg_enable              : 1;
+#endif
+
 #if ESP_VIDEO_ISP_DEVICE_LSC
     uint8_t lsc_enable              : 1;
 #endif
@@ -156,6 +160,10 @@ struct isp_video {
     uint8_t gamma_started           : 1;
     uint8_t demosaic_started        : 1;
     uint8_t awb_started             : 1;
+
+#if ESP_VIDEO_ISP_DEVICE_WBG
+    uint8_t wbg_started             : 1;
+#endif
 
 #if ESP_VIDEO_ISP_DEVICE_LSC
     uint8_t lsc_started             : 1;
@@ -710,9 +718,9 @@ static void isp_init_ccm_param(struct isp_video *isp_video, esp_isp_ccm_config_t
     memset(ccm_config, 0, sizeof(esp_isp_ccm_config_t));
     ccm_config->saturation = true;
 
+#ifndef ESP_VIDEO_ISP_DEVICE_WBG
     if (isp_video->ccm_enable) {
         memcpy(ccm_config->matrix, isp_video->ccm_matrix, sizeof(ccm_config->matrix));
-
         /* Apply red and blue balance */
         for (int i = 0; i < ISP_CCM_DIMENSION; i++) {
             if (isp_video->red_balance_enable) {
@@ -724,20 +732,21 @@ static void isp_init_ccm_param(struct isp_video *isp_video, esp_isp_ccm_config_t
             }
         }
     } else {
+        ccm_config->matrix[0][0] = 1.0;
+        ccm_config->matrix[1][1] = 1.0;
+        ccm_config->matrix[2][2] = 1.0;
         if (isp_video->red_balance_enable) {
             ccm_config->matrix[0][0] = isp_video->red_balance_gain;
-        } else {
-            ccm_config->matrix[0][0] = 1.0;
         }
-
-        ccm_config->matrix[1][1] = 1.0;
-
         if (isp_video->blue_balance_enable) {
             ccm_config->matrix[2][2] = isp_video->blue_balance_gain;
-        } else {
-            ccm_config->matrix[2][2] = 1.0;
         }
     }
+#else // ISP_DEVICE_WBG
+    if (isp_video->ccm_enable) {
+        memcpy(ccm_config->matrix, isp_video->ccm_matrix, sizeof(ccm_config->matrix));
+    }
+#endif
 }
 
 static esp_err_t isp_start_ccm(struct isp_video *isp_video)
@@ -770,10 +779,12 @@ static esp_err_t isp_reconfig_ccm(struct isp_video *isp_video)
     return ESP_OK;
 }
 
+#if !ESP_VIDEO_ISP_DEVICE_WBG
 static esp_err_t isp_reconfigure_white_blance(struct isp_video *isp_video)
 {
     return isp_reconfig_ccm(isp_video);
 }
+#endif
 
 static esp_err_t isp_stop_ccm(struct isp_video *isp_video)
 {
@@ -1035,6 +1046,72 @@ static esp_err_t isp_stop_color(struct isp_video *isp_video)
     return ESP_OK;
 }
 
+#if ESP_VIDEO_ISP_DEVICE_WBG
+static esp_err_t isp_start_wbg(struct isp_video *isp_video)
+{
+    if (isp_video->wbg_started) {
+        return ESP_OK;
+    }
+
+    uint32_t wbg_r = isp_video->red_balance_gain * (1 << ESP_VIDEO_ISP_WBG_DEC_BITS);
+    uint32_t wbg_b = isp_video->blue_balance_gain * (1 << ESP_VIDEO_ISP_WBG_DEC_BITS);
+
+    esp_isp_wbg_config_t wbg_cfg;
+    memset(&wbg_cfg, 0, sizeof(esp_isp_wbg_config_t));
+    ESP_RETURN_ON_ERROR(esp_isp_wbg_configure(isp_video->isp_proc, &wbg_cfg), TAG, "failed to configure wbg");
+    ESP_RETURN_ON_ERROR(esp_isp_wbg_enable(isp_video->isp_proc), TAG, "failed to enable wbg");
+
+    isp_wbg_gain_t wbg_gain = {
+        .gain_r = wbg_r,
+        .gain_g = (1 << ESP_VIDEO_ISP_WBG_DEC_BITS),
+        .gain_b = wbg_b,
+    };
+
+    ESP_RETURN_ON_ERROR(esp_isp_wbg_set_wb_gain(isp_video->isp_proc, wbg_gain), TAG, "failed to start wbg");
+
+    isp_video->wbg_started = true;
+    return ESP_OK;
+}
+
+static esp_err_t isp_reconfigure_wbg(struct isp_video *isp_video)
+{
+    if (!isp_video->wbg_started) {
+        return isp_start_wbg(isp_video);
+    }
+
+    uint32_t wbg_r = isp_video->red_balance_gain * (1 << ESP_VIDEO_ISP_WBG_DEC_BITS);
+    uint32_t wbg_b = isp_video->blue_balance_gain * (1 << ESP_VIDEO_ISP_WBG_DEC_BITS);
+
+    isp_wbg_gain_t wbg_gain = {
+        .gain_r = wbg_r,
+        .gain_g = (1 << ESP_VIDEO_ISP_WBG_DEC_BITS),
+        .gain_b = wbg_b,
+    };
+
+    ESP_RETURN_ON_ERROR(esp_isp_wbg_set_wb_gain(isp_video->isp_proc, wbg_gain), TAG, "failed to reconfigure wbg");
+
+    return ESP_OK;
+}
+
+static esp_err_t isp_stop_wbg(struct isp_video *isp_video)
+{
+    if (!isp_video->wbg_started) {
+        return ESP_OK;
+    }
+
+    // If either of the gains is not 1.0f, reconfigure the wbg to keep the gain
+    if (isp_video->red_balance_gain != 1.0f || isp_video->blue_balance_gain != 1.0f) {
+        ESP_RETURN_ON_ERROR(isp_reconfigure_wbg(isp_video), TAG, "failed to reconfigure wbg");
+        return ESP_OK;
+    }
+
+    // If all the gains are 1.0f, disable the wbg
+    ESP_RETURN_ON_ERROR(esp_isp_wbg_disable(isp_video->isp_proc), TAG, "failed to disable wbg");
+    isp_video->wbg_started = false;
+    return ESP_OK;
+}
+#endif
+
 #if ESP_VIDEO_ISP_DEVICE_LSC
 static esp_err_t isp_start_lsc(struct isp_video *isp_video)
 {
@@ -1202,8 +1279,18 @@ static esp_err_t isp_start_pipeline(struct isp_video *isp_video)
         ESP_GOTO_ON_ERROR(isp_start_af(isp_video), fail_9, TAG, "failed to start AF");
     }
 
+#if ESP_VIDEO_ISP_DEVICE_WBG
+    if (isp_video->wbg_enable) {
+        ESP_GOTO_ON_ERROR(isp_start_wbg(isp_video), fail_10, TAG, "failed to start wbg");
+    }
+#endif
+
     return ESP_OK;
 
+#if ESP_VIDEO_ISP_DEVICE_WBG
+fail_10:
+    isp_stop_af(isp_video);
+#endif
 fail_9:
 #if ESP_VIDEO_ISP_DEVICE_LSC
     isp_stop_lsc(isp_video);
@@ -1238,7 +1325,9 @@ static esp_err_t isp_stop_pipeline(struct isp_video *isp_video)
 #if ESP_VIDEO_ISP_DEVICE_LSC
     ESP_RETURN_ON_ERROR(isp_stop_lsc(isp_video), TAG, "failed to stop LSC");
 #endif
-
+#if ESP_VIDEO_ISP_DEVICE_WBG
+    ESP_RETURN_ON_ERROR(isp_stop_wbg(isp_video), TAG, "failed to stop wbg");
+#endif
     ESP_RETURN_ON_ERROR(isp_stop_color(isp_video), TAG, "failed to stop color");
 
     ESP_RETURN_ON_ERROR(isp_stop_demosaic(isp_video), TAG, "failed to stop demosaic");
@@ -1396,6 +1485,19 @@ static esp_err_t isp_video_set_ext_ctrl(struct esp_video *video, const struct v4
             break;
         }
         case V4L2_CID_RED_BALANCE:
+#if ESP_VIDEO_ISP_DEVICE_WBG
+            isp_video->red_balance_gain = (float)ctrl->value / V4L2_CID_RED_BALANCE_DEN;
+            if (ctrl->value > 0) {
+                if (ISP_STARTED(isp_video)) {
+                    ESP_GOTO_ON_ERROR(isp_reconfigure_wbg(isp_video), exit, TAG, "failed to reconfigure red balance");
+                }
+            } else {
+                if (ISP_STARTED(isp_video)) {
+                    isp_video->red_balance_gain = 1.0f;
+                    ESP_GOTO_ON_ERROR(isp_stop_wbg(isp_video), exit, TAG, "failed to stop wbg");
+                }
+            }
+#else
             if (ctrl->value > 0) {
                 isp_video->red_balance_gain = (float)ctrl->value / V4L2_CID_RED_BALANCE_DEN;
                 isp_video->red_balance_enable = true;
@@ -1406,8 +1508,22 @@ static esp_err_t isp_video_set_ext_ctrl(struct esp_video *video, const struct v4
             if (ISP_STARTED(isp_video)) {
                 ESP_GOTO_ON_ERROR(isp_reconfig_ccm(isp_video), exit, TAG, "failed to reconfigure red balance");
             }
+#endif
             break;
         case V4L2_CID_BLUE_BALANCE:
+#if ESP_VIDEO_ISP_DEVICE_WBG
+            isp_video->blue_balance_gain = (float)ctrl->value / V4L2_CID_BLUE_BALANCE_DEN;
+            if (ctrl->value > 0) {
+                if (ISP_STARTED(isp_video)) {
+                    ESP_GOTO_ON_ERROR(isp_reconfigure_wbg(isp_video), exit, TAG, "failed to reconfigure blue balance");
+                }
+            } else {
+                if (ISP_STARTED(isp_video)) {
+                    isp_video->blue_balance_gain = 1.0f;
+                    ESP_GOTO_ON_ERROR(isp_stop_wbg(isp_video), exit, TAG, "failed to stop blue balance");
+                }
+            }
+#else
             if (ctrl->value > 0) {
                 isp_video->blue_balance_gain = (float )ctrl->value / V4L2_CID_BLUE_BALANCE_DEN;
                 isp_video->blue_balance_enable = true;
@@ -1418,6 +1534,7 @@ static esp_err_t isp_video_set_ext_ctrl(struct esp_video *video, const struct v4
             if (ISP_STARTED(isp_video)) {
                 ESP_GOTO_ON_ERROR(isp_reconfig_ccm(isp_video), exit, TAG, "failed to reconfigure blue balance");
             }
+#endif
             break;
         case V4L2_CID_USER_ESP_ISP_SHARPEN: {
             const esp_video_isp_sharpen_t *sharpen = (const esp_video_isp_sharpen_t *)ctrl->p_u8;
@@ -1489,10 +1606,24 @@ static esp_err_t isp_video_set_ext_ctrl(struct esp_video *video, const struct v4
             if (wb->enable) {
                 isp_video->red_balance_gain = wb->red_gain;
                 isp_video->blue_balance_gain = wb->blue_gain;
-            }
 
-            if (ISP_STARTED(isp_video)) {
-                ESP_GOTO_ON_ERROR(isp_reconfigure_white_blance(isp_video), exit, TAG, "failed to reconfigure demosaic");
+                if (ISP_STARTED(isp_video)) {
+#if ESP_VIDEO_ISP_DEVICE_WBG
+                    ESP_GOTO_ON_ERROR(isp_reconfigure_wbg(isp_video), exit, TAG, "failed to reconfigure wbg");
+#else
+                    ESP_GOTO_ON_ERROR(isp_reconfigure_white_blance(isp_video), exit, TAG, "failed to reconfigure wbg");
+#endif
+                }
+            } else {
+                if (ISP_STARTED(isp_video)) {
+                    isp_video->red_balance_gain = 1.0f;
+                    isp_video->blue_balance_gain = 1.0f;
+#if ESP_VIDEO_ISP_DEVICE_WBG
+                    ESP_GOTO_ON_ERROR(isp_stop_wbg(isp_video), exit, TAG, "failed to stop wbg");
+#else
+                    ESP_GOTO_ON_ERROR(isp_reconfigure_white_blance(isp_video), exit, TAG, "failed to reconfigure wbg");
+#endif
+                }
             }
             break;
         }
