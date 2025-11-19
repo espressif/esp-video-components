@@ -28,6 +28,10 @@
  */
 #include "soc/isp_struct.h"
 
+#if ESP_VIDEO_ISP_DEVICE_BLC
+#define STORE_CSI_WINDOW          1
+#endif
+
 #define ISP_NAME                   "ISP"
 
 #define ISP_DMA_ALIGN_BYTES         4
@@ -132,6 +136,12 @@ struct isp_video {
     esp_isp_lsc_gain_array_t lsc_gain_array;
 #endif
 
+#if ESP_VIDEO_ISP_DEVICE_BLC
+    /* BLC Configuration */
+
+    esp_video_isp_blc_t blc_config;
+#endif
+
     esp_video_isp_af_t af_config;
 
     /* Application command target */
@@ -143,10 +153,6 @@ struct isp_video {
     uint8_t sharpen_enable          : 1;
     uint8_t gamma_enable            : 1;
     uint8_t demosaic_enable         : 1;
-
-#if ESP_VIDEO_ISP_DEVICE_WBG
-    uint8_t wbg_enable              : 1;
-#endif
 
 #if ESP_VIDEO_ISP_DEVICE_LSC
     uint8_t lsc_enable              : 1;
@@ -169,6 +175,10 @@ struct isp_video {
     uint8_t lsc_started             : 1;
 #endif
 
+#if ESP_VIDEO_ISP_DEVICE_BLC
+    uint8_t blc_started             : 1;
+#endif
+
     uint8_t af_started              : 1;
 
     /**
@@ -188,6 +198,10 @@ struct isp_video {
 
     uint64_t seq;
     esp_video_isp_stats_t *stats_buffer;
+#if STORE_CSI_WINDOW
+    uint32_t csi_width;
+    uint32_t csi_height;
+#endif
 #endif
 };
 
@@ -347,6 +361,19 @@ static const struct v4l2_query_ext_ctrl s_isp_qctrl[] = {
         .nr_of_dims = 1,
         .default_value = 0,
         .name = "LSC",
+    },
+#endif
+#if ESP_VIDEO_ISP_DEVICE_BLC
+    {
+        .id = V4L2_CID_USER_ESP_ISP_BLC,
+        .type = V4L2_CTRL_TYPE_U8,
+        .maximum = UINT8_MAX,
+        .minimum = 0,
+        .step = 1,
+        .elems = sizeof(esp_video_isp_blc_t),
+        .nr_of_dims = 1,
+        .default_value = 0,
+        .name = "BLC",
     },
 #endif
     {
@@ -1166,6 +1193,89 @@ static esp_err_t isp_stop_lsc(struct isp_video *isp_video)
 }
 #endif
 
+#if ESP_VIDEO_ISP_DEVICE_BLC
+static esp_err_t isp_start_blc(struct isp_video *isp_video)
+{
+    if (isp_video->blc_started) {
+        return ESP_OK;
+    }
+
+    bool stretch_en = isp_video->blc_config.stretch_enable;
+
+    esp_isp_blc_config_t blc_config = {
+        .window = {
+            .top_left = {
+                .x = 0,
+                .y = 0,
+            },
+            .btm_right = {
+                .x = isp_video->csi_width,
+                .y = isp_video->csi_height,
+            },
+        },
+        .filter_threshold = {
+            .top_left_chan_thresh = 0,
+            .top_right_chan_thresh = 0,
+            .bottom_left_chan_thresh = 0,
+            .bottom_right_chan_thresh = 0
+        },
+        .filter_enable = false,
+        .stretch = {
+            .top_left_chan_stretch_en = stretch_en,
+            .top_right_chan_stretch_en = stretch_en,
+            .bottom_left_chan_stretch_en = stretch_en,
+            .bottom_right_chan_stretch_en = stretch_en
+        }
+    };
+
+    ESP_RETURN_ON_ERROR(esp_isp_blc_configure(isp_video->isp_proc, &blc_config), TAG, "failed to configure BLC");
+    ESP_RETURN_ON_ERROR(esp_isp_blc_enable(isp_video->isp_proc), TAG, "failed to enable BLC");
+
+    esp_isp_blc_offset_t offset = {
+        .top_left_chan_offset = isp_video->blc_config.top_left_offset,
+        .top_right_chan_offset = isp_video->blc_config.top_right_offset,
+        .bottom_left_chan_offset = isp_video->blc_config.bottom_left_offset,
+        .bottom_right_chan_offset = isp_video->blc_config.bottom_right_offset
+    };
+
+    ESP_RETURN_ON_ERROR(esp_isp_blc_set_correction_offset(isp_video->isp_proc, &offset), TAG, "failed to set BLC correction offset");
+
+    isp_video->blc_started = true;
+
+    return ESP_OK;
+}
+
+static esp_err_t isp_reconfigure_blc(struct isp_video *isp_video)
+{
+    if (!isp_video->blc_started) {
+        return isp_start_blc(isp_video);
+    }
+
+    esp_isp_blc_offset_t offset = {
+        .top_left_chan_offset = isp_video->blc_config.top_left_offset,
+        .top_right_chan_offset = isp_video->blc_config.top_right_offset,
+        .bottom_left_chan_offset = isp_video->blc_config.bottom_left_offset,
+        .bottom_right_chan_offset = isp_video->blc_config.bottom_right_offset
+    };
+
+    ESP_RETURN_ON_ERROR(esp_isp_blc_set_correction_offset(isp_video->isp_proc, &offset), TAG, "failed to set BLC correction offset");
+
+    return ESP_OK;
+}
+
+static esp_err_t isp_stop_blc(struct isp_video *isp_video)
+{
+    if (!isp_video->blc_started) {
+        return ESP_OK;
+    }
+
+    ESP_RETURN_ON_ERROR(esp_isp_blc_disable(isp_video->isp_proc), TAG, "failed to disable BLC");
+    isp_video->blc_started = false;
+
+    return ESP_OK;
+}
+#endif
+
 static bool isp_af_stats_done(isp_af_ctlr_t af_ctlr, const esp_isp_af_env_detector_evt_data_t *edata, void *user_data)
 {
     esp_err_t ret;
@@ -1269,36 +1379,40 @@ static esp_err_t isp_start_pipeline(struct isp_video *isp_video)
 
     ESP_GOTO_ON_ERROR(isp_start_color(isp_video), fail_7, TAG, "failed to start color");
 
+    if (isp_video->af_config.enable) {
+        ESP_GOTO_ON_ERROR(isp_start_af(isp_video), fail_8, TAG, "failed to start AF");
+    }
+
 #if ESP_VIDEO_ISP_DEVICE_LSC
     if (isp_video->lsc_enable) {
         ESP_GOTO_ON_ERROR(isp_start_lsc(isp_video), fail_8, TAG, "failed to start LSC");
     }
 #endif
 
-    if (isp_video->af_config.enable) {
-        ESP_GOTO_ON_ERROR(isp_start_af(isp_video), fail_9, TAG, "failed to start AF");
-    }
-
 #if ESP_VIDEO_ISP_DEVICE_WBG
-    if (isp_video->wbg_enable) {
-        ESP_GOTO_ON_ERROR(isp_start_wbg(isp_video), fail_10, TAG, "failed to start wbg");
+    ESP_GOTO_ON_ERROR(isp_start_wbg(isp_video), fail_8, TAG, "failed to start wbg");
+#endif
+
+#if ESP_VIDEO_ISP_DEVICE_BLC
+    if (isp_video->blc_config.enable) {
+        ESP_GOTO_ON_ERROR(isp_start_blc(isp_video), fail_8, TAG, "failed to start BLC");
     }
 #endif
 
     return ESP_OK;
 
-#if ESP_VIDEO_ISP_DEVICE_WBG
-fail_10:
-    isp_stop_af(isp_video);
+fail_8:
+#if ESP_VIDEO_ISP_DEVICE_BLC
+    isp_stop_blc(isp_video);
 #endif
-fail_9:
+#if ESP_VIDEO_ISP_DEVICE_WBG
+    isp_stop_wbg(isp_video);
+#endif
 #if ESP_VIDEO_ISP_DEVICE_LSC
     isp_stop_lsc(isp_video);
-fail_8:
-    isp_stop_color(isp_video);
-#else
-    isp_stop_color(isp_video);
 #endif
+    isp_stop_af(isp_video);
+    isp_stop_color(isp_video);
 fail_7:
     isp_stop_demosaic(isp_video);
 fail_6:
@@ -1320,14 +1434,20 @@ fail_0:
 
 static esp_err_t isp_stop_pipeline(struct isp_video *isp_video)
 {
-    ESP_RETURN_ON_ERROR(isp_stop_af(isp_video), TAG, "failed to stop AF");
-
 #if ESP_VIDEO_ISP_DEVICE_LSC
     ESP_RETURN_ON_ERROR(isp_stop_lsc(isp_video), TAG, "failed to stop LSC");
 #endif
+
 #if ESP_VIDEO_ISP_DEVICE_WBG
     ESP_RETURN_ON_ERROR(isp_stop_wbg(isp_video), TAG, "failed to stop wbg");
 #endif
+
+#if ESP_VIDEO_ISP_DEVICE_BLC
+    ESP_RETURN_ON_ERROR(isp_stop_blc(isp_video), TAG, "failed to stop BLC");
+#endif
+
+    ESP_RETURN_ON_ERROR(isp_stop_af(isp_video), TAG, "failed to stop AF");
+
     ESP_RETURN_ON_ERROR(isp_stop_color(isp_video), TAG, "failed to stop color");
 
     ESP_RETURN_ON_ERROR(isp_stop_demosaic(isp_video), TAG, "failed to stop demosaic");
@@ -1703,6 +1823,23 @@ static esp_err_t isp_video_set_ext_ctrl(struct esp_video *video, const struct v4
             break;
         }
 #endif
+#if ESP_VIDEO_ISP_DEVICE_BLC
+        case V4L2_CID_USER_ESP_ISP_BLC: {
+            esp_video_isp_blc_t *blc = (esp_video_isp_blc_t *)ctrl->p_u8;
+
+            isp_video->blc_config = *blc;
+            if (blc->enable) {
+                if (ISP_STARTED(isp_video)) {
+                    ESP_GOTO_ON_ERROR(isp_reconfigure_blc(isp_video), exit, TAG, "failed to reconfigure BLC");
+                }
+            } else {
+                if (ISP_STARTED(isp_video)) {
+                    ESP_GOTO_ON_ERROR(isp_stop_blc(isp_video), exit, TAG, "failed to stop BLC");
+                }
+            }
+            break;
+        }
+#endif
         case V4L2_CID_USER_ESP_ISP_AF: {
             esp_video_isp_af_t *af = (esp_video_isp_af_t *)ctrl->p_u8;
 
@@ -1843,6 +1980,14 @@ static esp_err_t isp_video_get_ext_ctrl(struct esp_video *video, struct v4l2_ext
             lsc->gain_gr = isp_video->lsc_gain_array.gain_gr;
             lsc->gain_gb = isp_video->lsc_gain_array.gain_gb;
             lsc->gain_b = isp_video->lsc_gain_array.gain_b;
+            break;
+        }
+#endif
+#if ESP_VIDEO_ISP_DEVICE_BLC
+        case V4L2_CID_USER_ESP_ISP_BLC: {
+            esp_video_isp_blc_t *blc = (esp_video_isp_blc_t *)ctrl->p_u8;
+
+            *blc = isp_video->blc_config;
             break;
         }
 #endif
@@ -2121,6 +2266,14 @@ esp_err_t esp_video_isp_start_by_csi(const esp_video_csi_state_t *state, const s
         } else {
             isp_video->af_support = 0;
         }
+
+#if STORE_CSI_WINDOW
+        /**
+         * Store CSI window size for the BLC
+         */
+        isp_video->csi_width = width;
+        isp_video->csi_height = height;
+#endif
 
         META_VIDEO_SET_FORMAT(isp_video->video, width, height, V4L2_META_FMT_ESP_ISP_STATS);
         ESP_GOTO_ON_ERROR(isp_start_pipeline(isp_video), fail_3, TAG, "failed to start ISP pipeline");

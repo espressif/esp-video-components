@@ -455,6 +455,45 @@ class ipa_unit_acc_c(ipa_unit_c):
 
             return lsc_text
 
+        def blc_code(name, obj):
+            blc = obj.blc
+            blc_text = str()
+            blc_table_text = str()
+
+            if not hasattr(blc, 'model'):
+                blc.model = 0
+
+            for i in blc.blc_table:
+                blc_table_text += cfmt_string('''
+                    {
+                        .gain = %f,
+                        .blc_param = {
+                            .stretch = %d,
+                            .top_left_chan_offset = %d,
+                            .top_right_chan_offset = %d,
+                            .bottom_left_chan_offset = %d,
+                            .bottom_right_chan_offset = %d
+                        }
+                    },
+                    '''%(i.gain, blc.stretch, i.blc_param.blc_top_left, i.blc_param.blc_top_right, i.blc_param.blc_bottom_left, i.blc_param.blc_bottom_right)
+                )
+
+            blc_text = cfmt_string('''
+                static const esp_ipa_acc_blc_param_t s_ipa_acc_blc_%s_table[] = {
+                    %s
+                };'''%(name, blc_table_text)
+            )
+
+            blc_text += cfmt_string('''
+                static const esp_ipa_acc_blc_config_t s_ipa_acc_blc_%s_config = {
+                    .model = %d,
+                    .blc_table = s_ipa_acc_blc_%s_table,
+                    .blc_table_size = ARRAY_SIZE(s_ipa_acc_blc_%s_table)
+                };'''%(name, blc.model, name, name)
+            )
+
+            return blc_text
+
         acc_text = str()
         acc_obj_text = str()
         if hasattr(obj, 'saturation'):
@@ -482,6 +521,13 @@ class ipa_unit_acc_c(ipa_unit_c):
                 .lsc_table = s_esp_ipa_acc_lsc_%s_config,
                 .lsc_table_size = ARRAY_SIZE(s_esp_ipa_acc_lsc_%s_config),
                 '''%(name, name)
+            )
+        
+        if hasattr(obj, 'blc'):
+            acc_text += blc_code(name, obj)
+            acc_obj_text += ('''
+                .blc = &s_ipa_acc_blc_%s_config,
+                '''%(name)
             )
 
         acc_text += cfmt_string('''

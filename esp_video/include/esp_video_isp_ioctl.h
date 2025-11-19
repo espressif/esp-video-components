@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2024 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2024-2025 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: ESPRESSIF MIT
  */
@@ -30,6 +30,7 @@ extern "C" {
 #define V4L2_CID_USER_ESP_ISP_LSC           (V4L2_CID_USER_ESP_ISP_BASE + 0x0006)   /*!< LSC V4L2 controller ID */
 #define V4L2_CID_USER_ESP_ISP_AF            (V4L2_CID_USER_ESP_ISP_BASE + 0x0007)   /*!< Auto focus V4L2 controller ID */
 #define V4L2_CID_USER_ESP_ISP_AWB           (V4L2_CID_USER_ESP_ISP_BASE + 0x0008)   /*!< Auto white balance statistics V4L2 controller ID */
+#define V4L2_CID_USER_ESP_ISP_BLC           (V4L2_CID_USER_ESP_ISP_BASE + 0x0009)   /*!< Black level correction V4L2 controller ID */
 
 /**
  * @brief ESP32XXX ISP image statistics output, data type is "esp_ipa_stats_t"
@@ -200,6 +201,19 @@ typedef struct esp_video_isp_awb {
     float bg_max;                   /*!< Maximum blue/green ratio */
     float bg_min;                   /*!< Minimum blue/green ratio */
 } esp_video_isp_awb_t;
+
+/**
+ * @brief Black level correction configuration.
+ */
+typedef struct esp_video_isp_blc {
+    bool enable;                    /*!< true: enable BLC, false: disable BLC */
+    bool stretch_enable;            /*!< true: stretch the pixel value to 0~255 after black level correction, false: disable stretch */
+
+    uint16_t top_left_offset;       /*!< Top left channel offset value */
+    uint16_t top_right_offset;      /*!< Top right channel offset value */
+    uint16_t bottom_left_offset;    /*!< Bottom left channel offset value */
+    uint16_t bottom_right_offset;   /*!< Bottom right channel offset value */
+} esp_video_isp_blc_t;
 
 /**
  * @brief ISP statistics.

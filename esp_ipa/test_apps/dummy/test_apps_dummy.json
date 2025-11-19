@@ -355,7 +355,51 @@
                         ]
                     }
                 ]
-            }
+            },
+            "blc":
+            {
+                "model": 0,
+                "stretch": true,
+                "blc_table":
+                [
+                    {
+                        "gain": 1,
+                        "blc_param": {
+                            "blc_top_left": 16,
+                            "blc_top_right": 16,
+                            "blc_bottom_left": 16,
+                            "blc_bottom_right": 16
+                        }
+                    },
+                    {
+                        "gain": 17,
+                        "blc_param": {
+                            "blc_top_left": 32,
+                            "blc_top_right": 32,
+                            "blc_bottom_left": 32,
+                            "blc_bottom_right": 32
+                        }
+                    },
+                    {
+                        "gain": 33,
+                        "blc_param": {
+                            "blc_top_left": 48,
+                            "blc_top_right": 48,
+                            "blc_bottom_left": 48,
+                            "blc_bottom_right": 48
+                        }
+                    },
+                    {
+                        "gain": 49,
+                        "blc_param": {
+                            "blc_top_left": 64,
+                            "blc_top_right": 64,
+                            "blc_bottom_left": 64,
+                            "blc_bottom_right": 64
+                        }
+                    }
+                ]
+            }   
         },
         "adn": {
             "bf":

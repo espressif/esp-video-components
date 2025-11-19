@@ -53,6 +53,7 @@ extern "C" {
 #define IPA_METADATA_FLAGS_SR       (1 << 16)   /*!< Meta data has statistics region */
 #define IPA_METADATA_FLAGS_AF       (1 << 17)   /*!< Meta data has AF */
 #define IPA_METADATA_FLAGS_FP       (1 << 18)   /*!< Meta data has focus position */
+#define IPA_METADATA_FLAGS_BLC      (1 << 19)   /*!< Meta data has BLC */
 
 /**
  * @brief Auto gain control metering mode
@@ -111,6 +112,13 @@ typedef enum esp_ipa_aen_gamma_model {
     ESP_IPA_AEN_GAMMA_MODEL_0 = 0,             /*!< GAMMA model type 0 */
     ESP_IPA_AEN_GAMMA_MODEL_1,                 /*!< GAMMA model type 1 */
 } esp_ipa_aen_gamma_model_t;
+
+/**
+ * @brief BLC model type
+ */
+typedef enum esp_ipa_acc_blc_model {
+    ESP_IPA_ACC_BLC_MODEL_0 = 0,              /*!< BLC model type 0 */
+} esp_ipa_acc_blc_model_t;
 
 struct esp_ipa;
 struct esp_ipa_pipeline;
@@ -232,6 +240,16 @@ typedef struct esp_ipa_stats {
     esp_ipa_stats_af_t af_stats[ISP_AF_WINDOW_NUM];
 } esp_ipa_stats_t;
 
+/**
+ * @brief ISP BLC(black level correction) meta data.
+ */
+typedef struct esp_ipa_blc {
+    bool stretch;                           /*!< Stretch configurations for each channel */
+    uint16_t top_left_chan_offset;          /*!< Correction offset for top left channel of the raw Bayer image  */
+    uint16_t top_right_chan_offset;         /*!< Correction offset for top right channel of the raw Bayer image */
+    uint16_t bottom_left_chan_offset;       /*!< Correction offset for bottom left channel of the raw Bayer image */
+    uint16_t bottom_right_chan_offset;      /*!< Correction offset for bottom right channel of the raw Bayer image */
+} esp_ipa_blc_t;
 
 /**
  * @brief ISP BF(bayer filter) meta data.
@@ -320,6 +338,8 @@ typedef struct esp_ipa_metadata {
     uint32_t exposure;                      /*!< Exposure, unit is micro second */
 
     float gain;                             /*!< Pixel gain */
+
+    esp_ipa_blc_t blc;                      /*!< BLC parameters */
 
     esp_ipa_denoising_bf_t bf;              /*!< Bayer filter parameters */
     esp_ipa_demosaic_t demosaic;            /*!< Demosaic parameters */
@@ -415,6 +435,14 @@ typedef struct esp_ipa_adn_bf {
     uint32_t gain;                              /*!< Camera sensor gain, unit is 0.001 */
     esp_ipa_denoising_bf_t bf;                  /*!< ISP bayer filter parameter  */
 } esp_ipa_adn_bf_t;
+
+/**
+ * @brief BLC parameter and gain mapping data for auto BLC algorithm
+ */
+typedef struct esp_ipa_acc_blc_param {
+    float gain;                                 /*!< Camera sensor gain, unit is 0.001 */
+    esp_ipa_blc_t blc_param;                    /*!< ISP BLC parameter  */
+} esp_ipa_acc_blc_param_t;
 
 /**
  * @brief Demosaic parameter and gain mapping data for auto denoising algorithm
@@ -598,6 +626,16 @@ typedef struct esp_ipa_acc_ccm_config {
 } esp_ipa_acc_ccm_config_t;
 
 /**
+ * @brief Auto black level correction algorithm configuration
+ */
+typedef struct esp_ipa_acc_blc_config {
+    esp_ipa_acc_blc_model_t model;              /*!< BLC model type */
+
+    const esp_ipa_acc_blc_param_t *blc_table;   /*!< Black level correction parameter and gain mapping table */
+    uint32_t blc_table_size;                    /*!< Black level correction parameter and gain mapping table size */
+} esp_ipa_acc_blc_config_t;
+
+/**
  * @brief Auto color correct algorithm configuration
  */
 typedef struct esp_ipa_acc_config {
@@ -608,6 +646,8 @@ typedef struct esp_ipa_acc_config {
 
     const esp_ipa_acc_lsc_t *lsc_table;         /* Lens shadow correction gain array, color temperature and resolution mapping table */
     uint32_t lsc_table_size;                    /* Lens shadow correction gain array, color temperature and resolution mapping table size */
+
+    const esp_ipa_acc_blc_config_t *blc;        /*!< Auto BLC configuration */
 
     bool enable_log;                            /*!< Enable auto color correct algorithm log */
 } esp_ipa_acc_config_t;

@@ -3,6 +3,7 @@
 ## Unreleased
 
 - Moved the sensor ID to the public attribute header file.
+- Added new json configuration file of SC2336 for ESP32-P4 ECO5.
 
 ## 1.5.2
 

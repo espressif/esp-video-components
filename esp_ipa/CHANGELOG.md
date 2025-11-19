@@ -1,3 +1,7 @@
+## Unreleased
+
+- Add auto BLC(black level correction) algorithm
+
 ## 1.2.0
 
 - Add ATC model 0 algorithm

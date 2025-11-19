@@ -42,6 +42,9 @@ static const esp_ipa_sensor_t s_esp_ipa_sensor = {
     .max_gain = 16.0,
     .min_gain = 1.0,
     .focus_info = &s_esp_ipa_sensor_info,
+    .max_ae_target_level = 1000,
+    .min_ae_target_level = 0,
+    .step_ae_target_level = 10,
 };
 
 static void check_leak(size_t before_free, size_t after_free, const char *type)
@@ -117,6 +120,7 @@ TEST_CASE("Auto color correction test", "[IPA]")
     TEST_ESP_OK(esp_ipa_pipeline_process(handle, &stats, &s_esp_ipa_sensor, &metadata));
     TEST_ASSERT_EQUAL_HEX32(0, metadata.flags & IPA_METADATA_FLAGS_ST);
     TEST_ASSERT_EQUAL_HEX32(0, metadata.flags & IPA_METADATA_FLAGS_CCM);
+    TEST_ASSERT_EQUAL_HEX32(0, metadata.flags & IPA_METADATA_FLAGS_BLC);
 
     esp_ipa_set_float(handle->ipa_array[0], "dummy_gamma_luma", 15.4);
     metadata.flags = 0;
@@ -414,6 +418,97 @@ TEST_CASE("Auto color correction test", "[IPA]")
             TEST_ASSERT_EQUAL_HEX32(test_data_2[i].m0, metadata.ccm.matrix[0][0]);
         } else {
             TEST_ASSERT_EQUAL_HEX32(0, metadata.flags & IPA_METADATA_FLAGS_CCM);
+        }
+    }
+
+    TEST_ESP_OK(esp_ipa_pipeline_destroy(handle));
+
+    ipa_config = esp_ipa_pipeline_get_config(IPA_TARGET_NAME);
+
+    TEST_ESP_OK(esp_ipa_pipeline_create(ipa_config, &handle));
+    TEST_ESP_OK(esp_ipa_pipeline_init(handle, &s_esp_ipa_sensor, &metadata));
+
+    static const struct {
+        float gain;
+        uint32_t blc_top_left;
+        uint32_t blc_top_right;
+        uint32_t blc_bottom_left;
+        uint32_t blc_bottom_right;
+    } test_blc_data [] = {
+        {
+            .gain = 1.0,
+            .blc_top_left = 0,
+            .blc_top_right = 0,
+            .blc_bottom_left = 0,
+            .blc_bottom_right = 0,
+        },
+        {
+            .gain = 17.0,
+            .blc_top_left = 32,
+            .blc_top_right = 32,
+            .blc_bottom_left = 32,
+            .blc_bottom_right = 32,
+        },
+        {
+            .gain = 33.0,
+            .blc_top_left = 48,
+            .blc_top_right = 48,
+            .blc_bottom_left = 48,
+            .blc_bottom_right = 48,
+        },
+        {
+            .gain = 49.0,
+            .blc_top_left = 64,
+            .blc_top_right = 64,
+            .blc_bottom_left = 64,
+            .blc_bottom_right = 64,
+        },
+        {
+            .gain = 50.0,
+            .blc_top_left = 0,
+            .blc_top_right = 0,
+            .blc_bottom_left = 0,
+            .blc_bottom_right = 0,
+        },
+        {
+            .gain = 1.0,
+            .blc_top_left = 16,
+            .blc_top_right = 16,
+            .blc_bottom_left = 16,
+            .blc_bottom_right = 16,
+        },
+        {
+            .gain = 9.0,
+            .blc_top_left = 0,
+            .blc_top_right = 0,
+            .blc_bottom_left = 0,
+            .blc_bottom_right = 0,
+        },
+        {
+            .gain = 17.0,
+            .blc_top_left = 32,
+            .blc_top_right = 32,
+            .blc_bottom_left = 32,
+            .blc_bottom_right = 32,
+        },
+    };
+
+    esp_ipa_sensor_t esp_ipa_sensor_blc = s_esp_ipa_sensor;
+
+    for (int i = 0; i < ARRAY_SIZE(test_blc_data); i++) {
+        memset(&metadata, 0, sizeof(esp_ipa_metadata_t));
+        esp_ipa_sensor_blc.cur_gain = test_blc_data[i].gain;
+        TEST_ESP_OK(esp_ipa_pipeline_process(handle, &stats, &esp_ipa_sensor_blc, &metadata));
+
+        if (test_blc_data[i].blc_top_left != 0) {
+            TEST_ASSERT_EQUAL_HEX32(IPA_METADATA_FLAGS_BLC, metadata.flags & IPA_METADATA_FLAGS_BLC);
+            TEST_ASSERT_TRUE(metadata.blc.stretch);
+            TEST_ASSERT_EQUAL_HEX32(test_blc_data[i].blc_top_left, metadata.blc.top_left_chan_offset);
+            TEST_ASSERT_EQUAL_HEX32(test_blc_data[i].blc_top_right, metadata.blc.top_right_chan_offset);
+            TEST_ASSERT_EQUAL_HEX32(test_blc_data[i].blc_bottom_left, metadata.blc.bottom_left_chan_offset);
+            TEST_ASSERT_EQUAL_HEX32(test_blc_data[i].blc_bottom_right, metadata.blc.bottom_right_chan_offset);
+        } else {
+            TEST_ASSERT_EQUAL_HEX32(0, metadata.flags & IPA_METADATA_FLAGS_BLC);
         }
     }
 
