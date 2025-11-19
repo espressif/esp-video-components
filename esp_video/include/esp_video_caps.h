@@ -6,6 +6,8 @@
 
 #pragma once
 
+#include "sdkconfig.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -32,6 +34,11 @@ extern "C" {
 #if CONFIG_SOC_ISP_BLC_SUPPORTED
 #define ESP_VIDEO_ISP_DEVICE_BLC    1       /*!< ISP video device enable BLC */
 #endif /* CONFIG_SOC_ISP_BLC_SUPPORTED */
+
+#if CONFIG_SOC_JPEG_CODEC_SUPPORTED
+#define ESP_VIDEO_JPEG_DEVICE_YUV420    1   /*!< JPEG video device supports YUV420 format */
+#define ESP_VIDEO_JPEG_DEVICE_YUV444    1   /*!< JPEG video device supports YUV444 format */
+#endif /* CONFIG_SOC_JPEG_CODEC_SUPPORTED */
 #endif /* CONFIG_ESP32P4_REV_MIN_FULL >= 300 */
 #endif /* CONFIG_IDF_TARGET_ESP32P4 */
 
