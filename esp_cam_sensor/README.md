@@ -23,6 +23,7 @@ It is highly recommended that users use it in the [esp-video](https://github.com
 | ------- | -------------- | ---------- | ------------------------------------------------------------ | -------- |
 | BF3901  | 240 x 320    | SPI | YCbCr422<br/>RGB565 | 1/13"     |
 | BF3925  | 1600 x 1200    | DVP | YCbCr422<br/>8bit Raw RGB data | 1/5"     |
+| BF20A6  | 640 x 480    | DVP | Grayscale<br/>YCbCr422<br/>8bit Raw RGB data | 1/10"     |
 | BF3A03  | 640 x 480    | DVP | YCbCr422<br/>RGB565<br/>8bit Raw RGB data | 1/6.5"     |
 | GC0308  | 640 x 480    | DVP | Grayscale<br/>YCbCr422<br/>RGB565 | 1/6.5"     |
 | GC2145  | 1600 x 1200    | MIPI & DVP | RGB565<br/>YCbCr422<br/>8bit Raw RGB data | 1/5"     |

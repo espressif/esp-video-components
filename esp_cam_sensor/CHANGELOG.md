@@ -6,6 +6,7 @@
 - Added new json configuration file of SC2336 for ESP32-P4 ECO5.
 - Added the parallel I/O implementation for SPI camera interface driver.
 - Added QVGA YUV422 support in GC2145 DVP driver.
+- Added bf20a6 DVP driver.
 
 ## 1.5.2
 
