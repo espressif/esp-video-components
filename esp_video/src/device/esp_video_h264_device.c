@@ -244,14 +244,6 @@ static esp_err_t h264_video_set_format(struct esp_video *video, const struct v4l
     const struct v4l2_pix_format *pix = &format->fmt.pix;
     struct h264_video *h264_video = VIDEO_PRIV_DATA(struct h264_video *, video);
 
-    size_t alignments = 0;
-#if CONFIG_SPIRAM
-    ESP_RETURN_ON_ERROR(esp_cache_get_alignment(H264_MEM_CAPS, &alignments), TAG, "failed to get cache alignment");
-#else
-    alignments = 4;
-#endif
-    ESP_LOGD(TAG, "alignments=%zu", alignments);
-
     if (format->type == V4L2_BUF_TYPE_VIDEO_CAPTURE) {
         uint32_t width = M2M_VIDEO_GET_OUTPUT_FORMAT_WIDTH(video);
         uint32_t height = M2M_VIDEO_GET_OUTPUT_FORMAT_HEIGHT(video);
@@ -262,13 +254,6 @@ static esp_err_t h264_video_set_format(struct esp_video *video, const struct v4l
             ESP_LOGE(TAG, "pixel format or width or height is invalid");
             return ESP_ERR_INVALID_ARG;
         }
-
-        uint32_t buf_size = pix->width * pix->height * 8 / 2;
-
-        ESP_LOGD(TAG, "capture buffer size=%" PRIu32, buf_size);
-
-        M2M_VIDEO_SET_CAPTURE_BUF_INFO(video, buf_size, alignments, H264_MEM_CAPS);
-        M2M_VIDEO_SET_CAPTURE_FORMAT(video, width, height, pix->pixelformat);
     } else if (format->type == V4L2_BUF_TYPE_VIDEO_OUTPUT) {
         uint8_t input_bpp;
         uint32_t width = M2M_VIDEO_GET_CAPTURE_FORMAT_WIDTH(video);
@@ -285,16 +270,11 @@ static esp_err_t h264_video_set_format(struct esp_video *video, const struct v4l
             ESP_LOGE(TAG, "pixel format is invalid");
             return ret;
         }
-
-        uint32_t buf_size = pix->width * pix->height * input_bpp / 8;
-
-        ESP_LOGD(TAG, "output buffer size=%" PRIu32, buf_size);
-
-        M2M_VIDEO_SET_OUTPUT_BUF_INFO(video, buf_size, alignments, H264_MEM_CAPS);
-        M2M_VIDEO_SET_OUTPUT_FORMAT(video, width, height, pix->pixelformat);
     } else {
         return ESP_ERR_NOT_SUPPORTED;
     }
+
+    ESP_RETURN_ON_ERROR(esp_video_config_buffer(video, format, H264_MEM_CAPS), TAG, "failed to configure stream buffer");
 
     return ESP_OK;
 }

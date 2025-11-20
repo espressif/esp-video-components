@@ -85,6 +85,8 @@ static esp_cam_sensor_xclk_handle_t s_spi_xclk_handle[ESP_VIDEO_SPI_XCLK_NUM]; /
 static const char *TAG = "esp_video_init";
 
 #if CONFIG_ESP_VIDEO_ENABLE_USB_UVC_VIDEO_DEVICE
+static bool s_usb_host_installed = false;
+
 static void usb_lib_task(void *arg)
 {
     ESP_LOGD(TAG, "USB Host installed");
@@ -394,6 +396,7 @@ esp_err_t esp_video_init(const esp_video_init_config_t *config)
         };
 
         ESP_RETURN_ON_ERROR(esp_video_install_usb_uvc_driver(&cfg), TAG, "Failed to install USB UVC driver");
+        s_usb_host_installed = true;
     }
 #endif
 
@@ -776,7 +779,10 @@ esp_err_t esp_video_deinit(void)
 #endif /* ESP_VIDEO_ENABLE_SCCB_DEVICE */
 
 #if CONFIG_ESP_VIDEO_ENABLE_USB_UVC_VIDEO_DEVICE
-    ESP_RETURN_ON_ERROR(esp_video_uninstall_usb_uvc_driver(), TAG, "Failed to uninstall USB UVC driver");
+    if (s_usb_host_installed) {
+        ESP_RETURN_ON_ERROR(esp_video_uninstall_usb_uvc_driver(), TAG, "Failed to uninstall USB UVC driver");
+        s_usb_host_installed = false;
+    }
 #endif
 
 #if CONFIG_ESP_VIDEO_ENABLE_ISP_VIDEO_DEVICE

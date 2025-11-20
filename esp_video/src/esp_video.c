@@ -15,6 +15,8 @@
 #include "esp_video_vfs.h"
 #include "esp_video_device.h"
 #include "esp_cam_sensor.h"
+#include "esp_video_ioctl.h"
+#include "esp_private/esp_cache_private.h"
 
 #include "freertos/portmacro.h"
 
@@ -37,6 +39,7 @@
 struct esp_video_format_desc_map {
     uint32_t pixel_format;
     char desc_string[30];
+    uint8_t bpp;
 };
 
 static _lock_t s_video_lock;
@@ -45,34 +48,37 @@ static const char *TAG = "esp_video";
 
 static const struct esp_video_format_desc_map esp_video_format_desc_maps[] = {
     {
-        V4L2_PIX_FMT_SBGGR8, "RAW8 BGGR",
+        V4L2_PIX_FMT_SBGGR8, "RAW8 BGGR", 8
     },
     {
-        V4L2_PIX_FMT_SBGGR10, "RAW10 BGGR",
+        V4L2_PIX_FMT_SBGGR10, "RAW10 BGGR", 10
     },
     {
-        V4L2_PIX_FMT_SBGGR12, "RAW12 BGGR",
+        V4L2_PIX_FMT_SBGGR12, "RAW12 BGGR", 12
     },
     {
-        V4L2_PIX_FMT_RGB565, "RGB 5-6-5",
+        V4L2_PIX_FMT_RGB565, "RGB 5-6-5", 16
     },
     {
-        V4L2_PIX_FMT_RGB24,  "RGB 8-8-8",
+        V4L2_PIX_FMT_RGB24,  "RGB 8-8-8", 24
     },
     {
-        V4L2_PIX_FMT_YUV420, "YUV 4:2:0",
+        V4L2_PIX_FMT_YUV420, "YUV 4:2:0", 12
     },
     {
-        V4L2_PIX_FMT_YUV422P, "YVU 4:2:2 planar"
+        V4L2_PIX_FMT_YUV422P, "YVU 4:2:2 planar", 16
     },
     {
-        V4L2_PIX_FMT_YUYV,  "YUV 4:2:2 packed",
+        V4L2_PIX_FMT_YUYV,  "YUV 4:2:2 packed", 16
     },
     {
-        V4L2_PIX_FMT_JPEG,   "JPEG"
+        V4L2_PIX_FMT_JPEG,   "JPEG", 8
     },
     {
-        V4L2_PIX_FMT_GREY,   "Grey 8"
+        V4L2_PIX_FMT_H264, "H264", 8
+    },
+    {
+        V4L2_PIX_FMT_GREY,   "Grey 8", 8
     },
 };
 
@@ -2045,6 +2051,76 @@ esp_err_t esp_video_enum_frameintervals(struct esp_video *video, struct v4l2_frm
         ESP_LOGD(TAG, "video->ops->enum_frameintervals=NULL");
         return ESP_ERR_NOT_SUPPORTED;
     }
+
+    return ESP_OK;
+}
+
+/**
+ * @brief Configure video stream buffer by given V4L2 format
+ *
+ * @param video     Video object
+ * @param format    Video format pointer
+ * @param frame_caps Frame buffer capabilities
+ *
+ * @return ESP_OK on success or others if failed
+ */
+esp_err_t esp_video_config_buffer(struct esp_video *video, const struct v4l2_format *format, uint32_t frame_caps)
+{
+    size_t alignments;
+    uint32_t buf_size;
+    const struct v4l2_pix_format *pix = &format->fmt.pix;
+    struct esp_video_stream *stream = esp_video_get_stream(video, format->type);
+
+    if (!stream) {
+        ESP_LOGE(TAG, "type=%" PRIu32 ", stream is not found", format->type);
+        return ESP_ERR_INVALID_ARG;
+    }
+
+#if CONFIG_SPIRAM
+    ESP_RETURN_ON_ERROR(esp_cache_get_alignment(frame_caps, &alignments), TAG, "failed to get cache alignment");
+#else
+    alignments = 4;
+#endif
+    ESP_LOGD(TAG, "alignments=%zu", alignments);
+
+    uint8_t bpp = 0;
+    for (int i = 0; i < ARRAY_SIZE(esp_video_format_desc_maps); i++) {
+        if (esp_video_format_desc_maps[i].pixel_format == pix->pixelformat) {
+            bpp = esp_video_format_desc_maps[i].bpp;
+            break;
+        }
+    }
+    if (bpp == 0) {
+        ESP_LOGE(TAG, "Unsupported pixel format: " V4L2_FMT_STR, V4L2_FMT_STR_ARG(pix->pixelformat));
+        return ESP_ERR_NOT_SUPPORTED;
+    }
+
+    if (pix->pixelformat == V4L2_PIX_FMT_JPEG || pix->pixelformat == V4L2_PIX_FMT_H264) {
+        /**
+         * When output format is JPEG or H264, try to use the sizeimage if it is larger than 0.
+         * If the sizeimage is not set, use the width, height and bpp to calculate the sizeimage.
+         */
+
+        if (pix->sizeimage > 0) {
+            buf_size = pix->sizeimage;
+        } else {
+            buf_size = pix->width * pix->height * bpp / 8;
+        }
+    } else {
+        /**
+         * When output format is not JPEG or H264, use the sizeimage if it is not less than the required size.
+         * If the sizeimage is not set, use the width, height and bpp to calculate the sizeimage.
+         */
+        buf_size = pix->width * pix->height * bpp / 8;
+        if (pix->sizeimage >= buf_size) {
+            buf_size = pix->sizeimage;
+        }
+    }
+
+    SET_STREAM_FORMAT_WIDTH(stream, pix->width);
+    SET_STREAM_FORMAT_HEIGHT(stream, pix->height);
+    SET_STREAM_FORMAT_PIXEL_FORMAT(stream, pix->pixelformat);
+    SET_STREAM_BUF_INFO(stream, buf_size, alignments, frame_caps);
 
     return ESP_OK;
 }

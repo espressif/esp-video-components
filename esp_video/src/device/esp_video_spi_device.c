@@ -136,24 +136,20 @@ static esp_err_t init_config(struct esp_video *video)
                              sensor_format.height,
                              v4l2_format);
 
-    uint32_t buf_size;
+    struct v4l2_format format = {
+        .type = V4L2_BUF_TYPE_VIDEO_CAPTURE,
+        .fmt.pix = {
+            .width = sensor_format.width,
+            .height = sensor_format.height,
+            .pixelformat = v4l2_format,
+        },
+    };
+
     if (sensor_format.spi_info.frame_info) {
-        buf_size = sensor_format.spi_info.frame_info->frame_size;
-    } else {
-        buf_size = CAPTURE_VIDEO_GET_FORMAT_WIDTH(video) * CAPTURE_VIDEO_GET_FORMAT_HEIGHT(video) * in_bpp / 8;
+        format.fmt.pix.sizeimage = sensor_format.spi_info.frame_info->frame_size;
     }
 
-    ESP_LOGD(TAG, "buffer size=%" PRIu32, buf_size);
-
-    size_t alignments = 0;
-#if CONFIG_SPIRAM
-    ESP_RETURN_ON_ERROR(esp_cache_get_alignment(SPI_MEM_CAPS, &alignments), TAG, "failed to get cache alignment");
-#else
-    alignments = 4;
-#endif
-    ESP_LOGD(TAG, "alignments=%zu", alignments);
-
-    CAPTURE_VIDEO_SET_BUF_INFO(video, buf_size, alignments, SPI_MEM_CAPS);
+    ESP_RETURN_ON_ERROR(esp_video_config_buffer(video, &format, SPI_MEM_CAPS), TAG, "failed to configure stream buffer");
 
     return ESP_OK;
 }
@@ -251,13 +247,29 @@ static esp_err_t spi_video_enum_format(struct esp_video *video, uint32_t type, u
 
 static esp_err_t spi_video_set_format(struct esp_video *video, const struct v4l2_format *format)
 {
+    esp_cam_sensor_format_t sensor_format;
     const struct v4l2_pix_format *pix = &format->fmt.pix;
+    struct spi_video *spi_video = VIDEO_PRIV_DATA(struct spi_video *, video);
+    esp_cam_sensor_device_t *cam_dev = spi_video->cam.sensor;
 
     if (pix->width != CAPTURE_VIDEO_GET_FORMAT_WIDTH(video) ||
             pix->height != CAPTURE_VIDEO_GET_FORMAT_HEIGHT(video) ||
             pix->pixelformat != CAPTURE_VIDEO_GET_FORMAT_PIXEL_FORMAT(video)) {
         ESP_LOGE(TAG, "format is not supported");
         return ESP_ERR_INVALID_ARG;
+    }
+
+    ESP_RETURN_ON_ERROR(esp_cam_sensor_get_format(cam_dev, &sensor_format), TAG, "failed to get sensor format");
+
+    if (sensor_format.spi_info.frame_info) {
+        if (pix->sizeimage > 0) {
+            if (pix->sizeimage < sensor_format.spi_info.frame_info->frame_size) {
+                ESP_LOGE(TAG, "sizeimage is less than the required size");
+                return ESP_ERR_INVALID_ARG;
+            } else {
+                ESP_RETURN_ON_ERROR(esp_video_config_buffer(video, format, SPI_MEM_CAPS), TAG, "failed to configure stream buffer");
+            }
+        }
     }
 
     return ESP_OK;

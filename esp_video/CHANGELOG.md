@@ -5,6 +5,8 @@
 - Add BLC(Black level correction) ioctl command to ISP video device
 - JPEG video device supports YUV420 and YUV444 for ESP32-P4 ECO5
 - Add the parameter "intf" to select SPI or parallel I/O for the SPI interface camera sensor
+- Use "sizeimage" of structure "v4l2_pix_format" to set video frame buffer size
+- Fixed USB video device deinitialization error when the USB video device has not initialized
 
 ## 1.3.1
 
