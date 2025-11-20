@@ -445,6 +445,30 @@ menu "Example Video Initialization Configuration"
                 Requires fewer GPIO pins than DVP but has lower bandwidth.
     
         if EXAMPLE_ENABLE_SPI_CAM_0_SENSOR
+            choice EXAMPLE_SPI_CAM_0_INTERFACE
+                prompt "Interface Of SPI Camera Sensor 0"
+                default EXAMPLE_SPI_CAM_0_INTERFACE_SPI
+                help
+                    Select the interface for SPI camera sensor 0:
+
+                    - SPI: Uses the general SPI Interface to receive picture stream from the camera sensor
+                    - Parallel I/O: Use the parallel I/O Interface to simulate the SPI Interface to receive
+                                    picture stream from the camera sensor
+
+                config EXAMPLE_SPI_CAM_0_INTERFACE_SPI
+                    bool "SPI"
+                    help
+                        Uses the general SPI Interface to receive picture stream from the camera sensor.
+                
+                config EXAMPLE_SPI_CAM_0_INTERFACE_PARLIO
+                    bool "Parallel I/O"
+                    depends on CAM_CTLR_SPI_ENABLE_PARLIO
+                    help
+                        Use the parallel I/O Interface to simulate the SPI Interface to receive picture
+                        stream from the camera sensor. this feature is only available for ESP32-P4, 
+                        ESP32-C5 and ESP32-C6 series.
+            endchoice
+
             config EXAMPLE_SPI_CAM_0_SCCB_I2C_PORT
                 int "SCCB(I2C) Port Number"
                 default 0

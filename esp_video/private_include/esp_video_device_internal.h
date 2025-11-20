@@ -42,6 +42,7 @@ typedef struct esp_video_csi_state {
  * @brief SPI video device configuration
  */
 typedef struct esp_video_spi_device_config {
+    esp_cam_ctlr_spi_cam_intf_t intf;       /*!< SPI CAM interface type */
     spi_host_device_t spi_port;             /*!< SPI port */
     gpio_num_t spi_cs_pin;                  /*!< SPI CS pin */
     gpio_num_t spi_sclk_pin;                /*!< SPI SCLK pin */

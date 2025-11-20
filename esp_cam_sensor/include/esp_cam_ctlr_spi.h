@@ -17,13 +17,24 @@ extern "C" {
 #endif
 
 /**
+ * @brief SPI CAM interface type
+ */
+typedef enum esp_cam_ctlr_spi_cam_intf {
+    ESP_CAM_CTLR_SPI_CAM_INTF_SPI = 0,
+    ESP_CAM_CTLR_SPI_CAM_INTF_PARLIO,
+    ESP_CAM_CTLR_SPI_CAM_INTF_MAX,
+} esp_cam_ctlr_spi_cam_intf_t;
+
+/**
  * @brief SPI CAM configuration
  */
 typedef struct esp_cam_ctlr_spi_config {
-    spi_host_device_t spi_port;                         /*!< SPI port */
-    gpio_num_t spi_cs_pin;                              /*!< SPI CS pin */
-    gpio_num_t spi_sclk_pin;                            /*!< SPI SCLK pin */
-    gpio_num_t spi_data0_io_pin;                        /*!< SPI data0 I/O pin */
+    esp_cam_ctlr_spi_cam_intf_t intf;                   /*!< SPI CAM interface type */
+
+    spi_host_device_t spi_port;                         /*!< SPI port, this will be ignored when intf is ESP_CAM_CTLR_SPI_CAM_INTF_PARLIO */
+    gpio_num_t spi_cs_pin;                              /*!< SPI CS pin or parlio valid signal pin */
+    gpio_num_t spi_sclk_pin;                            /*!< SPI SCLK pin or parlio clock signal pin */
+    gpio_num_t spi_data0_io_pin;                        /*!< SPI data0 I/O pin or parlio data0 signal pin */
 
     gpio_num_t reset_pin;                               /*!< Reset pin */
     gpio_num_t pwdn_pin;                                /*!< Power down pin */

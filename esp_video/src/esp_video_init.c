@@ -598,6 +598,7 @@ esp_err_t esp_video_init(const esp_video_init_config_t *config)
                 }
 
                 esp_video_spi_device_config_t spi_dev_config = {
+                    .intf = spi_config->intf,
                     .spi_port = spi_config->spi_port,
                     .spi_cs_pin = spi_config->spi_cs_pin,
                     .spi_sclk_pin = spi_config->spi_sclk_pin,

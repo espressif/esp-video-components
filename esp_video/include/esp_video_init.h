@@ -16,6 +16,9 @@
 #if CONFIG_ESP_VIDEO_ENABLE_HW_JPEG_VIDEO_DEVICE
 #include "driver/jpeg_encode.h"
 #endif
+#if CONFIG_ESP_VIDEO_ENABLE_SPI_VIDEO_DEVICE
+#include "esp_cam_ctlr_spi.h"
+#endif
 #include "esp_cam_sensor_xclk.h"
 
 #ifdef __cplusplus
@@ -85,6 +88,10 @@ typedef struct esp_video_init_dvp_config {
 #if CONFIG_ESP_VIDEO_ENABLE_SPI_VIDEO_DEVICE
 typedef struct esp_video_init_spi_config {
     esp_video_init_sccb_config_t sccb_config;   /*!< Camera sensor SCCB configuration */
+
+    esp_cam_ctlr_spi_cam_intf_t intf;           /*!< SPI CAM interface type:
+                                                     - ESP_CAM_CTLR_SPI_CAM_INTF_SPI: SPI interface
+                                                     - ESP_CAM_CTLR_SPI_CAM_INTF_PARLIO: Parallel I/O interface */
 
     uint8_t spi_port;                           /*!< SPI port */
     gpio_num_t spi_cs_pin;                      /*!< SPI CS pin */

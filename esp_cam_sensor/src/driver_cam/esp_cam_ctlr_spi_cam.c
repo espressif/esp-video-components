@@ -20,14 +20,35 @@
 #include "esp_private/spi_slave_internal.h"
 #include "esp_cache.h"
 #include "esp_cam_ctlr_types.h"
+#include "esp_idf_version.h"
 #include "../driver_spi/esp_cam_spi_slave.h"
 #include "esp_cam_ctlr_spi_cam.h"
 #include "esp_cam_ctlr_spi.h"
 
-#if CONFIG_CAM_CTLR_SPI_ISR_CACHE_SAFE
+/**
+ * Current the parlio RX driver is not available in esp-idf versions which is less than v6.1.0.
+ */
+#if (ESP_IDF_VERSION < ESP_IDF_VERSION_VAL(6, 1, 0))
+#if CONFIG_CAM_CTLR_SPI_ENABLE_PARLIO
+#undef CONFIG_CAM_CTLR_SPI_ENABLE_PARLIO
+#pragma message("PARLIO RX driver is not available for SPI camera sensor driver in current IDF version")
+#endif
+#endif
+
+#if CONFIG_CAM_CTLR_SPI_ENABLE_PARLIO
+#include "esp_private/parlio_rx_private.h"
+#endif
+
+#if CONFIG_CAM_CTLR_SPI_ISR_CACHE_SAFE || CONFIG_PARLIO_RX_ISR_CACHE_SAFE
 #define SPI_CAM_ISR_ATTR            IRAM_ATTR
 #else
 #define SPI_CAM_ISR_ATTR
+#endif
+
+#if CONFIG_CAM_CTLR_SPI_ENABLE_PARLIO
+#define PARLIO_TASK_NAME_BASE       "parlio_msg"
+#define PARLIO_TASK_STACK_SIZE      CONFIG_CAM_CTLR_PARLIO_MESSAGE_TASK_STACK_SIZE
+#define PARLIO_TASK_PRIORITY        CONFIG_CAM_CTLR_PARLIO_MESSAGE_TASK_PRIORITY
 #endif
 
 #if CAM_CTLR_SPI_HAS_AUTO_DECODE
@@ -56,6 +77,19 @@ typedef struct spi_cam_msg {
     };
 } spi_cam_msg_t;
 #endif /* CAM_CTLR_SPI_HAS_AUTO_DECODE */
+
+
+#if CONFIG_CAM_CTLR_SPI_ENABLE_PARLIO
+typedef enum parlio_msg_type {
+    PARLIO_MSG_FRAME_RECVED = 0,    /*!< Frame received message */
+    PARLIO_MSG_EXIT,                /*!< Exit message */
+    PARLIO_MSG_MAX,                 /*!< Maximum message type */
+} parlio_msg_type_t;
+
+typedef struct parlio_msg {
+    parlio_msg_type_t type;         /*!< Message type */
+} parlio_msg_t;
+#endif /* CONFIG_CAM_CTLR_SPI_ENABLE_PARLIO */
 
 #if CONFIG_SPIRAM
 #define SPI_MEM_CAPS                (MALLOC_CAP_8BIT | MALLOC_CAP_SPIRAM | MALLOC_CAP_DMA)
@@ -127,16 +161,16 @@ static void SPI_CAM_ISR_ATTR setup_trans_buffer(esp_cam_ctlr_spi_cam_t *ctlr, sp
 }
 
 /**
- * @brief SPI slave transaction done callback
+ * @brief SPI CAM receive done callback
  *
- * @param spi_trans SPI slave transaction
+ * @param ctlr ESP CAM controller handle
+ * @param rx_buffer RX buffer
+ * @param rx_len RX buffer length
  *
  * @return None
  */
-static void SPI_CAM_ISR_ATTR spi_cam_post_trans_cb(spi_slave_transaction_t *spi_trans)
+static void SPI_CAM_ISR_ATTR spi_cam_receive_done(esp_cam_ctlr_spi_cam_t *ctlr, uint8_t *rx_buffer, uint32_t rx_len)
 {
-    esp_cam_ctlr_spi_cam_t *ctlr = (esp_cam_ctlr_spi_cam_t *)spi_trans->user;
-
     /**
      * Due to SPI slave does not support stop function,
      * we need to check if the controller is started,
@@ -148,7 +182,7 @@ static void SPI_CAM_ISR_ATTR spi_cam_post_trans_cb(spi_slave_transaction_t *spi_
 
     if (ctlr->dropped_frame_count >= ctlr->drop_frame_count) {
 #if CAM_CTLR_SPI_HAS_BACKUP_BUFFER
-        if ((spi_trans->rx_buffer != ctlr->frame_buffer) || ctlr->bk_buffer_exposed)
+        if ((rx_buffer != ctlr->frame_buffer) || ctlr->bk_buffer_exposed)
 #else /* CAM_CTLR_SPI_HAS_BACKUP_BUFFER */
         if (!ctlr->setup_ll_buffer)
 #endif /* CAM_CTLR_SPI_HAS_BACKUP_BUFFER */
@@ -159,7 +193,7 @@ static void SPI_CAM_ISR_ATTR spi_cam_post_trans_cb(spi_slave_transaction_t *spi_
                 BaseType_t xTaskWoken = 0;
 
                 msg.type = SPI_CAM_MSG_FRAME_RECVED;
-                msg.recved_frame.buffer = spi_trans->rx_buffer;
+                msg.recved_frame.buffer = rx_buffer;
                 msg.recved_frame.length = ctlr->bf_size_in_bytes;
                 if (xQueueSendFromISR(ctlr->spi_recv_queue, &msg, &xTaskWoken) == pdPASS) {
                     if (xTaskWoken) {
@@ -172,7 +206,7 @@ static void SPI_CAM_ISR_ATTR spi_cam_post_trans_cb(spi_slave_transaction_t *spi_
 #endif /* CAM_CTLR_SPI_HAS_AUTO_DECODE */
             {
                 esp_cam_ctlr_trans_t trans = {
-                    .buffer = spi_trans->rx_buffer,
+                    .buffer = rx_buffer,
                     .buflen = ctlr->fb_size_in_bytes,
                     .received_size = ctlr->fb_size_in_bytes,
                 };
@@ -185,9 +219,23 @@ static void SPI_CAM_ISR_ATTR spi_cam_post_trans_cb(spi_slave_transaction_t *spi_
     } else {
         ctlr->dropped_frame_count++;
     }
+}
+
+/**
+ * @brief SPI slave transaction done callback
+ *
+ * @param spi_trans SPI slave transaction
+ *
+ * @return None
+ */
+static void SPI_CAM_ISR_ATTR spi_cam_post_trans_cb(spi_slave_transaction_t *spi_trans)
+{
+    esp_cam_ctlr_spi_cam_t *ctlr = (esp_cam_ctlr_spi_cam_t *)spi_trans->user;
+
+    spi_cam_receive_done(ctlr, spi_trans->rx_buffer, spi_trans->length / 8);
 
     setup_trans_buffer(ctlr, spi_trans);
-    if (esp_cam_spi_slave_queue_trans_isr(ctlr->spi_port, spi_trans) != ESP_OK) {
+    if (esp_cam_spi_slave_queue_trans_isr(ctlr->spi.port, spi_trans) != ESP_OK) {
         assert(false && "SPI slave queue size is smaller than actual frame count");
     }
 }
@@ -202,7 +250,7 @@ static void SPI_CAM_ISR_ATTR spi_cam_post_trans_cb(spi_slave_transaction_t *spi_
  *      - ESP_OK on success
  *      - Others if failed
  */
-static esp_err_t spi_cam_init_intf(esp_cam_ctlr_spi_cam_t *ctlr, const esp_cam_ctlr_spi_config_t *config)
+static esp_err_t spi_cam_init_intf_spi(esp_cam_ctlr_spi_cam_t *ctlr, const esp_cam_ctlr_spi_config_t *config)
 {
     esp_err_t ret;
     spi_bus_config_t buscfg = {
@@ -225,14 +273,217 @@ static esp_err_t spi_cam_init_intf(esp_cam_ctlr_spi_cam_t *ctlr, const esp_cam_c
         .flags = SPI_SLAVE_NO_RETURN_RESULT
     };
 
-    ESP_RETURN_ON_ERROR(esp_cam_spi_slave_initialize(ctlr->spi_port, &buscfg, &slvcfg, SPI_DMA_CH_AUTO), TAG, "failed to initialize SPI slave");
-    ESP_GOTO_ON_ERROR(esp_cam_spi_slave_disable(ctlr->spi_port), fail0, TAG, "failed to disable SPI slave");
+    ESP_RETURN_ON_ERROR(esp_cam_spi_slave_initialize(ctlr->spi.port, &buscfg, &slvcfg, SPI_DMA_CH_AUTO), TAG, "failed to initialize SPI slave");
+    ESP_GOTO_ON_ERROR(esp_cam_spi_slave_disable(ctlr->spi.port), fail0, TAG, "failed to disable SPI slave");
 
     return ESP_OK;
 
 fail0:
-    esp_cam_spi_slave_free(ctlr->spi_port);
+    esp_cam_spi_slave_free(ctlr->spi.port);
     return ret;
+}
+
+#if CONFIG_CAM_CTLR_SPI_ENABLE_PARLIO
+/**
+ * @brief Parlio transaction done callback
+ *
+ * @param rx_unit Parlio RX unit handle
+ * @param edata Parlio receive event data
+ * @param user_ctx User context
+ *
+ * @return true to awoke high priority tasks
+ */
+static bool SPI_CAM_ISR_ATTR parlio_rx_done_callback(parlio_rx_unit_handle_t rx_unit, const parlio_rx_event_data_t *edata, void *user_ctx)
+{
+    parlio_msg_t msg;
+    BaseType_t xTaskWoken = 0;
+    esp_cam_ctlr_spi_cam_t *ctlr = (esp_cam_ctlr_spi_cam_t *)user_ctx;
+
+    spi_cam_receive_done(ctlr, edata->data, edata->recv_bytes);
+
+    msg.type = PARLIO_MSG_FRAME_RECVED;
+    if (xQueueSendFromISR(ctlr->parlio.ms_queue, &msg, &xTaskWoken) == pdPASS) {
+        if (xTaskWoken) {
+            portYIELD_FROM_ISR(xTaskWoken);
+        }
+    }
+
+    return true;
+}
+
+/**
+ * @brief Parlio valid GPIO ISR handler, this is used to notify the parlio valid signal level is 0 -> 1.
+ *
+ * @param arg ESP CAM controller handle
+ *
+ * @return None
+ */
+static void SPI_CAM_ISR_ATTR parlio_valid_gpio_isr_handler(void *arg)
+{
+    bool need_yield = false;
+    esp_cam_ctlr_spi_cam_t *ctlr = (esp_cam_ctlr_spi_cam_t *)arg;
+
+    parlio_rx_unit_trigger_fake_eof(ctlr->parlio.rx_unit, &need_yield);
+}
+
+/**
+ * @brief Parlio message task, this is used to receive the parlio message and setup the SPI transaction buffer.
+ *
+ * @param arg ESP CAM controller handle
+ *
+ * @return None
+ */
+static void parlio_message_task(void *arg)
+{
+    esp_cam_ctlr_spi_cam_t *ctlr = (esp_cam_ctlr_spi_cam_t *)arg;
+
+    while (1) {
+        parlio_msg_t msg;
+
+        if (xQueueReceive(ctlr->parlio.ms_queue, &msg, portMAX_DELAY) == pdPASS) {
+            if (msg.type == PARLIO_MSG_FRAME_RECVED) {
+                setup_trans_buffer(ctlr, &ctlr->spi_trans);
+
+                parlio_receive_config_t recv_cfg = {
+                    .delimiter = ctlr->parlio.rx_delimiter,
+                };
+
+                esp_err_t ret = parlio_rx_unit_receive(ctlr->parlio.rx_unit, ctlr->spi_trans.rx_buffer, ctlr->fb_size_in_bytes, &recv_cfg);
+                if (ret != ESP_OK) {
+                    ESP_LOGE(TAG, "failed to receive parlio frame");
+                }
+            } else if (msg.type == PARLIO_MSG_EXIT) {
+                ESP_LOGD(TAG, "parlio message task exit");
+                break;
+            } else {
+                ESP_LOGE(TAG, "invalid parlio message type");
+            }
+        }
+    }
+
+    vTaskDelete(NULL);
+}
+
+/**
+ * @brief Initialize parlio interface
+ *
+ * @param ctlr        ESP CAM controller handle
+ * @param config      SPI controller configurations
+ *
+ * @return
+ *      - ESP_OK on success
+ *      - Others if failed
+ */
+static esp_err_t spi_cam_init_intf_parlio(esp_cam_ctlr_spi_cam_t *ctlr, const esp_cam_ctlr_spi_config_t *config)
+{
+    esp_err_t ret;
+
+    uint64_t pin_bit_mask = 1ULL << config->spi_sclk_pin |
+                            1ULL << config->spi_cs_pin |
+                            1ULL << config->spi_data0_io_pin;
+    gpio_config_t gpio_cfg = {
+        .pin_bit_mask = pin_bit_mask,
+        .mode = GPIO_MODE_INPUT,
+        .pull_up_en = GPIO_PULLUP_ENABLE,
+        .pull_down_en = GPIO_PULLDOWN_DISABLE,
+        .intr_type = GPIO_INTR_DISABLE,
+    };
+    ESP_RETURN_ON_ERROR(gpio_config(&gpio_cfg), TAG, "Failed to config the parlio pins");
+
+    ret = gpio_install_isr_service(0);
+    ESP_RETURN_ON_FALSE(ret == ESP_OK || ret == ESP_ERR_INVALID_STATE, ESP_FAIL, TAG, "failed to install the parlio valid GPIO ISR service");
+    ESP_RETURN_ON_ERROR(gpio_set_intr_type(config->spi_cs_pin, GPIO_INTR_POSEDGE), TAG, "Failed to set the parlio valid GPIO ISR type");
+    ESP_RETURN_ON_ERROR(gpio_isr_handler_add(config->spi_cs_pin, parlio_valid_gpio_isr_handler, ctlr), TAG, "Failed to add the parlio valid GPIO ISR handler");
+
+    ctlr->parlio.frame_size = config->frame_info->frame_size;
+
+    parlio_rx_unit_config_t parlio_rx_unit_cfg = {
+        .trans_queue_depth = 1,
+        .max_recv_size = ctlr->fb_size_in_bytes,
+        .data_width = 1,
+        .clk_src = PARLIO_CLK_SRC_EXTERNAL,
+        .ext_clk_freq_hz = 24 * 1000 * 1000,
+        .exp_clk_freq_hz = 24 * 1000 * 1000,
+        .clk_in_gpio_num = config->spi_sclk_pin,
+        .clk_out_gpio_num = -1,
+        .valid_gpio_num = config->spi_cs_pin,
+        .data_gpio_nums = {
+            config->spi_data0_io_pin
+        },
+    };
+
+    // disable other data pins
+    for (int i = 1; i < PARLIO_RX_UNIT_MAX_DATA_WIDTH; i++) {
+        parlio_rx_unit_cfg.data_gpio_nums[i] = -1;
+    }
+
+    ESP_GOTO_ON_ERROR(parlio_new_rx_unit(&parlio_rx_unit_cfg, &ctlr->parlio.rx_unit), fail0, TAG, "Failed to allocate the parlio rx unit");
+
+    parlio_rx_level_delimiter_config_t parlio_delimiter_cfg = {
+        .valid_sig_line_id = PARLIO_RX_UNIT_MAX_DATA_WIDTH - 1,
+        .sample_edge = PARLIO_SAMPLE_EDGE_POS,
+        .bit_pack_order = PARLIO_BIT_PACK_ORDER_MSB,
+        .eof_data_len = 0,
+        .timeout_ticks = 0,
+        .flags = {
+            .active_low_en = 1,
+        }
+    };
+    ESP_GOTO_ON_ERROR(parlio_new_rx_level_delimiter(&parlio_delimiter_cfg, &ctlr->parlio.rx_delimiter), fail1, TAG, "Failed to set the parlio delimiter");
+
+    parlio_rx_event_callbacks_t rx_cbs = {
+        .on_receive_done = parlio_rx_done_callback,
+    };
+    ESP_GOTO_ON_ERROR(parlio_rx_unit_register_event_callbacks(ctlr->parlio.rx_unit, &rx_cbs, ctlr), fail2, TAG, "Failed to register the parlio event callbacks");
+
+    ctlr->parlio.ms_queue = xQueueCreate(config->frame_buffer_count + 1, sizeof(parlio_msg_t));
+    ESP_GOTO_ON_FALSE(ctlr->parlio.ms_queue, ESP_ERR_NO_MEM, fail2, TAG, "Failed to create the parlio message queue");
+
+    ret = xTaskCreate(parlio_message_task, PARLIO_TASK_NAME_BASE, PARLIO_TASK_STACK_SIZE, ctlr, PARLIO_TASK_PRIORITY, &ctlr->parlio.ms_task);
+    ESP_GOTO_ON_FALSE(ret == pdPASS, ESP_ERR_NO_MEM, fail3, TAG, "Failed to create the parlio message task");
+
+    return ESP_OK;
+
+fail3:
+    vQueueDelete(ctlr->parlio.ms_queue);
+    ctlr->parlio.ms_queue = NULL;
+fail2:
+    parlio_del_rx_delimiter(ctlr->parlio.rx_delimiter);
+    ctlr->parlio.rx_delimiter = NULL;
+fail1:
+    parlio_del_rx_unit(ctlr->parlio.rx_unit);
+    ctlr->parlio.rx_unit = NULL;
+fail0:
+    gpio_isr_handler_remove(ctlr->spi_cs_pin);
+    ctlr->spi_cs_pin = -1;
+    return ret;
+}
+#endif
+
+/**
+ * @brief Initialize SPI CAM interface
+ *
+ * @param ctlr ESP CAM controller handle
+ * @param config SPI CAM controller configurations
+ *
+ * @return
+ *      - ESP_OK on success
+ *      - Others if failed
+ */
+static esp_err_t spi_cam_init_intf(esp_cam_ctlr_spi_cam_t *ctlr, const esp_cam_ctlr_spi_config_t *config)
+{
+    if (ctlr->intf == ESP_CAM_CTLR_SPI_CAM_INTF_SPI) {
+        ESP_LOGI(TAG, "Initializing SPI interface");
+        return spi_cam_init_intf_spi(ctlr, config);
+    } else {
+#if CONFIG_CAM_CTLR_SPI_ENABLE_PARLIO
+        ESP_LOGI(TAG, "Initializing Parallel I/O interface");
+        return spi_cam_init_intf_parlio(ctlr, config);
+#else
+        ESP_LOGE(TAG, "PARLIO RX driver is not enabled");
+        return ESP_FAIL;
+#endif
+    }
 }
 
 /**
@@ -246,7 +497,28 @@ fail0:
  */
 static esp_err_t spi_cam_deinit_intf(esp_cam_ctlr_spi_cam_t *ctlr)
 {
-    ESP_RETURN_ON_ERROR(esp_cam_spi_slave_free(ctlr->spi_port), TAG, "failed to free SPI slave");
+    if (ctlr->intf == ESP_CAM_CTLR_SPI_CAM_INTF_SPI) {
+        ESP_RETURN_ON_ERROR(esp_cam_spi_slave_free(ctlr->spi.port), TAG, "failed to free SPI slave");
+    } else {
+#if CONFIG_CAM_CTLR_SPI_ENABLE_PARLIO
+        ESP_RETURN_ON_ERROR(gpio_isr_handler_remove(ctlr->spi_cs_pin), TAG, "failed to remove the parlio valid GPIO ISR handler");
+
+        ESP_RETURN_ON_ERROR(parlio_del_rx_delimiter(ctlr->parlio.rx_delimiter), TAG, "failed to delete the parlio delimiter");
+        ctlr->parlio.rx_delimiter = NULL;
+
+        ESP_RETURN_ON_ERROR(parlio_del_rx_unit(ctlr->parlio.rx_unit), TAG, "failed to delete the parlio RX unit");
+        ctlr->parlio.rx_unit = NULL;
+
+        parlio_msg_t msg = {
+            .type = PARLIO_MSG_EXIT,
+        };
+        ESP_RETURN_ON_FALSE(xQueueSend(ctlr->parlio.ms_queue, &msg, portMAX_DELAY) == pdPASS, ESP_FAIL, TAG, "failed to send the parlio exit message");
+        ctlr->parlio.ms_task = NULL;
+
+        vQueueDelete(ctlr->parlio.ms_queue);
+        ctlr->parlio.ms_queue = NULL;
+#endif
+    }
 
     return ESP_OK;
 }
@@ -270,7 +542,7 @@ static esp_err_t spi_cam_decode(esp_cam_ctlr_spi_cam_t *ctlr, uint8_t *src, uint
     bool decode_check_dis = ctlr->decode_check_dis;
 
     if (!decode_check_dis && (memcmp(src, ctlr->frame_info->frame_header_check, ctlr->frame_info->frame_header_check_size) != 0)) {
-        ESP_LOGD(TAG, "invalid frame header: %x %x %x %x", src[0], src[1], src[2], src[3]);
+        ESP_LOGE(TAG, "invalid frame header: %x %x %x %x", src[0], src[1], src[2], src[3]);
         return ESP_FAIL;
     }
     src += ctlr->frame_info->frame_header_size;
@@ -279,8 +551,8 @@ static esp_err_t spi_cam_decode(esp_cam_ctlr_spi_cam_t *ctlr, uint8_t *src, uint
 
     for (uint32_t i = 0; i < ctlr->fb_lines; i++) {
         if (!decode_check_dis && (memcmp(src, ctlr->frame_info->line_header_check, ctlr->frame_info->line_header_check_size) != 0)) {
-            ESP_LOGD(TAG, "invalid line header");
-            return ESP_FAIL;
+            // ESP_LOGE(TAG, "invalid line header %d", (int)i);
+            // return ESP_FAIL;
         }
         src += ctlr->frame_info->line_header_size;
 
@@ -362,7 +634,19 @@ static esp_err_t spi_cam_enable(esp_cam_ctlr_handle_t handle)
     ESP_RETURN_ON_FALSE(ctlr, ESP_ERR_INVALID_ARG, TAG, "invalid argument: handle is null");
     ESP_RETURN_ON_FALSE(ctlr->fsm == ESP_CAM_CTLR_SPI_CAM_FSM_INIT, ESP_ERR_INVALID_STATE, TAG, "processor isn't in init state");
 
-    ret = esp_cam_spi_slave_enable(ctlr->spi_port);
+    if (ctlr->intf == ESP_CAM_CTLR_SPI_CAM_INTF_SPI) {
+        ret = esp_cam_spi_slave_enable(ctlr->spi.port);
+    } else {
+#if CONFIG_CAM_CTLR_SPI_ENABLE_PARLIO
+        ret = gpio_intr_enable(ctlr->spi_cs_pin);
+        if (ret == ESP_OK) {
+            ret = parlio_rx_unit_enable(ctlr->parlio.rx_unit, true);
+        }
+#else
+        ret = ESP_FAIL;
+#endif
+    }
+
     if (ret == ESP_OK) {
         ctlr->fsm = ESP_CAM_CTLR_SPI_CAM_FSM_ENABLED;
     }
@@ -386,7 +670,22 @@ static esp_err_t spi_cam_disable(esp_cam_ctlr_handle_t handle)
     ESP_RETURN_ON_FALSE(ctlr, ESP_ERR_INVALID_ARG, TAG, "invalid argument: handle is null");
     ESP_RETURN_ON_FALSE(ctlr->fsm == ESP_CAM_CTLR_SPI_CAM_FSM_ENABLED, ESP_ERR_INVALID_STATE, TAG, "processor isn't in enabled state");
 
-    ret = esp_cam_spi_slave_disable(ctlr->spi_port);
+    if (ctlr->intf == ESP_CAM_CTLR_SPI_CAM_INTF_SPI) {
+        ret = esp_cam_spi_slave_disable(ctlr->spi.port);
+    } else {
+#if CONFIG_CAM_CTLR_SPI_ENABLE_PARLIO
+        ret = parlio_rx_unit_disable(ctlr->parlio.rx_unit);
+        if (ret == ESP_OK) {
+            ret = gpio_intr_disable(ctlr->spi_cs_pin);
+            if (ret == ESP_OK) {
+                ret = parlio_rx_unit_wait_all_done(ctlr->parlio.rx_unit, 1000);
+            }
+        }
+#else
+        ret = ESP_FAIL;
+#endif
+    }
+
     if (ret == ESP_OK) {
         ctlr->fsm = ESP_CAM_CTLR_SPI_CAM_FSM_INIT;
     }
@@ -412,7 +711,20 @@ static esp_err_t spi_cam_start(esp_cam_ctlr_handle_t handle)
 
     ctlr->dropped_frame_count = 0;
     setup_trans_buffer(ctlr, &ctlr->spi_trans);
-    ret = esp_cam_spi_slave_queue_trans(ctlr->spi_port, &ctlr->spi_trans, portMAX_DELAY);
+    if (ctlr->intf == ESP_CAM_CTLR_SPI_CAM_INTF_SPI) {
+        ret = esp_cam_spi_slave_queue_trans(ctlr->spi.port, &ctlr->spi_trans, portMAX_DELAY);
+    } else {
+#if CONFIG_CAM_CTLR_SPI_ENABLE_PARLIO
+        parlio_receive_config_t recv_cfg = {
+            .delimiter = ctlr->parlio.rx_delimiter,
+        };
+
+        ret = parlio_rx_unit_receive(ctlr->parlio.rx_unit, ctlr->spi_trans.rx_buffer, ctlr->fb_size_in_bytes, &recv_cfg);
+#else
+        ret = ESP_FAIL;
+#endif
+    }
+
     if (ret == ESP_OK) {
         ctlr->fsm = ESP_CAM_CTLR_SPI_CAM_FSM_STARTED;
     }
@@ -617,6 +929,13 @@ static esp_err_t spi_cam_del(esp_cam_ctlr_handle_t handle)
  */
 esp_err_t esp_cam_new_spi_ctlr(const esp_cam_ctlr_spi_config_t *config, esp_cam_ctlr_handle_t *ret_handle)
 {
+#if (ESP_IDF_VERSION < ESP_IDF_VERSION_VAL(5, 5, 0))
+    if (config->intf == ESP_CAM_CTLR_SPI_CAM_INTF_PARLIO) {
+        ESP_LOGD(TAG, "Parallel I/O for SPI camera sensor only supported on IDF version v5.5 and later");
+        return ESP_ERR_NOT_SUPPORTED;
+    }
+#endif
+
     esp_err_t ret;
     size_t alignment_size;
     ESP_RETURN_ON_FALSE(config && ret_handle, ESP_ERR_INVALID_ARG, TAG, "invalid argument: config or ret_handle is null");
@@ -680,13 +999,19 @@ esp_err_t esp_cam_new_spi_ctlr(const esp_cam_ctlr_spi_config_t *config, esp_cam_
 #endif /* CAM_CTLR_SPI_HAS_AUTO_DECODE */
     }
 #else /* CAM_CTLR_SPI_HAS_BACKUP_BUFFER */
-    ctlr->spi_ll_buffer = heap_caps_aligned_alloc(alignment_size, alignment_size, MALLOC_CAP_INTERNAL | MALLOC_CAP_DMA);
+    if (config->intf == ESP_CAM_CTLR_SPI_CAM_INTF_PARLIO) {
+        ctlr->spi_ll_buffer_size = ctlr->frame_info->frame_size;
+    } else {
+        ctlr->spi_ll_buffer_size = alignment_size;
+    }
+    ctlr->spi_ll_buffer = heap_caps_aligned_alloc(alignment_size, ctlr->spi_ll_buffer_size, MALLOC_CAP_INTERNAL | MALLOC_CAP_DMA);
     ESP_GOTO_ON_FALSE(ctlr->spi_ll_buffer, ESP_ERR_NO_MEM, fail0, TAG, "no mem for SPI low level buffer");
-    ctlr->spi_ll_buffer_size = alignment_size;
 #endif /* CAM_CTLR_SPI_HAS_BACKUP_BUFFER */
 
-    ctlr->spi_port = config->spi_port;
-    ESP_GOTO_ON_ERROR(spi_cam_init_intf(ctlr, config), fail2, TAG, "failed to initialize SPI slave");
+    ctlr->spi.port = config->spi_port;
+    ctlr->intf = config->intf;
+    ctlr->spi_cs_pin = config->spi_cs_pin;
+    ESP_GOTO_ON_ERROR(spi_cam_init_intf(ctlr, config), fail2, TAG, "failed to initialize SPI interface");
 
     ctlr->base.del = spi_cam_del;
     ctlr->base.enable = spi_cam_enable;

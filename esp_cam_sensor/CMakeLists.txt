@@ -7,7 +7,7 @@ if(CONFIG_SPIRAM)
 endif()
 
 set(include_dirs "include")
-set(requires "esp_sccb_intf" "esp_driver_cam" "esp_driver_gpio" "esp_driver_ledc" "esp_driver_spi")
+set(requires "esp_sccb_intf" "esp_driver_cam" "esp_driver_gpio" "esp_driver_ledc" "esp_driver_spi" "esp_driver_parlio")
 set(priv_requires "esp_timer")
 
 if(CONFIG_CAMERA_OV2640)
