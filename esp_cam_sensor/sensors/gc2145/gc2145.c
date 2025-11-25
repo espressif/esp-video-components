@@ -189,6 +189,20 @@ static const esp_cam_sensor_format_t gc2145_format_info_dvp[] = {
         .mipi_info = {},
         .reserved = NULL,
     },
+    {
+        .name = "DVP_8bit_10Minput_YUV422_320x240_13fps",
+        .format = ESP_CAM_SENSOR_PIXFORMAT_YUV422,
+        .port = ESP_CAM_SENSOR_DVP,
+        .xclk = 10000000,
+        .width = 320,
+        .height = 240,
+        .regs = gc2145_DVP_8bit_10Minput_320x240_yuv422_13fps,
+        .regs_size = ARRAY_SIZE(gc2145_DVP_8bit_10Minput_320x240_yuv422_13fps),
+        .fps = 13,
+        .isp_info = NULL,
+        .mipi_info = {},
+        .reserved = NULL,
+    },
 };
 #endif
 
