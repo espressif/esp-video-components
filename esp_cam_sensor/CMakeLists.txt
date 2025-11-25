@@ -112,6 +112,12 @@ if(CONFIG_CAMERA_BF3A03)
     list(APPEND priv_include_dirs "sensors/bf3a03/private_include")
 endif()
 
+if(CONFIG_CAMERA_BF20A6)
+    list(APPEND srcs "sensors/bf20a6/bf20a6.c")
+    list(APPEND include_dirs "sensors/bf20a6/include")
+    list(APPEND priv_include_dirs "sensors/bf20a6/private_include")
+endif()
+
 if(CONFIG_CAM_MOTOR_DW9714)
     list(APPEND srcs "motors/dw9714/dw9714.c")
     list(APPEND include_dirs "motors/dw9714/include")
@@ -191,6 +197,10 @@ endif()
 
 if(CONFIG_CAMERA_BF3A03_AUTO_DETECT_DVP_INTERFACE_SENSOR)
     target_link_libraries(${COMPONENT_LIB} INTERFACE "-u bf3a03_detect")
+endif()
+
+if(CONFIG_CAMERA_BF20A6_AUTO_DETECT)
+    target_link_libraries(${COMPONENT_LIB} INTERFACE "-u bf20a6_detect")
 endif()
 
 if(CONFIG_CAM_MOTOR_DW9714_AUTO_DETECT)
