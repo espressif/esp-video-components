@@ -167,24 +167,15 @@ static esp_err_t init_config(struct esp_video *video)
         return ret;
     }
 
-    CAPTURE_VIDEO_SET_FORMAT(video,
-                             sensor_format.width,
-                             sensor_format.height,
-                             v4l2_format);
-
-    uint32_t buf_size = CAPTURE_VIDEO_GET_FORMAT_WIDTH(video) * CAPTURE_VIDEO_GET_FORMAT_HEIGHT(video) * in_bpp / 8;
-
-    ESP_LOGD(TAG, "buffer size=%" PRIu32, buf_size);
-
-    size_t alignments = 0;
-#if CONFIG_SPIRAM
-    ESP_RETURN_ON_ERROR(esp_cache_get_alignment(DVP_MEM_CAPS, &alignments), TAG, "failed to get cache alignment");
-#else
-    alignments = 4;
-#endif
-    ESP_LOGD(TAG, "alignments=%zu", alignments);
-
-    CAPTURE_VIDEO_SET_BUF_INFO(video, buf_size, alignments, DVP_MEM_CAPS);
+    struct v4l2_format format = {
+        .type = V4L2_BUF_TYPE_VIDEO_CAPTURE,
+        .fmt.pix = {
+            .width = sensor_format.width,
+            .height = sensor_format.height,
+            .pixelformat = v4l2_format,
+        },
+    };
+    ESP_RETURN_ON_ERROR(esp_video_config_buffer(video, &format, DVP_MEM_CAPS), TAG, "failed to configure stream buffer");
 
     return ESP_OK;
 }
@@ -372,6 +363,8 @@ static esp_err_t dvp_video_set_format(struct esp_video *video, const struct v4l2
         ESP_LOGE(TAG, "format is not supported");
         return ESP_ERR_INVALID_ARG;
     }
+
+    ESP_RETURN_ON_ERROR(esp_video_config_buffer(video, format, DVP_MEM_CAPS), TAG, "failed to configure stream buffer");
 
     return ESP_OK;
 }

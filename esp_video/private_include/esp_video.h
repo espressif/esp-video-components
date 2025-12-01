@@ -699,6 +699,17 @@ esp_err_t esp_video_enum_framesizes(struct esp_video *video, struct v4l2_frmsize
  */
 esp_err_t esp_video_enum_frameintervals(struct esp_video *video, struct v4l2_frmivalenum *frmival);
 
+/**
+ * @brief Configure video stream buffer by given V4L2 format
+ *
+ * @param video     Video object
+ * @param format    Video format pointer
+ * @param frame_caps Frame buffer capabilities
+ *
+ * @return ESP_OK on success or others if failed
+ */
+esp_err_t esp_video_config_buffer(struct esp_video *video, const struct v4l2_format *format, uint32_t frame_caps);
+
 #ifdef __cplusplus
 }
 #endif

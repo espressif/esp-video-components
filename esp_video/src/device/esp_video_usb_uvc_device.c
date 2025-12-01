@@ -275,8 +275,15 @@ static esp_err_t uvc_video_init(struct esp_video *video)
 
     uint32_t v4l2_format = uvc_to_v4l2_format(uvc_format.format);
 
-    CAPTURE_VIDEO_SET_FORMAT(video, uvc_format.h_res, uvc_format.v_res, v4l2_format);
-    CAPTURE_VIDEO_SET_BUF_INFO(video, uvc_buf_info.dwMaxVideoFrameSize, 4, FRAME_MEM_CAPS);
+    struct v4l2_format format = {
+        .type = V4L2_BUF_TYPE_VIDEO_CAPTURE,
+        .fmt.pix = {
+            .width = uvc_format.h_res,
+            .height = uvc_format.v_res,
+            .pixelformat = v4l2_format,
+        },
+    };
+    ESP_GOTO_ON_ERROR(esp_video_config_buffer(video, &format, FRAME_MEM_CAPS), fail2, TAG, "failed to configure stream buffer");
 
     device->stream_hdl = stream_hdl;
 
@@ -411,11 +418,7 @@ static esp_err_t uvc_video_set_format(struct esp_video *video, const struct v4l2
     };
     ESP_RETURN_ON_ERROR(uvc_host_stream_format_select(device->stream_hdl, &f), TAG, "Failed to set UVC format");
 
-    uvc_host_buf_info_t uvc_buf_info;
-    ESP_RETURN_ON_ERROR(uvc_host_buf_info_get(device->stream_hdl, &uvc_buf_info), TAG, "Failed to get UVC buffer info");
-
-    CAPTURE_VIDEO_SET_FORMAT(video, f.h_res, f.v_res, GET_FORMAT_PIXEL_FORMAT(format));
-    CAPTURE_VIDEO_SET_BUF_INFO(video, uvc_buf_info.dwMaxVideoFrameSize, 4, FRAME_MEM_CAPS);
+    ESP_RETURN_ON_ERROR(esp_video_config_buffer(video, format, FRAME_MEM_CAPS), TAG, "failed to configure stream buffer");
 
     return ESP_OK;
 }
