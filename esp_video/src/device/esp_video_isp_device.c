@@ -2198,6 +2198,13 @@ esp_err_t esp_video_isp_start_by_csi(const esp_video_csi_state_t *state, const s
         return ESP_ERR_NOT_SUPPORTED;
     }
 
+#if ESP_VIDEO_ISP_DEVICE_CROP
+    if (state->crop) {
+        width = state->raw_width;
+        height = state->raw_height;
+    }
+#endif
+
     if (state->bypass_isp) {
         isp_in_color = ISP_COLOR_RAW8;
         isp_out_color = ISP_COLOR_RGB565;
@@ -2259,6 +2266,26 @@ esp_err_t esp_video_isp_start_by_csi(const esp_video_csi_state_t *state, const s
 
         ESP_GOTO_ON_ERROR(esp_isp_enable(isp_video->isp_proc), fail_2, TAG, "failed to enable ISP");
 
+#if ESP_VIDEO_ISP_DEVICE_CROP
+        if (state->crop) {
+            esp_isp_crop_config_t crop_config = {
+                .window = {
+                    .top_left = {
+                        .x = state->crop->left,
+                        .y = state->crop->top
+                    },
+                    .btm_right = {
+                        .x = state->crop->left + state->crop->width - 1,
+                        .y = state->crop->top + state->crop->height - 1
+                    }
+                }
+            };
+
+            ESP_GOTO_ON_ERROR(esp_isp_crop_configure(isp_video->isp_proc, &crop_config), fail_3, TAG, "failed to configure ISP crop");
+            ESP_GOTO_ON_ERROR(esp_isp_crop_enable(isp_video->isp_proc), fail_3, TAG, "failed to enable ISP crop");
+        }
+#endif
+
 #if CONFIG_ESP_VIDEO_ENABLE_ISP_VIDEO_DEVICE
         if ((COLOR_SPACE_TYPE(isp_in_color) == COLOR_SPACE_RAW) &&
                 (COLOR_SPACE_TYPE(isp_out_color) != COLOR_SPACE_RAW)) {
@@ -2271,12 +2298,17 @@ esp_err_t esp_video_isp_start_by_csi(const esp_video_csi_state_t *state, const s
         /**
          * Store CSI window size for the BLC
          */
+#if ESP_VIDEO_ISP_DEVICE_CROP
+        isp_video->csi_width = state->raw_width;
+        isp_video->csi_height = state->raw_height;
+#else
         isp_video->csi_width = width;
         isp_video->csi_height = height;
 #endif
+#endif
 
         META_VIDEO_SET_FORMAT(isp_video->video, width, height, V4L2_META_FMT_ESP_ISP_STATS);
-        ESP_GOTO_ON_ERROR(isp_start_pipeline(isp_video), fail_3, TAG, "failed to start ISP pipeline");
+        ESP_GOTO_ON_ERROR(isp_start_pipeline(isp_video), fail_4, TAG, "failed to start ISP pipeline");
 #endif
     }
 
@@ -2284,7 +2316,13 @@ esp_err_t esp_video_isp_start_by_csi(const esp_video_csi_state_t *state, const s
     return ESP_OK;
 
 #if CONFIG_ESP_VIDEO_ENABLE_ISP_VIDEO_DEVICE
+fail_4:
+#if ESP_VIDEO_ISP_DEVICE_CROP
+    if (state->crop) {
+        esp_isp_crop_disable(isp_video->isp_proc);
+    }
 fail_3:
+#endif
     esp_isp_disable(isp_video->isp_proc);
 fail_2:
     esp_isp_evt_cbs_t cbs = {0};

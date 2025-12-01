@@ -3,6 +3,7 @@
 - Add the initialization parameter "dont_init_ldo" to disable LDO initialization for the MIPI-CSI video device
 - Add WBG(white balance gain) ioctl command to ISP video device
 - Add BLC(Black level correction) ioctl command to ISP video device
+- Add crop function to MIPI-CSI video device
 - JPEG video device supports YUV420 and YUV444 for ESP32-P4 ECO5
 - Add the parameter "intf" to select SPI or parallel I/O for the SPI interface camera sensor
 

@@ -17,6 +17,7 @@
 #include "esp_cam_ctlr_spi.h"
 #include "esp_video_caps.h"
 #include "linux/videodev2.h"
+#include "linux/videodev2.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -35,6 +36,15 @@ typedef struct esp_video_csi_state {
     bool line_sync;                         /*!< true: line has start and end packet; false. line has no start and end packet */
     bool bypass_isp;                        /*!< true: ISP directly output data from input port with processing. false: ISP output processed data by pipeline  */
     color_raw_element_order_t bayer_order;  /*!< Bayer order of raw data */
+
+#if ESP_VIDEO_ISP_DEVICE_CROP
+    struct v4l2_rect *crop;                 /*!< ISP video device crop rectangle pointer */
+
+    uint32_t raw_width;                     /*!< MIPI-CSI raw data width */
+    uint32_t raw_height;                    /*!< MIPI-CSI raw data height */
+
+    uint32_t out_fmt;                       /*!< MIPI-CSI output V4L2 format from ISP */
+#endif
 } esp_video_csi_state_t;
 
 #ifdef CONFIG_ESP_VIDEO_ENABLE_SPI_VIDEO_DEVICE

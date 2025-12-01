@@ -62,6 +62,10 @@ struct csi_video {
     esp_video_cam_t cam;
 
     uint32_t dont_init_ldo      : 1;
+
+#if ESP_VIDEO_ISP_DEVICE_CROP
+    uint32_t set_crop           : 1;
+#endif
 };
 
 static const char *TAG = "csi_video";
@@ -333,6 +337,12 @@ static esp_err_t init_config(struct esp_video *video)
     }
 
     csi_video->state.line_sync = sensor_format.mipi_info.line_sync_en;
+#if ESP_VIDEO_ISP_DEVICE_CROP
+    csi_video->set_crop = false;
+    csi_video->state.raw_width = sensor_format.width;
+    csi_video->state.raw_height = sensor_format.height;
+    csi_video->state.out_fmt = v4l2_format;
+#endif
 
     CAPTURE_VIDEO_SET_FORMAT(video,
                              sensor_format.width,
@@ -426,6 +436,13 @@ static esp_err_t csi_video_start(struct esp_video *video, uint32_t type)
     ESP_GOTO_ON_ERROR(esp_cam_ctlr_enable(csi_video->cam_ctrl_handle), exit_1, TAG, "failed to enable CAM ctlr");
     ESP_GOTO_ON_ERROR(esp_cam_ctlr_start(csi_video->cam_ctrl_handle), exit_2, TAG, "failed to start CAM ctlr");
 
+#if ESP_VIDEO_ISP_DEVICE_CROP
+    if (csi_video->set_crop) {
+        csi_video->state.crop = &video->stream[0].rect;
+    } else {
+        csi_video->state.crop = NULL;
+    }
+#endif
     ESP_GOTO_ON_ERROR(esp_video_isp_start_by_csi(&csi_video->state, STREAM_FORMAT(CAPTURE_VIDEO_STREAM(video))),
                       exit_3, TAG, "failed to start ISP");
 
@@ -528,6 +545,9 @@ static esp_err_t csi_video_set_format(struct esp_video *video, const struct v4l2
 
     csi_video->state.out_color = out_color;
     csi_video->state.out_bpp = out_bpp;
+#if ESP_VIDEO_ISP_DEVICE_CROP
+    csi_video->state.out_fmt = pix->pixelformat;
+#endif
 
     uint32_t buf_size = CAPTURE_VIDEO_GET_FORMAT_WIDTH(video) * CAPTURE_VIDEO_GET_FORMAT_HEIGHT(video) * out_bpp / 8;
 
@@ -678,6 +698,55 @@ static esp_err_t csi_video_set_parm(struct esp_video *video, struct v4l2_streamp
     return ret;
 }
 
+#if ESP_VIDEO_ISP_DEVICE_CROP
+static esp_err_t csi_set_selection(struct esp_video *video, struct v4l2_selection *selection)
+{
+    esp_err_t ret = ESP_OK;
+    struct csi_video *csi_video = VIDEO_PRIV_DATA(struct csi_video *, video);
+    esp_cam_sensor_format_t sensor_format;
+
+    if (csi_video->cam_ctrl_handle) {
+        ESP_LOGE(TAG, "MIPI-CSI should be stream off");
+        return ESP_ERR_INVALID_STATE;
+    }
+
+    if (selection->target == V4L2_SEL_TGT_CROP) {
+        csi_video->set_crop = true;
+
+        ESP_RETURN_ON_ERROR(esp_cam_sensor_get_format(csi_video->cam.sensor, &sensor_format), TAG, "failed to get sensor format");
+
+        if (selection->r.left >= sensor_format.width || (selection->r.width + selection->r.left) >= sensor_format.width ||
+                selection->r.top >= sensor_format.height || (selection->r.height + selection->r.top) >= sensor_format.height) {
+            ESP_LOGE(TAG, "crop width or height is invalid");
+            return ESP_ERR_INVALID_ARG;
+        }
+
+        CAPTURE_VIDEO_SET_FORMAT(video,
+                                 selection->r.width,
+                                 selection->r.height,
+                                 csi_video->state.out_fmt);
+
+        uint32_t buf_size = selection->r.width * selection->r.height * csi_video->state.out_bpp / 8;
+
+        ESP_LOGD(TAG, "buffer size=%" PRIu32, buf_size);
+
+        size_t alignments = 0;
+#if CONFIG_SPIRAM
+        ESP_RETURN_ON_ERROR(esp_cache_get_alignment(CSI_MEM_CAPS, &alignments), TAG, "failed to get cache alignment");
+#else
+        alignments = 4;
+#endif
+        ESP_LOGD(TAG, "alignments=%zu", alignments);
+
+        CAPTURE_VIDEO_SET_BUF_INFO(video, buf_size, alignments, CSI_MEM_CAPS);
+    } else {
+        ret = ESP_ERR_INVALID_ARG;
+    }
+
+    return ret;
+}
+#endif
+
 static const struct esp_video_ops s_csi_video_ops = {
     .init          = csi_video_init,
     .deinit        = csi_video_deinit,
@@ -696,6 +765,9 @@ static const struct esp_video_ops s_csi_video_ops = {
     .get_motor_format = csi_video_get_motor_format,
     .set_parm      = csi_video_set_parm,
     .get_parm      = csi_video_get_parm,
+#if ESP_VIDEO_ISP_DEVICE_CROP
+    .set_selection = csi_set_selection,
+#endif
 };
 
 /**
