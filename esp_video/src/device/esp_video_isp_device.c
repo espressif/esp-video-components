@@ -2266,6 +2266,7 @@ esp_err_t esp_video_isp_start_by_csi(const esp_video_csi_state_t *state, const s
 
         ESP_GOTO_ON_ERROR(esp_isp_enable(isp_video->isp_proc), fail_2, TAG, "failed to enable ISP");
 
+#if CONFIG_ESP_VIDEO_ENABLE_ISP_VIDEO_DEVICE
 #if ESP_VIDEO_ISP_DEVICE_CROP
         if (state->crop) {
             esp_isp_crop_config_t crop_config = {
@@ -2286,7 +2287,6 @@ esp_err_t esp_video_isp_start_by_csi(const esp_video_csi_state_t *state, const s
         }
 #endif
 
-#if CONFIG_ESP_VIDEO_ENABLE_ISP_VIDEO_DEVICE
         if ((COLOR_SPACE_TYPE(isp_in_color) == COLOR_SPACE_RAW) &&
                 (COLOR_SPACE_TYPE(isp_out_color) != COLOR_SPACE_RAW)) {
             isp_video->af_support = 1;

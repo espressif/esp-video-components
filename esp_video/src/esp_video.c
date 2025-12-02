@@ -1074,7 +1074,6 @@ esp_err_t IRAM_ATTR esp_video_done_buffer(struct esp_video *video, uint32_t type
  */
 esp_err_t esp_video_queue_element(struct esp_video *video, uint32_t type, struct esp_video_buffer_element *element)
 {
-    uint32_t val = type;
     struct esp_video_stream *stream;
 
     stream = esp_video_get_stream(video, type);
@@ -1093,7 +1092,7 @@ esp_err_t esp_video_queue_element(struct esp_video *video, uint32_t type, struct
     portEXIT_CRITICAL_SAFE(&video->stream_lock);
 
     if (video->ops->notify) {
-        video->ops->notify(video, ESP_VIDEO_BUFFER_VALID, &val);
+        video->ops->notify(video, ESP_VIDEO_BUFFER_VALID, element);
     }
 
     return ESP_OK;

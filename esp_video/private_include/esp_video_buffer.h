@@ -64,6 +64,8 @@ struct esp_video_buffer_element {
     uint8_t *buffer;                                  /*!< Buffer space to fill data */
 
     uint32_t valid_size;                              /*!< Valid data size */
+
+    void *priv_data;                                  /*!< Private data */
 };
 
 /**

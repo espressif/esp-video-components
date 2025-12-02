@@ -17,13 +17,8 @@ dependencies:
     version: "1.0.4"
     rules:
       - if: "target in [esp32p4]"
-  usb:
-    version: "*"
-    rules:
-      - if: "target in [esp32p4, esp32s3]"
-      - if: "idf_version >=6.0"
   usb_host_uvc:
-    version: "2.3.*"
+    version: "2.4.*"
     rules:
       - if: "target in [esp32p4, esp32s3]"
   esp_cam_sensor:

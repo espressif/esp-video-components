@@ -1,2 +1,3 @@
 DeprecationWarning: 'MultiCommand' is deprecated and will be removed in Click*
 /opt/esp/idf/components/mbedtls/esp_crt_bundle/gen_crt_bundle.py*
+The following Kconfig variables were used in "if" clauses*
