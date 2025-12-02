@@ -134,6 +134,7 @@ typedef struct esp_video_init_usb_uvc_config {
 
     struct {
         bool init_usb_host_lib;                 /*!< Init USB Host Lib in esp_video */
+        unsigned peripheral_map;                /*!< Selects the USB peripheral(s) to use. */
         // USB Host Lib task configuration: Ignored if init_usb_host_lib is false
         uint32_t task_stack;                    /*!< USB Host Lib task stack size */
         uint8_t task_priority;                  /*!< USB Host Lib task priority */

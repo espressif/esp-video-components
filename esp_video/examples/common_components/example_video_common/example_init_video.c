@@ -167,6 +167,7 @@ static const esp_video_init_usb_uvc_config_t s_usb_uvc_config = {
     },
     .usb = {
         .init_usb_host_lib = true,
+        .peripheral_map = CONFIG_EXAMPLE_USB_PERIPHERAL_MAP,
         .task_stack = CONFIG_EXAMPLE_USB_LIB_TASK_STACK_SIZE,
         .task_priority = CONFIG_EXAMPLE_USB_LIB_TASK_PRIORITY,
         .task_affinity = CONFIG_EXAMPLE_USB_LIB_TASK_AFFINITY,

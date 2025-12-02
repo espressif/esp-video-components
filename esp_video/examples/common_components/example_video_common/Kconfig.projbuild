@@ -828,6 +828,21 @@ menu "Example Video Initialization Configuration"
 
                     Note: USB lib task handles time-critical USB operations, so core affinity
                     can impact performance. Core 1 is only available on dual-core ESP32 variants.
+
+            config EXAMPLE_USB_PERIPHERAL_MAP
+                hex "USB Peripheral Selection Map"
+                default 0x00
+                help
+                    Selects which USB peripheral(s) to use on chips with multiple USB controllers.
+                    
+                    - Set to 0 to use the default peripheral
+                    - On High-Speed capable targets, the default is the High-Speed peripheral
+                    - On Full-Speed only targets, the default is the Full-Speed peripheral
+                    - Example: 0x2 (BIT1) selects USB peripheral 1
+                    
+                    The mapping of bits to specific peripherals is chip-dependent and defined 
+                    in the USB_DWC_LL_GET_HW() macro. This field is only relevant for targets 
+                    with multiple USB peripherals.
         endif
 
         menuconfig EXAMPLE_ENABLE_SPI_CAM_1_SENSOR

@@ -368,6 +368,7 @@ esp_err_t esp_video_init(const esp_video_init_config_t *config)
             usb_host_config_t host_config = {
                 .skip_phy_setup = false,
                 .intr_flags = ESP_INTR_FLAG_LEVEL1,
+                .peripheral_map = config->usb_uvc->usb.peripheral_map,
             };
             if (usb_host_install(&host_config) != ESP_OK) {
                 ESP_LOGE(TAG, "Failed to install USB Host driver");
