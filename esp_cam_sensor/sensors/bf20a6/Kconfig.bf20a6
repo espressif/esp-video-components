@@ -1,42 +1,46 @@
 menuconfig CAMERA_BF20A6
     bool "BF20A6"
     default n
+    depends on SOC_LCDCAM_CAM_SUPPORTED
     help
-        Enabling this option will add the support for BF20A6.
+        Enable support for the BF20A6 CMOS image sensor.
 
 if CAMERA_BF20A6
-    menuconfig CAMERA_BF20A6_AUTO_DETECT
-        bool "Auto detect BF20A6"
-        default y
-        help
-            When enabled, it provides the ability in application layer to automatically
-            detect camera sensors one by one.
-
-    if CAMERA_BF20A6_AUTO_DETECT
+    menu "Auto detect BF20A6"
         config CAMERA_BF20A6_AUTO_DETECT_DVP_INTERFACE_SENSOR
             bool "Detect for DVP interface sensor"
             default y
             help
-                When enabled, you don't need to call bf20a6_detect manaually, BF20A6 will
-                be automatically detected and connected to the DVP interface when the
-                application starts.
-    endif
+                When enabled, the BF20A6 sensor will be automatically detected
+                and initialized on the DVP interface at startup without requiring
+                manual detection call(bf20a6_detect) in your application.
+    endmenu
+
+    menu "Choose supported formats for DVP interface"
+        config CAMERA_BF20A6_DVP_GRAY_640X480_15FPS
+            bool "DVP 8-bit, 20M input, 640x480 15fps, GRAY"
+            default y
+            help
+                Standard color format using Grayscale at 640x480 resolution (VGA)
+                with 15fps framerate. Requires 8-bit DVP interface and 20MHz input.
+    endmenu
 
     choice CAMERA_BF20A6_DVP_DEFAULT_FMT
-        prompt "Default format select"
-        default CAMERA_BF20A6_DVP_GRAY_640X480_15FPS
+        prompt "Select default output format for DVP interface"
+        default CAMERA_BF20A6_DVP_DEFAULT_FMT_GRAY_640X480_15FPS
         help
-            Select the default format to load when the sensor is detected.
-            When the sensor is in stream off state, the format can be changed.
+            This is an internal choice that ensures only one format can be selected as default.
+            It is automatically controlled by the "Set as default format" options above.
     
-        config CAMERA_BF20A6_DVP_GRAY_640X480_15FPS
-            bool "Grayscale 640x480 15fps, DVP 8bit 20M input"
+        config CAMERA_BF20A6_DVP_DEFAULT_FMT_GRAY_640X480_15FPS
+            bool "DVP 8-bit, 20M input, 640x480 15fps, GRAY"
+            depends on CAMERA_BF20A6_DVP_GRAY_640X480_15FPS
     endchoice # CAMERA_BF20A6_DVP_DEFAULT_FMT
 
-    config CAMERA_BF20A6_DVP_IF_FORMAT_INDEX_DAFAULT
+    config CAMERA_BF20A6_DVP_IF_FORMAT_INDEX_DEFAULT
         int
-        default 0 if CAMERA_BF20A6_DVP_GRAY_640X480_15FPS
+        default 0 if CAMERA_BF20A6_DVP_DEFAULT_FMT_GRAY_640X480_15FPS
         help
-            Set the configuration loaded by default for the DVP interface.
-            More information can be obtained by calling the query_support_formats().
+            Sets the default configuration for the DVP interface.
+            Use query_support_formats() API to get more format options.
 endif

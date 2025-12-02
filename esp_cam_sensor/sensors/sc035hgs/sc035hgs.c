@@ -304,6 +304,7 @@ static const esp_cam_sensor_isp_info_t sc035hgs_isp_info_mipi[] = {
 };
 
 static const esp_cam_sensor_format_t sc035hgs_format_info_mipi[] = {
+#if CONFIG_CAMERA_SC035HGS_MIPI_RAW10_640X480_48FPS
     {
         .name = "MIPI_1lane_20Minput_raw10_640x480_48fps",
         .format = ESP_CAM_SENSOR_PIXFORMAT_RAW10,
@@ -322,6 +323,8 @@ static const esp_cam_sensor_format_t sc035hgs_format_info_mipi[] = {
         },
         .reserved = NULL,
     },
+#endif
+#if CONFIG_CAMERA_SC035HGS_MIPI_RAW10_640X480_120FPS
     {
         .name = "MIPI_1lane_20Minput_raw10_640x480_120fps",
         .format = ESP_CAM_SENSOR_PIXFORMAT_RAW10,
@@ -340,6 +343,8 @@ static const esp_cam_sensor_format_t sc035hgs_format_info_mipi[] = {
         },
         .reserved = NULL,
     },
+#endif
+#if CONFIG_CAMERA_SC035HGS_MIPI_RAW8_640X480_50FPS
     {
         .name = "MIPI_2lane_24Minput_raw8_640x480_50fps",
         .format = ESP_CAM_SENSOR_PIXFORMAT_RAW8,
@@ -358,6 +363,8 @@ static const esp_cam_sensor_format_t sc035hgs_format_info_mipi[] = {
         },
         .reserved = NULL,
     },
+#endif
+#if CONFIG_CAMERA_SC035HGS_MIPI_RAW8_640X480_100FPS
     {
         .name = "MIPI_2lane_24Minput_raw8_640x480_100fps",
         .format = ESP_CAM_SENSOR_PIXFORMAT_RAW8,
@@ -375,8 +382,35 @@ static const esp_cam_sensor_format_t sc035hgs_format_info_mipi[] = {
             .line_sync_en = false,
         },
         .reserved = NULL,
-    }
+    },
+#endif
 };
+
+static const int sc035hgs_format_index[] = {
+#if CONFIG_CAMERA_SC035HGS_MIPI_RAW10_640X480_48FPS
+    0,
+#endif
+#if CONFIG_CAMERA_SC035HGS_MIPI_RAW10_640X480_120FPS
+    1,
+#endif
+#if CONFIG_CAMERA_SC035HGS_MIPI_RAW8_640X480_50FPS
+    2,
+#endif
+#if CONFIG_CAMERA_SC035HGS_MIPI_RAW8_640X480_100FPS
+    3,
+#endif
+};
+
+static int get_sc035hgs_actual_format_index(void)
+{
+    int default_index = CONFIG_CAMERA_SC035HGS_MIPI_IF_FORMAT_INDEX_DEFAULT;
+    for (size_t i = 0; i < ARRAY_SIZE(sc035hgs_format_index); i++) {
+        if (sc035hgs_format_index[i] == default_index) {
+            return i;
+        }
+    }
+    return 0;
+}
 #endif
 
 static esp_err_t sc035hgs_read(esp_sccb_io_handle_t sccb_handle, uint16_t reg, uint8_t *read_buf)
@@ -696,7 +730,7 @@ static esp_err_t sc035hgs_set_format(esp_cam_sensor_device_t *dev, const esp_cam
     if (format == NULL) {
 #if CONFIG_SOC_MIPI_CSI_SUPPORTED
         if (dev->sensor_port == ESP_CAM_SENSOR_MIPI_CSI) {
-            format = &sc035hgs_format_info_mipi[CONFIG_CAMERA_SC035HGS_MIPI_IF_FORMAT_INDEX_DEFAULT];
+            format = &sc035hgs_format_info_mipi[get_sc035hgs_actual_format_index()];
         }
 #endif
     }
@@ -892,7 +926,7 @@ esp_cam_sensor_device_t *sc035hgs_detect(esp_cam_sensor_config_t *config)
     dev->priv = cam_sc035hgs;
 #if CONFIG_SOC_MIPI_CSI_SUPPORTED
     if (config->sensor_port == ESP_CAM_SENSOR_MIPI_CSI) {
-        dev->cur_format = &sc035hgs_format_info_mipi[CONFIG_CAMERA_SC035HGS_MIPI_IF_FORMAT_INDEX_DEFAULT];
+        dev->cur_format = &sc035hgs_format_info_mipi[get_sc035hgs_actual_format_index()];
     }
 #endif
 

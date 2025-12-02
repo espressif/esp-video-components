@@ -68,7 +68,38 @@ static const esp_cam_sensor_spi_frame_info bf3901_frame_info_spi[] = {
     },
 };
 
+#ifndef CONFIG_CAMERA_BF3901_SPI_IF_FORMAT_INDEX_DEFAULT
+#error "Please choose at least one format in menuconfig for BF3901"
+#endif
+
+static const uint8_t bf3901_format_default_index = CONFIG_CAMERA_BF3901_SPI_IF_FORMAT_INDEX_DEFAULT;
+
+static const uint8_t bf3901_format_index[] = {
+#if CONFIG_CAMERA_BF3901_SPI_RGB565_240X320_15FPS
+    0,
+#endif
+#if CONFIG_CAMERA_BF3901_SPI_YUV422_240X320_15FPS
+    1,
+#endif
+#if CONFIG_CAMERA_BF3901_SPI_YUV422_240X320_12FPS
+    2,
+#endif
+#if CONFIG_CAMERA_BF3901_SPI_YUV422_240X240_10FPS
+    3,
+#endif
+#if CONFIG_CAMERA_BF3901_SPI_YUV422_120X160_10FPS
+    4,
+#endif
+#if CONFIG_CAMERA_BF3901_SPI_YUV422_120X160_5FPS
+    5,
+#endif
+#if CONFIG_CAMERA_BF3901_SPI2_YUV422_240X320_20FPS
+    6,
+#endif
+};
+
 static const esp_cam_sensor_format_t bf3901_format_info_spi[] = {
+#if CONFIG_CAMERA_BF3901_SPI_RGB565_240X320_15FPS
     {
         .name = "SPI_1bit_24Minput_RGB565_240x320_15fps",
         .format = ESP_CAM_SENSOR_PIXFORMAT_RGB565,
@@ -86,6 +117,8 @@ static const esp_cam_sensor_format_t bf3901_format_info_spi[] = {
         },
         .reserved = NULL,
     },
+#endif
+#if CONFIG_CAMERA_BF3901_SPI_YUV422_240X320_15FPS
     {
         .name = "SPI_1bit_24Minput_YUV422_240x320_15fps",
         .format = ESP_CAM_SENSOR_PIXFORMAT_YUV422,
@@ -103,6 +136,8 @@ static const esp_cam_sensor_format_t bf3901_format_info_spi[] = {
         },
         .reserved = NULL,
     },
+#endif
+#if CONFIG_CAMERA_BF3901_SPI_YUV422_240X320_12FPS
     {
         .name = "SPI_1bit_20Minput_YUV422_240x320_12fps",
         .format = ESP_CAM_SENSOR_PIXFORMAT_YUV422,
@@ -120,6 +155,8 @@ static const esp_cam_sensor_format_t bf3901_format_info_spi[] = {
         },
         .reserved = NULL,
     },
+#endif
+#if CONFIG_CAMERA_BF3901_SPI_YUV422_240X240_10FPS
     {
         .name = "SPI_1bit_24Minput_YUV422_240x240_10fps",
         .format = ESP_CAM_SENSOR_PIXFORMAT_YUV422,
@@ -137,6 +174,8 @@ static const esp_cam_sensor_format_t bf3901_format_info_spi[] = {
         },
         .reserved = NULL,
     },
+#endif
+#if CONFIG_CAMERA_BF3901_SPI_YUV422_120X160_10FPS
     {
         .name = "SPI_1bit_24Minput_YUV422_120x160_10fps",
         .format = ESP_CAM_SENSOR_PIXFORMAT_YUV422,
@@ -154,6 +193,8 @@ static const esp_cam_sensor_format_t bf3901_format_info_spi[] = {
         },
         .reserved = NULL,
     },
+#endif
+#if CONFIG_CAMERA_BF3901_SPI_YUV422_120X160_5FPS
     {
         .name = "SPI_1bit_20Minput_YUV422_120x160_5fps",
         .format = ESP_CAM_SENSOR_PIXFORMAT_YUV422,
@@ -171,6 +212,8 @@ static const esp_cam_sensor_format_t bf3901_format_info_spi[] = {
         },
         .reserved = NULL,
     },
+#endif
+#if CONFIG_CAMERA_BF3901_SPI2_YUV422_240X320_20FPS
     {
         .name = "SPI_2bit_24Minput_YUV422_240x320_20fps",
         .format = ESP_CAM_SENSOR_PIXFORMAT_YUV422,
@@ -187,8 +230,20 @@ static const esp_cam_sensor_format_t bf3901_format_info_spi[] = {
             .frame_info = &bf3901_frame_info_spi[0],
         },
         .reserved = NULL,
-    }
+    },
+#endif
 };
+
+static uint8_t get_bf3901_actual_format_index(void)
+{
+    for (int i = 0; i < ARRAY_SIZE(bf3901_format_index); i++) {
+        if (bf3901_format_index[i] == bf3901_format_default_index) {
+            return i;
+        }
+    }
+
+    return 0;
+}
 
 static esp_err_t bf3901_read(esp_sccb_io_handle_t sccb_handle, uint8_t reg, uint8_t *read_buf)
 {
@@ -387,7 +442,7 @@ static esp_err_t bf3901_set_format(esp_cam_sensor_device_t *dev, const esp_cam_s
     /* Depending on the interface type, an available configuration is automatically loaded.
     You can set the output format of the sensor without using query_format().*/
     if (format == NULL) {
-        format = &bf3901_format_info_spi[CONFIG_CAMERA_BF3901_SPI_IF_FORMAT_INDEX_DEFAULT];
+        format = &bf3901_format_info_spi[get_bf3901_actual_format_index()];
     }
 
     /* Todo, I2C NACK error causes the I2C driver to fail(AEG-2481).
@@ -568,7 +623,7 @@ esp_cam_sensor_device_t *bf3901_detect(esp_cam_sensor_config_t *config)
     dev->pwdn_pin = config->pwdn_pin;
     dev->sensor_port = config->sensor_port;
     dev->ops = &bf3901_ops;
-    dev->cur_format = &bf3901_format_info_spi[CONFIG_CAMERA_BF3901_SPI_IF_FORMAT_INDEX_DEFAULT];
+    dev->cur_format = &bf3901_format_info_spi[get_bf3901_actual_format_index()];
 
 // Configure sensor power, clock, and SCCB port
     if (bf3901_power_on(dev) != ESP_OK) {

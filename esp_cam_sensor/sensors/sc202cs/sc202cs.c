@@ -926,6 +926,7 @@ static const esp_cam_sensor_isp_info_t sc202cs_isp_info[] = {
 };
 
 static const esp_cam_sensor_format_t sc202cs_format_info[] = {
+#if CONFIG_CAMERA_SC202CS_MIPI_RAW8_1280X720_30FPS
     {
         .name = "MIPI_1lane_24Minput_RAW8_1280x720_30fps",
         .format = ESP_CAM_SENSOR_PIXFORMAT_RAW8,
@@ -944,6 +945,8 @@ static const esp_cam_sensor_format_t sc202cs_format_info[] = {
         },
         .reserved = NULL,
     },
+#endif
+#if CONFIG_CAMERA_SC202CS_MIPI_RAW8_1600X1200_30FPS
     {
         .name = "MIPI_1lane_24Minput_RAW8_1600x1200_30fps",
         .format = ESP_CAM_SENSOR_PIXFORMAT_RAW8,
@@ -962,6 +965,8 @@ static const esp_cam_sensor_format_t sc202cs_format_info[] = {
         },
         .reserved = NULL,
     },
+#endif
+#if CONFIG_CAMERA_SC202CS_MIPI_RAW10_1600X1200_30FPS
     {
         .name = "MIPI_1lane_24Minput_RAW10_1600x1200_30fps",
         .format = ESP_CAM_SENSOR_PIXFORMAT_RAW10,
@@ -980,6 +985,8 @@ static const esp_cam_sensor_format_t sc202cs_format_info[] = {
         },
         .reserved = NULL,
     },
+#endif
+#if CONFIG_CAMERA_SC202CS_MIPI_RAW10_1600X900_30FPS
     {
         .name = "MIPI_1lane_24Minput_RAW10_1600x900_30fps",
         .format = ESP_CAM_SENSOR_PIXFORMAT_RAW10,
@@ -998,7 +1005,34 @@ static const esp_cam_sensor_format_t sc202cs_format_info[] = {
         },
         .reserved = NULL,
     },
+#endif
 };
+
+static const int sc202cs_format_index[] = {
+#if CONFIG_CAMERA_SC202CS_MIPI_RAW8_1280X720_30FPS
+    0,
+#endif
+#if CONFIG_CAMERA_SC202CS_MIPI_RAW8_1600X1200_30FPS
+    1,
+#endif
+#if CONFIG_CAMERA_SC202CS_MIPI_RAW10_1600X1200_30FPS
+    2,
+#endif
+#if CONFIG_CAMERA_SC202CS_MIPI_RAW10_1600X900_30FPS
+    3,
+#endif
+};
+
+static int get_sc202cs_actual_format_index(void)
+{
+    int default_index = CONFIG_CAMERA_SC202CS_MIPI_IF_FORMAT_INDEX_DEFAULT;
+    for (size_t i = 0; i < ARRAY_SIZE(sc202cs_format_index); i++) {
+        if (sc202cs_format_index[i] == default_index) {
+            return i;
+        }
+    }
+    return 0;
+}
 
 static esp_err_t sc202cs_read(esp_sccb_io_handle_t sccb_handle, uint16_t reg, uint8_t *read_buf)
 {
@@ -1297,7 +1331,7 @@ static esp_err_t sc202cs_set_format(esp_cam_sensor_device_t *dev, const esp_cam_
     /* Depending on the interface type, an available configuration is automatically loaded.
     You can set the output format of the sensor without using query_format().*/
     if (format == NULL) {
-        format = &sc202cs_format_info[CONFIG_CAMERA_SC202CS_MIPI_IF_FORMAT_INDEX_DEFAULT];
+        format = &sc202cs_format_info[get_sc202cs_actual_format_index()];
     }
 
     ret = sc202cs_write_array(dev->sccb_handle, (sc202cs_reginfo_t *)format->regs);
@@ -1490,7 +1524,7 @@ esp_cam_sensor_device_t *sc202cs_detect(esp_cam_sensor_config_t *config)
     dev->sensor_port = config->sensor_port;
     dev->ops = &sc202cs_ops;
     dev->priv = cam_sc202cs;
-    dev->cur_format = &sc202cs_format_info[CONFIG_CAMERA_SC202CS_MIPI_IF_FORMAT_INDEX_DEFAULT];
+    dev->cur_format = &sc202cs_format_info[get_sc202cs_actual_format_index()];
     for (size_t i = 0; i < ARRAY_SIZE(sc202cs_abs_gain_val_map); i++) {
         if (sc202cs_abs_gain_val_map[i] > s_limited_abs_gain) {
             s_limited_abs_gain_index = i - 1;

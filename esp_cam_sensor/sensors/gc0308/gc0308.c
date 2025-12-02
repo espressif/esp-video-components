@@ -29,7 +29,35 @@
 
 static const char *TAG = "gc0308";
 
+#ifndef CONFIG_CAMERA_GC0308_DVP_IF_FORMAT_INDEX_DEFAULT
+#error "Please choose at least one format in menuconfig for GC0308"
+#endif
+
+static const uint8_t gc0308_format_default_index = CONFIG_CAMERA_GC0308_DVP_IF_FORMAT_INDEX_DEFAULT;
+
+static const uint8_t gc0308_format_index[] = {
+#if CONFIG_CAMERA_GC0308_DVP_YUV422_640X480_16FPS
+    0,
+#endif
+#if CONFIG_CAMERA_GC0308_DVP_RGB565_640X480_16FPS
+    1,
+#endif
+#if CONFIG_CAMERA_GC0308_DVP_GRAY_640X480_16FPS
+    2,
+#endif
+#if CONFIG_CAMERA_GC0308_DVP_YUV422_320X240_20FPS
+    3,
+#endif
+#if CONFIG_CAMERA_GC0308_DVP_GRAY_320X240_20FPS
+    4,
+#endif
+#if CONFIG_CAMERA_GC0308_DVP_RGB565_320X240_20FPS
+    5,
+#endif
+};
+
 static const esp_cam_sensor_format_t gc0308_format_info[] = {
+#if CONFIG_CAMERA_GC0308_DVP_YUV422_640X480_16FPS
     {
         .name = "DVP_8bit_20Minput_YUV422_640x480_16fps",
         .format = ESP_CAM_SENSOR_PIXFORMAT_YUV422,
@@ -44,6 +72,8 @@ static const esp_cam_sensor_format_t gc0308_format_info[] = {
         .mipi_info = {},
         .reserved = NULL,
     },
+#endif
+#if CONFIG_CAMERA_GC0308_DVP_RGB565_640X480_16FPS
     {
         .name = "DVP_8bit_20Minput_RGB565_640x480_16fps",
         .format = ESP_CAM_SENSOR_PIXFORMAT_RGB565,
@@ -58,6 +88,8 @@ static const esp_cam_sensor_format_t gc0308_format_info[] = {
         .mipi_info = {},
         .reserved = NULL,
     },
+#endif
+#if CONFIG_CAMERA_GC0308_DVP_GRAY_640X480_16FPS
     {
         .name = "DVP_8bit_20Minput_grayscale_640x480_16fps",
         .format = ESP_CAM_SENSOR_PIXFORMAT_GRAYSCALE,
@@ -72,6 +104,8 @@ static const esp_cam_sensor_format_t gc0308_format_info[] = {
         .mipi_info = {},
         .reserved = NULL,
     },
+#endif
+#if CONFIG_CAMERA_GC0308_DVP_YUV422_320X240_20FPS
     {
         .name = "DVP_8bit_20Minput_YUV422_320x240_20fps_subsample",
         .format = ESP_CAM_SENSOR_PIXFORMAT_YUV422,
@@ -86,6 +120,8 @@ static const esp_cam_sensor_format_t gc0308_format_info[] = {
         .mipi_info = {},
         .reserved = NULL,
     },
+#endif
+#if CONFIG_CAMERA_GC0308_DVP_GRAY_320X240_20FPS
     {
         .name = "DVP_8bit_20Minput_grayscale_320x240_20fps_subsample",
         .format = ESP_CAM_SENSOR_PIXFORMAT_GRAYSCALE,
@@ -100,6 +136,8 @@ static const esp_cam_sensor_format_t gc0308_format_info[] = {
         .mipi_info = {},
         .reserved = NULL,
     },
+#endif
+#if CONFIG_CAMERA_GC0308_DVP_RGB565_320X240_20FPS
     {
         .name = "DVP_8bit_20Minput_RGB565_320x240_20fps_subsample",
         .format = ESP_CAM_SENSOR_PIXFORMAT_RGB565,
@@ -114,7 +152,19 @@ static const esp_cam_sensor_format_t gc0308_format_info[] = {
         .mipi_info = {},
         .reserved = NULL,
     },
+#endif
 };
+
+static uint8_t get_gc0308_actual_format_index(void)
+{
+    for (int i = 0; i < ARRAY_SIZE(gc0308_format_index); i++) {
+        if (gc0308_format_index[i] == gc0308_format_default_index) {
+            return i;
+        }
+    }
+
+    return 0;
+}
 
 static esp_err_t gc0308_read(esp_sccb_io_handle_t sccb_handle, uint8_t reg, uint8_t *read_buf)
 {
@@ -343,7 +393,7 @@ static esp_err_t gc0308_set_format(esp_cam_sensor_device_t *dev, const esp_cam_s
     /* Depending on the interface type, an available configuration is automatically loaded.
     You can set the output format of the sensor without using query_format().*/
     if (format == NULL) {
-        format = &gc0308_format_info[CONFIG_CAMERA_GC0308_DVP_IF_FORMAT_INDEX_DEFAULT];
+        format = &gc0308_format_info[get_gc0308_actual_format_index()];
     }
 
     ret = gc0308_write_array(dev->sccb_handle, (gc0308_reginfo_t *)format->regs, format->regs_size);
@@ -518,7 +568,7 @@ esp_cam_sensor_device_t *gc0308_detect(esp_cam_sensor_config_t *config)
     dev->pwdn_pin = config->pwdn_pin;
     dev->sensor_port = config->sensor_port;
     dev->ops = &gc0308_ops;
-    dev->cur_format = &gc0308_format_info[CONFIG_CAMERA_GC0308_DVP_IF_FORMAT_INDEX_DEFAULT];
+    dev->cur_format = &gc0308_format_info[get_gc0308_actual_format_index()];
 
     // Configure sensor power, clock, and SCCB port
     if (gc0308_power_on(dev) != ESP_OK) {

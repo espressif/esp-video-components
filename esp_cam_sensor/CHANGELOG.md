@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- Added configuration options for supported formats. Once a supported format is enabled, it can be found in the configuration menu or enumeration command `VIDIOC_ENUM_FMT`.
+
 ## 1.7.0
 
 - Fixed OV5640 DVP yuv422 seq.

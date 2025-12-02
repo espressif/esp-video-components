@@ -26,9 +26,96 @@ if CAMERA_SC2336
                 manual detection call(sc2336_detect) in your application.
     endmenu
 
+    menu "Choose supported formats for MIPI CSI interface"
+        depends on SOC_MIPI_CSI_SUPPORTED
+        config CAMERA_SC2336_MIPI_RAW8_800X800_30FPS
+            bool "MIPI 2-lane, 24M input,  800x800  30fps, RAW8"
+            default n
+            help
+                RAW8 color format at 800x800 resolution with 30fps framerate.
+                Requires MIPI CSI-2 2-lane interface with 24MHz input clock.
+
+        config CAMERA_SC2336_MIPI_RAW8_1024X600_30FPS
+            bool "MIPI 2-lane, 24M input, 1024x600  30fps, RAW8"
+            default n
+            help
+                RAW8 color format at 1024x600 resolution with 30fps framerate.
+                Requires MIPI CSI-2 2-lane interface with 24MHz input clock.
+
+        config CAMERA_SC2336_MIPI_RAW8_1280X720_30FPS
+            bool "MIPI 2-lane, 24M input, 1280x720  30fps, RAW8"
+            default y
+            help
+                RAW8 color format at 1280x720 resolution (HD) with 30fps framerate.
+                Requires MIPI CSI-2 2-lane interface with 24MHz input clock.
+
+        config CAMERA_SC2336_MIPI_RAW8_1920X1080_30FPS
+            bool "MIPI 2-lane, 24M input, 1920x1080 30fps, RAW8"
+            default n
+            help
+                RAW8 color format at 1920x1080 resolution (FHD) with 30fps framerate.
+                Requires MIPI CSI-2 2-lane interface with 24MHz input clock.
+
+        config CAMERA_SC2336_MIPI_RAW10_640X480_50FPS
+            bool "MIPI 2-lane, 24M input,  640x480  50fps, RAW10"
+            default n
+            help
+                RAW10 color format at 640x480 resolution (VGA) with 50fps framerate.
+                Requires MIPI CSI-2 2-lane interface with 24MHz input clock.
+
+        config CAMERA_SC2336_MIPI_RAW10_800X800_30FPS
+            bool "MIPI 2-lane, 24M input,  800x800  30fps, RAW10"
+            default n
+            help
+                RAW10 color format at 800x800 resolution with 30fps framerate.
+                Requires MIPI CSI-2 2-lane interface with 24MHz input clock.
+
+        config CAMERA_SC2336_MIPI_RAW10_1280X720_30FPS
+            bool "MIPI 2-lane, 24M input, 1280x720  30fps, RAW10"
+            default n
+            help
+                RAW10 color format at 1280x720 resolution (HD) with 30fps framerate.
+                Requires MIPI CSI-2 2-lane interface with 24MHz input clock.
+
+        config CAMERA_SC2336_MIPI_RAW10_1280X720_50FPS
+            bool "MIPI 2-lane, 24M input, 1280x720  50fps, RAW10"
+            default n
+            help
+                RAW10 color format at 1280x720 resolution (HD) with 50fps framerate.
+                Requires MIPI CSI-2 2-lane interface with 24MHz input clock.
+
+        config CAMERA_SC2336_MIPI_RAW10_1280X720_60FPS
+            bool "MIPI 2-lane, 24M input, 1280x720  60fps, RAW10"
+            default n
+            help
+                RAW10 color format at 1280x720 resolution (HD) with 60fps framerate.
+                Requires MIPI CSI-2 2-lane interface with 24MHz input clock.
+
+        config CAMERA_SC2336_MIPI_RAW10_1920X1080_25FPS_1_LANE
+            bool "MIPI 1-lane, 24M input, 1920x1080 25fps, RAW10"
+            default n
+            help
+                RAW10 color format at 1920x1080 resolution (FHD) with 25fps framerate.
+                Requires MIPI CSI-2 1-lane interface with 24MHz input clock.
+
+        config CAMERA_SC2336_MIPI_RAW10_1920X1080_25FPS_2_LANE
+            bool "MIPI 2-lane, 24M input, 1920x1080 25fps, RAW10"
+            default n
+            help
+                RAW10 color format at 1920x1080 resolution (FHD) with 25fps framerate.
+                Requires MIPI CSI-2 2-lane interface with 24MHz input clock.
+
+        config CAMERA_SC2336_MIPI_RAW10_1920X1080_30FPS
+            bool "MIPI 2-lane, 24M input, 1920x1080 30fps, RAW10"
+            default n
+            help
+                RAW10 color format at 1920x1080 resolution (FHD) with 30fps framerate.
+                Requires MIPI CSI-2 2-lane interface with 24MHz input clock.
+    endmenu
+
     choice CAMERA_SC2336_MIPI_DEFAULT_FMT
         prompt "Select default output format for MIPI CSI interface"
-        default CAMERA_SC2336_MIPI_RAW8_1280X720_30FPS
+        default CAMERA_SC2336_MIPI_DEFAULT_FMT_RAW8_1280X720_30FPS
         depends on SOC_MIPI_CSI_SUPPORTED
         help
             This option allows you to select the default video format for the SC2336 sensor
@@ -36,93 +123,87 @@ if CAMERA_SC2336
             when the sensor is detected and initialized, and can be changed later when the
             sensor is in stream off state.
 
-        config CAMERA_SC2336_MIPI_RAW10_1280X720_30FPS
-            bool "RAW10 1280x720 30fps, MIPI 2-lane, 24M input"
-            help
-                RAW10 color format at 1280x720 resolution (HD) with 30fps framerate.
-                Requires MIPI CSI-2 2-lane interface with 24MHz input clock.
-        config CAMERA_SC2336_MIPI_RAW10_1280X720_50FPS
-            bool "RAW10 1280x720 50fps, MIPI 2-lane, 24M input"
-            help
-                RAW10 color format at 1280x720 resolution (HD) with 50fps framerate.
-                Requires MIPI CSI-2 2-lane interface with 24MHz input clock.
-        config CAMERA_SC2336_MIPI_RAW10_1280X720_60FPS
-            bool "RAW10 1280x720 60fps, MIPI 2-lane, 24M input"
-            help
-                RAW10 color format at 1280x720 resolution (HD) with 60fps framerate.
-                Requires MIPI CSI-2 2-lane interface with 24MHz input clock.
-        config CAMERA_SC2336_MIPI_RAW10_1920X1080_25FPS_1_LANE
-            bool "RAW10 1920x1080 25fps, MIPI 1-lane, 24M input"
-            help
-                RAW10 color format at 1920x1080 resolution (FHD) with 25fps framerate.
-                Requires MIPI CSI-2 1-lane interface with 24MHz input clock.
-        config CAMERA_SC2336_MIPI_RAW10_1920X1080_25FPS_2_LANE
-            bool "RAW10 1920x1080 25fps, MIPI 2-lane, 24M input"
-            help
-                RAW10 color format at 1920x1080 resolution (FHD) with 25fps framerate.
-                Requires MIPI CSI-2 2-lane interface with 24MHz input clock.
-        config CAMERA_SC2336_MIPI_RAW10_1920X1080_30FPS
-            bool "RAW10 1920x1080 30fps, MIPI 2-lane, 24M input"
-            help
-                RAW10 color format at 1920x1080 resolution (FHD) with 30fps framerate.
-                Requires MIPI CSI-2 2-lane interface with 24MHz input clock.
-        config CAMERA_SC2336_MIPI_RAW10_800X800_30FPS
-            bool "RAW10 800x800 30fps, MIPI 2-lane, 24M input"
-            help
-                RAW10 color format at 800x800 resolution with 30fps framerate.
-                Requires MIPI CSI-2 2-lane interface with 24MHz input clock.
-        config CAMERA_SC2336_MIPI_RAW10_640X480_50FPS
-            bool "RAW10 640x480 50fps, MIPI 2-lane, 24M input"
-            help
-                RAW10 color format at 640x480 resolution (VGA) with 50fps framerate.
-                Requires MIPI CSI-2 2-lane interface with 24MHz input clock.
-        config CAMERA_SC2336_MIPI_RAW8_1920X1080_30FPS
-            bool "RAW8 1920x1080 30fps, MIPI 2-lane, 24M input"
-            help
-                RAW8 color format at 1920x1080 resolution (FHD) with 30fps framerate.
-                Requires MIPI CSI-2 2-lane interface with 24MHz input clock.
-        config CAMERA_SC2336_MIPI_RAW8_1280X720_30FPS
-            bool "RAW8 1280x720 30fps, MIPI 2-lane, 24M input"
-            help
-                RAW8 color format at 1280x720 resolution (HD) with 30fps framerate.
-                Requires MIPI CSI-2 2-lane interface with 24MHz input clock.
-        config CAMERA_SC2336_MIPI_RAW8_800X800_30FPS
-            bool "RAW8 800x800 30fps, MIPI 2-lane, 24M input"
-            help
-                RAW8 color format at 800x800 resolution with 30fps framerate.
-                Requires MIPI CSI-2 2-lane interface with 24MHz input clock.
-        config CAMERA_SC2336_MIPI_RAW8_1024X600_30FPS
-            bool "RAW8 1024x600 30fps, MIPI 2-lane, 24M input"
-            help
-                RAW8 color format at 1024x600 resolution with 30fps framerate.
-                Requires MIPI CSI-2 2-lane interface with 24MHz input clock.
+        config CAMERA_SC2336_MIPI_DEFAULT_FMT_RAW8_800X800_30FPS
+            bool "MIPI 2-lane, 24M input,  800x800  30fps, RAW8"
+            depends on CAMERA_SC2336_MIPI_RAW8_800X800_30FPS
+
+        config CAMERA_SC2336_MIPI_DEFAULT_FMT_RAW8_1024X600_30FPS
+            bool "MIPI 2-lane, 24M input, 1024x600  30fps, RAW8"
+            depends on CAMERA_SC2336_MIPI_RAW8_1024X600_30FPS
+
+        config CAMERA_SC2336_MIPI_DEFAULT_FMT_RAW8_1280X720_30FPS
+            bool "MIPI 2-lane, 24M input, 1280x720  30fps, RAW8"
+            depends on CAMERA_SC2336_MIPI_RAW8_1280X720_30FPS
+
+        config CAMERA_SC2336_MIPI_DEFAULT_FMT_RAW8_1920X1080_30FPS
+            bool "MIPI 2-lane, 24M input, 1920x1080 30fps, RAW8"
+            depends on CAMERA_SC2336_MIPI_RAW8_1920X1080_30FPS
+
+        config CAMERA_SC2336_MIPI_DEFAULT_FMT_RAW10_640X480_50FPS
+            bool "MIPI 2-lane, 24M input,  640x480  50fps, RAW10"
+            depends on CAMERA_SC2336_MIPI_RAW10_640X480_50FPS
+
+        config CAMERA_SC2336_MIPI_DEFAULT_FMT_RAW10_800X800_30FPS
+            bool "MIPI 2-lane, 24M input,  800x800  30fps, RAW10"
+            depends on CAMERA_SC2336_MIPI_RAW10_800X800_30FPS
+
+        config CAMERA_SC2336_MIPI_DEFAULT_FMT_RAW10_1280X720_30FPS
+            bool "MIPI 2-lane, 24M input, 1280x720  30fps, RAW10"
+            depends on CAMERA_SC2336_MIPI_RAW10_1280X720_30FPS
+
+        config CAMERA_SC2336_MIPI_DEFAULT_FMT_RAW10_1280X720_50FPS
+            bool "MIPI 2-lane, 24M input, 1280x720  50fps, RAW10"
+            depends on CAMERA_SC2336_MIPI_RAW10_1280X720_50FPS
+
+        config CAMERA_SC2336_MIPI_DEFAULT_FMT_RAW10_1280X720_60FPS
+            bool "MIPI 2-lane, 24M input, 1280x720  60fps, RAW10"
+            depends on CAMERA_SC2336_MIPI_RAW10_1280X720_60FPS
+
+        config CAMERA_SC2336_MIPI_DEFAULT_FMT_RAW10_1920X1080_25FPS_1_LANE
+            bool "MIPI 1-lane, 24M input, 1920x1080 25fps, RAW10"
+            depends on CAMERA_SC2336_MIPI_RAW10_1920X1080_25FPS_1_LANE
+
+        config CAMERA_SC2336_MIPI_DEFAULT_FMT_RAW10_1920X1080_25FPS_2_LANE
+            bool "MIPI 2-lane, 24M input, 1920x1080 25fps, RAW10"
+            depends on CAMERA_SC2336_MIPI_RAW10_1920X1080_25FPS_2_LANE
+
+        config CAMERA_SC2336_MIPI_DEFAULT_FMT_RAW10_1920X1080_30FPS
+            bool "MIPI 2-lane, 24M input, 1920x1080 30fps, RAW10"
+            depends on CAMERA_SC2336_MIPI_RAW10_1920X1080_30FPS
     endchoice # CAMERA_SC2336_MIPI_DEFAULT_FMT
 
     config CAMERA_SC2336_MIPI_IF_FORMAT_INDEX_DEFAULT
         int
         depends on SOC_MIPI_CSI_SUPPORTED
-        default 0 if CAMERA_SC2336_MIPI_RAW10_1280X720_30FPS
-        default 1 if CAMERA_SC2336_MIPI_RAW10_1280X720_50FPS
-        default 2 if CAMERA_SC2336_MIPI_RAW10_1280X720_60FPS
-        default 3 if CAMERA_SC2336_MIPI_RAW10_1920X1080_25FPS_1_LANE
-
-        default 4 if CAMERA_SC2336_MIPI_RAW10_1920X1080_25FPS_2_LANE
-        default 5 if CAMERA_SC2336_MIPI_RAW10_1920X1080_30FPS
-        default 6 if CAMERA_SC2336_MIPI_RAW10_800X800_30FPS
-        default 7 if CAMERA_SC2336_MIPI_RAW10_640X480_50FPS
-
-        default 8 if CAMERA_SC2336_MIPI_RAW8_1920X1080_30FPS
-        default 9 if CAMERA_SC2336_MIPI_RAW8_1280X720_30FPS
-        default 10 if CAMERA_SC2336_MIPI_RAW8_800X800_30FPS
-        default 11 if CAMERA_SC2336_MIPI_RAW8_1024X600_30FPS
-
+        default 0 if CAMERA_SC2336_MIPI_DEFAULT_FMT_RAW10_1280X720_30FPS
+        default 1 if CAMERA_SC2336_MIPI_DEFAULT_FMT_RAW10_1280X720_50FPS
+        default 2 if CAMERA_SC2336_MIPI_DEFAULT_FMT_RAW10_1280X720_60FPS
+        default 3 if CAMERA_SC2336_MIPI_DEFAULT_FMT_RAW10_1920X1080_25FPS_1_LANE
+        default 4 if CAMERA_SC2336_MIPI_DEFAULT_FMT_RAW10_1920X1080_25FPS_2_LANE
+        default 5 if CAMERA_SC2336_MIPI_DEFAULT_FMT_RAW10_1920X1080_30FPS
+        default 6 if CAMERA_SC2336_MIPI_DEFAULT_FMT_RAW10_800X800_30FPS
+        default 7 if CAMERA_SC2336_MIPI_DEFAULT_FMT_RAW10_640X480_50FPS
+        default 8 if CAMERA_SC2336_MIPI_DEFAULT_FMT_RAW8_1920X1080_30FPS
+        default 9 if CAMERA_SC2336_MIPI_DEFAULT_FMT_RAW8_1280X720_30FPS
+        default 10 if CAMERA_SC2336_MIPI_DEFAULT_FMT_RAW8_800X800_30FPS
+        default 11 if CAMERA_SC2336_MIPI_DEFAULT_FMT_RAW8_1024X600_30FPS
         help
             Sets the default configuration for the MIPI CSI interface.
             Use query_support_formats() API to get more format options.
 
+    menu "Choose supported formats for DVP interface"
+        depends on SOC_LCDCAM_CAM_SUPPORTED
+        config CAMERA_SC2336_DVP_RAW10_1280X720_30FPS
+            bool "DVP 8-bit, 24M input, 1280x720 30fps, RAW10"
+            default y
+            help
+                RAW10 color format at HD resolution (1280x720) with 30fps framerate.
+                Requires 8-bit DVP interface and 24MHz input clock.
+    endmenu
+
     choice CAMERA_SC2336_DVP_DEFAULT_FMT
         prompt "Select default output format for DVP interface"
-        default CAMERA_SC2336_DVP_RAW10_1280X720_30FPS
+        default CAMERA_SC2336_DVP_DEFAULT_FMT_RAW10_1280X720_30FPS
         depends on SOC_LCDCAM_CAM_SUPPORTED
         help
             This option allows you to select the default video format for the SC2336 sensor
@@ -130,17 +211,15 @@ if CAMERA_SC2336
             when the sensor is detected and initialized, and can be changed later when the
             sensor is in stream off state.
 
-        config CAMERA_SC2336_DVP_RAW10_1280X720_30FPS
-            bool "RAW10 1280x720 30fps, DVP 8 bits, 24M input"
-            help
-                RAW10 color format at HD resolution (1280x720) with 30fps framerate.
-                Requires 8-bit DVP interface and 24MHz input clock.
+        config CAMERA_SC2336_DVP_DEFAULT_FMT_RAW10_1280X720_30FPS
+            bool "DVP 8-bit, 24M input, 1280x720 30fps, RAW10"
+            depends on CAMERA_SC2336_DVP_RAW10_1280X720_30FPS
     endchoice # CAMERA_SC2336_DVP_DEFAULT_FMT
 
     config CAMERA_SC2336_DVP_IF_FORMAT_INDEX_DEFAULT
         int
         depends on SOC_LCDCAM_CAM_SUPPORTED
-        default 0 if CAMERA_SC2336_DVP_RAW10_1280X720_30FPS
+        default 0 if CAMERA_SC2336_DVP_DEFAULT_FMT_RAW10_1280X720_30FPS
         help
             Sets the configuration loaded by default for the DVP interface.
             Use query_support_formats() API to get more format options.

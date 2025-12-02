@@ -79,7 +79,32 @@ static const esp_cam_sensor_isp_info_t ov5647_isp_info[] = {
     },
 };
 
+#ifndef CONFIG_CAMERA_OV5647_MIPI_IF_FORMAT_INDEX_DEFAULT
+#error "Please choose at least one format in menuconfig for OV5647"
+#endif
+
+static const uint8_t ov5647_format_default_index = CONFIG_CAMERA_OV5647_MIPI_IF_FORMAT_INDEX_DEFAULT;
+
+static const uint8_t ov5647_format_index[] = {
+#if CONFIG_CAMERA_OV5647_MIPI_RAW8_800X1280_50FPS
+    0,
+#endif
+#if CONFIG_CAMERA_OV5647_MIPI_RAW8_800X640_50FPS
+    1,
+#endif
+#if CONFIG_CAMERA_OV5647_MIPI_RAW8_800X800_50FPS
+    2,
+#endif
+#if CONFIG_CAMERA_OV5647_MIPI_RAW10_1920X1080_30FPS
+    3,
+#endif
+#if CONFIG_CAMERA_OV5647_MIPI_RAW10_1280X960_BINNING_45FPS
+    4,
+#endif
+};
+
 static const esp_cam_sensor_format_t ov5647_format_info[] = {
+#if CONFIG_CAMERA_OV5647_MIPI_RAW8_800X1280_50FPS
     {
         .name = "MIPI_2lane_24Minput_RAW8_800x1280_50fps",
         .format = ESP_CAM_SENSOR_PIXFORMAT_RAW8,
@@ -98,6 +123,8 @@ static const esp_cam_sensor_format_t ov5647_format_info[] = {
         },
         .reserved = NULL,
     },
+#endif
+#if CONFIG_CAMERA_OV5647_MIPI_RAW8_800X640_50FPS
     {
         .name = "MIPI_2lane_24Minput_RAW8_800x640_50fps",
         .format = ESP_CAM_SENSOR_PIXFORMAT_RAW8,
@@ -116,6 +143,8 @@ static const esp_cam_sensor_format_t ov5647_format_info[] = {
         },
         .reserved = NULL,
     },
+#endif
+#if CONFIG_CAMERA_OV5647_MIPI_RAW8_800X800_50FPS
     {
         .name = "MIPI_2lane_24Minput_RAW8_800x800_50fps",
         .format = ESP_CAM_SENSOR_PIXFORMAT_RAW8,
@@ -134,6 +163,8 @@ static const esp_cam_sensor_format_t ov5647_format_info[] = {
         },
         .reserved = NULL,
     },
+#endif
+#if CONFIG_CAMERA_OV5647_MIPI_RAW10_1920X1080_30FPS
     {
         .name = "MIPI_2lane_24Minput_RAW10_1920x1080_30fps",
         .format = ESP_CAM_SENSOR_PIXFORMAT_RAW10,
@@ -152,6 +183,8 @@ static const esp_cam_sensor_format_t ov5647_format_info[] = {
         },
         .reserved = NULL,
     },
+#endif
+#if CONFIG_CAMERA_OV5647_MIPI_RAW10_1280X960_BINNING_45FPS
     {
         .name = "MIPI_2lane_24Minput_RAW10_1280x960_binning_45fps",
         .format = ESP_CAM_SENSOR_PIXFORMAT_RAW10,
@@ -170,7 +203,18 @@ static const esp_cam_sensor_format_t ov5647_format_info[] = {
         },
         .reserved = NULL,
     },
+#endif
 };
+
+static uint8_t get_ov5647_actual_format_index(void)
+{
+    for (int i = 0; i < ARRAY_SIZE(ov5647_format_index); i++) {
+        if (ov5647_format_index[i] == ov5647_format_default_index) {
+            return i;
+        }
+    }
+    return 0;
+}
 
 static esp_err_t ov5647_read(esp_sccb_io_handle_t sccb_handle, uint16_t reg, uint8_t *read_buf)
 {
@@ -556,7 +600,7 @@ static esp_err_t ov5647_set_format(esp_cam_sensor_device_t *dev, const esp_cam_s
     You can set the output format of the sensor without using query_format().*/
     if (format == NULL) {
         if (dev->sensor_port == ESP_CAM_SENSOR_MIPI_CSI) {
-            format = &ov5647_format_info[CONFIG_CAMERA_OV5647_MIPI_IF_FORMAT_INDEX_DEFAULT];
+            format = &ov5647_format_info[get_ov5647_actual_format_index()];
         } else {
             ESP_LOGE(TAG, "Not support DVP port");
         }
@@ -748,7 +792,7 @@ esp_cam_sensor_device_t *ov5647_detect(esp_cam_sensor_config_t *config)
     dev->sensor_port = config->sensor_port;
     dev->ops = &ov5647_ops;
     if (config->sensor_port == ESP_CAM_SENSOR_MIPI_CSI) {
-        dev->cur_format = &ov5647_format_info[CONFIG_CAMERA_OV5647_MIPI_IF_FORMAT_INDEX_DEFAULT];
+        dev->cur_format = &ov5647_format_info[get_ov5647_actual_format_index()];
     } else {
         ESP_LOGE(TAG, "Not support DVP port");
     }

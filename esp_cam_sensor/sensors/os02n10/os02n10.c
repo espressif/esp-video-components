@@ -217,8 +217,33 @@ static const esp_cam_sensor_isp_info_t os02n10_isp_info_mipi[] = {
     }
 };
 
+#ifndef CONFIG_CAMERA_OS02N10_MIPI_IF_FORMAT_INDEX_DEFAULT
+#error "Please choose at least one format in menuconfig for OS02N10"
+#endif
+
+static const uint8_t os02n10_format_default_index = CONFIG_CAMERA_OS02N10_MIPI_IF_FORMAT_INDEX_DEFAULT;
+
+static const uint8_t os02n10_format_index[] = {
+#if CONFIG_CAMERA_OS02N10_MIPI_RAW10_1920X1080_25FPS
+    0,
+#endif
+#if CONFIG_CAMERA_OS02N10_MIPI_RAW10_1280X720_50FPS
+    1,
+#endif
+#if CONFIG_CAMERA_OS02N10_MIPI_RAW8_1920X1080_25FPS
+    2,
+#endif
+#if CONFIG_CAMERA_OS02N10_MIPI_RAW8_1280X720_50FPS
+    3,
+#endif
+#if CONFIG_CAMERA_OS02N10_MIPI_RAW8_960x540_25FPS
+    4,
+#endif
+};
+
 static const esp_cam_sensor_format_t os02n10_format_info_mipi[] = {
     /* For MIPI */
+#if CONFIG_CAMERA_OS02N10_MIPI_RAW10_1920X1080_25FPS
     {
         .name = "MIPI_2lane_24Minput_RAW10_1920x1080_25fps",
         .format = ESP_CAM_SENSOR_PIXFORMAT_RAW10,
@@ -236,6 +261,8 @@ static const esp_cam_sensor_format_t os02n10_format_info_mipi[] = {
             .line_sync_en = false,
         },
     },
+#endif
+#if CONFIG_CAMERA_OS02N10_MIPI_RAW10_1280X720_50FPS
     {
         .name = "MIPI_2lane_24Minput_RAW10_1280x720_50fps",
         .format = ESP_CAM_SENSOR_PIXFORMAT_RAW10,
@@ -253,6 +280,8 @@ static const esp_cam_sensor_format_t os02n10_format_info_mipi[] = {
             .line_sync_en = false,
         },
     },
+#endif
+#if CONFIG_CAMERA_OS02N10_MIPI_RAW8_1920X1080_25FPS
     {
         .name = "MIPI_2lane_24Minput_RAW8_1920x1080_25fps",
         .format = ESP_CAM_SENSOR_PIXFORMAT_RAW8,
@@ -270,6 +299,8 @@ static const esp_cam_sensor_format_t os02n10_format_info_mipi[] = {
             .line_sync_en = false,
         },
     },
+#endif
+#if CONFIG_CAMERA_OS02N10_MIPI_RAW8_1280X720_50FPS
     {
         .name = "MIPI_2lane_24Minput_RAW8_1280x720_50fps",
         .format = ESP_CAM_SENSOR_PIXFORMAT_RAW8,
@@ -287,6 +318,8 @@ static const esp_cam_sensor_format_t os02n10_format_info_mipi[] = {
             .line_sync_en = false,
         },
     },
+#endif
+#if CONFIG_CAMERA_OS02N10_MIPI_RAW8_960x540_25FPS
     {
         .name = "MIPI_2lane_24Minput_RAW8_960x540_25fps",
         .format = ESP_CAM_SENSOR_PIXFORMAT_RAW8,
@@ -303,8 +336,20 @@ static const esp_cam_sensor_format_t os02n10_format_info_mipi[] = {
             .lane_num = 2,
             .line_sync_en = false,
         },
-    }
+    },
+#endif
 };
+
+static uint8_t get_os02n10_actual_format_index(void)
+{
+    for (int i = 0; i < ARRAY_SIZE(os02n10_format_index); i++) {
+        if (os02n10_format_index[i] == os02n10_format_default_index) {
+            return i;
+        }
+    }
+
+    return 0;
+}
 #endif
 
 static esp_err_t os02n10_set_bank(esp_sccb_io_handle_t sccb_handle, os02n10_bank_t bank)
@@ -676,7 +721,7 @@ static esp_err_t os02n10_set_format(esp_cam_sensor_device_t *dev, const esp_cam_
     if (format == NULL) {
 #if CONFIG_SOC_MIPI_CSI_SUPPORTED
         if (dev->sensor_port == ESP_CAM_SENSOR_MIPI_CSI) {
-            format = &os02n10_format_info_mipi[CONFIG_CAMERA_OS02N10_MIPI_IF_FORMAT_INDEX_DEFAULT];
+            format = &os02n10_format_info_mipi[get_os02n10_actual_format_index()];
         }
 #endif
     }
@@ -894,7 +939,7 @@ esp_cam_sensor_device_t *os02n10_detect(esp_cam_sensor_config_t *config)
     }
 #if CONFIG_SOC_MIPI_CSI_SUPPORTED
     if (config->sensor_port == ESP_CAM_SENSOR_MIPI_CSI) {
-        dev->cur_format = &os02n10_format_info_mipi[CONFIG_CAMERA_OS02N10_MIPI_IF_FORMAT_INDEX_DEFAULT];
+        dev->cur_format = &os02n10_format_info_mipi[get_os02n10_actual_format_index()];
     }
 #endif
     // Configure sensor power, clock, and SCCB port

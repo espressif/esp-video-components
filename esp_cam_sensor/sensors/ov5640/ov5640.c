@@ -30,7 +30,20 @@
 static const char *TAG = "ov5640";
 
 #if CONFIG_SOC_MIPI_CSI_SUPPORTED
+#ifndef CONFIG_CAMERA_OV5640_MIPI_IF_FORMAT_INDEX_DEFAULT
+#error "Please choose at least one format in menuconfig for OV5640 MIPI interface"
+#endif
+
+static const uint8_t ov5640_mipi_format_default_index = CONFIG_CAMERA_OV5640_MIPI_IF_FORMAT_INDEX_DEFAULT;
+
+static const uint8_t ov5640_mipi_format_index[] = {
+#if CONFIG_CAMERA_OV5640_MIPI_RGB565_1280X720_14FPS
+    0,
+#endif
+};
+
 static const esp_cam_sensor_format_t ov5640_format_info_mipi[] = {
+#if CONFIG_CAMERA_OV5640_MIPI_RGB565_1280X720_14FPS
     {
         .name = "MIPI_2lane_24Minput_RGB565_1280x720_14fps",
         .format = ESP_CAM_SENSOR_PIXFORMAT_RGB565,
@@ -48,13 +61,40 @@ static const esp_cam_sensor_format_t ov5640_format_info_mipi[] = {
             .line_sync_en = CONFIG_CAMERA_OV5640_CSI_LINESYNC_ENABLE ? true : false,
         },
         .reserved = NULL,
-    }
+    },
+#endif
 };
+
+static uint8_t get_ov5640_mipi_actual_format_index(void)
+{
+    for (int i = 0; i < ARRAY_SIZE(ov5640_mipi_format_index); i++) {
+        if (ov5640_mipi_format_index[i] == ov5640_mipi_format_default_index) {
+            return i;
+        }
+    }
+    return 0;
+}
 #endif
 
 #if CONFIG_SOC_LCDCAM_CAM_SUPPORTED
+#ifndef CONFIG_CAMERA_OV5640_DVP_IF_FORMAT_INDEX_DEFAULT
+#error "Please choose at least one format in menuconfig for OV5640 DVP interface"
+#endif
+
+static const uint8_t ov5640_dvp_format_default_index = CONFIG_CAMERA_OV5640_DVP_IF_FORMAT_INDEX_DEFAULT;
+
+static const uint8_t ov5640_dvp_format_index[] = {
+#if CONFIG_CAMERA_OV5640_DVP_YUV422_800X600_10FPS
+    0,
+#endif
+#if CONFIG_CAMERA_OV5640_DVP_RGB565_800X600_10FPS
+    1,
+#endif
+};
+
 static const esp_cam_sensor_format_t ov5640_format_info_dvp[] = {
     /* For DVP */
+#if CONFIG_CAMERA_OV5640_DVP_YUV422_800X600_10FPS
     {
         .name = "DVP_8bit_24Minput_YUV422_800x600_10fps",
         .format = ESP_CAM_SENSOR_PIXFORMAT_YUV422,
@@ -69,6 +109,8 @@ static const esp_cam_sensor_format_t ov5640_format_info_dvp[] = {
         .mipi_info = {0},
         .reserved = NULL,
     },
+#endif
+#if CONFIG_CAMERA_OV5640_DVP_RGB565_800X600_10FPS
     {
         .name = "DVP_8bit_24Minput_RGB565_800x600_10fps",
         .format = ESP_CAM_SENSOR_PIXFORMAT_RGB565,
@@ -82,8 +124,19 @@ static const esp_cam_sensor_format_t ov5640_format_info_dvp[] = {
         .isp_info = NULL,
         .mipi_info = {0},
         .reserved = NULL,
-    }
+    },
+#endif
 };
+
+static uint8_t get_ov5640_dvp_actual_format_index(void)
+{
+    for (int i = 0; i < ARRAY_SIZE(ov5640_dvp_format_index); i++) {
+        if (ov5640_dvp_format_index[i] == ov5640_dvp_format_default_index) {
+            return i;
+        }
+    }
+    return 0;
+}
 #endif
 
 static esp_err_t ov5640_read(esp_sccb_io_handle_t sccb_handle, uint16_t reg, uint8_t *read_buf)
@@ -326,13 +379,13 @@ static esp_err_t ov5640_set_format(esp_cam_sensor_device_t *dev, const esp_cam_s
 #if CONFIG_SOC_MIPI_CSI_SUPPORTED
         if (dev->sensor_port == ESP_CAM_SENSOR_MIPI_CSI) {
             reset_regs_list = (ov5640_reginfo_t *)ov5640_mipi_reset_regs;
-            format = &ov5640_format_info_mipi[CONFIG_CAMERA_OV5640_MIPI_IF_FORMAT_INDEX_DEFAULT];
+            format = &ov5640_format_info_mipi[get_ov5640_mipi_actual_format_index()];
         }
 #endif
 #if CONFIG_SOC_LCDCAM_CAM_SUPPORTED
         if (dev->sensor_port == ESP_CAM_SENSOR_DVP) {
             reset_regs_list = (ov5640_reginfo_t *)ov5640_dvp_reset_regs;
-            format = &ov5640_format_info_dvp[CONFIG_CAMERA_OV5640_DVP_IF_FORMAT_INDEX_DEFAULT];
+            format = &ov5640_format_info_dvp[get_ov5640_dvp_actual_format_index()];
         }
 #endif
     }
@@ -513,13 +566,13 @@ esp_cam_sensor_device_t *ov5640_detect(esp_cam_sensor_config_t *config)
 
 #if CONFIG_SOC_MIPI_CSI_SUPPORTED
     if (config->sensor_port == ESP_CAM_SENSOR_MIPI_CSI) {
-        dev->cur_format = &ov5640_format_info_mipi[CONFIG_CAMERA_OV5640_MIPI_IF_FORMAT_INDEX_DEFAULT];
+        dev->cur_format = &ov5640_format_info_mipi[get_ov5640_mipi_actual_format_index()];
     }
 #endif
 
 #if CONFIG_SOC_LCDCAM_CAM_SUPPORTED
     if (config->sensor_port == ESP_CAM_SENSOR_DVP) {
-        dev->cur_format = &ov5640_format_info_dvp[CONFIG_CAMERA_OV5640_DVP_IF_FORMAT_INDEX_DEFAULT];
+        dev->cur_format = &ov5640_format_info_dvp[get_ov5640_dvp_actual_format_index()];
     }
 #endif
 

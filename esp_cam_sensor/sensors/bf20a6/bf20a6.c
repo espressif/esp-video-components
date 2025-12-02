@@ -29,7 +29,20 @@
 
 static const char *TAG = "bf20a6";
 
+#ifndef CONFIG_CAMERA_BF20A6_DVP_IF_FORMAT_INDEX_DEFAULT
+#error "Please choose at least one format in menuconfig for BF20A6"
+#endif
+
+static const uint8_t bf20a6_format_default_index = CONFIG_CAMERA_BF20A6_DVP_IF_FORMAT_INDEX_DEFAULT;
+
+static const uint8_t bf20a6_format_index[] = {
+#if CONFIG_CAMERA_BF20A6_DVP_GRAY_640X480_15FPS
+    0,
+#endif
+};
+
 static const esp_cam_sensor_format_t bf20a6_format_info[] = {
+#if CONFIG_CAMERA_BF20A6_DVP_GRAY_640X480_15FPS
     {
         .name = "DVP_8bit_20Minput_Gray_640x480_15fps",
         .format = ESP_CAM_SENSOR_PIXFORMAT_GRAYSCALE,
@@ -44,7 +57,18 @@ static const esp_cam_sensor_format_t bf20a6_format_info[] = {
         .mipi_info = {},
         .reserved = NULL,
     },
+#endif
 };
+
+static uint8_t get_bf20a6_actual_format_index(void)
+{
+    for (int i = 0; i < ARRAY_SIZE(bf20a6_format_index); i++) {
+        if (bf20a6_format_index[i] == bf20a6_format_default_index) {
+            return i;
+        }
+    }
+    return 0;
+}
 
 static esp_err_t bf20a6_read(esp_sccb_io_handle_t sccb_handle, uint8_t reg, uint8_t *read_buf)
 {
@@ -235,7 +259,7 @@ static esp_err_t bf20a6_set_format(esp_cam_sensor_device_t *dev, const esp_cam_s
     /* Depending on the interface type, an available configuration is automatically loaded.
     You can set the output format of the sensor without using query_format().*/
     if (format == NULL) {
-        format = &bf20a6_format_info[CONFIG_CAMERA_BF20A6_DVP_IF_FORMAT_INDEX_DAFAULT];
+        format = &bf20a6_format_info[get_bf20a6_actual_format_index()];
     }
 
     /* Todo, I2C NACK error causes the I2C driver to fail. After fixing the error, re-enable the reset.*/
@@ -414,7 +438,7 @@ esp_cam_sensor_device_t *bf20a6_detect(esp_cam_sensor_config_t *config)
     dev->pwdn_pin = config->pwdn_pin;
     dev->sensor_port = config->sensor_port;
     dev->ops = &bf20a6_ops;
-    dev->cur_format = &bf20a6_format_info[CONFIG_CAMERA_BF20A6_DVP_IF_FORMAT_INDEX_DAFAULT];
+    dev->cur_format = &bf20a6_format_info[get_bf20a6_actual_format_index()];
 
     // Configure sensor power, clock, and SCCB port
     if (bf20a6_power_on(dev) != ESP_OK) {

@@ -39,6 +39,11 @@ struct ov2640_cam {
 static volatile ov2640_bank_t s_reg_bank = BANK_MAX; // ov2640 current bank
 static const char *TAG = "ov2640";
 
+#ifndef CONFIG_CAMERA_OV2640_DVP_IF_FORMAT_INDEX_DEFAULT
+#error "Please choose at least one format in menuconfig for OV2640"
+#endif
+
+#if CONFIG_CAMERA_OV2640_DVP_RAW8_800X640_30FPS || CONFIG_CAMERA_OV2640_DVP_RAW8_800X640_15FPS || CONFIG_CAMERA_OV2640_DVP_RAW8_800X800_15FPS || CONFIG_CAMERA_OV2640_DVP_RAW8_1024X600_15FPS
 static const esp_cam_sensor_isp_info_t ov2640_isp_info[] = {
     {
         .isp_v1_info = {
@@ -50,8 +55,51 @@ static const esp_cam_sensor_isp_info_t ov2640_isp_info[] = {
         }
     },
 };
+#endif
+
+static const uint8_t ov2640_format_default_index = CONFIG_CAMERA_OV2640_DVP_IF_FORMAT_INDEX_DEFAULT;
+
+static const uint8_t ov2640_format_index[] = {
+#if CONFIG_CAMERA_OV2640_DVP_RGB565_640X480_6FPS
+    0,
+#endif
+#if CONFIG_CAMERA_OV2640_DVP_YUV422_640X480_6FPS
+    1,
+#endif
+#if CONFIG_CAMERA_OV2640_DVP_JPEG_640X480_25FPS
+    2,
+#endif
+#if CONFIG_CAMERA_OV2640_DVP_RGB565_240X240_25FPS
+    3,
+#endif
+#if CONFIG_CAMERA_OV2640_DVP_YUV422_240X240_25FPS
+    4,
+#endif
+#if CONFIG_CAMERA_OV2640_DVP_JPEG_320X240_50FPS
+    5,
+#endif
+#if CONFIG_CAMERA_OV2640_DVP_JPEG_1280X720_12FPS
+    6,
+#endif
+#if CONFIG_CAMERA_OV2640_DVP_JPEG_1600X1200_12FPS
+    7,
+#endif
+#if CONFIG_CAMERA_OV2640_DVP_RAW8_800X640_30FPS
+    8,
+#endif
+#if CONFIG_CAMERA_OV2640_DVP_RAW8_800X640_15FPS
+    9,
+#endif
+#if CONFIG_CAMERA_OV2640_DVP_RAW8_800X800_15FPS
+    10,
+#endif
+#if CONFIG_CAMERA_OV2640_DVP_RAW8_1024X600_15FPS
+    11,
+#endif
+};
 
 static const esp_cam_sensor_format_t ov2640_format_info[] = {
+#if CONFIG_CAMERA_OV2640_DVP_RGB565_640X480_6FPS
     {
         .name = "DVP_8bit_20Minput_RGB565_640x480_6fps",
         .format = ESP_CAM_SENSOR_PIXFORMAT_RGB565,
@@ -66,6 +114,8 @@ static const esp_cam_sensor_format_t ov2640_format_info[] = {
         .mipi_info = {},
         .reserved = NULL,
     },
+#endif
+#if CONFIG_CAMERA_OV2640_DVP_YUV422_640X480_6FPS
     {
         .name = "DVP_8bit_20Minput_YUV422_640x480_6fps",
         .format = ESP_CAM_SENSOR_PIXFORMAT_YUV422,
@@ -80,6 +130,8 @@ static const esp_cam_sensor_format_t ov2640_format_info[] = {
         .mipi_info = {},
         .reserved = NULL,
     },
+#endif
+#if CONFIG_CAMERA_OV2640_DVP_JPEG_640X480_25FPS
     {
         .name = "DVP_8bit_20Minput_JPEG_640x480_25fps",
         .format = ESP_CAM_SENSOR_PIXFORMAT_JPEG,
@@ -94,6 +146,8 @@ static const esp_cam_sensor_format_t ov2640_format_info[] = {
         .mipi_info = {},
         .reserved = NULL,
     },
+#endif
+#if CONFIG_CAMERA_OV2640_DVP_RGB565_240X240_25FPS
     {
         .name = "DVP_8bit_20Minput_RGB565_240x240_25fps",
         .format = ESP_CAM_SENSOR_PIXFORMAT_RGB565,
@@ -108,6 +162,8 @@ static const esp_cam_sensor_format_t ov2640_format_info[] = {
         .mipi_info = {},
         .reserved = NULL,
     },
+#endif
+#if CONFIG_CAMERA_OV2640_DVP_YUV422_240X240_25FPS
     {
         .name = "DVP_8bit_20Minput_YUV422_240x240_25fps",
         .format = ESP_CAM_SENSOR_PIXFORMAT_YUV422,
@@ -122,6 +178,8 @@ static const esp_cam_sensor_format_t ov2640_format_info[] = {
         .mipi_info = {},
         .reserved = NULL,
     },
+#endif
+#if CONFIG_CAMERA_OV2640_DVP_JPEG_320X240_50FPS
     {
         .name = "DVP_8bit_20Minput_JPEG_320x240_50fps",
         .format = ESP_CAM_SENSOR_PIXFORMAT_JPEG,
@@ -136,6 +194,8 @@ static const esp_cam_sensor_format_t ov2640_format_info[] = {
         .mipi_info = {},
         .reserved = NULL,
     },
+#endif
+#if CONFIG_CAMERA_OV2640_DVP_JPEG_1280X720_12FPS
     {
         .name = "DVP_8bit_20Minput_JPEG_1280x720_12fps",
         .format = ESP_CAM_SENSOR_PIXFORMAT_JPEG,
@@ -150,6 +210,8 @@ static const esp_cam_sensor_format_t ov2640_format_info[] = {
         .mipi_info = {},
         .reserved = NULL,
     },
+#endif
+#if CONFIG_CAMERA_OV2640_DVP_JPEG_1600X1200_12FPS
     {
         .name = "DVP_8bit_20Minput_JPEG_1600x1200_12fps",
         .format = ESP_CAM_SENSOR_PIXFORMAT_JPEG,
@@ -164,6 +226,8 @@ static const esp_cam_sensor_format_t ov2640_format_info[] = {
         .mipi_info = {},
         .reserved = NULL,
     },
+#endif
+#if CONFIG_CAMERA_OV2640_DVP_RAW8_800X640_30FPS
     {
         // Wrong format (deprecated)
         .name = "DVP_8bit_20Minput_RAW8_800x640_30fps",
@@ -179,6 +243,8 @@ static const esp_cam_sensor_format_t ov2640_format_info[] = {
         .mipi_info = {},
         .reserved = NULL,
     },
+#endif
+#if CONFIG_CAMERA_OV2640_DVP_RAW8_800X640_15FPS
     {
         .name = "DVP_8bit_20Minput_RAW8_800x640_15fps",
         .format = ESP_CAM_SENSOR_PIXFORMAT_RAW8,
@@ -193,6 +259,8 @@ static const esp_cam_sensor_format_t ov2640_format_info[] = {
         .mipi_info = {},
         .reserved = NULL,
     },
+#endif
+#if CONFIG_CAMERA_OV2640_DVP_RAW8_800X800_15FPS
     {
         .name = "DVP_8bit_20Minput_RAW8_800x800_15fps",
         .format = ESP_CAM_SENSOR_PIXFORMAT_RAW8,
@@ -207,6 +275,8 @@ static const esp_cam_sensor_format_t ov2640_format_info[] = {
         .mipi_info = {},
         .reserved = NULL,
     },
+#endif
+#if CONFIG_CAMERA_OV2640_DVP_RAW8_1024X600_15FPS
     {
         .name = "DVP_8bit_20Minput_RAW8_1024x600_15fps",
         .format = ESP_CAM_SENSOR_PIXFORMAT_RAW8,
@@ -221,7 +291,19 @@ static const esp_cam_sensor_format_t ov2640_format_info[] = {
         .mipi_info = {},
         .reserved = NULL,
     },
+#endif
 };
+
+static uint8_t get_ov2640_actual_format_index(void)
+{
+    for (int i = 0; i < ARRAY_SIZE(ov2640_format_index); i++) {
+        if (ov2640_format_index[i] == ov2640_format_default_index) {
+            return i;
+        }
+    }
+
+    return 0;
+}
 
 static esp_err_t ov2640_set_bank(esp_sccb_io_handle_t sccb_handle, ov2640_bank_t bank)
 {
@@ -700,7 +782,7 @@ static esp_err_t ov2640_set_format(esp_cam_sensor_device_t *dev, const esp_cam_s
     You can set the output format of the sensor without using query_format().*/
     if (format == NULL) {
         if (dev->sensor_port == ESP_CAM_SENSOR_DVP) {
-            format = &ov2640_format_info[CONFIG_CAMERA_OV2640_DVP_IF_FORMAT_INDEX_DEFAULT];
+            format = &ov2640_format_info[get_ov2640_actual_format_index()];
         } else {
             return ret;
         }
@@ -899,7 +981,7 @@ esp_cam_sensor_device_t *ov2640_detect(esp_cam_sensor_config_t *config)
     dev->pwdn_pin = config->pwdn_pin;
     dev->priv = cam_ov2640;
     if (config->sensor_port == ESP_CAM_SENSOR_DVP) {
-        dev->cur_format = &ov2640_format_info[CONFIG_CAMERA_OV2640_DVP_IF_FORMAT_INDEX_DEFAULT];
+        dev->cur_format = &ov2640_format_info[get_ov2640_actual_format_index()];
     } else {
         ESP_LOGE(TAG, "Not support MIPI port");
     }

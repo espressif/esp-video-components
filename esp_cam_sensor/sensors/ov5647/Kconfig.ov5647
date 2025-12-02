@@ -16,49 +16,80 @@ if CAMERA_OV5647
                 manual detection call(ov5647_detect) in your application.
     endmenu
 
+    menu "Choose supported formats for MIPI CSI interface"
+        config CAMERA_OV5647_MIPI_RAW8_800X640_50FPS
+            bool "MIPI 2-lane, 24M input,  800x640  50fps, RAW8"
+            default n
+            help
+                RAW8 color format at 800x640 resolution (WVGA) with 50fps framerate.
+                Requires MIPI CSI-2 2-lane interface with 24MHz input clock.
+
+        config CAMERA_OV5647_MIPI_RAW8_800X800_50FPS
+            bool "MIPI 2-lane, 24M input,  800x800  50fps, RAW8"
+            default y
+            help
+                RAW8 color format at 800x800 resolution with 50fps framerate.
+                Requires MIPI CSI-2 2-lane interface with 24MHz input clock.
+
+        config CAMERA_OV5647_MIPI_RAW8_800X1280_50FPS
+            bool "MIPI 2-lane, 24M input,  800x1280 50fps, RAW8"
+            default n
+            help
+                RAW8 color format at 800x1280 resolution with 50fps framerate.
+                Requires MIPI CSI-2 2-lane interface with 24MHz input clock.
+
+        config CAMERA_OV5647_MIPI_RAW10_1920X1080_30FPS
+            bool "MIPI 2-lane, 24M input, 1920x1080 30fps, RAW10"
+            default n
+            help
+                RAW10 color format at 1920x1080 resolution (FHD) with 30fps framerate.
+                Requires MIPI CSI-2 2-lane interface with 24MHz input clock.
+
+        config CAMERA_OV5647_MIPI_RAW10_1280X960_BINNING_45FPS
+            bool "MIPI 2-lane, 24M input, 1280x960 Binning 45fps, RAW10"
+            default n
+            help
+                RAW10 color format at 1280x960 resolution (SXGA) with 45fps framerate.
+                Requires MIPI CSI-2 2-lane interface with 24MHz input clock.
+    endmenu
+
     choice CAMERA_OV5647_MIPI_DEFAULT_FMT
         prompt "Select default output format for MIPI CSI interface"
-        default CAMERA_OV5647_MIPI_RAW8_800X800_50FPS
+        default CAMERA_OV5647_MIPI_DEFAULT_FMT_RAW8_800X800_50FPS
         help
             This option allows you to select the default video format for the OV5647 sensor
             when it is initialized on the MIPI CSI interface. The selected format will be used
             when the sensor is detected and initialized, and can be changed later when the
             sensor is in stream off state.
 
-        config CAMERA_OV5647_MIPI_RAW8_800X1280_50FPS
-            bool "RAW8 800x1280 50fps, MIPI 2-lane, 24M input"
-            help
-                RAW8 color format at 800x1280 resolution with 50fps framerate.
-                Requires MIPI CSI-2 2-lane interface with 24MHz input clock.
-        config CAMERA_OV5647_MIPI_RAW8_800X640_50FPS
-            bool "RAW8 800x640 50fps, MIPI 2-lane, 24M input"
-            help
-                RAW8 color format at 800x640 resolution (WVGA) with 50fps framerate.
-                Requires MIPI CSI-2 2-lane interface with 24MHz input clock.
-        config CAMERA_OV5647_MIPI_RAW8_800X800_50FPS
-            bool "RAW8 800x800 50fps, MIPI 2-lane, 24M input"
-            help
-                RAW8 color format at 800x800 resolution with 50fps framerate.
-                Requires MIPI CSI-2 2-lane interface with 24MHz input clock.
-        config CAMERA_OV5647_MIPI_RAW10_1920X1080_30FPS
-            bool "RAW10 1920x1080 30fps, MIPI 2-lane, 24M input"
-            help
-                RAW10 color format at 1920x1080 resolution (FHD) with 30fps framerate.
-                Requires MIPI CSI-2 2-lane interface with 24MHz input clock.
-        config CAMERA_OV5647_MIPI_RAW10_1280X960_BINNING_45FPS
-            bool "RAW10 1280x960 Binning 45fps, MIPI 2-lane, 24M input"
-            help
-                RAW10 color format at 1280x960 resolution (SXGA) with 45fps framerate.
-                Requires MIPI CSI-2 2-lane interface with 24MHz input clock.
+        config CAMERA_OV5647_MIPI_DEFAULT_FMT_RAW8_800X640_50FPS
+            bool "MIPI 2-lane, 24M input,  800x640  50fps, RAW8"
+            depends on CAMERA_OV5647_MIPI_RAW8_800X640_50FPS
+
+        config CAMERA_OV5647_MIPI_DEFAULT_FMT_RAW8_800X800_50FPS
+            bool "MIPI 2-lane, 24M input,  800x800  50fps, RAW8"
+            depends on CAMERA_OV5647_MIPI_RAW8_800X800_50FPS
+
+        config CAMERA_OV5647_MIPI_DEFAULT_FMT_RAW8_800X1280_50FPS
+            bool "MIPI 2-lane, 24M input,  800x1280 50fps, RAW8"
+            depends on CAMERA_OV5647_MIPI_RAW8_800X1280_50FPS
+
+        config CAMERA_OV5647_MIPI_DEFAULT_FMT_RAW10_1920X1080_30FPS
+            bool "MIPI 2-lane, 24M input, 1920x1080 30fps, RAW10"
+            depends on CAMERA_OV5647_MIPI_RAW10_1920X1080_30FPS
+
+        config CAMERA_OV5647_MIPI_DEFAULT_FMT_RAW10_1280X960_BINNING_45FPS
+            bool "MIPI 2-lane, 24M input, 1280x960 Binning 45fps, RAW10"
+            depends on CAMERA_OV5647_MIPI_RAW10_1280X960_BINNING_45FPS
     endchoice # CAMERA_OV5647_MIPI_DEFAULT_FMT
 
     config CAMERA_OV5647_MIPI_IF_FORMAT_INDEX_DEFAULT
         int
-        default 0 if CAMERA_OV5647_MIPI_RAW8_800X1280_50FPS
-        default 1 if CAMERA_OV5647_MIPI_RAW8_800X640_50FPS
-        default 2 if CAMERA_OV5647_MIPI_RAW8_800X800_50FPS
-        default 3 if CAMERA_OV5647_MIPI_RAW10_1920X1080_30FPS
-        default 4 if CAMERA_OV5647_MIPI_RAW10_1280X960_BINNING_45FPS
+        default 0 if CAMERA_OV5647_MIPI_DEFAULT_FMT_RAW8_800X1280_50FPS
+        default 1 if CAMERA_OV5647_MIPI_DEFAULT_FMT_RAW8_800X640_50FPS
+        default 2 if CAMERA_OV5647_MIPI_DEFAULT_FMT_RAW8_800X800_50FPS
+        default 3 if CAMERA_OV5647_MIPI_DEFAULT_FMT_RAW10_1920X1080_30FPS
+        default 4 if CAMERA_OV5647_MIPI_DEFAULT_FMT_RAW10_1280X960_BINNING_45FPS
         help
             Sets the default configuration for the MIPI CSI interface.
             Use query_support_formats() API to get more format options.
