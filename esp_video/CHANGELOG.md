@@ -1,4 +1,4 @@
-## Unreleased
+## 1.4.0
 
 - Add USB Host peripheral selection map configuration for USB Cameras
 - Add the initialization parameter "dont_init_ldo" to disable LDO initialization for the MIPI-CSI video device
