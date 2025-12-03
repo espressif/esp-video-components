@@ -1,0 +1,65 @@
+menuconfig CAMERA_MT9D111
+    bool "MT9D111"
+    default n
+    depends on SOC_LCDCAM_CAM_SUPPORTED
+    help
+        Enable support for the MT9D111 CMOS image sensor.
+
+if CAMERA_MT9D111
+    menu "Auto detect MT9D111"
+        config CAMERA_MT9D111_AUTO_DETECT_DVP_INTERFACE_SENSOR
+            bool "Detect for DVP interface sensor"
+            default y
+            help
+                When enabled, the MT9D111 sensor will be automatically detected
+                and initialized on the DVP interface at startup without requiring
+                manual detection call(mt9d111_detect) in your application.
+    endmenu
+
+    choice CAMERA_MT9D111_DVP_DEFAULT_FMT
+        prompt "Select default output format for DVP interface"
+        default CAMERA_MT9D111_DVP_RGB565_320X240_10FPS
+        help
+            This option allows you to select the default video format for the MT9D111 sensor
+            when it is initialized on the DVP interface. The selected format will be used
+            when the sensor is detected and initialized, and can be changed later when the
+            sensor is in stream off state.
+
+        config CAMERA_MT9D111_DVP_RGB565_320X240_10FPS
+            bool "RGB565 320x240 10fps, DVP 8-bit, 20M input"
+            help
+                RGB565 color format at 320X240 resolution (QVGA) with 10fps framerate.
+                Requires 8-bit DVP interface and 20MHz input clock.
+        config CAMERA_MT9D111_DVP_YUV422_800X600_8FPS
+            bool "YUV422 800x600 8fps, DVP 8-bit, 20M input"
+            help
+                YUV422 color format at 800X600 resolution (SVGA) with 8fps framerate.
+                Requires 8-bit DVP interface and 20MHz input clock.
+        config CAMERA_MT9D111_DVP_RGB565_800X600_10FPS
+            bool "RGB565 800x600 10fps, DVP 8-bit, 20M input"
+            help
+                RGB565 color format at 800X600 resolution (SVGA) with 10fps framerate.
+                Requires 8-bit DVP interface and 20MHz input clock.
+        config CAMERA_MT9D111_DVP_YUV422_800X600_14FPS
+            bool "YUV422 800x600 14fps, DVP 8-bit, 20M input"
+            help
+                YUV422 color format at 800X600 resolution (SVGA) with 14fps framerate.
+                Requires 8-bit DVP interface and 20MHz input clock.
+        config CAMERA_MT9D111_DVP_YUV422_800X600_16FPS
+            bool "YUV422 800x600 16fps, DVP 8-bit, 24M input"
+            help
+                YUV422 color format at 800X600 resolution (SVGA) with 16fps framerate.
+                Requires 8-bit DVP interface and 24MHz input clock.
+    endchoice # CAMERA_MT9D111_DVP_DEFAULT_FMT
+
+    config CAMERA_MT9D111_DVP_IF_FORMAT_INDEX_DEFAULT
+        int
+        default 0 if CAMERA_MT9D111_DVP_RGB565_320X240_10FPS
+        default 1 if CAMERA_MT9D111_DVP_YUV422_800X600_8FPS
+        default 2 if CAMERA_MT9D111_DVP_RGB565_800X600_10FPS
+        default 3 if CAMERA_MT9D111_DVP_YUV422_800X600_14FPS
+        default 4 if CAMERA_MT9D111_DVP_YUV422_800X600_16FPS
+        help
+            Sets the default configuration for the DVP interface.
+            Use query_support_formats() API to get more format options.
+endif
