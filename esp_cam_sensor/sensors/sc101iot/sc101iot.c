@@ -42,19 +42,25 @@ static const uint8_t sc101iot_format_index[] = {
 #if CONFIG_CAMERA_SC101IOT_DVP_YUV422_1280X720_25FPS
     1,
 #endif
+#if CONFIG_CAMERA_SC101IOT_DVP_YUV422_YUYV_1280X720_15FPS
+    2,
+#endif
+#if CONFIG_CAMERA_SC101IOT_DVP_YUV422_YUYV_1280X720_25FPS
+    3,
+#endif
 };
 
 static const esp_cam_sensor_format_t sc101iot_format_info[] = {
 #if CONFIG_CAMERA_SC101IOT_DVP_YUV422_1280X720_15FPS
     {
-        .name = "DVP_8bit_20Minput_YUV422_1280x720_15fps",
-        .format = ESP_CAM_SENSOR_PIXFORMAT_YUV422,
+        .name = "DVP_8bit_20Minput_YUV422_UYVY_1280x720_15fps",
+        .format = ESP_CAM_SENSOR_PIXFORMAT_YUV422_UYVY,
         .port = ESP_CAM_SENSOR_DVP,
         .xclk = 20000000,
         .width = 1280,
         .height = 720,
-        .regs = DVP_8bit_20Minput_1280x720_yuv422_15fps,
-        .regs_size = ARRAY_SIZE(DVP_8bit_20Minput_1280x720_yuv422_15fps),
+        .regs = sc101iot_dvp_8bit_20Minput_1280x720_yuv422_uyvy_15fps,
+        .regs_size = ARRAY_SIZE(sc101iot_dvp_8bit_20Minput_1280x720_yuv422_uyvy_15fps),
         .fps = 15,
         .isp_info = NULL,
         .mipi_info = {},
@@ -63,14 +69,46 @@ static const esp_cam_sensor_format_t sc101iot_format_info[] = {
 #endif
 #if CONFIG_CAMERA_SC101IOT_DVP_YUV422_1280X720_25FPS
     {
-        .name = "DVP_8bit_20Minput_YUV422_1280x720_25fps",
-        .format = ESP_CAM_SENSOR_PIXFORMAT_YUV422,
+        .name = "DVP_8bit_20Minput_YUV422_UYVY_1280x720_25fps",
+        .format = ESP_CAM_SENSOR_PIXFORMAT_YUV422_UYVY,
         .port = ESP_CAM_SENSOR_DVP,
         .xclk = 20000000,
         .width = 1280,
         .height = 720,
-        .regs = DVP_8bit_20Minput_1280x720_yuv422_25fps,
-        .regs_size = ARRAY_SIZE(DVP_8bit_20Minput_1280x720_yuv422_25fps),
+        .regs = sc101iot_dvp_8bit_20Minput_1280x720_yuv422_uyvy_25fps,
+        .regs_size = ARRAY_SIZE(sc101iot_dvp_8bit_20Minput_1280x720_yuv422_uyvy_25fps),
+        .fps = 25,
+        .isp_info = NULL,
+        .mipi_info = {},
+        .reserved = NULL,
+    },
+#endif
+#if CONFIG_CAMERA_SC101IOT_DVP_YUV422_YUYV_1280X720_15FPS
+    {
+        .name = "DVP_8bit_20Minput_YUV422_YUYV_1280x720_15fps",
+        .format = ESP_CAM_SENSOR_PIXFORMAT_YUV422_YUYV,
+        .port = ESP_CAM_SENSOR_DVP,
+        .xclk = 20000000,
+        .width = 1280,
+        .height = 720,
+        .regs = sc101iot_dvp_8bit_20Minput_1280x720_yuv422_yuyv_15fps,
+        .regs_size = ARRAY_SIZE(sc101iot_dvp_8bit_20Minput_1280x720_yuv422_yuyv_15fps),
+        .fps = 15,
+        .isp_info = NULL,
+        .mipi_info = {},
+        .reserved = NULL,
+    },
+#endif
+#if CONFIG_CAMERA_SC101IOT_DVP_YUV422_YUYV_1280X720_25FPS
+    {
+        .name = "DVP_8bit_20Minput_YUV422_YUYV_1280x720_25fps",
+        .format = ESP_CAM_SENSOR_PIXFORMAT_YUV422_YUYV,
+        .port = ESP_CAM_SENSOR_DVP,
+        .xclk = 20000000,
+        .width = 1280,
+        .height = 720,
+        .regs = sc101iot_dvp_8bit_20Minput_1280x720_yuv422_yuyv_25fps,
+        .regs_size = ARRAY_SIZE(sc101iot_dvp_8bit_20Minput_1280x720_yuv422_yuyv_25fps),
         .fps = 25,
         .isp_info = NULL,
         .mipi_info = {},

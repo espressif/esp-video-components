@@ -18,10 +18,10 @@ if CAMERA_OV5645
 
     menu "Choose supported formats for MIPI CSI interface"
         config CAMERA_OV5645_MIPI_RGB565_1280X960_30FPS
-            bool "MIPI 2-lane, 24M input, 1280x960  30fps, RGB565"
+            bool "MIPI 2-lane, 24M input, 1280x960  30fps, RGB565(LE)"
             default n
             help
-                RGB565 color format at 1280x960 resolution (SXGA) with 30fps framerate.
+                RGB565(LE) color format at 1280x960 resolution (SXGA) with 30fps framerate.
                 Requires MIPI CSI-2 2-lane interface with 24MHz input clock.
 
         config CAMERA_OV5645_MIPI_YUV420_1280X960_30FPS
@@ -32,31 +32,31 @@ if CAMERA_OV5645
                 Requires MIPI CSI-2 2-lane interface with 24MHz input clock.
 
         config CAMERA_OV5645_MIPI_YUV422_640X480_24FPS
-            bool "MIPI 2-lane, 24M input,  640x480  24fps, YUV422"
+            bool "MIPI 2-lane, 24M input,  640x480  24fps, YUV422(UYVY)"
             default n
             help
-                YUV422 color format at 640x480 resolution (VGA) with 24fps framerate.
+                YUV422(UYVY) color format at 640x480 resolution (VGA) with 24fps framerate.
                 Requires MIPI CSI-2 2-lane interface with 24MHz input clock.
 
         config CAMERA_OV5645_MIPI_YUV422_1280X960_30FPS
-            bool "MIPI 2-lane, 24M input, 1280x960  30fps, YUV422"
+            bool "MIPI 2-lane, 24M input, 1280x960  30fps, YUV422(UYVY)"
             default y
             help
-                YUV422 color format at 1280x960 resolution (SXGA) with 30fps framerate.
+                YUV422(UYVY) color format at 1280x960 resolution (SXGA) with 30fps framerate.
                 Requires MIPI CSI-2 2-lane interface with 24MHz input clock.
 
         config CAMERA_OV5645_MIPI_YUV422_1920X1080_15FPS
-            bool "MIPI 2-lane, 24M input, 1920x1080 15fps, YUV422"
+            bool "MIPI 2-lane, 24M input, 1920x1080 15fps, YUV422(UYVY)"
             default n
             help
-                YUV422 color format at 1920x1080 resolution (FHD) with 15fps framerate.
+                YUV422(UYVY) color format at 1920x1080 resolution (FHD) with 15fps framerate.
                 Requires MIPI CSI-2 2-lane interface with 24MHz input clock.
 
         config CAMERA_OV5645_MIPI_YUV422_2592X1944_15FPS
-            bool "MIPI 2-lane, 24M input, 2592x1944 15fps, YUV422"
+            bool "MIPI 2-lane, 24M input, 2592x1944 15fps, YUV422(UYVY)"
             default n
             help
-                YUV422 color format at 2592x1944 resolution with 15fps framerate.
+                YUV422(UYVY) color format at 2592x1944 resolution with 15fps framerate.
                 Requires MIPI CSI-2 2-lane interface with 24MHz input clock.
     endmenu
 
@@ -70,7 +70,7 @@ if CAMERA_OV5645
             sensor is in stream off state.
 
         config CAMERA_OV5645_MIPI_DEFAULT_FMT_RGB565_1280X960_30FPS
-            bool "MIPI 2-lane, 24M input, 1280x960  30fps, RGB565"
+            bool "MIPI 2-lane, 24M input, 1280x960  30fps, RGB565(LE)"
             depends on CAMERA_OV5645_MIPI_RGB565_1280X960_30FPS
 
         config CAMERA_OV5645_MIPI_DEFAULT_FMT_YUV420_1280X960_30FPS
@@ -78,19 +78,19 @@ if CAMERA_OV5645
             depends on CAMERA_OV5645_MIPI_YUV420_1280X960_30FPS
 
         config CAMERA_OV5645_MIPI_DEFAULT_FMT_YUV422_640X480_24FPS
-            bool "MIPI 2-lane, 24M input,  640x480  24fps, YUV422"
+            bool "MIPI 2-lane, 24M input,  640x480  24fps, YUV422(UYVY)"
             depends on CAMERA_OV5645_MIPI_YUV422_640X480_24FPS
 
         config CAMERA_OV5645_MIPI_DEFAULT_FMT_YUV422_1280X960_30FPS
-            bool "MIPI 2-lane, 24M input, 1280x960  30fps, YUV422"
+            bool "MIPI 2-lane, 24M input, 1280x960  30fps, YUV422(UYVY)"
             depends on CAMERA_OV5645_MIPI_YUV422_1280X960_30FPS
 
         config CAMERA_OV5645_MIPI_DEFAULT_FMT_YUV422_1920X1080_15FPS
-            bool "MIPI 2-lane, 24M input, 1920x1080 15fps, YUV422"
+            bool "MIPI 2-lane, 24M input, 1920x1080 15fps, YUV422(UYVY)"
             depends on CAMERA_OV5645_MIPI_YUV422_1920X1080_15FPS
 
         config CAMERA_OV5645_MIPI_DEFAULT_FMT_YUV422_2592X1944_15FPS
-            bool "MIPI 2-lane, 24M input, 2592x1944 15fps, YUV422"
+            bool "MIPI 2-lane, 24M input, 2592x1944 15fps, YUV422(UYVY)"
             depends on CAMERA_OV5645_MIPI_YUV422_2592X1944_15FPS
     endchoice # CAMERA_OV5645_MIPI_DEFAULT_FMT
 

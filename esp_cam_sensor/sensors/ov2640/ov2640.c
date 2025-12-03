@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2023-2024 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2023-2025 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -96,19 +96,31 @@ static const uint8_t ov2640_format_index[] = {
 #if CONFIG_CAMERA_OV2640_DVP_RAW8_1024X600_15FPS
     11,
 #endif
+#if CONFIG_CAMERA_OV2640_DVP_RGB565_BE_640X480_6FPS
+    12,
+#endif
+#if CONFIG_CAMERA_OV2640_DVP_YUV422_YUYV_640X480_6FPS
+    13,
+#endif
+#if CONFIG_CAMERA_OV2640_DVP_RGB565_BE_240X240_25FPS
+    14,
+#endif
+#if CONFIG_CAMERA_OV2640_DVP_YUV422_YUYV_240X240_25FPS
+    15,
+#endif
 };
 
 static const esp_cam_sensor_format_t ov2640_format_info[] = {
 #if CONFIG_CAMERA_OV2640_DVP_RGB565_640X480_6FPS
     {
-        .name = "DVP_8bit_20Minput_RGB565_640x480_6fps",
-        .format = ESP_CAM_SENSOR_PIXFORMAT_RGB565,
+        .name = "DVP_8bit_20Minput_RGB565_LE_640x480_6fps",
+        .format = ESP_CAM_SENSOR_PIXFORMAT_RGB565_LE,
         .port = ESP_CAM_SENSOR_DVP,
         .xclk = 20000000,
         .width = 640,
         .height = 480,
-        .regs = init_reglist_DVP_8bit_RGB565_640x480_XCLK_20_6fps,
-        .regs_size = ARRAY_SIZE(init_reglist_DVP_8bit_RGB565_640x480_XCLK_20_6fps),
+        .regs = ov2640_dvp_8bit_20Minput_640x480_rgb565_le_6fps,
+        .regs_size = ARRAY_SIZE(ov2640_dvp_8bit_20Minput_640x480_rgb565_le_6fps),
         .fps = 6,
         .isp_info = NULL,
         .mipi_info = {},
@@ -117,14 +129,14 @@ static const esp_cam_sensor_format_t ov2640_format_info[] = {
 #endif
 #if CONFIG_CAMERA_OV2640_DVP_YUV422_640X480_6FPS
     {
-        .name = "DVP_8bit_20Minput_YUV422_640x480_6fps",
-        .format = ESP_CAM_SENSOR_PIXFORMAT_YUV422,
+        .name = "DVP_8bit_20Minput_YUV422_UYVY_640x480_6fps",
+        .format = ESP_CAM_SENSOR_PIXFORMAT_YUV422_UYVY,
         .port = ESP_CAM_SENSOR_DVP,
         .xclk = 20000000,
         .width = 640,
         .height = 480,
-        .regs = init_reglist_DVP_8bit_YUV422_640x480_XCLK_20_6fps,
-        .regs_size = ARRAY_SIZE(init_reglist_DVP_8bit_YUV422_640x480_XCLK_20_6fps),
+        .regs = ov2640_dvp_8bit_20Minput_640x480_yuv422_uyvy_6fps,
+        .regs_size = ARRAY_SIZE(ov2640_dvp_8bit_20Minput_640x480_yuv422_uyvy_6fps),
         .fps = 6,
         .isp_info = NULL,
         .mipi_info = {},
@@ -139,8 +151,8 @@ static const esp_cam_sensor_format_t ov2640_format_info[] = {
         .xclk = 20000000,
         .width = 640,
         .height = 480,
-        .regs = init_reglist_DVP_8bit_JPEG_640x480_XCLK_20_25fps,
-        .regs_size = ARRAY_SIZE(init_reglist_DVP_8bit_JPEG_640x480_XCLK_20_25fps),
+        .regs = ov2640_dvp_8bit_20Minput_640x480_jpeg_25fps,
+        .regs_size = ARRAY_SIZE(ov2640_dvp_8bit_20Minput_640x480_jpeg_25fps),
         .fps = 25,
         .isp_info = NULL,
         .mipi_info = {},
@@ -149,14 +161,14 @@ static const esp_cam_sensor_format_t ov2640_format_info[] = {
 #endif
 #if CONFIG_CAMERA_OV2640_DVP_RGB565_240X240_25FPS
     {
-        .name = "DVP_8bit_20Minput_RGB565_240x240_25fps",
-        .format = ESP_CAM_SENSOR_PIXFORMAT_RGB565,
+        .name = "DVP_8bit_20Minput_RGB565_LE_240x240_25fps",
+        .format = ESP_CAM_SENSOR_PIXFORMAT_RGB565_LE,
         .port = ESP_CAM_SENSOR_DVP,
         .xclk = 20000000,
         .width = 240,
         .height = 240,
-        .regs = init_reglist_DVP_8bit_RGB565_240x240_XCLK_20_25fps,
-        .regs_size = ARRAY_SIZE(init_reglist_DVP_8bit_RGB565_240x240_XCLK_20_25fps),
+        .regs = ov2640_dvp_8bit_20Minput_240x240_rgb565_le_25fps,
+        .regs_size = ARRAY_SIZE(ov2640_dvp_8bit_20Minput_240x240_rgb565_le_25fps),
         .fps = 25,
         .isp_info = NULL,
         .mipi_info = {},
@@ -165,14 +177,14 @@ static const esp_cam_sensor_format_t ov2640_format_info[] = {
 #endif
 #if CONFIG_CAMERA_OV2640_DVP_YUV422_240X240_25FPS
     {
-        .name = "DVP_8bit_20Minput_YUV422_240x240_25fps",
-        .format = ESP_CAM_SENSOR_PIXFORMAT_YUV422,
+        .name = "DVP_8bit_20Minput_YUV422_UYVY_240x240_25fps",
+        .format = ESP_CAM_SENSOR_PIXFORMAT_YUV422_UYVY,
         .port = ESP_CAM_SENSOR_DVP,
         .xclk = 20000000,
         .width = 240,
         .height = 240,
-        .regs = init_reglist_DVP_8bit_YUV422_240x240_XCLK_20_25fps,
-        .regs_size = ARRAY_SIZE(init_reglist_DVP_8bit_YUV422_240x240_XCLK_20_25fps),
+        .regs = ov2640_dvp_8bit_20Minput_240x240_yuv422_uyvy_25fps,
+        .regs_size = ARRAY_SIZE(ov2640_dvp_8bit_20Minput_240x240_yuv422_uyvy_25fps),
         .fps = 25,
         .isp_info = NULL,
         .mipi_info = {},
@@ -187,8 +199,8 @@ static const esp_cam_sensor_format_t ov2640_format_info[] = {
         .xclk = 20000000,
         .width = 320,
         .height = 240,
-        .regs = init_reglist_DVP_8bit_JPEG_320x240_XCLK_20_50fps,
-        .regs_size = ARRAY_SIZE(init_reglist_DVP_8bit_JPEG_320x240_XCLK_20_50fps),
+        .regs = ov2640_dvp_8bit_20Minput_320x240_jpeg_50fps,
+        .regs_size = ARRAY_SIZE(ov2640_dvp_8bit_20Minput_320x240_jpeg_50fps),
         .fps = 50,
         .isp_info = NULL,
         .mipi_info = {},
@@ -203,8 +215,8 @@ static const esp_cam_sensor_format_t ov2640_format_info[] = {
         .xclk = 20000000,
         .width = 1280,
         .height = 720,
-        .regs = init_reglist_DVP_8bit_JPEG_1280x720_XCLK_20_12fps,
-        .regs_size = ARRAY_SIZE(init_reglist_DVP_8bit_JPEG_1280x720_XCLK_20_12fps),
+        .regs = ov2640_dvp_8bit_20Minput_1280x720_jpeg_12fps,
+        .regs_size = ARRAY_SIZE(ov2640_dvp_8bit_20Minput_1280x720_jpeg_12fps),
         .fps = 12,
         .isp_info = NULL,
         .mipi_info = {},
@@ -219,8 +231,8 @@ static const esp_cam_sensor_format_t ov2640_format_info[] = {
         .xclk = 20000000,
         .width = 1600,
         .height = 1200,
-        .regs = init_reglist_DVP_8bit_JPEG_1600x1200_XCLK_20_12fps,
-        .regs_size = ARRAY_SIZE(init_reglist_DVP_8bit_JPEG_1600x1200_XCLK_20_12fps),
+        .regs = ov2640_dvp_8bit_20Minput_1600x1200_jpeg_12fps,
+        .regs_size = ARRAY_SIZE(ov2640_dvp_8bit_20Minput_1600x1200_jpeg_12fps),
         .fps = 12,
         .isp_info = NULL,
         .mipi_info = {},
@@ -236,8 +248,8 @@ static const esp_cam_sensor_format_t ov2640_format_info[] = {
         .xclk = 20000000,
         .width = 800,
         .height = 640,
-        .regs = init_reglist_DVP_8bit_RAW8_1600x1200_XCLK_20M_15fps,
-        .regs_size = ARRAY_SIZE(init_reglist_DVP_8bit_RAW8_1600x1200_XCLK_20M_15fps),
+        .regs = ov2640_dvp_8bit_20Minput_1600x1200_raw8_15fps,
+        .regs_size = ARRAY_SIZE(ov2640_dvp_8bit_20Minput_1600x1200_raw8_15fps),
         .fps = 30,
         .isp_info = &ov2640_isp_info[0],
         .mipi_info = {},
@@ -252,8 +264,8 @@ static const esp_cam_sensor_format_t ov2640_format_info[] = {
         .xclk = 20000000,
         .width = 800,
         .height = 640,
-        .regs = init_reglist_DVP_8bit_RAW8_1600x1200_XCLK_20M_15fps,
-        .regs_size = ARRAY_SIZE(init_reglist_DVP_8bit_RAW8_1600x1200_XCLK_20M_15fps),
+        .regs = ov2640_dvp_8bit_20Minput_1600x1200_raw8_15fps,
+        .regs_size = ARRAY_SIZE(ov2640_dvp_8bit_20Minput_1600x1200_raw8_15fps),
         .fps = 15,
         .isp_info = &ov2640_isp_info[0],
         .mipi_info = {},
@@ -268,8 +280,8 @@ static const esp_cam_sensor_format_t ov2640_format_info[] = {
         .xclk = 20000000,
         .width = 800,
         .height = 800,
-        .regs = init_reglist_DVP_8bit_RAW8_1600x1200_XCLK_20M_15fps,
-        .regs_size = ARRAY_SIZE(init_reglist_DVP_8bit_RAW8_1600x1200_XCLK_20M_15fps),
+        .regs = ov2640_dvp_8bit_20Minput_1600x1200_raw8_15fps,
+        .regs_size = ARRAY_SIZE(ov2640_dvp_8bit_20Minput_1600x1200_raw8_15fps),
         .fps = 15,
         .isp_info = &ov2640_isp_info[0],
         .mipi_info = {},
@@ -284,10 +296,74 @@ static const esp_cam_sensor_format_t ov2640_format_info[] = {
         .xclk = 20000000,
         .width = 1024,
         .height = 600,
-        .regs = init_reglist_DVP_8bit_RAW8_1600x1200_XCLK_20M_15fps,
-        .regs_size = ARRAY_SIZE(init_reglist_DVP_8bit_RAW8_1600x1200_XCLK_20M_15fps),
+        .regs = ov2640_dvp_8bit_20Minput_1600x1200_raw8_15fps,
+        .regs_size = ARRAY_SIZE(ov2640_dvp_8bit_20Minput_1600x1200_raw8_15fps),
         .fps = 15,
         .isp_info = &ov2640_isp_info[0],
+        .mipi_info = {},
+        .reserved = NULL,
+    },
+#endif
+#if CONFIG_CAMERA_OV2640_DVP_RGB565_BE_640X480_6FPS
+    {
+        .name = "DVP_8bit_20Minput_RGB565_BE_640x480_6fps",
+        .format = ESP_CAM_SENSOR_PIXFORMAT_RGB565_BE,
+        .port = ESP_CAM_SENSOR_DVP,
+        .xclk = 20000000,
+        .width = 640,
+        .height = 480,
+        .regs = ov2640_dvp_8bit_20Minput_640x480_rgb565_be_6fps,
+        .regs_size = ARRAY_SIZE(ov2640_dvp_8bit_20Minput_640x480_rgb565_be_6fps),
+        .fps = 6,
+        .isp_info = NULL,
+        .mipi_info = {},
+        .reserved = NULL,
+    },
+#endif
+#if CONFIG_CAMERA_OV2640_DVP_YUV422_YUYV_640X480_6FPS
+    {
+        .name = "DVP_8bit_20Minput_YUV422_YUYV_640x480_6fps",
+        .format = ESP_CAM_SENSOR_PIXFORMAT_YUV422_YUYV,
+        .port = ESP_CAM_SENSOR_DVP,
+        .xclk = 20000000,
+        .width = 640,
+        .height = 480,
+        .regs = ov2640_dvp_8bit_20Minput_640x480_yuv422_yuyv_6fps,
+        .regs_size = ARRAY_SIZE(ov2640_dvp_8bit_20Minput_640x480_yuv422_yuyv_6fps),
+        .fps = 6,
+        .isp_info = NULL,
+        .mipi_info = {},
+        .reserved = NULL,
+    },
+#endif
+#if CONFIG_CAMERA_OV2640_DVP_RGB565_BE_240X240_25FPS
+    {
+        .name = "DVP_8bit_20Minput_RGB565_BE_240x240_25fps",
+        .format = ESP_CAM_SENSOR_PIXFORMAT_RGB565_BE,
+        .port = ESP_CAM_SENSOR_DVP,
+        .xclk = 20000000,
+        .width = 240,
+        .height = 240,
+        .regs = ov2640_dvp_8bit_20Minput_240x240_rgb565_be_25fps,
+        .regs_size = ARRAY_SIZE(ov2640_dvp_8bit_20Minput_240x240_rgb565_be_25fps),
+        .fps = 25,
+        .isp_info = NULL,
+        .mipi_info = {},
+        .reserved = NULL,
+    },
+#endif
+#if CONFIG_CAMERA_OV2640_DVP_YUV422_YUYV_240X240_25FPS
+    {
+        .name = "DVP_8bit_20Minput_YUV422_YUYV_240x240_25fps",
+        .format = ESP_CAM_SENSOR_PIXFORMAT_YUV422_YUYV,
+        .port = ESP_CAM_SENSOR_DVP,
+        .xclk = 20000000,
+        .width = 240,
+        .height = 240,
+        .regs = ov2640_dvp_8bit_20Minput_240x240_yuv422_yuyv_25fps,
+        .regs_size = ARRAY_SIZE(ov2640_dvp_8bit_20Minput_240x240_yuv422_yuyv_25fps),
+        .fps = 25,
+        .isp_info = NULL,
         .mipi_info = {},
         .reserved = NULL,
     },

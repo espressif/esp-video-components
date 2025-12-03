@@ -17,52 +17,94 @@ if CAMERA_BF3901
 
     menu "Choose supported formats for SPI interface"
         config CAMERA_BF3901_SPI_RGB565_240X320_15FPS
-            bool "SPI 1-bit, 24M input, 240x320 15fps, RGB565"
+            bool "SPI 1-bit, 24M input, 240x320 15fps, RGB565(LE)"
             default n
             help
-                RGB565 color format at 240x320 resolution with 15fps framerate.
+                RGB565(LE) color format at 240x320 resolution with 15fps framerate.
                 Requires 1-bit SPI interface with 24MHz input clock.
 
         config CAMERA_BF3901_SPI_YUV422_120X160_5FPS
-            bool "SPI 1-bit, 20M input, 120x160  5fps, YUV422"
+            bool "SPI 1-bit, 20M input, 120x160  5fps, YUV422(UYVY)"
             default n
             help
-                YUV422 color format at 120x160 resolution with 5fps framerate.
+                YUV422(UYVY) color format at 120x160 resolution with 5fps framerate.
                 Requires 1-bit SPI interface with 20MHz input clock.
 
         config CAMERA_BF3901_SPI_YUV422_240X320_12FPS
-            bool "SPI 1-bit, 20M input, 240x320 12fps, YUV422"
+            bool "SPI 1-bit, 20M input, 240x320 12fps, YUV422(UYVY)"
             default n
             help
-                YUV422 color format at 240x320 resolution with 12fps framerate.
+                YUV422(UYVY) color format at 240x320 resolution with 12fps framerate.
                 Requires 1-bit SPI interface with 20MHz input clock.
 
         config CAMERA_BF3901_SPI_YUV422_120X160_10FPS
-            bool "SPI 1-bit, 24M input, 120x160 10fps, YUV422"
+            bool "SPI 1-bit, 24M input, 120x160 10fps, YUV422(UYVY)"
             default n
             help
-                YUV422 color format at 120x160 resolution with 10fps framerate.
+                YUV422(UYVY) color format at 120x160 resolution with 10fps framerate.
                 Requires 1-bit SPI interface with 24MHz input clock.
 
         config CAMERA_BF3901_SPI_YUV422_240X240_10FPS
-            bool "SPI 1-bit, 24M input, 240x240 10fps, YUV422"
+            bool "SPI 1-bit, 24M input, 240x240 10fps, YUV422(UYVY)"
             default n
             help
-                YUV422 color format at 240x240 resolution with 10fps framerate.
+                YUV422(UYVY) color format at 240x240 resolution with 10fps framerate.
                 Requires 1-bit SPI interface with 24MHz input clock.
 
         config CAMERA_BF3901_SPI_YUV422_240X320_15FPS
-            bool "SPI 1-bit, 24M input, 240x320 15fps, YUV422"
+            bool "SPI 1-bit, 24M input, 240x320 15fps, YUV422(UYVY)"
             default y
             help
-                YUV422 color format at 240x320 resolution with 15fps framerate.
+                YUV422(UYVY) color format at 240x320 resolution with 15fps framerate.
                 Requires 1-bit SPI interface with 24MHz input clock.
 
         config CAMERA_BF3901_SPI2_YUV422_240X320_20FPS
-            bool "SPI 2-bit, 24M input, 240x320 20fps, YUV422"
+            bool "SPI 2-bit, 24M input, 240x320 20fps, YUV422(UYVY)"
             default n
             help
-                YUV422 color format at 240x320 resolution with 20fps framerate.
+                YUV422(UYVY) color format at 240x320 resolution with 20fps framerate.
+                Requires 2-bit SPI interface with 24MHz input clock.
+
+        config CAMERA_BF3901_SPI_YUV422_YUYV_120X160_5FPS
+            bool "SPI 1-bit, 20M input, 120x160  5fps, YUV422(YUYV)"
+            default n
+            help
+                YUV422(YUYV) color format at 120x160 resolution with 5fps framerate.
+                Requires 1-bit SPI interface with 20MHz input clock.
+
+        config CAMERA_BF3901_SPI_YUV422_YUYV_240X320_12FPS
+            bool "SPI 1-bit, 20M input, 240x320 12fps, YUV422(YUYV)"
+            default n
+            help
+                YUV422(YUYV) color format at 240x320 resolution with 12fps framerate.
+                Requires 1-bit SPI interface with 20MHz input clock.
+
+        config CAMERA_BF3901_SPI_YUV422_YUYV_120X160_10FPS
+            bool "SPI 1-bit, 24M input, 120x160 10fps, YUV422(YUYV)"
+            default n
+            help
+                YUV422(YUYV) color format at 120x160 resolution with 10fps framerate.
+                Requires 1-bit SPI interface with 24MHz input clock.
+
+        config CAMERA_BF3901_SPI_YUV422_YUYV_240X240_10FPS
+            bool "SPI 1-bit, 24M input, 240x240 10fps, YUV422(YUYV)"
+            default n
+            help
+                YUV422(YUYV) color format at 240x240 resolution with 10fps framerate.
+                Requires 1-bit SPI interface with 24MHz input clock.
+
+        config CAMERA_BF3901_SPI_YUV422_YUYV_240X320_15FPS
+            bool "SPI 1-bit, 24M input, 240x320 15fps, YUV422(YUYV)"
+            default n
+            help
+                YUV422(YUYV) color format at 240x320 resolution with 15fps framerate.
+                Requires 1-bit SPI interface with 24MHz input clock.
+
+        config CAMERA_BF3901_SPI2_YUV422_YUYV_240X320_20FPS
+            bool "SPI 2-bit, 24M input, 240x320 20fps, YUV422(YUYV)"
+            default n
+            help
+                YUV422(YUYV) color format at 240x320 resolution with 20fps framerate.
                 Requires 2-bit SPI interface with 24MHz input clock.
     endmenu
 
@@ -77,32 +119,56 @@ if CAMERA_BF3901
             sensor is in stream off state.
 
         config CAMERA_BF3901_SPI_DEFAULT_FMT_RGB565_240X320_15FPS
-            bool "SPI 1-bit, 24M input, 240x320 15fps, RGB565"
+            bool "SPI 1-bit, 24M input, 240x320 15fps, RGB565(LE)"
             depends on CAMERA_BF3901_SPI_RGB565_240X320_15FPS
 
         config CAMERA_BF3901_SPI_DEFAULT_FMT_YUV422_120X160_5FPS
-            bool "SPI 1-bit, 20M input, 120x160  5fps, YUV422"
+            bool "SPI 1-bit, 20M input, 120x160  5fps, YUV422(UYVY)"
             depends on CAMERA_BF3901_SPI_YUV422_120X160_5FPS
 
         config CAMERA_BF3901_SPI_DEFAULT_FMT_YUV422_240X320_12FPS
-            bool "SPI 1-bit, 20M input, 240x320 12fps, YUV422"
+            bool "SPI 1-bit, 20M input, 240x320 12fps, YUV422(UYVY)"
             depends on CAMERA_BF3901_SPI_YUV422_240X320_12FPS
 
         config CAMERA_BF3901_SPI_DEFAULT_FMT_YUV422_120X160_10FPS
-            bool "SPI 1-bit, 24M input, 120x160 10fps, YUV422"
+            bool "SPI 1-bit, 24M input, 120x160 10fps, YUV422(UYVY)"
             depends on CAMERA_BF3901_SPI_YUV422_120X160_10FPS
 
         config CAMERA_BF3901_SPI_DEFAULT_FMT_YUV422_240X240_10FPS
-            bool "SPI 1-bit, 24M input, 240x240 10fps, YUV422"
+            bool "SPI 1-bit, 24M input, 240x240 10fps, YUV422(UYVY)"
             depends on CAMERA_BF3901_SPI_YUV422_240X240_10FPS
 
         config CAMERA_BF3901_SPI_DEFAULT_FMT_YUV422_240X320_15FPS
-            bool "SPI 1-bit, 24M input, 240x320 15fps, YUV422"
+            bool "SPI 1-bit, 24M input, 240x320 15fps, YUV422(UYVY)"
             depends on CAMERA_BF3901_SPI_YUV422_240X320_15FPS
 
         config CAMERA_BF3901_SPI2_DEFAULT_FMT_YUV422_240X320_20FPS
-            bool "SPI 2-bit, 24M input, 240x320 20fps, YUV422"
+            bool "SPI 2-bit, 24M input, 240x320 20fps, YUV422(UYVY)"
             depends on CAMERA_BF3901_SPI2_YUV422_240X320_20FPS
+
+        config CAMERA_BF3901_SPI_DEFAULT_FMT_YUV422_YUYV_120X160_5FPS
+            bool "SPI 1-bit, 20M input, 120x160  5fps, YUV422(YUYV)"
+            depends on CAMERA_BF3901_SPI_YUV422_YUYV_120X160_5FPS
+
+        config CAMERA_BF3901_SPI_DEFAULT_FMT_YUV422_YUYV_240X320_12FPS
+            bool "SPI 1-bit, 20M input, 240x320 12fps, YUV422(YUYV)"
+            depends on CAMERA_BF3901_SPI_YUV422_YUYV_240X320_12FPS
+
+        config CAMERA_BF3901_SPI_DEFAULT_FMT_YUV422_YUYV_120X160_10FPS
+            bool "SPI 1-bit, 24M input, 120x160 10fps, YUV422(YUYV)"
+            depends on CAMERA_BF3901_SPI_YUV422_YUYV_120X160_10FPS
+
+        config CAMERA_BF3901_SPI_DEFAULT_FMT_YUV422_YUYV_240X240_10FPS
+            bool "SPI 1-bit, 24M input, 240x240 10fps, YUV422(YUYV)"
+            depends on CAMERA_BF3901_SPI_YUV422_YUYV_240X240_10FPS
+
+        config CAMERA_BF3901_SPI_DEFAULT_FMT_YUV422_YUYV_240X320_15FPS
+            bool "SPI 1-bit, 24M input, 240x320 15fps, YUV422(YUYV)"
+            depends on CAMERA_BF3901_SPI_YUV422_YUYV_240X320_15FPS
+
+        config CAMERA_BF3901_SPI2_DEFAULT_FMT_YUV422_YUYV_240X320_20FPS
+            bool "SPI 2-bit, 24M input, 240x320 20fps, YUV422(YUYV)"
+            depends on CAMERA_BF3901_SPI2_YUV422_YUYV_240X320_20FPS
     endchoice # CAMERA_BF3901_SPI_DEFAULT_FMT
 
     config CAMERA_BF3901_SPI_IF_FORMAT_INDEX_DEFAULT
@@ -114,6 +180,12 @@ if CAMERA_BF3901
         default 4 if CAMERA_BF3901_SPI_DEFAULT_FMT_YUV422_120X160_10FPS
         default 5 if CAMERA_BF3901_SPI_DEFAULT_FMT_YUV422_120X160_5FPS
         default 6 if CAMERA_BF3901_SPI2_DEFAULT_FMT_YUV422_240X320_20FPS
+        default 7 if CAMERA_BF3901_SPI_DEFAULT_FMT_YUV422_YUYV_240X320_15FPS
+        default 8 if CAMERA_BF3901_SPI_DEFAULT_FMT_YUV422_YUYV_240X320_12FPS
+        default 9 if CAMERA_BF3901_SPI_DEFAULT_FMT_YUV422_YUYV_240X240_10FPS
+        default 10 if CAMERA_BF3901_SPI_DEFAULT_FMT_YUV422_YUYV_120X160_10FPS
+        default 11 if CAMERA_BF3901_SPI_DEFAULT_FMT_YUV422_YUYV_120X160_5FPS
+        default 12 if CAMERA_BF3901_SPI2_DEFAULT_FMT_YUV422_YUYV_240X320_20FPS
         help
             Sets the default configuration for the SPI interface.
             Use query_support_formats() API to get more format options.

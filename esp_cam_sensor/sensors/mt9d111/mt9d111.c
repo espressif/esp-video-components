@@ -54,19 +54,34 @@ static const uint8_t mt9d111_format_index[] = {
 #if CONFIG_CAMERA_MT9D111_DVP_YUV422_800X600_16FPS
     4,
 #endif
+#if CONFIG_CAMERA_MT9D111_DVP_RGB565_BE_320X240_10FPS
+    5,
+#endif
+#if CONFIG_CAMERA_MT9D111_DVP_RGB565_BE_800X600_10FPS
+    6,
+#endif
+#if CONFIG_CAMERA_MT9D111_DVP_YUV422_YUYV_800X600_8FPS
+    7,
+#endif
+#if CONFIG_CAMERA_MT9D111_DVP_YUV422_YUYV_800X600_14FPS
+    8,
+#endif
+#if CONFIG_CAMERA_MT9D111_DVP_YUV422_YUYV_800X600_16FPS
+    9,
+#endif
 };
 
 static const esp_cam_sensor_format_t mt9d111_format_info[] = {
 #if CONFIG_CAMERA_MT9D111_DVP_RGB565_320X240_10FPS
     {
-        .name = "DVP_8bit_20Minput_RGB565_320x240_10fps",
-        .format = ESP_CAM_SENSOR_PIXFORMAT_RGB565,
+        .name = "DVP_8bit_20Minput_RGB565_LE_320x240_10fps",
+        .format = ESP_CAM_SENSOR_PIXFORMAT_RGB565_LE,
         .port = ESP_CAM_SENSOR_DVP,
         .xclk = 20000000,
         .width = 320,
         .height = 240,
-        .regs = DVP_8bit_20Minput_320x240_rgb565_10fps,
-        .regs_size = ARRAY_SIZE(DVP_8bit_20Minput_320x240_rgb565_10fps),
+        .regs = mt9d111_dvp_8bit_20Minput_320x240_rgb565_le_10fps,
+        .regs_size = ARRAY_SIZE(mt9d111_dvp_8bit_20Minput_320x240_rgb565_le_10fps),
         .fps = 10,
         .isp_info = NULL,
         .mipi_info = {},
@@ -75,14 +90,14 @@ static const esp_cam_sensor_format_t mt9d111_format_info[] = {
 #endif
 #if CONFIG_CAMERA_MT9D111_DVP_YUV422_800X600_8FPS
     {
-        .name = "DVP_8bit_20Minput_YUV422_800x600_8fps",
-        .format = ESP_CAM_SENSOR_PIXFORMAT_YUV422,
+        .name = "DVP_8bit_20Minput_YUV422_UYVY_800x600_8fps",
+        .format = ESP_CAM_SENSOR_PIXFORMAT_YUV422_UYVY,
         .port = ESP_CAM_SENSOR_DVP,
         .xclk = 20000000,
         .width = 800,
         .height = 600,
-        .regs = DVP_8bit_20Minput_800x600_yuv422_8fps,
-        .regs_size = ARRAY_SIZE(DVP_8bit_20Minput_800x600_yuv422_8fps),
+        .regs = mt9d111_dvp_8bit_20Minput_800x600_yuv422_uyvy_8fps,
+        .regs_size = ARRAY_SIZE(mt9d111_dvp_8bit_20Minput_800x600_yuv422_uyvy_8fps),
         .fps = 8,
         .isp_info = NULL,
         .mipi_info = {},
@@ -91,14 +106,14 @@ static const esp_cam_sensor_format_t mt9d111_format_info[] = {
 #endif
 #if CONFIG_CAMERA_MT9D111_DVP_RGB565_800X600_10FPS
     {
-        .name = "DVP_8bit_20Minput_RGB565_800x600_10fps",
-        .format = ESP_CAM_SENSOR_PIXFORMAT_RGB565,
+        .name = "DVP_8bit_20Minput_RGB565_LE_800x600_10fps",
+        .format = ESP_CAM_SENSOR_PIXFORMAT_RGB565_LE,
         .port = ESP_CAM_SENSOR_DVP,
         .xclk = 20000000,
         .width = 800,
         .height = 600,
-        .regs = DVP_8bit_20Minput_800x600_rgb565_10fps,
-        .regs_size = ARRAY_SIZE(DVP_8bit_20Minput_800x600_rgb565_10fps),
+        .regs = mt9d111_dvp_8bit_20Minput_800x600_rgb565_le_10fps,
+        .regs_size = ARRAY_SIZE(mt9d111_dvp_8bit_20Minput_800x600_rgb565_le_10fps),
         .fps = 10,
         .isp_info = NULL,
         .mipi_info = {},
@@ -107,14 +122,14 @@ static const esp_cam_sensor_format_t mt9d111_format_info[] = {
 #endif
 #if CONFIG_CAMERA_MT9D111_DVP_YUV422_800X600_14FPS
     {
-        .name = "DVP_8bit_20Minput_YUV422_800x600_14fps",
-        .format = ESP_CAM_SENSOR_PIXFORMAT_YUV422,
+        .name = "DVP_8bit_20Minput_YUV422_UYVY_800x600_14fps",
+        .format = ESP_CAM_SENSOR_PIXFORMAT_YUV422_UYVY,
         .port = ESP_CAM_SENSOR_DVP,
         .xclk = 20000000,
         .width = 800,
         .height = 600,
-        .regs = DVP_8bit_20Minput_800x600_yuv422_14fps,
-        .regs_size = ARRAY_SIZE(DVP_8bit_20Minput_800x600_yuv422_14fps),
+        .regs = mt9d111_dvp_8bit_20Minput_800x600_yuv422_uyvy_14fps,
+        .regs_size = ARRAY_SIZE(mt9d111_dvp_8bit_20Minput_800x600_yuv422_uyvy_14fps),
         .fps = 14,
         .isp_info = NULL,
         .mipi_info = {},
@@ -123,14 +138,94 @@ static const esp_cam_sensor_format_t mt9d111_format_info[] = {
 #endif
 #if CONFIG_CAMERA_MT9D111_DVP_YUV422_800X600_16FPS
     {
-        .name = "DVP_8bit_24Minput_YUV422_800x600_16fps",
-        .format = ESP_CAM_SENSOR_PIXFORMAT_YUV422,
+        .name = "DVP_8bit_24Minput_YUV422_UYVY_800x600_16fps",
+        .format = ESP_CAM_SENSOR_PIXFORMAT_YUV422_UYVY,
         .port = ESP_CAM_SENSOR_DVP,
         .xclk = 24000000,
         .width = 800,
         .height = 600,
-        .regs = DVP_8bit_24Minput_800x600_yuv422_16fps,
-        .regs_size = ARRAY_SIZE(DVP_8bit_24Minput_800x600_yuv422_16fps),
+        .regs = mt9d111_dvp_8bit_24Minput_800x600_yuv422_uyvy_16fps,
+        .regs_size = ARRAY_SIZE(mt9d111_dvp_8bit_24Minput_800x600_yuv422_uyvy_16fps),
+        .fps = 16,
+        .isp_info = NULL,
+        .mipi_info = {},
+        .reserved = NULL,
+    },
+#endif
+#if CONFIG_CAMERA_MT9D111_DVP_RGB565_BE_320X240_10FPS
+    {
+        .name = "DVP_8bit_20Minput_RGB565_BE_320x240_10fps",
+        .format = ESP_CAM_SENSOR_PIXFORMAT_RGB565_BE,
+        .port = ESP_CAM_SENSOR_DVP,
+        .xclk = 20000000,
+        .width = 320,
+        .height = 240,
+        .regs = mt9d111_dvp_8bit_20Minput_320x240_rgb565_be_10fps,
+        .regs_size = ARRAY_SIZE(mt9d111_dvp_8bit_20Minput_320x240_rgb565_be_10fps),
+        .fps = 10,
+        .isp_info = NULL,
+        .mipi_info = {},
+        .reserved = NULL,
+    },
+#endif
+#if CONFIG_CAMERA_MT9D111_DVP_RGB565_BE_800X600_10FPS
+    {
+        .name = "DVP_8bit_20Minput_RGB565_BE_800x600_10fps",
+        .format = ESP_CAM_SENSOR_PIXFORMAT_RGB565_BE,
+        .port = ESP_CAM_SENSOR_DVP,
+        .xclk = 20000000,
+        .width = 800,
+        .height = 600,
+        .regs = mt9d111_dvp_8bit_20Minput_800x600_rgb565_be_10fps,
+        .regs_size = ARRAY_SIZE(mt9d111_dvp_8bit_20Minput_800x600_rgb565_be_10fps),
+        .fps = 10,
+        .isp_info = NULL,
+        .mipi_info = {},
+        .reserved = NULL,
+    },
+#endif
+#if CONFIG_CAMERA_MT9D111_DVP_YUV422_YUYV_800X600_8FPS
+    {
+        .name = "DVP_8bit_20Minput_YUV422_YUYV_800x600_8fps",
+        .format = ESP_CAM_SENSOR_PIXFORMAT_YUV422_YUYV,
+        .port = ESP_CAM_SENSOR_DVP,
+        .xclk = 20000000,
+        .width = 800,
+        .height = 600,
+        .regs = mt9d111_dvp_8bit_20Minput_800x600_yuv422_yuyv_8fps,
+        .regs_size = ARRAY_SIZE(mt9d111_dvp_8bit_20Minput_800x600_yuv422_yuyv_8fps),
+        .fps = 8,
+        .isp_info = NULL,
+        .mipi_info = {},
+        .reserved = NULL,
+    },
+#endif
+#if CONFIG_CAMERA_MT9D111_DVP_YUV422_YUYV_800X600_14FPS
+    {
+        .name = "DVP_8bit_20Minput_YUV422_YUYV_800x600_14fps",
+        .format = ESP_CAM_SENSOR_PIXFORMAT_YUV422_YUYV,
+        .port = ESP_CAM_SENSOR_DVP,
+        .xclk = 20000000,
+        .width = 800,
+        .height = 600,
+        .regs = mt9d111_dvp_8bit_20Minput_800x600_yuv422_yuyv_14fps,
+        .regs_size = ARRAY_SIZE(mt9d111_dvp_8bit_20Minput_800x600_yuv422_yuyv_14fps),
+        .fps = 14,
+        .isp_info = NULL,
+        .mipi_info = {},
+        .reserved = NULL,
+    },
+#endif
+#if CONFIG_CAMERA_MT9D111_DVP_YUV422_YUYV_800X600_16FPS
+    {
+        .name = "DVP_8bit_24Minput_YUV422_YUYV_800x600_16fps",
+        .format = ESP_CAM_SENSOR_PIXFORMAT_YUV422_YUYV,
+        .port = ESP_CAM_SENSOR_DVP,
+        .xclk = 24000000,
+        .width = 800,
+        .height = 600,
+        .regs = mt9d111_dvp_8bit_24Minput_800x600_yuv422_yuyv_16fps,
+        .regs_size = ARRAY_SIZE(mt9d111_dvp_8bit_24Minput_800x600_yuv422_yuyv_16fps),
         .fps = 16,
         .isp_info = NULL,
         .mipi_info = {},

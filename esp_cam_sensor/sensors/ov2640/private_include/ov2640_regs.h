@@ -83,13 +83,11 @@ extern "C" {
 #define IMAGE_MODE_Y8_DVP_EN    0x40
 #define IMAGE_MODE_JPEG_EN      0x10
 
-#if CONFIG_CAMERA_SENSOR_SWAP_PIXEL_BYTE_ORDER
-#define IMAGE_MODE_RGB565       0x09 // RGB565 format and byte swap enabled
-#define IMAGE_MODE_YUV422       0x01 // YUV422 format and byte swap enabled
-#else
-#define IMAGE_MODE_RGB565       0x08 // RGB565 format
-#define IMAGE_MODE_YUV422       0x00 // YUV422 format
-#endif
+#define IMAGE_MODE_RGB565_LE    0x09
+#define IMAGE_MODE_YUV422_UYVY  0x01
+
+#define IMAGE_MODE_RGB565_BE    0x08
+#define IMAGE_MODE_YUV422_YUYV  0x00
 
 #define IMAGE_MODE_RAW10        0x04
 #define IMAGE_MODE_HREF_VSYNC   0x02

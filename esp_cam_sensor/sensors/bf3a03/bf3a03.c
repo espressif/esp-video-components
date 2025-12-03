@@ -63,19 +63,25 @@ static const uint8_t bf3a03_format_index[] = {
 #if CONFIG_CAMERA_BF3A03_DVP_YUV422_MONO_640X480_15FPS
     1,
 #endif
+#if CONFIG_CAMERA_BF3A03_DVP_YUV422_YUYV_640X480_15FPS
+    2,
+#endif
+#if CONFIG_CAMERA_BF3A03_DVP_YUV422_YUYV_MONO_640X480_15FPS
+    3,
+#endif
 };
 
 static const esp_cam_sensor_format_t bf3a03_format_info[] = {
 #if CONFIG_CAMERA_BF3A03_DVP_YUV422_640X480_15FPS
     {
-        .name = "DVP_8bit_20Minput_YUV422_640x480_15fps",
-        .format = ESP_CAM_SENSOR_PIXFORMAT_YUV422,
+        .name = "DVP_8bit_20Minput_YUV422_UYVY_640x480_15fps",
+        .format = ESP_CAM_SENSOR_PIXFORMAT_YUV422_UYVY,
         .port = ESP_CAM_SENSOR_DVP,
         .xclk = 20000000,
         .width = 640,
         .height = 480,
-        .regs = DVP_8bit_20Minput_640x480_yuv422_15fps_color,
-        .regs_size = ARRAY_SIZE(DVP_8bit_20Minput_640x480_yuv422_15fps_color),
+        .regs = bf3a03_dvp_8bit_20Minput_640x480_yuv422_uyvy_15fps,
+        .regs_size = ARRAY_SIZE(bf3a03_dvp_8bit_20Minput_640x480_yuv422_uyvy_15fps),
         .fps = 15,
         .isp_info = NULL,
         .mipi_info = {},
@@ -84,14 +90,46 @@ static const esp_cam_sensor_format_t bf3a03_format_info[] = {
 #endif
 #if CONFIG_CAMERA_BF3A03_DVP_YUV422_MONO_640X480_15FPS
     {
-        .name = "DVP_8bit_20Minput_YUV422_Mono_640x480_20fps",
-        .format = ESP_CAM_SENSOR_PIXFORMAT_YUV422,
+        .name = "DVP_8bit_20Minput_YUV422_UYVY_MONO_640x480_15fps",
+        .format = ESP_CAM_SENSOR_PIXFORMAT_YUV422_UYVY,
         .port = ESP_CAM_SENSOR_DVP,
         .xclk = 20000000,
         .width = 640,
         .height = 480,
-        .regs = DVP_8bit_20Minput_640x480_yuv422_15fps_mono,
-        .regs_size = ARRAY_SIZE(DVP_8bit_20Minput_640x480_yuv422_15fps_mono),
+        .regs = bf3a03_dvp_8bit_20Minput_640x480_yuv422_uyvy_15fps_mono,
+        .regs_size = ARRAY_SIZE(bf3a03_dvp_8bit_20Minput_640x480_yuv422_uyvy_15fps_mono),
+        .fps = 15,
+        .isp_info = NULL,
+        .mipi_info = {},
+        .reserved = NULL,
+    },
+#endif
+#if CONFIG_CAMERA_BF3A03_DVP_YUV422_YUYV_640X480_15FPS
+    {
+        .name = "DVP_8bit_20Minput_YUV422_YUYV_640x480_15fps",
+        .format = ESP_CAM_SENSOR_PIXFORMAT_YUV422_YUYV,
+        .port = ESP_CAM_SENSOR_DVP,
+        .xclk = 20000000,
+        .width = 640,
+        .height = 480,
+        .regs = bf3a03_dvp_8bit_20Minput_640x480_yuv422_yuyv_15fps,
+        .regs_size = ARRAY_SIZE(bf3a03_dvp_8bit_20Minput_640x480_yuv422_yuyv_15fps),
+        .fps = 15,
+        .isp_info = NULL,
+        .mipi_info = {},
+        .reserved = NULL,
+    },
+#endif
+#if CONFIG_CAMERA_BF3A03_DVP_YUV422_YUYV_MONO_640X480_15FPS
+    {
+        .name = "DVP_8bit_20Minput_YUV422_YUYV_MONO_640x480_15fps",
+        .format = ESP_CAM_SENSOR_PIXFORMAT_YUV422_YUYV,
+        .port = ESP_CAM_SENSOR_DVP,
+        .xclk = 20000000,
+        .width = 640,
+        .height = 480,
+        .regs = bf3a03_dvp_8bit_20Minput_640x480_yuv422_yuyv_15fps_mono,
+        .regs_size = ARRAY_SIZE(bf3a03_dvp_8bit_20Minput_640x480_yuv422_yuyv_15fps_mono),
         .fps = 15,
         .isp_info = NULL,
         .mipi_info = {},

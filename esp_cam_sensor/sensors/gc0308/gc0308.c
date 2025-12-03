@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2024 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2024-2025 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -39,7 +39,7 @@ static const uint8_t gc0308_format_index[] = {
 #if CONFIG_CAMERA_GC0308_DVP_YUV422_640X480_16FPS
     0,
 #endif
-#if CONFIG_CAMERA_GC0308_DVP_RGB565_640X480_16FPS
+#if CONFIG_CAMERA_GC0308_DVP_RGB565_BE_640X480_16FPS
     1,
 #endif
 #if CONFIG_CAMERA_GC0308_DVP_GRAY_640X480_16FPS
@@ -51,38 +51,44 @@ static const uint8_t gc0308_format_index[] = {
 #if CONFIG_CAMERA_GC0308_DVP_GRAY_320X240_20FPS
     4,
 #endif
-#if CONFIG_CAMERA_GC0308_DVP_RGB565_320X240_20FPS
+#if CONFIG_CAMERA_GC0308_DVP_RGB565_BE_320X240_20FPS
     5,
+#endif
+#if CONFIG_CAMERA_GC0308_DVP_YUV422_YUYV_320X240_20FPS
+    6,
+#endif
+#if CONFIG_CAMERA_GC0308_DVP_YUV422_YUYV_640X480_16FPS
+    7,
 #endif
 };
 
 static const esp_cam_sensor_format_t gc0308_format_info[] = {
 #if CONFIG_CAMERA_GC0308_DVP_YUV422_640X480_16FPS
     {
-        .name = "DVP_8bit_20Minput_YUV422_640x480_16fps",
-        .format = ESP_CAM_SENSOR_PIXFORMAT_YUV422,
+        .name = "DVP_8bit_20Minput_YUV422_UYVY_640x480_16fps",
+        .format = ESP_CAM_SENSOR_PIXFORMAT_YUV422_UYVY,
         .port = ESP_CAM_SENSOR_DVP,
         .xclk = 20000000,
         .width = 640,
         .height = 480,
-        .regs = DVP_8bit_20Minput_640x480_yuv422_16fps,
-        .regs_size = ARRAY_SIZE(DVP_8bit_20Minput_640x480_yuv422_16fps),
+        .regs = gc0308_dvp_8bit_20Minput_640x480_yuv422_uyvy_16fps,
+        .regs_size = ARRAY_SIZE(gc0308_dvp_8bit_20Minput_640x480_yuv422_uyvy_16fps),
         .fps = 16,
         .isp_info = NULL,
         .mipi_info = {},
         .reserved = NULL,
     },
 #endif
-#if CONFIG_CAMERA_GC0308_DVP_RGB565_640X480_16FPS
+#if CONFIG_CAMERA_GC0308_DVP_RGB565_BE_640X480_16FPS
     {
-        .name = "DVP_8bit_20Minput_RGB565_640x480_16fps",
-        .format = ESP_CAM_SENSOR_PIXFORMAT_RGB565,
+        .name = "DVP_8bit_20Minput_RGB565_BE_640x480_16fps",
+        .format = ESP_CAM_SENSOR_PIXFORMAT_RGB565_BE,
         .port = ESP_CAM_SENSOR_DVP,
         .xclk = 20000000,
         .width = 640,
         .height = 480,
-        .regs = DVP_8bit_20Minput_640x480_rgb565_16fps,
-        .regs_size = ARRAY_SIZE(DVP_8bit_20Minput_640x480_rgb565_16fps),
+        .regs = gc0308_dvp_8bit_20Minput_640x480_rgb565_be_16fps,
+        .regs_size = ARRAY_SIZE(gc0308_dvp_8bit_20Minput_640x480_rgb565_be_16fps),
         .fps = 16,
         .isp_info = NULL,
         .mipi_info = {},
@@ -91,14 +97,14 @@ static const esp_cam_sensor_format_t gc0308_format_info[] = {
 #endif
 #if CONFIG_CAMERA_GC0308_DVP_GRAY_640X480_16FPS
     {
-        .name = "DVP_8bit_20Minput_grayscale_640x480_16fps",
+        .name = "DVP_8bit_20Minput_GRAY_640x480_16fps",
         .format = ESP_CAM_SENSOR_PIXFORMAT_GRAYSCALE,
         .port = ESP_CAM_SENSOR_DVP,
         .xclk = 20000000,
         .width = 640,
         .height = 480,
-        .regs = DVP_8bit_20Minput_640x480_only_y_16fps,
-        .regs_size = ARRAY_SIZE(DVP_8bit_20Minput_640x480_only_y_16fps),
+        .regs = gc0308_dvp_8bit_20Minput_640x480_only_y_16fps,
+        .regs_size = ARRAY_SIZE(gc0308_dvp_8bit_20Minput_640x480_only_y_16fps),
         .fps = 16,
         .isp_info = NULL,
         .mipi_info = {},
@@ -107,14 +113,14 @@ static const esp_cam_sensor_format_t gc0308_format_info[] = {
 #endif
 #if CONFIG_CAMERA_GC0308_DVP_YUV422_320X240_20FPS
     {
-        .name = "DVP_8bit_20Minput_YUV422_320x240_20fps_subsample",
-        .format = ESP_CAM_SENSOR_PIXFORMAT_YUV422,
+        .name = "DVP_8bit_20Minput_YUV422_UYVY_320x240_20fps_subsample",
+        .format = ESP_CAM_SENSOR_PIXFORMAT_YUV422_UYVY,
         .port = ESP_CAM_SENSOR_DVP,
         .xclk = 20000000,
         .width = 320,
         .height = 240,
-        .regs = DVP_8bit_20Minput_320x240_yuv422_20fps_subsample,
-        .regs_size = ARRAY_SIZE(DVP_8bit_20Minput_320x240_yuv422_20fps_subsample),
+        .regs = gc0308_dvp_8bit_20Minput_320x240_yuv422_uyvy_20fps_subsample,
+        .regs_size = ARRAY_SIZE(gc0308_dvp_8bit_20Minput_320x240_yuv422_uyvy_20fps_subsample),
         .fps = 20,
         .isp_info = NULL,
         .mipi_info = {},
@@ -123,31 +129,63 @@ static const esp_cam_sensor_format_t gc0308_format_info[] = {
 #endif
 #if CONFIG_CAMERA_GC0308_DVP_GRAY_320X240_20FPS
     {
-        .name = "DVP_8bit_20Minput_grayscale_320x240_20fps_subsample",
+        .name = "DVP_8bit_20Minput_GRAY_320x240_20fps_subsample",
         .format = ESP_CAM_SENSOR_PIXFORMAT_GRAYSCALE,
         .port = ESP_CAM_SENSOR_DVP,
         .xclk = 20000000,
         .width = 320,
         .height = 240,
-        .regs = DVP_8bit_20Minput_320x240_only_y_20fps_subsample,
-        .regs_size = ARRAY_SIZE(DVP_8bit_20Minput_320x240_only_y_20fps_subsample),
+        .regs = gc0308_dvp_8bit_20Minput_320x240_only_y_20fps_subsample,
+        .regs_size = ARRAY_SIZE(gc0308_dvp_8bit_20Minput_320x240_only_y_20fps_subsample),
         .fps = 20,
         .isp_info = NULL,
         .mipi_info = {},
         .reserved = NULL,
     },
 #endif
-#if CONFIG_CAMERA_GC0308_DVP_RGB565_320X240_20FPS
+#if CONFIG_CAMERA_GC0308_DVP_RGB565_BE_320X240_20FPS
     {
-        .name = "DVP_8bit_20Minput_RGB565_320x240_20fps_subsample",
-        .format = ESP_CAM_SENSOR_PIXFORMAT_RGB565,
+        .name = "DVP_8bit_20Minput_RGB565_BE_320x240_20fps_subsample",
+        .format = ESP_CAM_SENSOR_PIXFORMAT_RGB565_BE,
         .port = ESP_CAM_SENSOR_DVP,
         .xclk = 20000000,
         .width = 320,
         .height = 240,
-        .regs = DVP_8bit_20Minput_320x240_rgb565_20fps_subsample,
-        .regs_size = ARRAY_SIZE(DVP_8bit_20Minput_320x240_rgb565_20fps_subsample),
+        .regs = gc0308_dvp_8bit_20Minput_320x240_rgb565_be_20fps_subsample,
+        .regs_size = ARRAY_SIZE(gc0308_dvp_8bit_20Minput_320x240_rgb565_be_20fps_subsample),
         .fps = 20,
+        .isp_info = NULL,
+        .mipi_info = {},
+        .reserved = NULL,
+    },
+#endif
+#if CONFIG_CAMERA_GC0308_DVP_YUV422_YUYV_320X240_20FPS
+    {
+        .name = "DVP_8bit_20Minput_YUV422_YUYV_320x240_20fps_subsample",
+        .format = ESP_CAM_SENSOR_PIXFORMAT_YUV422_YUYV,
+        .port = ESP_CAM_SENSOR_DVP,
+        .xclk = 20000000,
+        .width = 320,
+        .height = 240,
+        .regs = gc0308_dvp_8bit_20Minput_320x240_yuv422_yuyv_20fps_subsample,
+        .regs_size = ARRAY_SIZE(gc0308_dvp_8bit_20Minput_320x240_yuv422_yuyv_20fps_subsample),
+        .fps = 20,
+        .isp_info = NULL,
+        .mipi_info = {},
+        .reserved = NULL,
+    },
+#endif
+#if CONFIG_CAMERA_GC0308_DVP_YUV422_YUYV_640X480_16FPS
+    {
+        .name = "DVP_8bit_20Minput_YUV422_YUYV_640x480_16fps",
+        .format = ESP_CAM_SENSOR_PIXFORMAT_YUV422_YUYV,
+        .port = ESP_CAM_SENSOR_DVP,
+        .xclk = 20000000,
+        .width = 640,
+        .height = 480,
+        .regs = gc0308_dvp_8bit_20Minput_640x480_yuv422_yuyv_16fps,
+        .regs_size = ARRAY_SIZE(gc0308_dvp_8bit_20Minput_640x480_yuv422_yuyv_16fps),
+        .fps = 16,
         .isp_info = NULL,
         .mipi_info = {},
         .reserved = NULL,

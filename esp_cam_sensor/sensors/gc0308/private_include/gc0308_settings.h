@@ -16,20 +16,21 @@
 extern "C" {
 #endif
 
-#define GC0308_RGB565_FMT   (0xa6)
-#if CONFIG_CAMERA_SENSOR_SWAP_PIXEL_BYTE_ORDER
-#define GC0308_YUV422_FMT  (0xa0) // send in [Cb Y Cr Y] order.
-#else
-#define GC0308_YUV422_FMT  (0xa2) // send in [Y Cb Y Cr] order.
-#endif
+#define GC0308_RGB565_BE_FMT   (0xa6)
+
+#define GC0308_YUV422_UYVY_FMT  (0xa0) // send in [Cb Y Cr Y] order.
+#define GC0308_YUV422_YUYV_FMT  (0xa2) // send in [Y Cb Y Cr] order.
 
 #define GC0308_ONLY_Y_FMT   (0xb1)
 
-#define gc0308_settings_rgb565 \
-    {GC0308_REG_OUTPUT_FMT, GC0308_RGB565_FMT}
+#define gc0308_settings_rgb565_be \
+    {GC0308_REG_OUTPUT_FMT, GC0308_RGB565_BE_FMT}
 
-#define gc0308_settings_yuv422 \
-    {GC0308_REG_OUTPUT_FMT, GC0308_YUV422_FMT}
+#define gc0308_settings_yuv422_uyvy \
+    {GC0308_REG_OUTPUT_FMT, GC0308_YUV422_UYVY_FMT}
+
+#define gc0308_settings_yuv422_yuyv \
+    {GC0308_REG_OUTPUT_FMT, GC0308_YUV422_YUYV_FMT}
 
 #define gc0308_settings_only_y \
     {GC0308_REG_OUTPUT_FMT, GC0308_ONLY_Y_FMT}
@@ -579,41 +580,19 @@ extern "C" {
     {0xeb, 0xe0}, \
     {0xfe, 0x00}
 
-static const gc0308_reginfo_t DVP_8bit_20Minput_640x480_only_y_16fps[] = {
-    gc0308_select_page0_default,
-    gc0308_settings_only_y,
-    init_reglist_DVP_8bit_640x480_16fps,
-};
+#include "gc0308_dvp_8bit_20Minput_640x480_only_y_16fps.h"
 
-static const gc0308_reginfo_t DVP_8bit_20Minput_640x480_rgb565_16fps[] = {
-    gc0308_select_page0_default,
-    gc0308_settings_rgb565,
-    init_reglist_DVP_8bit_640x480_16fps,
-};
+#include "gc0308_dvp_8bit_20Minput_640x480_rgb565_be_16fps.h"
 
-static const gc0308_reginfo_t DVP_8bit_20Minput_640x480_yuv422_16fps[] = {
-    gc0308_select_page0_default,
-    gc0308_settings_yuv422,
-    init_reglist_DVP_8bit_640x480_16fps,
-};
+#include "gc0308_dvp_8bit_20Minput_640x480_yuv422_uyvy_16fps.h"
+#include "gc0308_dvp_8bit_20Minput_640x480_yuv422_yuyv_16fps.h"
 
-static const gc0308_reginfo_t DVP_8bit_20Minput_320x240_only_y_20fps_subsample[] = {
-    gc0308_select_page0_default,
-    gc0308_settings_only_y,
-    init_reglist_DVP_8bit_320x240_20fps_subsample,
-};
+#include "gc0308_dvp_8bit_20Minput_320x240_only_y_20fps_subsample.h"
 
-static const gc0308_reginfo_t DVP_8bit_20Minput_320x240_rgb565_20fps_subsample[] = {
-    gc0308_select_page0_default,
-    gc0308_settings_rgb565,
-    init_reglist_DVP_8bit_320x240_20fps_subsample,
-};
+#include "gc0308_dvp_8bit_20Minput_320x240_rgb565_be_20fps_subsample.h"
 
-static const gc0308_reginfo_t DVP_8bit_20Minput_320x240_yuv422_20fps_subsample[] = {
-    gc0308_select_page0_default,
-    gc0308_settings_yuv422,
-    init_reglist_DVP_8bit_320x240_20fps_subsample,
-};
+#include "gc0308_dvp_8bit_20Minput_320x240_yuv422_uyvy_20fps_subsample.h"
+#include "gc0308_dvp_8bit_20Minput_320x240_yuv422_yuyv_20fps_subsample.h"
 
 #ifdef __cplusplus
 }

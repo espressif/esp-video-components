@@ -94,14 +94,14 @@ static const uint8_t bf3925_format_index[] = {
 static const esp_cam_sensor_format_t bf3925_format_info[] = {
 #if CONFIG_CAMERA_BF3925_DVP_YUV422_1600X1200_9FPS
     {
-        .name = "DVP_8bit_20Minput_YUV422_1600x1200_9fps",
-        .format = ESP_CAM_SENSOR_PIXFORMAT_YUV422,
+        .name = "DVP_8bit_20Minput_YUV422_UYVY_1600x1200_9fps",
+        .format = ESP_CAM_SENSOR_PIXFORMAT_YUV422_UYVY,
         .port = ESP_CAM_SENSOR_DVP,
         .xclk = 20000000,
         .width = 1600,
         .height = 1200,
-        .regs = DVP_8bit_20Minput_1600x1200_yuv422_9fps,
-        .regs_size = ARRAY_SIZE(DVP_8bit_20Minput_1600x1200_yuv422_9fps),
+        .regs = bf3925_dvp_8bit_20Minput_1600x1200_yuv422_uyvy_9fps,
+        .regs_size = ARRAY_SIZE(bf3925_dvp_8bit_20Minput_1600x1200_yuv422_uyvy_9fps),
         .fps = 9,
         .isp_info = NULL,
         .mipi_info = {},

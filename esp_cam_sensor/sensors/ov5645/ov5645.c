@@ -59,14 +59,14 @@ static const uint8_t ov5645_format_index[] = {
 static const esp_cam_sensor_format_t ov5645_format_info[] = {
 #if CONFIG_CAMERA_OV5645_MIPI_YUV422_1280X960_30FPS
     {
-        .name = "MIPI_2lane_24Minput_YUV422_1280x960_30fps",
-        .format = ESP_CAM_SENSOR_PIXFORMAT_YUV422,
+        .name = "MIPI_2lane_24Minput_YUV422_UYVY_1280x960_30fps",
+        .format = ESP_CAM_SENSOR_PIXFORMAT_YUV422_UYVY,
         .port = ESP_CAM_SENSOR_MIPI_CSI,
         .xclk = 24000000,
         .width = 1280,
         .height = 960,
-        .regs = ov5645_MIPI_2lane_yuv422_960p_30fps,
-        .regs_size = ARRAY_SIZE(ov5645_MIPI_2lane_yuv422_960p_30fps),
+        .regs = ov5645_mipi_2lane_24Minput_1280x960_yuv422_uyvy_30fps,
+        .regs_size = ARRAY_SIZE(ov5645_mipi_2lane_24Minput_1280x960_yuv422_uyvy_30fps),
         .fps = 30,
         .isp_info = NULL,
         .mipi_info = {
@@ -79,14 +79,14 @@ static const esp_cam_sensor_format_t ov5645_format_info[] = {
 #endif
 #if CONFIG_CAMERA_OV5645_MIPI_RGB565_1280X960_30FPS
     {
-        .name = "MIPI_2lane_24Minput_RGB565_1280x960_30fps",
-        .format = ESP_CAM_SENSOR_PIXFORMAT_RGB565,
+        .name = "MIPI_2lane_24Minput_RGB565_LE_1280x960_30fps",
+        .format = ESP_CAM_SENSOR_PIXFORMAT_RGB565_LE,
         .port = ESP_CAM_SENSOR_MIPI_CSI,
         .xclk = 24000000,
         .width = 1280,
         .height = 960,
-        .regs = ov5645_MIPI_2lane_rgb565_960p_30fps,
-        .regs_size = ARRAY_SIZE(ov5645_MIPI_2lane_rgb565_960p_30fps),
+        .regs = ov5645_mipi_2lane_24Minput_1280x960_rgb565_le_30fps,
+        .regs_size = ARRAY_SIZE(ov5645_mipi_2lane_24Minput_1280x960_rgb565_le_30fps),
         .fps = 30,
         .isp_info = NULL,
         .mipi_info = {
@@ -105,8 +105,8 @@ static const esp_cam_sensor_format_t ov5645_format_info[] = {
         .xclk = 24000000,
         .width = 1280,
         .height = 960,
-        .regs = ov5645_MIPI_2lane_yuv420_960p_30fps,
-        .regs_size = ARRAY_SIZE(ov5645_MIPI_2lane_yuv420_960p_30fps),
+        .regs = ov5645_mipi_2lane_24Minput_1280x960_yuv420_30fps,
+        .regs_size = ARRAY_SIZE(ov5645_mipi_2lane_24Minput_1280x960_yuv420_30fps),
         .fps = 30,
         .isp_info = NULL,
         .mipi_info = {
@@ -119,14 +119,14 @@ static const esp_cam_sensor_format_t ov5645_format_info[] = {
 #endif
 #if CONFIG_CAMERA_OV5645_MIPI_YUV422_2592X1944_15FPS
     {
-        .name = "MIPI_2lane_24Minput_YUV422_2592x1944_15fps",
-        .format = ESP_CAM_SENSOR_PIXFORMAT_YUV422,
+        .name = "MIPI_2lane_24Minput_YUV422_UYVY_2592x1944_15fps",
+        .format = ESP_CAM_SENSOR_PIXFORMAT_YUV422_UYVY,
         .port = ESP_CAM_SENSOR_MIPI_CSI,
         .xclk = 24000000,
         .width = 2592,
         .height = 1944,
-        .regs = ov5645_MIPI_2lane_yuv422_2592x1944_15fps,
-        .regs_size = ARRAY_SIZE(ov5645_MIPI_2lane_yuv422_2592x1944_15fps),
+        .regs = ov5645_mipi_2lane_24Minput_2592x1944_yuv422_uyvy_15fps,
+        .regs_size = ARRAY_SIZE(ov5645_mipi_2lane_24Minput_2592x1944_yuv422_uyvy_15fps),
         .fps = 15,
         .isp_info = NULL,
         .mipi_info = {
@@ -139,14 +139,14 @@ static const esp_cam_sensor_format_t ov5645_format_info[] = {
 #endif
 #if CONFIG_CAMERA_OV5645_MIPI_YUV422_1920X1080_15FPS
     {
-        .name = "MIPI_2lane_24Minput_YUV422_1920x1080_15fps",
-        .format = ESP_CAM_SENSOR_PIXFORMAT_YUV422,
+        .name = "MIPI_2lane_24Minput_YUV422_UYVY_1920x1080_15fps",
+        .format = ESP_CAM_SENSOR_PIXFORMAT_YUV422_UYVY,
         .port = ESP_CAM_SENSOR_MIPI_CSI,
         .xclk = 24000000,
         .width = 1920,
         .height = 1080,
-        .regs = ov5645_MIPI_2lane_yuv422_1080p_15fps,
-        .regs_size = ARRAY_SIZE(ov5645_MIPI_2lane_yuv422_1080p_15fps),
+        .regs = ov5645_mipi_2lane_24Minput_1920x1080_yuv422_uyvy_15fps,
+        .regs_size = ARRAY_SIZE(ov5645_mipi_2lane_24Minput_1920x1080_yuv422_uyvy_15fps),
         .fps = 15,
         .isp_info = NULL,
         .mipi_info = {
@@ -159,14 +159,14 @@ static const esp_cam_sensor_format_t ov5645_format_info[] = {
 #endif
 #if CONFIG_CAMERA_OV5645_MIPI_YUV422_640X480_24FPS
     {
-        .name = "MIPI_2lane_24Minput_YUV422_640x480_24fps",
-        .format = ESP_CAM_SENSOR_PIXFORMAT_YUV422,
+        .name = "MIPI_2lane_24Minput_YUV422_UYVY_640x480_24fps",
+        .format = ESP_CAM_SENSOR_PIXFORMAT_YUV422_UYVY,
         .port = ESP_CAM_SENSOR_MIPI_CSI,
         .xclk = 24000000,
         .width = 640,
         .height = 480,
-        .regs = ov5645_MIPI_2lane_yuv422_640x480_24fps,
-        .regs_size = ARRAY_SIZE(ov5645_MIPI_2lane_yuv422_640x480_24fps),
+        .regs = ov5645_mipi_2lane_24Minput_640x480_yuv422_uyvy_24fps,
+        .regs_size = ARRAY_SIZE(ov5645_mipi_2lane_24Minput_640x480_yuv422_uyvy_24fps),
         .fps = 24,
         .isp_info = NULL,
         .mipi_info = {

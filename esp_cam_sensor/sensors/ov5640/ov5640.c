@@ -45,14 +45,14 @@ static const uint8_t ov5640_mipi_format_index[] = {
 static const esp_cam_sensor_format_t ov5640_format_info_mipi[] = {
 #if CONFIG_CAMERA_OV5640_MIPI_RGB565_1280X720_14FPS
     {
-        .name = "MIPI_2lane_24Minput_RGB565_1280x720_14fps",
-        .format = ESP_CAM_SENSOR_PIXFORMAT_RGB565,
+        .name = "MIPI_2lane_24Minput_RGB565_LE_1280x720_14fps",
+        .format = ESP_CAM_SENSOR_PIXFORMAT_RGB565_LE,
         .port = ESP_CAM_SENSOR_MIPI_CSI,
         .xclk = 24000000,
         .width = 1280,
         .height = 720,
-        .regs = ov5640_MIPI_2lane_rgb565_720p_14fps,
-        .regs_size = ARRAY_SIZE(ov5640_MIPI_2lane_rgb565_720p_14fps),
+        .regs = ov5640_mipi_2lane_24Minput_1280x720_rgb565_le_14fps,
+        .regs_size = ARRAY_SIZE(ov5640_mipi_2lane_24Minput_1280x720_rgb565_le_14fps),
         .fps = 14,
         .isp_info = NULL,
         .mipi_info = {
@@ -90,20 +90,26 @@ static const uint8_t ov5640_dvp_format_index[] = {
 #if CONFIG_CAMERA_OV5640_DVP_RGB565_800X600_10FPS
     1,
 #endif
+#if CONFIG_CAMERA_OV5640_DVP_YUV422_YUYV_800X600_10FPS
+    2,
+#endif
+#if CONFIG_CAMERA_OV5640_DVP_RGB565_BE_800X600_10FPS
+    3,
+#endif
 };
 
 static const esp_cam_sensor_format_t ov5640_format_info_dvp[] = {
     /* For DVP */
 #if CONFIG_CAMERA_OV5640_DVP_YUV422_800X600_10FPS
     {
-        .name = "DVP_8bit_24Minput_YUV422_800x600_10fps",
-        .format = ESP_CAM_SENSOR_PIXFORMAT_YUV422,
+        .name = "DVP_8bit_24Minput_YUV422_UYVY_800x600_10fps",
+        .format = ESP_CAM_SENSOR_PIXFORMAT_YUV422_UYVY,
         .port = ESP_CAM_SENSOR_DVP,
         .xclk = 24000000,
         .width = 800,
         .height = 600,
-        .regs = ov5640_dvp_yuv422_svga_10fps,
-        .regs_size = ARRAY_SIZE(ov5640_dvp_yuv422_svga_10fps),
+        .regs = ov5640_dvp_8bit_24Minput_800x600_yuv422_uyvy_10fps,
+        .regs_size = ARRAY_SIZE(ov5640_dvp_8bit_24Minput_800x600_yuv422_uyvy_10fps),
         .fps = 10,
         .isp_info = NULL,
         .mipi_info = {0},
@@ -112,14 +118,46 @@ static const esp_cam_sensor_format_t ov5640_format_info_dvp[] = {
 #endif
 #if CONFIG_CAMERA_OV5640_DVP_RGB565_800X600_10FPS
     {
-        .name = "DVP_8bit_24Minput_RGB565_800x600_10fps",
-        .format = ESP_CAM_SENSOR_PIXFORMAT_RGB565,
+        .name = "DVP_8bit_24Minput_RGB565_LE_800x600_10fps",
+        .format = ESP_CAM_SENSOR_PIXFORMAT_RGB565_LE,
         .port = ESP_CAM_SENSOR_DVP,
         .xclk = 24000000,
         .width = 800,
         .height = 600,
-        .regs = ov5640_dvp_rgb565_svga_10fps,
-        .regs_size = ARRAY_SIZE(ov5640_dvp_rgb565_svga_10fps),
+        .regs = ov5640_dvp_8bit_24Minput_800x600_rgb565_le_10fps,
+        .regs_size = ARRAY_SIZE(ov5640_dvp_8bit_24Minput_800x600_rgb565_le_10fps),
+        .fps = 10,
+        .isp_info = NULL,
+        .mipi_info = {0},
+        .reserved = NULL,
+    },
+#endif
+#if CONFIG_CAMERA_OV5640_DVP_YUV422_YUYV_800X600_10FPS
+    {
+        .name = "DVP_8bit_24Minput_YUV422_YUYV_800x600_10fps",
+        .format = ESP_CAM_SENSOR_PIXFORMAT_YUV422_YUYV,
+        .port = ESP_CAM_SENSOR_DVP,
+        .xclk = 24000000,
+        .width = 800,
+        .height = 600,
+        .regs = ov5640_dvp_8bit_24Minput_800x600_yuv422_yuyv_10fps,
+        .regs_size = ARRAY_SIZE(ov5640_dvp_8bit_24Minput_800x600_yuv422_yuyv_10fps),
+        .fps = 10,
+        .isp_info = NULL,
+        .mipi_info = {0},
+        .reserved = NULL,
+    },
+#endif
+#if CONFIG_CAMERA_OV5640_DVP_RGB565_BE_800X600_10FPS
+    {
+        .name = "DVP_8bit_24Minput_RGB565_BE_800x600_10fps",
+        .format = ESP_CAM_SENSOR_PIXFORMAT_RGB565_BE,
+        .port = ESP_CAM_SENSOR_DVP,
+        .xclk = 24000000,
+        .width = 800,
+        .height = 600,
+        .regs = ov5640_dvp_8bit_24Minput_800x600_rgb565_be_10fps,
+        .regs_size = ARRAY_SIZE(ov5640_dvp_8bit_24Minput_800x600_rgb565_be_10fps),
         .fps = 10,
         .isp_info = NULL,
         .mipi_info = {0},
