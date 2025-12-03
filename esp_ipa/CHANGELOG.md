@@ -1,4 +1,4 @@
-## Unreleased
+## 1.3.0
 
 - Add auto BLC(black level correction) algorithm
 
