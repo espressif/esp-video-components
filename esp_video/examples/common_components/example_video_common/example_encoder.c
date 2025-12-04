@@ -123,8 +123,23 @@ esp_err_t example_encoder_init(example_encoder_config_t *config, example_encoder
         jpeg_enc_config.subsampling = JPEG_SUBSAMPLE_GRAY;
         jpeg_enc_input_src_size = config->width * config->height;
         break;
-    case V4L2_PIX_FMT_YUV422P:
+    case V4L2_PIX_FMT_UYVY:
+        jpeg_enc_config.src_type = JPEG_PIXEL_FORMAT_CbYCrY;
+        jpeg_enc_config.subsampling = JPEG_SUBSAMPLE_422;
+        jpeg_enc_input_src_size = config->width * config->height * 2;
+        break;
+    case V4L2_PIX_FMT_YUYV:
         jpeg_enc_config.src_type = JPEG_PIXEL_FORMAT_YCbYCr;
+        jpeg_enc_config.subsampling = JPEG_SUBSAMPLE_422;
+        jpeg_enc_input_src_size = config->width * config->height * 2;
+        break;
+    case V4L2_PIX_FMT_RGB565:
+        jpeg_enc_config.src_type = JPEG_PIXEL_FORMAT_RGB565_LE;
+        jpeg_enc_config.subsampling = JPEG_SUBSAMPLE_422;
+        jpeg_enc_input_src_size = config->width * config->height * 2;
+        break;
+    case V4L2_PIX_FMT_RGB565X:
+        jpeg_enc_config.src_type = JPEG_PIXEL_FORMAT_RGB565_BE;
         jpeg_enc_config.subsampling = JPEG_SUBSAMPLE_422;
         jpeg_enc_input_src_size = config->width * config->height * 2;
         break;
