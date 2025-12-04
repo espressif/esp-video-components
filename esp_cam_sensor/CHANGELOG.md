@@ -3,6 +3,7 @@
 ## Unreleased
 - Fixed OV5640 DVP yuv422 seq.
 - Added the const descriptor to MT9D111 reglist.
+- Added IPA configuration parameters for the SC202CS RAW8 720p format.
 
 ## 1.6.0
 
