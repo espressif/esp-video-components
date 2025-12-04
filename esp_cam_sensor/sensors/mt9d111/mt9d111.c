@@ -116,7 +116,7 @@ static esp_err_t mt9d111_write(esp_sccb_io_handle_t sccb_handle, uint8_t reg, ui
 }
 
 /* write a array of registers  */
-static esp_err_t mt9d111_write_array(esp_sccb_io_handle_t sccb_handle, mt9d111_reginfo_t *regarray, size_t regs_size)
+static esp_err_t mt9d111_write_array(esp_sccb_io_handle_t sccb_handle, const mt9d111_reginfo_t *regarray, size_t regs_size)
 {
     int i = 0;
     esp_err_t ret = ESP_OK;

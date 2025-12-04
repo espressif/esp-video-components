@@ -32,7 +32,7 @@ extern "C" {
   * 4. Disable soft reset by setting R0x0D:0=0x0000
   * 5. Wait 24 clock cycles before using the two-wire serial interface
   */
-static mt9d111_reginfo_t mt9d111_soft_reset_regs[] = {
+static const mt9d111_reginfo_t mt9d111_soft_reset_regs[] = {
     // Reset
     {MT9D111_REG_WRITE_PAGE, 0x0000},   // Page Register
     {0x65, 0xA000},     // bypassed PLL (prepare for soft reset)
@@ -47,7 +47,7 @@ static mt9d111_reginfo_t mt9d111_soft_reset_regs[] = {
     {MT9D111_REG_DELAY, 10},//DELAY=10
 };
 
-static mt9d111_reginfo_t DVP_8bit_20Minput_320x240_rgb565_10fps[] = {
+static const mt9d111_reginfo_t DVP_8bit_20Minput_320x240_rgb565_10fps[] = {
     // lenc
     {MT9D111_REG_WRITE_PAGE, 0x0002},   // PAGE REGISTER
     {0x80, 0x0160},     // LENS_CORRECTION_CONTROL
@@ -95,7 +95,7 @@ static mt9d111_reginfo_t DVP_8bit_20Minput_320x240_rgb565_10fps[] = {
     {0x65, 0x2000},  //Clock: <15> PLL BYPASS = 0 --- enable PLL as master clock
 };
 
-static mt9d111_reginfo_t DVP_8bit_20Minput_800x600_yuv422_8fps[] = {
+static const mt9d111_reginfo_t DVP_8bit_20Minput_800x600_yuv422_8fps[] = {
     // lenc
     {MT9D111_REG_WRITE_PAGE, 0x0002},   // PAGE REGISTER
     {0x80, 0x0160},     // LENS_CORRECTION_CONTROL
@@ -125,7 +125,7 @@ static mt9d111_reginfo_t DVP_8bit_20Minput_800x600_yuv422_8fps[] = {
     {0x65, 0x2000},  //Clock: <15> PLL BYPASS = 0 --- enable PLL as master clock
 };
 
-static mt9d111_reginfo_t DVP_8bit_20Minput_800x600_rgb565_10fps[] = {
+static const mt9d111_reginfo_t DVP_8bit_20Minput_800x600_rgb565_10fps[] = {
     // lenc
     {MT9D111_REG_WRITE_PAGE, 0x0002},   // PAGE REGISTER
     {0x80, 0x0160},     // LENS_CORRECTION_CONTROL
@@ -156,7 +156,7 @@ static mt9d111_reginfo_t DVP_8bit_20Minput_800x600_rgb565_10fps[] = {
     {0x65, 0x2000},  //Clock: <15> PLL BYPASS = 0 --- enable PLL as master clock
 };
 
-static mt9d111_reginfo_t DVP_8bit_20Minput_800x600_yuv422_14fps[] = {
+static const mt9d111_reginfo_t DVP_8bit_20Minput_800x600_yuv422_14fps[] = {
     // yuv422
     {MT9D111_REG_WRITE_PAGE, 0x01},
     {0x09, 0x01},
@@ -185,7 +185,7 @@ static mt9d111_reginfo_t DVP_8bit_20Minput_800x600_yuv422_14fps[] = {
     {0xC8, 0x0032},     // MCU_DATA_0
 };
 
-static mt9d111_reginfo_t DVP_8bit_24Minput_800x600_yuv422_16fps[] = {
+static const mt9d111_reginfo_t DVP_8bit_24Minput_800x600_yuv422_16fps[] = {
     // yuv422
     {MT9D111_REG_WRITE_PAGE, 0x01},
     {0x09, 0x01},

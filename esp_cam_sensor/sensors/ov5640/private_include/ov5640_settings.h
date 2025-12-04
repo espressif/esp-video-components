@@ -33,7 +33,7 @@ extern "C" {
 #if CONFIG_CAMERA_SENSOR_SWAP_PIXEL_BYTE_ORDER
 // send in [Cb Y Cr Y] order.
 #define ov5640_settings_yuv422 \
-    {FORMAT_CTRL0, 0x33}, \
+    {FORMAT_CTRL0, 0x32}, \
     {FORMAT_MUX_CTRL, 0x00}, \
 
 // send in [R[4:0],G[5:3],G[2:0],B[4:0]] order.
@@ -44,7 +44,7 @@ extern "C" {
 #else
 // send in [Y Cb Y Cr] order.
 #define ov5640_settings_yuv422 \
-    {FORMAT_CTRL0, 0x31}, \
+    {FORMAT_CTRL0, 0x30}, \
     {FORMAT_MUX_CTRL, 0x00}, \
 
 // send in [G[2:0],B[4:0],R[4:0],G[5:3]] order.
