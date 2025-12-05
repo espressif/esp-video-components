@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+- Fixed OV5640 DVP yuv422 seq.
+- Added the const descriptor to MT9D111 reglist.
+
 ## 1.6.0
 
 - Moved the sensor ID to the public attribute header file.

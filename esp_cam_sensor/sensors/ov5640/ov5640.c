@@ -76,8 +76,8 @@ static const esp_cam_sensor_format_t ov5640_format_info_dvp[] = {
         .xclk = 24000000,
         .width = 800,
         .height = 600,
-        .regs = ov5640_dvp_yuv422_svga_10fps,
-        .regs_size = ARRAY_SIZE(ov5640_dvp_yuv422_svga_10fps),
+        .regs = ov5640_dvp_rgb565_svga_10fps,
+        .regs_size = ARRAY_SIZE(ov5640_dvp_rgb565_svga_10fps),
         .fps = 10,
         .isp_info = NULL,
         .mipi_info = {0},
@@ -336,7 +336,6 @@ static esp_err_t ov5640_set_format(esp_cam_sensor_device_t *dev, const esp_cam_s
         }
 #endif
     }
-
     ret = ov5640_write_array(dev->sccb_handle, reset_regs_list);
     ESP_RETURN_ON_FALSE(ret == ESP_OK, ret, TAG, "write reset regs failed");
 
