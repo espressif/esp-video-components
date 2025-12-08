@@ -37,8 +37,11 @@ This component provides board-level initialization for esp_video, including MIPI
 | SPI CS Pin                  | NA | 37 | NA |  6 |
 | SPI SCLK Pin                | NA |  4 | NA | 13 |
 | SPI Data0 I/O Pin           | NA | 21 | NA | 16 |
+| SPI Data1 I/O Pin           | NA |  5 | NA | NA |
 
-**Note:** The ESP32-P4-Function-EV v1.4 board and ESP32-P4-EYE do not support DVP interface camera sensors by default. If you need to connect a DVP interface camera sensor to these boards, please select "Customized Development Board" in the menu and configure the GPIO pins and clock according to your specific hardware setup.
+**Note 1:** The ESP32-P4-Function-EV v1.4 board and ESP32-P4-EYE do not support DVP interface camera sensors by default. If you need to connect a DVP interface camera sensor to these boards, please select "Customized Development Board" in the menu and configure the GPIO pins and clock according to your specific hardware setup.
+
+**Note 2:** Only the parlio mode supports more than 1-bit to transform data, so only the parlio mode supports "SPI Data1 I/O Pin".
 
 ### Customized Development Board Default Configuration
 
@@ -77,6 +80,7 @@ When using "ESP32-XX-DevKitC" development boards, you can try the default GPIO p
 | SPI CAM0 CS Pin                  | 37 |  6 | 10 |  1 |  8 | 10 |
 | SPI CAM0 SCLK Pin                |  4 | 13 |  6 |  6 |  6 |  6 |
 | SPI CAM0 Data0 I/O Pin           | 21 | 16 |  7 |  7 |  7 |  7 |
+| SPI CAM0 Data1 I/O Pin           |  5 | NA | NA | NA |  9 |  9 |
 |   |   |   |   |
 | SPI CAM1 I2C SCL Pin             |  5 |  1 | NA | NA | NA | NA |
 | SPI CAM1 I2C SDA Pin             |  6 |  2 | NA | NA | NA | NA |
@@ -90,6 +94,8 @@ When using "ESP32-XX-DevKitC" development boards, you can try the default GPIO p
 **Note 1**: Only SoCs that have more than one SPI port, except for SPI flash and SPI RAM ports, can use the SPI CAM0 and SPI CAM1 simultaneously.
 
 **Note 2**: If the SPI CAM0 and SPI CAM1 use the same camera sensor and it only owns one I2C slave address, the SPI CAM0 and SPI CAM1 should use different I2C ports to communicate with their target camera sensor.
+
+**Note 3:** Only the parlio mode supports more than 1-bit to transform data, so only the parlio mode supports "SPI CAM0 Data1 I/O Pin".
 
 ## Usage Instructions
 

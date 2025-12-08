@@ -5,6 +5,7 @@
 - Added configuration options for supported formats. Once a supported format is enabled, it can be found in the configuration menu or enumeration command `VIDIOC_ENUM_FMT`.
 - Added YUV422 and RGB565 image data formats with byte order.
   - YUV422 supports two byte orders: YUYV and UYVY, represented by `ESP_CAM_SENSOR_PIXFORMAT_YUV422_YUYV` and `ESP_CAM_SENSOR_PIXFORMAT_YUV422_UYVY` respectively; RGB565 supports two byte orders: RGB565_LE and RGB565_BE, represented by `ESP_CAM_SENSOR_PIXFORMAT_RGB565_LE` and `ESP_CAM_SENSOR_PIXFORMAT_RGB565_BE` respectively.
+- Added the 2-bit data I/O mode for the parallel I/O interface of the SPI camera interface driver.
 
 ## 1.7.0
 

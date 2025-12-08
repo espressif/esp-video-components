@@ -252,6 +252,8 @@ static void SPI_CAM_ISR_ATTR spi_cam_post_trans_cb(spi_slave_transaction_t *spi_
  */
 static esp_err_t spi_cam_init_intf_spi(esp_cam_ctlr_spi_cam_t *ctlr, const esp_cam_ctlr_spi_config_t *config)
 {
+    ESP_RETURN_ON_FALSE(config->io_mode == ESP_CAM_CTLR_SPI_CAM_IO_MODE_1BIT, ESP_ERR_INVALID_ARG, TAG, "SPI mode only supports 1-bit data I/O mode");
+
     esp_err_t ret;
     spi_bus_config_t buscfg = {
         .mosi_io_num = config->spi_data0_io_pin,
@@ -377,10 +379,19 @@ static void parlio_message_task(void *arg)
 static esp_err_t spi_cam_init_intf_parlio(esp_cam_ctlr_spi_cam_t *ctlr, const esp_cam_ctlr_spi_config_t *config)
 {
     esp_err_t ret;
-
+    int data_width = 1;
     uint64_t pin_bit_mask = 1ULL << config->spi_sclk_pin |
                             1ULL << config->spi_cs_pin |
                             1ULL << config->spi_data0_io_pin;
+
+    if (config->io_mode == ESP_CAM_CTLR_SPI_CAM_IO_MODE_2BIT) {
+        ESP_RETURN_ON_FALSE(config->spi_data1_io_pin >= 0, ESP_ERR_INVALID_ARG, TAG, "spi_data1_io_pin is invalid for 2-bit mode");
+        pin_bit_mask |= 1ULL << config->spi_data1_io_pin;
+        data_width = 2;
+    } else if (config->io_mode != ESP_CAM_CTLR_SPI_CAM_IO_MODE_1BIT) {
+        ESP_RETURN_ON_FALSE(false, ESP_ERR_INVALID_ARG, TAG, "Invalid io_mode for PARLIO interface");
+    }
+
     gpio_config_t gpio_cfg = {
         .pin_bit_mask = pin_bit_mask,
         .mode = GPIO_MODE_INPUT,
@@ -400,7 +411,7 @@ static esp_err_t spi_cam_init_intf_parlio(esp_cam_ctlr_spi_cam_t *ctlr, const es
     parlio_rx_unit_config_t parlio_rx_unit_cfg = {
         .trans_queue_depth = 1,
         .max_recv_size = ctlr->fb_size_in_bytes,
-        .data_width = 1,
+        .data_width = data_width,
         .clk_src = PARLIO_CLK_SRC_EXTERNAL,
         .ext_clk_freq_hz = 24 * 1000 * 1000,
         .exp_clk_freq_hz = 24 * 1000 * 1000,
@@ -408,12 +419,13 @@ static esp_err_t spi_cam_init_intf_parlio(esp_cam_ctlr_spi_cam_t *ctlr, const es
         .clk_out_gpio_num = -1,
         .valid_gpio_num = config->spi_cs_pin,
         .data_gpio_nums = {
-            config->spi_data0_io_pin
+            config->spi_data0_io_pin,
+            config->spi_data1_io_pin,
         },
     };
 
     // disable other data pins
-    for (int i = 1; i < PARLIO_RX_UNIT_MAX_DATA_WIDTH; i++) {
+    for (int i = data_width; i < PARLIO_RX_UNIT_MAX_DATA_WIDTH; i++) {
         parlio_rx_unit_cfg.data_gpio_nums[i] = -1;
     }
 
@@ -542,7 +554,7 @@ static esp_err_t spi_cam_decode(esp_cam_ctlr_spi_cam_t *ctlr, uint8_t *src, uint
     bool decode_check_dis = ctlr->decode_check_dis;
 
     if (!decode_check_dis && (memcmp(src, ctlr->frame_info->frame_header_check, ctlr->frame_info->frame_header_check_size) != 0)) {
-        ESP_LOGE(TAG, "invalid frame header: %x %x %x %x", src[0], src[1], src[2], src[3]);
+        ESP_LOGD(TAG, "invalid frame header: %x %x %x %x", src[0], src[1], src[2], src[3]);
         return ESP_FAIL;
     }
     src += ctlr->frame_info->frame_header_size;
@@ -551,8 +563,8 @@ static esp_err_t spi_cam_decode(esp_cam_ctlr_spi_cam_t *ctlr, uint8_t *src, uint
 
     for (uint32_t i = 0; i < ctlr->fb_lines; i++) {
         if (!decode_check_dis && (memcmp(src, ctlr->frame_info->line_header_check, ctlr->frame_info->line_header_check_size) != 0)) {
-            // ESP_LOGE(TAG, "invalid line header %d", (int)i);
-            // return ESP_FAIL;
+            ESP_LOGD(TAG, "invalid line header %" PRIu32 "", i);
+            return ESP_FAIL;
         }
         src += ctlr->frame_info->line_header_size;
 
@@ -999,12 +1011,26 @@ esp_err_t esp_cam_new_spi_ctlr(const esp_cam_ctlr_spi_config_t *config, esp_cam_
 #endif /* CAM_CTLR_SPI_HAS_AUTO_DECODE */
     }
 #else /* CAM_CTLR_SPI_HAS_BACKUP_BUFFER */
+    uint32_t heap_cap = MALLOC_CAP_8BIT;
+
     if (config->intf == ESP_CAM_CTLR_SPI_CAM_INTF_PARLIO) {
         ctlr->spi_ll_buffer_size = ctlr->frame_info->frame_size;
+
+#if CONFIG_SPIRAM
+        if (!config->bk_buffer_sram) {
+            heap_cap |= MALLOC_CAP_SPIRAM | MALLOC_CAP_CACHE_ALIGNED;
+        } else {
+            heap_cap |= MALLOC_CAP_INTERNAL | MALLOC_CAP_DMA;
+        }
+#else /* CONFIG_SPIRAM */
+        heap_cap |= MALLOC_CAP_INTERNAL | MALLOC_CAP_DMA;
+#endif /* CONFIG_SPIRAM */
     } else {
         ctlr->spi_ll_buffer_size = alignment_size;
+        heap_cap |= MALLOC_CAP_INTERNAL | MALLOC_CAP_DMA;
     }
-    ctlr->spi_ll_buffer = heap_caps_aligned_alloc(alignment_size, ctlr->spi_ll_buffer_size, MALLOC_CAP_INTERNAL | MALLOC_CAP_DMA);
+
+    ctlr->spi_ll_buffer = heap_caps_aligned_alloc(alignment_size, ctlr->spi_ll_buffer_size, heap_cap);
     ESP_GOTO_ON_FALSE(ctlr->spi_ll_buffer, ESP_ERR_NO_MEM, fail0, TAG, "no mem for SPI low level buffer");
 #endif /* CAM_CTLR_SPI_HAS_BACKUP_BUFFER */
 

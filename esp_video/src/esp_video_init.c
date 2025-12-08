@@ -603,10 +603,12 @@ esp_err_t esp_video_init(const esp_video_init_config_t *config)
 
                 esp_video_spi_device_config_t spi_dev_config = {
                     .intf = spi_config->intf,
+                    .io_mode = spi_config->io_mode,
                     .spi_port = spi_config->spi_port,
                     .spi_cs_pin = spi_config->spi_cs_pin,
                     .spi_sclk_pin = spi_config->spi_sclk_pin,
-                    .spi_data0_io_pin = spi_config->spi_data0_io_pin
+                    .spi_data0_io_pin = spi_config->spi_data0_io_pin,
+                    .spi_data1_io_pin = spi_config->spi_data1_io_pin,
                 };
                 ret = esp_video_create_spi_video_device(cam_dev, &spi_dev_config, i);
                 if (ret != ESP_OK) {

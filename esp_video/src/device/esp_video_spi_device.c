@@ -185,10 +185,12 @@ static esp_err_t spi_video_start(struct esp_video *video, uint32_t type)
 
     esp_cam_ctlr_spi_config_t spi_config = {
         .intf = spi_video->spi_config.intf,
+        .io_mode = spi_video->spi_config.io_mode,
         .spi_port = spi_video->spi_config.spi_port,
         .spi_cs_pin = spi_video->spi_config.spi_cs_pin,
         .spi_sclk_pin = spi_video->spi_config.spi_sclk_pin,
         .spi_data0_io_pin = spi_video->spi_config.spi_data0_io_pin,
+        .spi_data1_io_pin = spi_video->spi_config.spi_data1_io_pin,
         .input_data_color_type = spi_video->in_color,
         .h_res = CAPTURE_VIDEO_GET_FORMAT_WIDTH(video),
         .v_res = CAPTURE_VIDEO_GET_FORMAT_HEIGHT(video),

@@ -65,6 +65,7 @@ extern "C" {
 #define EXAMPLE_SPI_CAM_0_CS_PIN                        6
 #define EXAMPLE_SPI_CAM_0_SCLK_PIN                      13
 #define EXAMPLE_SPI_CAM_0_DATA0_IO_PIN                  16
+#define EXAMPLE_SPI_CAM_0_DATA1_IO_PIN                  -1
 
 /**
  * @brief SPI camera sensor clock resource configuration

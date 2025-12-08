@@ -93,10 +93,15 @@ typedef struct esp_video_init_spi_config {
                                                      - ESP_CAM_CTLR_SPI_CAM_INTF_SPI: SPI interface
                                                      - ESP_CAM_CTLR_SPI_CAM_INTF_PARLIO: Parallel I/O interface */
 
+    esp_cam_ctlr_spi_cam_io_mode_t io_mode;     /*!< SPI CAM data I/O mode(SPI interface only supports 1-bit):
+                                                     - ESP_CAM_CTLR_SPI_CAM_IO_MODE_1BIT: data bus 1-bit
+                                                     - ESP_CAM_CTLR_SPI_CAM_IO_MODE_2BIT: data bus 2-bit */
+
     uint8_t spi_port;                           /*!< SPI port */
     gpio_num_t spi_cs_pin;                      /*!< SPI CS pin */
     gpio_num_t spi_sclk_pin;                    /*!< SPI SCLK pin */
     gpio_num_t spi_data0_io_pin;                /*!< SPI data0 I/O pin */
+    gpio_num_t spi_data1_io_pin;                /*!< SPI data1 I/O pin (only required when io_mode is ESP_CAM_CTLR_SPI_CAM_IO_MODE_2BIT, set to -1 if not used) */
 
     gpio_num_t  reset_pin;                      /*!< SPI interface camera sensor reset pin, if hardware has no reset pin, set reset_pin to be -1 */
     gpio_num_t  pwdn_pin;                       /*!< SPI interface camera sensor power down pin, if hardware has no power down pin, set pwdn_pin to be -1 */
