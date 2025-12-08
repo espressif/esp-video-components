@@ -61,6 +61,18 @@ ioctl(fd, VIDIOC_G_EXT_CTRLS, &controls);
 
 Please note that this class only supports "p_u8" and "size" fields of v4l2_ext_control, other fields are not supported.
 
+## V4L2 Extended Commands
+
+| Command | Type | Description |
+|:-:|:-|:-|
+| VIDIOC_S_SENSOR_FMT | pointer of "esp_cam_sensor_format_t" | Set sensor output format |
+| VIDIOC_G_SENSOR_FMT | pointer of "esp_cam_sensor_format_t" | Get sensor output format |
+| VIDIOC_SET_OWNER | pointer of "int" | Increase video device reference when input value is not equal to 0 or decrease video device reference when input value is equal to 0  |
+| VIDIOC_S_MOTOR_FMT | pointer of "esp_cam_motor_format_t" | Set motor motion format |
+| VIDIOC_G_MOTOR_FMT | pointer of "esp_cam_motor_format_t" | Get motor motion format |
+| VIDIOC_S_DQBUF_TIMEOUT | pointer of "struct timeval" | Set dequeue buffer timeout value |
+| VIDIOC_G_DQBUF_TIMEOUT | pointer of "struct timeval" | Get dequeue buffer timeout value |
+
 ## V4L2 Control IDs
 
 | ID | Class | Type | Permission | Description |
