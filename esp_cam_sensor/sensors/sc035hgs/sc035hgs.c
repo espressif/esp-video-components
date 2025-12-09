@@ -306,14 +306,14 @@ static const esp_cam_sensor_isp_info_t sc035hgs_isp_info_mipi[] = {
 static const esp_cam_sensor_format_t sc035hgs_format_info_mipi[] = {
 #if CONFIG_CAMERA_SC035HGS_MIPI_RAW10_640X480_48FPS
     {
-        .name = "MIPI_1lane_20Minput_raw10_640x480_48fps",
+        .name = "MIPI_1lane_20Minput_RAW10_640x480_48fps",
         .format = ESP_CAM_SENSOR_PIXFORMAT_RAW10,
         .port = ESP_CAM_SENSOR_MIPI_CSI,
         .xclk = 20000000,
         .width = 640,
         .height = 480,
-        .regs = mipi_20Minput_1lane_640x480_raw10_48fps,
-        .regs_size = ARRAY_SIZE(mipi_20Minput_1lane_640x480_raw10_48fps),
+        .regs = sc035hgs_mipi_1lane_20Minput_640x480_raw10_48fps,
+        .regs_size = ARRAY_SIZE(sc035hgs_mipi_1lane_20Minput_640x480_raw10_48fps),
         .fps = 48,
         .isp_info = &sc035hgs_isp_info_mipi[0],
         .mipi_info = {
@@ -326,14 +326,14 @@ static const esp_cam_sensor_format_t sc035hgs_format_info_mipi[] = {
 #endif
 #if CONFIG_CAMERA_SC035HGS_MIPI_RAW10_640X480_120FPS
     {
-        .name = "MIPI_1lane_20Minput_raw10_640x480_120fps",
+        .name = "MIPI_1lane_20Minput_RAW10_640x480_120fps",
         .format = ESP_CAM_SENSOR_PIXFORMAT_RAW10,
         .port = ESP_CAM_SENSOR_MIPI_CSI,
         .xclk = 24000000,
         .width = 640,
         .height = 480,
-        .regs = mipi_24Minput_1lane_640x480_raw10_linear_120fps,
-        .regs_size = ARRAY_SIZE(mipi_24Minput_1lane_640x480_raw10_linear_120fps),
+        .regs = sc035hgs_mipi_1lane_24Minput_640x480_raw10_linear_120fps,
+        .regs_size = ARRAY_SIZE(sc035hgs_mipi_1lane_24Minput_640x480_raw10_linear_120fps),
         .fps = 120,
         .isp_info = &sc035hgs_isp_info_mipi[1],
         .mipi_info = {
@@ -346,14 +346,14 @@ static const esp_cam_sensor_format_t sc035hgs_format_info_mipi[] = {
 #endif
 #if CONFIG_CAMERA_SC035HGS_MIPI_RAW8_640X480_50FPS
     {
-        .name = "MIPI_2lane_24Minput_raw8_640x480_50fps",
+        .name = "MIPI_2lane_24Minput_RAW8_640x480_50fps",
         .format = ESP_CAM_SENSOR_PIXFORMAT_RAW8,
         .port = ESP_CAM_SENSOR_MIPI_CSI,
         .xclk = 24000000,
         .width = 640,
         .height = 480,
-        .regs = mipi_24Minput_2lane_640x480_raw8_linear_50fps,
-        .regs_size = ARRAY_SIZE(mipi_24Minput_2lane_640x480_raw8_linear_50fps),
+        .regs = sc035hgs_mipi_2lane_24Minput_640x480_raw8_linear_50fps,
+        .regs_size = ARRAY_SIZE(sc035hgs_mipi_2lane_24Minput_640x480_raw8_linear_50fps),
         .fps = 50,
         .isp_info = &sc035hgs_isp_info_mipi[2],
         .mipi_info = {
@@ -366,14 +366,14 @@ static const esp_cam_sensor_format_t sc035hgs_format_info_mipi[] = {
 #endif
 #if CONFIG_CAMERA_SC035HGS_MIPI_RAW8_640X480_100FPS
     {
-        .name = "MIPI_2lane_24Minput_raw8_640x480_100fps",
+        .name = "MIPI_2lane_24Minput_RAW8_640x480_100fps",
         .format = ESP_CAM_SENSOR_PIXFORMAT_RAW8,
         .port = ESP_CAM_SENSOR_MIPI_CSI,
         .xclk = 24000000,
         .width = 640,
         .height = 480,
-        .regs = mipi_24Minput_2lane_640x480_raw8_linear_100fps,
-        .regs_size = ARRAY_SIZE(mipi_24Minput_2lane_640x480_raw8_linear_100fps),
+        .regs = sc035hgs_mipi_2lane_24Minput_640x480_raw8_linear_100fps,
+        .regs_size = ARRAY_SIZE(sc035hgs_mipi_2lane_24Minput_640x480_raw8_linear_100fps),
         .fps = 100,
         .isp_info = &sc035hgs_isp_info_mipi[3],
         .mipi_info = {

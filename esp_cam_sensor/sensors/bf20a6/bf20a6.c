@@ -44,14 +44,14 @@ static const uint8_t bf20a6_format_index[] = {
 static const esp_cam_sensor_format_t bf20a6_format_info[] = {
 #if CONFIG_CAMERA_BF20A6_DVP_GRAY_640X480_15FPS
     {
-        .name = "DVP_8bit_20Minput_Gray_640x480_15fps",
+        .name = "DVP_8bit_20Minput_GRAY_640x480_15fps",
         .format = ESP_CAM_SENSOR_PIXFORMAT_GRAYSCALE,
         .port = ESP_CAM_SENSOR_DVP,
         .xclk = 20000000,
         .width = 640,
         .height = 480,
-        .regs = DVP_8bit_20Minput_640x480_gray_15fps,
-        .regs_size = ARRAY_SIZE(DVP_8bit_20Minput_640x480_gray_15fps),
+        .regs = bf20a6_dvp_8bit_20Minput_640x480_gray_15fps,
+        .regs_size = ARRAY_SIZE(bf20a6_dvp_8bit_20Minput_640x480_gray_15fps),
         .fps = 15,
         .isp_info = NULL,
         .mipi_info = {},
