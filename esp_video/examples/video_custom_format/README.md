@@ -10,7 +10,7 @@ This example demonstrates how to initialize the video system using a custom form
 1. The camera sensor can only work properly when the developer provides the correct register configuration. Therefore, the correct initializer list needs to be provided:
 
    ```c
-   const sc2336_reginfo_t init_reglist_custom_MIPI_2lane_800x800_raw8_30fps[] = {
+   const sc2336_reginfo_t app_sc2336_mipi_2lane_24Minput_800x800_raw8_30fps[] = {
        {0x0103, 0x01},
        {0x0100, 0x00}, // sleep en
        ...
@@ -27,8 +27,8 @@ This example demonstrates how to initialize the video system using a custom form
        .xclk = 24000000,
        .width = 800,
        .height = 800,
-       .regs = init_reglist_custom_MIPI_2lane_800x800_raw8_30fps,
-       .regs_size = ARRAY_SIZE(init_reglist_custom_MIPI_2lane_800x800_raw8_30fps),
+       .regs = app_sc2336_mipi_2lane_24Minput_800x800_raw8_30fps,
+       .regs_size = ARRAY_SIZE(app_sc2336_mipi_2lane_24Minput_800x800_raw8_30fps),
        .fps = 30,
        .isp_info = &custom_fmt_isp_info,
        .mipi_info = {
@@ -80,6 +80,16 @@ Component config  --->
                 [*] Detect for SPI interface sensor
 ```
 
+#### Choose the format you want to use
+
+```
+Example Configuration  --->
+    Choose supported format  --->
+        (X) (BF3901) SPI 1-bit, 24M input, 120x160 10fps, YUV422(UYVY)
+        ( ) (BF3901) SPI 1-bit, 24M input, 120x160 10fps, YUV422(YUYV)
+        ( ) (BF3901) SPI 1-bit, 24M input, 240x320 15fps, RGB565(LE)
+        ( ) (SC2336) MIPI 2-lane, 24M input,  800x800  30fps, RAW8
+```
 ### Build and Flash
 Build the project and flash it to the board, then run monitor tool to view serial output:
 

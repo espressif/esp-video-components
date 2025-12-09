@@ -1,0 +1,37 @@
+menu "Example Configuration"
+
+    choice EXAMPLE_SELECT_SENSOR_FORMAT
+        prompt "Choose supported format"
+        default APP_CAMERA_BF3901_SPI_YUV422_120X160_10FPS
+        help
+            Select format for your sensor.
+
+        config APP_CAMERA_BF3901_SPI_YUV422_120X160_10FPS
+            bool "(BF3901) SPI 1-bit, 24M input, 120x160 10fps, YUV422(UYVY)"
+            depends on CAMERA_BF3901
+            help
+                YUV422(UYVY) color format at 120x160 resolution with 10fps framerate.
+                Requires 1-bit SPI interface with 24MHz input clock.
+
+        config APP_CAMERA_BF3901_SPI_YUV422_YUYV_120X160_10FPS
+            bool "(BF3901) SPI 1-bit, 24M input, 120x160 10fps, YUV422(YUYV)"
+            depends on CAMERA_BF3901
+            help
+                YUV422(YUYV) color format at 120x160 resolution with 10fps framerate.
+                Requires 1-bit SPI interface with 24MHz input clock.
+
+        config APP_CAMERA_BF3901_SPI_RGB565_240X320_15FPS
+            bool "(BF3901) SPI 1-bit, 24M input, 240x320 15fps, RGB565(LE)"
+            depends on CAMERA_BF3901
+            help
+                RGB565(LE) color format at 240x320 resolution with 15fps framerate.
+                Requires 1-bit SPI interface with 24MHz input clock.
+
+        config APP_CAMERA_SC2336_MIPI_RAW8_800X800_30FPS
+            bool "(SC2336) MIPI 2-lane, 24M input,  800x800  30fps, RAW8"
+            depends on CAMERA_SC2336
+            help
+                RAW8 color format at 800x800 resolution with 30fps framerate.
+                Requires MIPI CSI-2 2-lane interface with 24MHz input clock.
+    endchoice
+endmenu

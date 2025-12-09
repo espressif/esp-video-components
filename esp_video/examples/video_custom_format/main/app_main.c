@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2024 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2024-2025 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: ESPRESSIF MIT
  */
@@ -14,11 +14,16 @@
 #include "esp_log.h"
 #include "esp_timer.h"
 #include "example_video_common.h"
+
 #if CONFIG_CAMERA_BF3901
 #include "app_bf3901_custom_settings.h"
-#elif CONFIG_CAMERA_SC2336
+#endif
+
+#if CONFIG_CAMERA_SC2336
 #include "app_sc2336_custom_settings.h"
-#else
+#endif
+
+#if !CONFIG_CAMERA_BF3901 && !CONFIG_CAMERA_SC2336
 #error "No supported camera sensor selected, only support BF3901(SPI interface), SC2336(MIPI-CSI interface)"
 #endif
 
