@@ -45,14 +45,24 @@ static esp_err_t spi_get_input_frame_type(esp_cam_sensor_output_format_t sensor_
     esp_err_t ret = ESP_OK;
 
     switch (sensor_format) {
-    case ESP_CAM_SENSOR_PIXFORMAT_RGB565:
+    case ESP_CAM_SENSOR_PIXFORMAT_RGB565_LE:
         *in_color = CAM_CTLR_COLOR_RGB565;
         *v4l2_format = V4L2_PIX_FMT_RGB565;
         *bpp = 16;
         break;
-    case ESP_CAM_SENSOR_PIXFORMAT_YUV422:
+    case ESP_CAM_SENSOR_PIXFORMAT_RGB565_BE:
+        *in_color = CAM_CTLR_COLOR_RGB565;
+        *v4l2_format = V4L2_PIX_FMT_RGB565X;
+        *bpp = 16;
+        break;
+    case ESP_CAM_SENSOR_PIXFORMAT_YUV422_UYVY:
         *in_color = CAM_CTLR_COLOR_YUV422;
-        *v4l2_format = V4L2_PIX_FMT_YUV422P;
+        *v4l2_format = V4L2_PIX_FMT_UYVY;
+        *bpp = 16;
+        break;
+    case ESP_CAM_SENSOR_PIXFORMAT_YUV422_YUYV:
+        *in_color = CAM_CTLR_COLOR_YUV422;
+        *v4l2_format = V4L2_PIX_FMT_YUYV;
         *bpp = 16;
         break;
     case ESP_CAM_SENSOR_PIXFORMAT_RGB888:

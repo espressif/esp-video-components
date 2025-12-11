@@ -719,8 +719,6 @@ static esp_err_t gc2145_get_para_value(esp_cam_sensor_device_t *dev, uint32_t id
         if (dev->cur_format->port == ESP_CAM_SENSOR_MIPI_CSI) {
 #if CONFIG_CAMERA_GC2145_MIPI_DATA_SHORT_SWAPPED
             *(uint32_t *)arg = ESP_CAM_SENSOR_DATA_SEQ_SHORT_SWAPPED;
-#elif CONFIG_CAMERA_GC2145_MIPI_DATA_INTERNAL_SWAPPED
-            *(uint32_t *)arg = ESP_CAM_SENSOR_DATA_SEQ_WORD_INTERNAL_SWAPPED;
 #else
             *(uint32_t *)arg = ESP_CAM_SENSOR_DATA_SEQ_NONE;
 #endif

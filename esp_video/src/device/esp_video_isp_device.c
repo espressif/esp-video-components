@@ -396,7 +396,7 @@ static const uint32_t s_isp_isp_format[] = {
     V4L2_PIX_FMT_RGB565,
     V4L2_PIX_FMT_RGB24,
     V4L2_PIX_FMT_YUV420,
-    V4L2_PIX_FMT_YUV422P,
+    V4L2_PIX_FMT_UYVY,
 };
 static const int s_isp_isp_format_nums = ARRAY_SIZE(s_isp_isp_format);
 
@@ -2450,7 +2450,7 @@ esp_err_t esp_video_isp_check_format(esp_video_csi_state_t *state, const struct 
     }
 
     if ((format->fmt.pix.pixelformat == V4L2_PIX_FMT_YUV420) ||
-            (format->fmt.pix.pixelformat == V4L2_PIX_FMT_YUV422P)) {
+            (format->fmt.pix.pixelformat == V4L2_PIX_FMT_UYVY)) {
         if ((format->fmt.pix.ycbcr_enc != V4L2_YCBCR_ENC_DEFAULT) &&
                 (format->fmt.pix.ycbcr_enc != V4L2_YCBCR_ENC_601) &&
                 (format->fmt.pix.ycbcr_enc != V4L2_YCBCR_ENC_709)) {

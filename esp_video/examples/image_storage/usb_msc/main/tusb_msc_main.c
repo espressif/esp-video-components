@@ -57,7 +57,7 @@
 #define STORAGE_IMAGE_FORMAT       V4L2_PIX_FMT_H264
 #define CAPTURE_SECONDS            3
 #elif CONFIG_EXAMPLE_FORMAT_NON_ENCODE
-#define STORAGE_IMAGE_FORMAT       V4L2_PIX_FMT_YUV422P
+#define STORAGE_IMAGE_FORMAT       V4L2_PIX_FMT_UYVY
 #endif
 
 #define VIDEO_BUFFER_COUNT         2
@@ -297,7 +297,7 @@ static esp_err_t example_video_start(usb_msc_storage_t *umsc)
         int fmt_index = 0;
         const uint32_t jpeg_input_formats[] = {
             V4L2_PIX_FMT_RGB565,
-            V4L2_PIX_FMT_YUV422P,
+            V4L2_PIX_FMT_UYVY,
             V4L2_PIX_FMT_RGB24,
             V4L2_PIX_FMT_GREY
         };

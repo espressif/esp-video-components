@@ -31,7 +31,7 @@ Now we have implementations based on:
 | SPI0 | /dev/video3 | Capture  | / | camera output pixel format |
 | SPI1(2) | /dev/video4 | Capture  | / | camera output pixel format |
 | USB | /dev/video40 | Capture  | / | camera output pixel format |
-| JPEG encode | /dev/video10 | M2M | RGB565: V4L2_PIX_FMT_RGB565<br> RGB888: V4L2_PIX_FMT_RGB24<br> YUV422: V4L2_PIX_FMT_YUV422P<br> Gray8: V4L2_PIX_FMT_GREY | JPEG: V4L2_PIX_FMT_JPEG |
+| JPEG HW encode | /dev/video10 | M2M | RGB565: V4L2_PIX_FMT_RGB565<br> RGB888: V4L2_PIX_FMT_RGB24<br> YUV422: V4L2_PIX_FMT_UYVY<br> Gray8: V4L2_PIX_FMT_GREY | JPEG: V4L2_PIX_FMT_JPEG |
 | H.264 encode | /dev/video11 | M2M | YUV420: V4L2_PIX_FMT_YUV420 | H.264: V4L2_PIX_FMT_H264 |
 | ISP | /dev/video20 | Meta | camera output pixel format  | Metadata: V4L2_META_FMT_ESP_ISP_STATS |
 

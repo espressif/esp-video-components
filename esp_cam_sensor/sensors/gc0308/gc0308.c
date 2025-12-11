@@ -363,11 +363,6 @@ static esp_err_t gc0308_get_para_value(esp_cam_sensor_device_t *dev, uint32_t id
     esp_err_t ret = ESP_OK;
 
     switch (id) {
-#if CONFIG_CAMERA_SENSOR_SWAP_PIXEL_BYTE_ORDER
-    case ESP_CAM_SENSOR_DATA_SEQ:
-        *(uint32_t *)arg = ESP_CAM_SENSOR_DATA_SEQ_BYTE_SWAPPED;
-        break;
-#endif
     default:
         ret = ESP_ERR_NOT_SUPPORTED;
         break;

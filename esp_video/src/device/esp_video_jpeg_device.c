@@ -63,7 +63,7 @@ static esp_err_t jpeg_get_input_format_from_v4l2(uint32_t v4l2_format, jpeg_enc_
         *src_bpp = 24;
         *sub_sample = JPEG_DOWN_SAMPLING_YUV444;
         break;
-    case V4L2_PIX_FMT_YUV422P:
+    case V4L2_PIX_FMT_UYVY:
         *src_type = JPEG_ENCODE_IN_FORMAT_YUV422;
         *src_bpp = 16;
         *sub_sample = JPEG_DOWN_SAMPLING_YUV422;
@@ -196,7 +196,7 @@ static esp_err_t jpeg_video_enum_format(struct esp_video *video, uint32_t type, 
         static const uint32_t jpeg_output_format[] = {
             V4L2_PIX_FMT_RGB565,
             V4L2_PIX_FMT_RGB24,
-            V4L2_PIX_FMT_YUV422P,
+            V4L2_PIX_FMT_UYVY,
             V4L2_PIX_FMT_GREY,
         };
 

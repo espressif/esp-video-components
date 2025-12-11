@@ -182,11 +182,6 @@ if CAMERA_GC2145
             help
                 Swap bytes within each 16-bit word (short).
                 Use when colors appear incorrect in RGB565 format.
-        config CAMERA_GC2145_MIPI_DATA_INTERNAL_SWAPPED
-            bool "Internal endian order swap"
-            help
-                Apply internal endian order swapping.
-                Use for specific hardware configurations requiring endian correction.
         config CAMERA_GC2145_MIPI_DATA_NONE_SWAPPED
             bool "No byte swapping"
             help

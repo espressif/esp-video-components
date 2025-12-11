@@ -29,18 +29,18 @@ if CAMERA_SC030IOT
     menu "Choose supported formats for DVP interface"
         depends on SOC_LCDCAM_CAM_SUPPORTED
 
-        config CAMERA_SC030IOT_DVP_YUV422_640X480_26FPS
-            bool "DVP 8-bit, 20M input, 640x480 26fps, YUV422(UYVY)"
-            default y
-            help
-                YUV422(UYVY) color format at 640x480 resolution (VGA) with 26fps framerate.
-                Requires 8-bit DVP interface and 20MHz input clock.
-
         config CAMERA_SC030IOT_DVP_RAW8_640X480_26FPS
             bool "DVP 8-bit, 20M input, 640x480 26fps, RAW8"
             default n
             help
                 RAW8 format at 640x480 resolution (VGA) with 26fps framerate.
+                Requires 8-bit DVP interface and 20MHz input clock.
+
+        config CAMERA_SC030IOT_DVP_YUV422_640X480_26FPS
+            bool "DVP 8-bit, 20M input, 640x480 26fps, YUV422(UYVY)"
+            default y
+            help
+                YUV422(UYVY) color format at 640x480 resolution (VGA) with 26fps framerate.
                 Requires 8-bit DVP interface and 20MHz input clock.
 
         config CAMERA_SC030IOT_DVP_YUV422_YUYV_640X480_26FPS
@@ -61,13 +61,13 @@ if CAMERA_SC030IOT
             when the sensor is detected and initialized, and can be changed later when the
             sensor is in stream off state.
 
-        config CAMERA_SC030IOT_DVP_DEFAULT_FMT_YUV422_640X480_26FPS
-            bool "DVP 8-bit, 20M input, 640x480 26fps, YUV422(UYVY)"
-            depends on CAMERA_SC030IOT_DVP_YUV422_640X480_26FPS
-
         config CAMERA_SC030IOT_DVP_DEFAULT_FMT_RAW8_640X480_26FPS
             bool "DVP 8-bit, 20M input, 640x480 26fps, RAW8"
             depends on CAMERA_SC030IOT_DVP_RAW8_640X480_26FPS
+
+        config CAMERA_SC030IOT_DVP_DEFAULT_FMT_YUV422_640X480_26FPS
+            bool "DVP 8-bit, 20M input, 640x480 26fps, YUV422(UYVY)"
+            depends on CAMERA_SC030IOT_DVP_YUV422_640X480_26FPS
 
         config CAMERA_SC030IOT_DVP_DEFAULT_FMT_YUV422_YUYV_640X480_26FPS
             bool "DVP 8-bit, 20M input, 640x480 26fps, YUV422(YUYV)"
