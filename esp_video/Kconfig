@@ -101,7 +101,7 @@ menu "Espressif Video Configuration"
 
     menuconfig ESP_VIDEO_ENABLE_SPI_VIDEO_DEVICE
         bool "Enable SPI based Video Device"
-        depends on SOC_GPSPI_SUPPORTED
+        depends on CAM_CTRL_SPI_ENABLE
         select ESP_VIDEO_ENABLE_DATA_PREPROCESSING
         select CAM_CTLR_SPI_DISABLE_BACKUP_BUFFER
         select CAM_CTLR_SPI_DISABLE_AUTO_DECODE
