@@ -123,7 +123,26 @@ menu "Espressif Camera Sensors Configurations"
 
     endmenu
 
-    menu "Camera SPI Controller Configuration"
+    menuconfig CAM_CTRL_SPI_ENABLE
+        bool "Enable Camera SPI Controller Driver"
+        default y
+        depends on SOC_GPSPI_SUPPORTED || SOC_PARLIO_SUPPORTED
+        help
+            Enable Serial Peripheral Interface (SPI) cam driver support.
+
+            SPI interface is typically used for lower resolution camera sensors
+            or special applications where parallel interfaces are not suitable.
+
+            Features:
+            - Serial data transmission
+            - Lower GPIO pin count requirement
+            - Flexible clock rates
+            - Limited bandwidth compared to parallel interfaces
+
+            Best for: Low-resolution sensors, prototype development,
+            or applications with limited GPIO availability.
+
+    if CAM_CTRL_SPI_ENABLE
         config CAM_CTLR_SPI_ISR_CACHE_SAFE
             bool "Enable cache-safe SPI interrupt handling"
             default y
@@ -229,7 +248,7 @@ menu "Espressif Camera Sensors Configurations"
         config CAM_CTLR_SPI_ENABLE_PARLIO
             bool "Use Parallel I/O to simulate SPI interface"
             default n
-            depends on IDF_TARGET_ESP32P4 || IDF_TARGET_ESP32C5 || IDF_TARGET_ESP32C6
+            depends on SOC_PARLIO_SUPPORTED
             help
                 Enable Parallel I/O (PARLIO) support for camera controller SPI interface.
 
@@ -288,5 +307,5 @@ menu "Espressif Camera Sensors Configurations"
 
                 Consider to the message process operations may not cost much time, so default value of 23 provides
                 good performance for most applications.
-    endmenu
+    endif
 endmenu

@@ -1,3 +1,7 @@
+## 1.4.1
+
+- Update to use esp_cam_sensor v1.7.x
+
 ## 1.4.0
 
 - Add USB Host peripheral selection map configuration for USB Cameras

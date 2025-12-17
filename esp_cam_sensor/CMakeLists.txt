@@ -1,9 +1,11 @@
 set(srcs "src/esp_cam_sensor.c" "src/esp_cam_sensor_xclk.c" "src/esp_cam_motor.c")
 
-list(APPEND srcs "src/driver_cam/esp_cam_ctlr_spi_cam.c")
+if(CONFIG_CAM_CTRL_SPI_ENABLE)
+    list(APPEND srcs "src/driver_cam/esp_cam_ctlr_spi_cam.c")
 
-if(CONFIG_SPIRAM)
-    list(APPEND srcs "src/driver_spi/spi_slave.c")
+    if(CONFIG_SPIRAM)
+        list(APPEND srcs "src/driver_spi/spi_slave.c")
+    endif()
 endif()
 
 set(include_dirs "include")
