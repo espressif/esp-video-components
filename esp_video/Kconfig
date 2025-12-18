@@ -186,6 +186,14 @@ menu "Espressif Video Configuration"
                 Size in bytes of 1 URB, 10kB should be enough for start.
                 Larger value results in less frequent interrupts at the
                 cost of memory consumption
+
+        config USB_UVC_INIT_TIMEOUT_MS
+            int "UVC device initialization timeout (ms)"
+            default 10000
+            range 500 60000
+            help
+                Timeout in milliseconds for waiting for UVC device enumeration.
+                Default is 10000ms (10 seconds).
     endif
 
     config ESP_VIDEO_ENABLE_HW_H264_VIDEO_DEVICE

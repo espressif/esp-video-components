@@ -37,7 +37,9 @@
 
 #define UVC_DEVICE_URB_SIZE             CONFIG_USB_UVC_VIDEO_DEVICE_URB_SIZE
 
-#define UVC_INIT_TIMEOUT_MS             (10 * 1000)
+#define UVC_INIT_TIMEOUT_MS             CONFIG_USB_UVC_INIT_TIMEOUT_MS
+#define UVC_INIT_MAX_PHYSICAL_DEVICES   6
+#define UVC_INIT_MAX_STREAMS_PER_DEVICE 6
 
 #define UVC_INTERVAL_DENOMINATOR        (10 * 1000 * 1000)
 
@@ -219,9 +221,52 @@ static esp_err_t uvc_video_init(struct esp_video *video)
 {
     esp_err_t ret;
     struct uvc_video *device = VIDEO_PRIV_DATA(struct uvc_video *, video);
+    struct uvc_video_core *core = s_uvc_video_core;
 
-    ESP_RETURN_ON_FALSE((xSemaphoreTake(device->ready_sem, UVC_INIT_TIMEOUT_MS / portTICK_PERIOD_MS) == pdPASS), ESP_ERR_NOT_FOUND,
-                        TAG, "Failed to take UVC device ready semaphore");
+    /* Check if UVC devices are already enumerated before waiting on semaphore */
+    uint8_t dev_addr_list[UVC_INIT_MAX_PHYSICAL_DEVICES] = {0};
+    int num_of_devices = 0;
+    int detected_uvc_count = 0;
+
+    usb_host_device_addr_list_fill(sizeof(dev_addr_list), dev_addr_list, &num_of_devices);
+
+    /* Check each USB device to see if it's a UVC device */
+    for (int i = 0; i < num_of_devices; i++) {
+        for (int stream_idx = 0; stream_idx < UVC_INIT_MAX_STREAMS_PER_DEVICE; stream_idx++) {
+            size_t frame_list_size = 0;
+            /* Try to get frame list - if successful, it's a UVC device with this stream */
+            if (uvc_host_get_frame_list(dev_addr_list[i], stream_idx, NULL, &frame_list_size) == ESP_OK) {
+                if (frame_list_size > 0) {
+                    detected_uvc_count++;
+                    /* Try to assign this device to an available slot */
+                    portENTER_CRITICAL(&core->lock);
+                    for (int j = 0; j < core->uvc_video_num; j++) {
+                        struct uvc_video *uvc_dev = &core->uvc_video[j];
+                        if (uvc_dev->dev_addr == 0) {
+                            uvc_dev->dev_addr = dev_addr_list[i];
+                            uvc_dev->stream_index = stream_idx;
+                            uvc_dev->frame_info_num = frame_list_size;
+                            break;
+                        }
+                    }
+                    portEXIT_CRITICAL(&core->lock);
+                }
+                /* Found a valid stream for this device, move to next device
+                 * Note: currently only support one stream per device */
+                break;
+            }
+        }
+    }
+
+    /* If all expected UVC devices are already detected, no need to wait */
+    if (detected_uvc_count >= core->uvc_video_num) {
+        ESP_LOGI(TAG, "All UVC devices already enumerated");
+    } else {
+        ESP_LOGI(TAG, "Waiting for UVC device to be enumerated...");
+        ESP_RETURN_ON_FALSE((xSemaphoreTake(device->ready_sem, UVC_INIT_TIMEOUT_MS / portTICK_PERIOD_MS) == pdPASS), ESP_ERR_NOT_FOUND,
+                            TAG, "Failed to take UVC device ready semaphore");
+    }
+
     ESP_GOTO_ON_FALSE(device->dev_addr, ESP_ERR_NOT_FOUND, fail0, TAG, "UVC device=%p is not connected", device);
 
     device->frame_info = malloc((sizeof(uvc_host_frame_info_t) + sizeof(uint8_t)) * device->frame_info_num);

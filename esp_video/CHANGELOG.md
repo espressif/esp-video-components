@@ -1,3 +1,8 @@
+## Unreleased
+
+- Fix USB UVC device initialization timeout issue when devices are already enumerated
+- Add configurable UVC device initialization timeout via menuconfig (CONFIG_USB_UVC_INIT_TIMEOUT_MS)
+
 ## 1.4.1
 
 - Update to use esp_cam_sensor v1.7.x
