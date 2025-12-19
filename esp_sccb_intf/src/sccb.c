@@ -82,10 +82,16 @@ esp_err_t esp_sccb_transmit_receive_reg_a8v8(esp_sccb_io_handle_t io_handle, uin
     ESP_RETURN_ON_FALSE(io_handle->transmit_receive_reg_a8v8, ESP_ERR_NOT_SUPPORTED, TAG, "controller driver function not supported");
     ESP_RETURN_ON_FALSE(reg_val, ESP_ERR_INVALID_ARG, TAG, "invalid argument: reg_val null pointer");
 
-    uint8_t data[1] = {0};
-    data[0] = reg_addr & 0xff;
+    uint8_t tx_buffer[1];
+    tx_buffer[0] = reg_addr;
 
-    return io_handle->transmit_receive_reg_a8v8(io_handle, data, 1, reg_val, 1, ESP_SCCB_TRANS_DEALY);
+    esp_err_t ret = io_handle->transmit_v16(io_handle, tx_buffer, 1, ESP_SCCB_TRANS_DEALY);
+    if (ret != ESP_OK) {
+        ESP_LOGE(TAG, " transmit addr phase failed: addr:0x%02x, ret:%d", reg_addr, ret);
+        return ret;
+    }
+
+    return io_handle->receive_v16(io_handle, reg_val, 1, ESP_SCCB_TRANS_DEALY);
 }
 
 esp_err_t esp_sccb_transmit_receive_reg_a16v8(esp_sccb_io_handle_t io_handle, uint16_t reg_addr, uint8_t *reg_val)
