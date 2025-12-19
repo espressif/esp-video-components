@@ -29,6 +29,7 @@
 
 static const char *TAG = "sc030iot";
 
+#if CONFIG_CAMERA_SC030IOT_DVP_RAW8_640X480_26FPS || CONFIG_CAMERA_SC030IOT_MIPI_RAW8_640X480_60FPS
 static const esp_cam_sensor_isp_info_t sc030iot_isp_info[] = {
     {
         .isp_v1_info = {
@@ -40,23 +41,27 @@ static const esp_cam_sensor_isp_info_t sc030iot_isp_info[] = {
         }
     }
 };
+#endif
 
 #if CONFIG_SOC_LCDCAM_CAM_SUPPORTED
 static const esp_cam_sensor_format_t sc030iot_format_info_dvp[] = {
+#if CONFIG_CAMERA_SC030IOT_DVP_YUV422_640X480_26FPS
     {
-        .name = "DVP_8bit_20Minput_YUV422_640x480_26fps",
-        .format = ESP_CAM_SENSOR_PIXFORMAT_YUV422,
+        .name = "DVP_8bit_20Minput_YUV422_UYVY_640x480_26fps",
+        .format = ESP_CAM_SENSOR_PIXFORMAT_YUV422_UYVY,
         .port = ESP_CAM_SENSOR_DVP,
         .xclk = 20000000,
         .width = 640,
         .height = 480,
-        .regs = DVP_8bit_20Minput_640x480_yuv422_26fps,
-        .regs_size = ARRAY_SIZE(DVP_8bit_20Minput_640x480_yuv422_26fps),
+        .regs = sc030iot_dvp_8bit_20Minput_640x480_yuv422_uyvy_26fps,
+        .regs_size = ARRAY_SIZE(sc030iot_dvp_8bit_20Minput_640x480_yuv422_uyvy_26fps),
         .fps = 26,
         .isp_info = NULL,
         .mipi_info = {},
         .reserved = NULL,
     },
+#endif
+#if CONFIG_CAMERA_SC030IOT_DVP_RAW8_640X480_26FPS
     {
         .name = "DVP_8bit_20Minput_RAW8_640x480_26fps",
         .format = ESP_CAM_SENSOR_PIXFORMAT_RAW8,
@@ -64,27 +69,68 @@ static const esp_cam_sensor_format_t sc030iot_format_info_dvp[] = {
         .xclk = 20000000,
         .width = 640,
         .height = 480,
-        .regs = DVP_8bit_20Minput_640x480_raw8_26fps,
-        .regs_size = ARRAY_SIZE(DVP_8bit_20Minput_640x480_raw8_26fps),
+        .regs = sc030iot_dvp_8bit_20Minput_640x480_raw8_26fps,
+        .regs_size = ARRAY_SIZE(sc030iot_dvp_8bit_20Minput_640x480_raw8_26fps),
         .fps = 26,
         .isp_info = &sc030iot_isp_info[0],
         .mipi_info = {},
         .reserved = NULL,
-    }
+    },
+#endif
+#if CONFIG_CAMERA_SC030IOT_DVP_YUV422_YUYV_640X480_26FPS
+    {
+        .name = "DVP_8bit_20Minput_YUV422_YUYV_640x480_26fps",
+        .format = ESP_CAM_SENSOR_PIXFORMAT_YUV422_YUYV,
+        .port = ESP_CAM_SENSOR_DVP,
+        .xclk = 20000000,
+        .width = 640,
+        .height = 480,
+        .regs = sc030iot_dvp_8bit_20Minput_640x480_yuv422_yuyv_26fps,
+        .regs_size = ARRAY_SIZE(sc030iot_dvp_8bit_20Minput_640x480_yuv422_yuyv_26fps),
+        .fps = 26,
+        .isp_info = NULL,
+        .mipi_info = {},
+        .reserved = NULL,
+    },
+#endif
 };
+
+static const int sc030iot_dvp_format_index[] = {
+#if CONFIG_CAMERA_SC030IOT_DVP_YUV422_640X480_26FPS
+    0,
+#endif
+#if CONFIG_CAMERA_SC030IOT_DVP_RAW8_640X480_26FPS
+    1,
+#endif
+#if CONFIG_CAMERA_SC030IOT_DVP_YUV422_YUYV_640X480_26FPS
+    2,
+#endif
+};
+
+static int get_sc030iot_dvp_actual_format_index(void)
+{
+    int default_index = CONFIG_CAMERA_SC030IOT_DVP_IF_FORMAT_INDEX_DEFAULT;
+    for (size_t i = 0; i < ARRAY_SIZE(sc030iot_dvp_format_index); i++) {
+        if (sc030iot_dvp_format_index[i] == default_index) {
+            return i;
+        }
+    }
+    return 0;
+}
 #endif
 
 #if CONFIG_SOC_MIPI_CSI_SUPPORTED
 static const esp_cam_sensor_format_t sc030iot_format_info_mipi[] = {
+#if CONFIG_CAMERA_SC030IOT_MIPI_YUV422_640X480_25FPS
     {
-        .name = "MIPI_1lane_24Minput_480p_yuv422_25fps",
-        .format = ESP_CAM_SENSOR_PIXFORMAT_YUV422,
+        .name = "MIPI_1lane_24Minput_640x480_YUV422_UYVY_25fps",
+        .format = ESP_CAM_SENSOR_PIXFORMAT_YUV422_UYVY,
         .port = ESP_CAM_SENSOR_MIPI_CSI,
         .xclk = 24000000,
         .width = 640,
         .height = 480,
-        .regs = MIPI_1lane_24Minput_480p_yuv422_25fps,
-        .regs_size = ARRAY_SIZE(MIPI_1lane_24Minput_480p_yuv422_25fps),
+        .regs = sc030iot_mipi_1lane_24Minput_640x480_yuv422_uyvy_25fps,
+        .regs_size = ARRAY_SIZE(sc030iot_mipi_1lane_24Minput_640x480_yuv422_uyvy_25fps),
         .fps = 25,
         .isp_info = NULL,
         .mipi_info = {
@@ -94,15 +140,17 @@ static const esp_cam_sensor_format_t sc030iot_format_info_mipi[] = {
         },
         .reserved = NULL,
     },
+#endif
+#if CONFIG_CAMERA_SC030IOT_MIPI_YUV422_640X480_50FPS
     {
-        .name = "MIPI_1lane_24Minput_480p_yuv422_50fps",
-        .format = ESP_CAM_SENSOR_PIXFORMAT_YUV422,
+        .name = "MIPI_1lane_24Minput_640x480_YUV422_UYVY_50fps",
+        .format = ESP_CAM_SENSOR_PIXFORMAT_YUV422_UYVY,
         .port = ESP_CAM_SENSOR_MIPI_CSI,
         .xclk = 24000000,
         .width = 640,
         .height = 480,
-        .regs = MIPI_1lane_24Minput_480p_yuv422_50fps,
-        .regs_size = ARRAY_SIZE(MIPI_1lane_24Minput_480p_yuv422_50fps),
+        .regs = sc030iot_mipi_1lane_24Minput_640x480_yuv422_uyvy_50fps,
+        .regs_size = ARRAY_SIZE(sc030iot_mipi_1lane_24Minput_640x480_yuv422_uyvy_50fps),
         .fps = 50,
         .isp_info = NULL,
         .mipi_info = {
@@ -112,15 +160,17 @@ static const esp_cam_sensor_format_t sc030iot_format_info_mipi[] = {
         },
         .reserved = NULL,
     },
+#endif
+#if CONFIG_CAMERA_SC030IOT_MIPI_RAW8_640X480_60FPS
     {
-        .name = "MIPI_1lane_24Minput_480p_raw8_60fps",
+        .name = "MIPI_1lane_24Minput_640x480_RAW8_60fps",
         .format = ESP_CAM_SENSOR_PIXFORMAT_RAW8,
         .port = ESP_CAM_SENSOR_MIPI_CSI,
         .xclk = 24000000,
         .width = 640,
         .height = 480,
-        .regs = MIPI_1lane_24Minput_480p_raw8_60fps,
-        .regs_size = ARRAY_SIZE(MIPI_1lane_24Minput_480p_raw8_60fps),
+        .regs = sc030iot_mipi_1lane_24Minput_640x480_raw8_60fps,
+        .regs_size = ARRAY_SIZE(sc030iot_mipi_1lane_24Minput_640x480_raw8_60fps),
         .fps = 60,
         .isp_info = &sc030iot_isp_info[0],
         .mipi_info = {
@@ -129,8 +179,32 @@ static const esp_cam_sensor_format_t sc030iot_format_info_mipi[] = {
             .line_sync_en = false,
         },
         .reserved = NULL,
-    }
+    },
+#endif
 };
+
+static const int sc030iot_mipi_format_index[] = {
+#if CONFIG_CAMERA_SC030IOT_MIPI_YUV422_640X480_25FPS
+    0,
+#endif
+#if CONFIG_CAMERA_SC030IOT_MIPI_YUV422_640X480_50FPS
+    1,
+#endif
+#if CONFIG_CAMERA_SC030IOT_MIPI_RAW8_640X480_60FPS
+    2,
+#endif
+};
+
+static int get_sc030iot_mipi_actual_format_index(void)
+{
+    int default_index = CONFIG_CAMERA_SC030IOT_MIPI_IF_FORMAT_INDEX_DEFAULT;
+    for (size_t i = 0; i < ARRAY_SIZE(sc030iot_mipi_format_index); i++) {
+        if (sc030iot_mipi_format_index[i] == default_index) {
+            return i;
+        }
+    }
+    return 0;
+}
 #endif
 
 /* sc030 use "i2c paging mode", so the high byte of the register needs to be written to the 0xf0 reg.
@@ -357,12 +431,12 @@ static esp_err_t sc030iot_set_format(esp_cam_sensor_device_t *dev, const esp_cam
     if (format == NULL) {
 #if CONFIG_SOC_MIPI_CSI_SUPPORTED
         if (dev->sensor_port == ESP_CAM_SENSOR_MIPI_CSI) {
-            format = &sc030iot_format_info_mipi[CONFIG_CAMERA_SC030IOT_MIPI_IF_FORMAT_INDEX_DEFAULT];
+            format = &sc030iot_format_info_mipi[get_sc030iot_mipi_actual_format_index()];
         }
 #endif
 #if CONFIG_SOC_LCDCAM_CAM_SUPPORTED
         if (dev->sensor_port == ESP_CAM_SENSOR_DVP) {
-            format = &sc030iot_format_info_dvp[CONFIG_CAMERA_SC030IOT_DVP_IF_FORMAT_INDEX_DEFAULT];
+            format = &sc030iot_format_info_dvp[get_sc030iot_dvp_actual_format_index()];
         }
 #endif
     }
@@ -541,13 +615,13 @@ esp_cam_sensor_device_t *sc030iot_detect(esp_cam_sensor_config_t *config)
     dev->ops = &sc030iot_ops;
 #if CONFIG_SOC_MIPI_CSI_SUPPORTED
     if (config->sensor_port == ESP_CAM_SENSOR_MIPI_CSI) {
-        dev->cur_format = &sc030iot_format_info_mipi[CONFIG_CAMERA_SC030IOT_MIPI_IF_FORMAT_INDEX_DEFAULT];
+        dev->cur_format = &sc030iot_format_info_mipi[get_sc030iot_mipi_actual_format_index()];
     }
 #endif
 
 #if CONFIG_SOC_LCDCAM_CAM_SUPPORTED
     if (config->sensor_port == ESP_CAM_SENSOR_DVP) {
-        dev->cur_format = &sc030iot_format_info_dvp[CONFIG_CAMERA_SC030IOT_DVP_IF_FORMAT_INDEX_DEFAULT];
+        dev->cur_format = &sc030iot_format_info_dvp[get_sc030iot_dvp_actual_format_index()];
     }
 #endif
     ESP_LOGD(TAG, "fmt=%s", dev->cur_format->name);

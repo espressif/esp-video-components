@@ -68,16 +68,65 @@ static const esp_cam_sensor_spi_frame_info bf3901_frame_info_spi[] = {
     },
 };
 
+#ifndef CONFIG_CAMERA_BF3901_SPI_IF_FORMAT_INDEX_DEFAULT
+#error "Please choose at least one format in menuconfig for BF3901"
+#endif
+
+static const uint8_t bf3901_format_default_index = CONFIG_CAMERA_BF3901_SPI_IF_FORMAT_INDEX_DEFAULT;
+
+static const uint8_t bf3901_format_index[] = {
+#if CONFIG_CAMERA_BF3901_SPI_RGB565_240X320_15FPS
+    0,
+#endif
+#if CONFIG_CAMERA_BF3901_SPI_YUV422_240X320_15FPS
+    1,
+#endif
+#if CONFIG_CAMERA_BF3901_SPI_YUV422_240X320_12FPS
+    2,
+#endif
+#if CONFIG_CAMERA_BF3901_SPI_YUV422_240X240_10FPS
+    3,
+#endif
+#if CONFIG_CAMERA_BF3901_SPI_YUV422_120X160_10FPS
+    4,
+#endif
+#if CONFIG_CAMERA_BF3901_SPI_YUV422_120X160_5FPS
+    5,
+#endif
+#if CONFIG_CAMERA_BF3901_SPI2_YUV422_240X320_20FPS
+    6,
+#endif
+#if CONFIG_CAMERA_BF3901_SPI_YUV422_YUYV_240X320_15FPS
+    7,
+#endif
+#if CONFIG_CAMERA_BF3901_SPI_YUV422_YUYV_240X320_12FPS
+    8,
+#endif
+#if CONFIG_CAMERA_BF3901_SPI_YUV422_YUYV_240X240_10FPS
+    9,
+#endif
+#if CONFIG_CAMERA_BF3901_SPI_YUV422_YUYV_120X160_10FPS
+    10,
+#endif
+#if CONFIG_CAMERA_BF3901_SPI_YUV422_YUYV_120X160_5FPS
+    11,
+#endif
+#if CONFIG_CAMERA_BF3901_SPI2_YUV422_YUYV_240X320_20FPS
+    12,
+#endif
+};
+
 static const esp_cam_sensor_format_t bf3901_format_info_spi[] = {
+#if CONFIG_CAMERA_BF3901_SPI_RGB565_240X320_15FPS
     {
-        .name = "SPI_1bit_24Minput_RGB565_240x320_15fps",
-        .format = ESP_CAM_SENSOR_PIXFORMAT_RGB565,
+        .name = "SPI_1bit_24Minput_RGB565_LE_240x320_15fps",
+        .format = ESP_CAM_SENSOR_PIXFORMAT_RGB565_LE,
         .port = ESP_CAM_SENSOR_SPI,
         .xclk = 24000000,
         .width = 240,
         .height = 320,
-        .regs = SPI_1bit_24Minput_240x320_rgb565_15fps,
-        .regs_size = ARRAY_SIZE(SPI_1bit_24Minput_240x320_rgb565_15fps),
+        .regs = bf3901_spi_1bit_24Minput_240x320_rgb565_le_15fps,
+        .regs_size = ARRAY_SIZE(bf3901_spi_1bit_24Minput_240x320_rgb565_le_15fps),
         .fps = 15,
         .isp_info = NULL,
         .spi_info = {
@@ -86,15 +135,17 @@ static const esp_cam_sensor_format_t bf3901_format_info_spi[] = {
         },
         .reserved = NULL,
     },
+#endif
+#if CONFIG_CAMERA_BF3901_SPI_YUV422_240X320_15FPS
     {
-        .name = "SPI_1bit_24Minput_YUV422_240x320_15fps",
-        .format = ESP_CAM_SENSOR_PIXFORMAT_YUV422,
+        .name = "SPI_1bit_24Minput_YUV422_UYVY_240x320_15fps",
+        .format = ESP_CAM_SENSOR_PIXFORMAT_YUV422_UYVY,
         .port = ESP_CAM_SENSOR_SPI,
         .xclk = 24000000,
         .width = 240,
         .height = 320,
-        .regs = SPI_1bit_24Minput_240x320_yuv422_15fps,
-        .regs_size = ARRAY_SIZE(SPI_1bit_24Minput_240x320_yuv422_15fps),
+        .regs = bf3901_spi_1bit_24Minput_240x320_yuv422_uyvy_15fps,
+        .regs_size = ARRAY_SIZE(bf3901_spi_1bit_24Minput_240x320_yuv422_uyvy_15fps),
         .fps = 15,
         .isp_info = NULL,
         .spi_info = {
@@ -103,15 +154,17 @@ static const esp_cam_sensor_format_t bf3901_format_info_spi[] = {
         },
         .reserved = NULL,
     },
+#endif
+#if CONFIG_CAMERA_BF3901_SPI_YUV422_240X320_12FPS
     {
-        .name = "SPI_1bit_20Minput_YUV422_240x320_12fps",
-        .format = ESP_CAM_SENSOR_PIXFORMAT_YUV422,
+        .name = "SPI_1bit_20Minput_YUV422_UYVY_240x320_12fps",
+        .format = ESP_CAM_SENSOR_PIXFORMAT_YUV422_UYVY,
         .port = ESP_CAM_SENSOR_SPI,
         .xclk = 20000000,
         .width = 240,
         .height = 320,
-        .regs = SPI_1bit_20Minput_240x320_yuv422_12fps,
-        .regs_size = ARRAY_SIZE(SPI_1bit_20Minput_240x320_yuv422_12fps),
+        .regs = bf3901_spi_1bit_20Minput_240x320_yuv422_uyvy_12fps,
+        .regs_size = ARRAY_SIZE(bf3901_spi_1bit_20Minput_240x320_yuv422_uyvy_12fps),
         .fps = 12,
         .isp_info = NULL,
         .spi_info = {
@@ -120,15 +173,17 @@ static const esp_cam_sensor_format_t bf3901_format_info_spi[] = {
         },
         .reserved = NULL,
     },
+#endif
+#if CONFIG_CAMERA_BF3901_SPI_YUV422_240X240_10FPS
     {
-        .name = "SPI_1bit_24Minput_YUV422_240x240_10fps",
-        .format = ESP_CAM_SENSOR_PIXFORMAT_YUV422,
+        .name = "SPI_1bit_24Minput_YUV422_UYVY_240x240_10fps",
+        .format = ESP_CAM_SENSOR_PIXFORMAT_YUV422_UYVY,
         .port = ESP_CAM_SENSOR_SPI,
         .xclk = 24000000,
         .width = 240,
         .height = 240,
-        .regs = SPI_1bit_24Minput_240x240_yuv422_10fps,
-        .regs_size = ARRAY_SIZE(SPI_1bit_24Minput_240x240_yuv422_10fps),
+        .regs = bf3901_spi_1bit_24Minput_240x240_yuv422_uyvy_10fps,
+        .regs_size = ARRAY_SIZE(bf3901_spi_1bit_24Minput_240x240_yuv422_uyvy_10fps),
         .fps = 10,
         .isp_info = NULL,
         .spi_info = {
@@ -137,15 +192,17 @@ static const esp_cam_sensor_format_t bf3901_format_info_spi[] = {
         },
         .reserved = NULL,
     },
+#endif
+#if CONFIG_CAMERA_BF3901_SPI_YUV422_120X160_10FPS
     {
-        .name = "SPI_1bit_24Minput_YUV422_120x160_10fps",
-        .format = ESP_CAM_SENSOR_PIXFORMAT_YUV422,
+        .name = "SPI_1bit_24Minput_YUV422_UYVY_120x160_10fps",
+        .format = ESP_CAM_SENSOR_PIXFORMAT_YUV422_UYVY,
         .port = ESP_CAM_SENSOR_SPI,
         .xclk = 24000000,
         .width = 120,
         .height = 160,
-        .regs = SPI_1bit_24Minput_120x160_yuv422_10fps,
-        .regs_size = ARRAY_SIZE(SPI_1bit_24Minput_120x160_yuv422_10fps),
+        .regs = bf3901_spi_1bit_24Minput_120x160_yuv422_uyvy_10fps,
+        .regs_size = ARRAY_SIZE(bf3901_spi_1bit_24Minput_120x160_yuv422_uyvy_10fps),
         .fps = 10,
         .isp_info = NULL,
         .spi_info = {
@@ -154,15 +211,17 @@ static const esp_cam_sensor_format_t bf3901_format_info_spi[] = {
         },
         .reserved = NULL,
     },
+#endif
+#if CONFIG_CAMERA_BF3901_SPI_YUV422_120X160_5FPS
     {
-        .name = "SPI_1bit_20Minput_YUV422_120x160_5fps",
-        .format = ESP_CAM_SENSOR_PIXFORMAT_YUV422,
+        .name = "SPI_1bit_20Minput_YUV422_UYVY_120x160_5fps",
+        .format = ESP_CAM_SENSOR_PIXFORMAT_YUV422_UYVY,
         .port = ESP_CAM_SENSOR_SPI,
         .xclk = 20000000,
         .width = 120,
         .height = 160,
-        .regs = SPI_1bit_20Minput_120x160_yuv422_5fps,
-        .regs_size = ARRAY_SIZE(SPI_1bit_20Minput_120x160_yuv422_5fps),
+        .regs = bf3901_spi_1bit_20Minput_120x160_yuv422_uyvy_5fps,
+        .regs_size = ARRAY_SIZE(bf3901_spi_1bit_20Minput_120x160_yuv422_uyvy_5fps),
         .fps = 5,
         .isp_info = NULL,
         .spi_info = {
@@ -171,15 +230,17 @@ static const esp_cam_sensor_format_t bf3901_format_info_spi[] = {
         },
         .reserved = NULL,
     },
+#endif
+#if CONFIG_CAMERA_BF3901_SPI2_YUV422_240X320_20FPS
     {
-        .name = "SPI_2bit_24Minput_YUV422_240x320_20fps",
-        .format = ESP_CAM_SENSOR_PIXFORMAT_YUV422,
+        .name = "SPI_2bit_24Minput_YUV422_UYVY_240x320_20fps",
+        .format = ESP_CAM_SENSOR_PIXFORMAT_YUV422_UYVY,
         .port = ESP_CAM_SENSOR_SPI,
         .xclk = 24000000,
         .width = 240,
         .height = 320,
-        .regs = SPI_2bit_24Minput_240x320_yuv422_20fps,
-        .regs_size = ARRAY_SIZE(SPI_2bit_24Minput_240x320_yuv422_20fps),
+        .regs = bf3901_spi_2bit_24Minput_240x320_yuv422_uyvy_20fps,
+        .regs_size = ARRAY_SIZE(bf3901_spi_2bit_24Minput_240x320_yuv422_uyvy_20fps),
         .fps = 20,
         .isp_info = NULL,
         .spi_info = {
@@ -187,8 +248,134 @@ static const esp_cam_sensor_format_t bf3901_format_info_spi[] = {
             .frame_info = &bf3901_frame_info_spi[0],
         },
         .reserved = NULL,
-    }
+    },
+#endif
+#if CONFIG_CAMERA_BF3901_SPI_YUV422_YUYV_240X320_15FPS
+    {
+        .name = "SPI_1bit_24Minput_YUV422_YUYV_240x320_15fps",
+        .format = ESP_CAM_SENSOR_PIXFORMAT_YUV422_YUYV,
+        .port = ESP_CAM_SENSOR_SPI,
+        .xclk = 24000000,
+        .width = 240,
+        .height = 320,
+        .regs = bf3901_spi_1bit_24Minput_240x320_yuv422_yuyv_15fps,
+        .regs_size = ARRAY_SIZE(bf3901_spi_1bit_24Minput_240x320_yuv422_yuyv_15fps),
+        .fps = 15,
+        .isp_info = NULL,
+        .spi_info = {
+            .rx_lines = 1,
+            .frame_info = &bf3901_frame_info_spi[0],
+        },
+        .reserved = NULL,
+    },
+#endif
+#if CONFIG_CAMERA_BF3901_SPI_YUV422_YUYV_240X320_12FPS
+    {
+        .name = "SPI_1bit_20Minput_YUV422_YUYV_240x320_12fps",
+        .format = ESP_CAM_SENSOR_PIXFORMAT_YUV422_YUYV,
+        .port = ESP_CAM_SENSOR_SPI,
+        .xclk = 20000000,
+        .width = 240,
+        .height = 320,
+        .regs = bf3901_spi_1bit_20Minput_240x320_yuv422_yuyv_12fps,
+        .regs_size = ARRAY_SIZE(bf3901_spi_1bit_20Minput_240x320_yuv422_yuyv_12fps),
+        .fps = 12,
+        .isp_info = NULL,
+        .spi_info = {
+            .rx_lines = 1,
+            .frame_info = &bf3901_frame_info_spi[0],
+        },
+        .reserved = NULL,
+    },
+#endif
+#if CONFIG_CAMERA_BF3901_SPI_YUV422_YUYV_240X240_10FPS
+    {
+        .name = "SPI_1bit_24Minput_YUV422_YUYV_240x240_10fps",
+        .format = ESP_CAM_SENSOR_PIXFORMAT_YUV422_YUYV,
+        .port = ESP_CAM_SENSOR_SPI,
+        .xclk = 24000000,
+        .width = 240,
+        .height = 240,
+        .regs = bf3901_spi_1bit_24Minput_240x240_yuv422_yuyv_10fps,
+        .regs_size = ARRAY_SIZE(bf3901_spi_1bit_24Minput_240x240_yuv422_yuyv_10fps),
+        .fps = 10,
+        .isp_info = NULL,
+        .spi_info = {
+            .rx_lines = 1,
+            .frame_info = &bf3901_frame_info_spi[1],
+        },
+        .reserved = NULL,
+    },
+#endif
+#if CONFIG_CAMERA_BF3901_SPI_YUV422_YUYV_120X160_10FPS
+    {
+        .name = "SPI_1bit_24Minput_YUV422_YUYV_120x160_10fps",
+        .format = ESP_CAM_SENSOR_PIXFORMAT_YUV422_YUYV,
+        .port = ESP_CAM_SENSOR_SPI,
+        .xclk = 24000000,
+        .width = 120,
+        .height = 160,
+        .regs = bf3901_spi_1bit_24Minput_120x160_yuv422_yuyv_10fps,
+        .regs_size = ARRAY_SIZE(bf3901_spi_1bit_24Minput_120x160_yuv422_yuyv_10fps),
+        .fps = 10,
+        .isp_info = NULL,
+        .spi_info = {
+            .rx_lines = 1,
+            .frame_info = &bf3901_frame_info_spi[2],
+        },
+        .reserved = NULL,
+    },
+#endif
+#if CONFIG_CAMERA_BF3901_SPI_YUV422_YUYV_120X160_5FPS
+    {
+        .name = "SPI_1bit_20Minput_YUV422_YUYV_120x160_5fps",
+        .format = ESP_CAM_SENSOR_PIXFORMAT_YUV422_YUYV,
+        .port = ESP_CAM_SENSOR_SPI,
+        .xclk = 20000000,
+        .width = 120,
+        .height = 160,
+        .regs = bf3901_spi_1bit_20Minput_120x160_yuv422_yuyv_5fps,
+        .regs_size = ARRAY_SIZE(bf3901_spi_1bit_20Minput_120x160_yuv422_yuyv_5fps),
+        .fps = 5,
+        .isp_info = NULL,
+        .spi_info = {
+            .rx_lines = 1,
+            .frame_info = &bf3901_frame_info_spi[2],
+        },
+        .reserved = NULL,
+    },
+#endif
+#if CONFIG_CAMERA_BF3901_SPI2_YUV422_YUYV_240X320_20FPS
+    {
+        .name = "SPI_2bit_24Minput_YUV422_YUYV_240x320_20fps",
+        .format = ESP_CAM_SENSOR_PIXFORMAT_YUV422_YUYV,
+        .port = ESP_CAM_SENSOR_SPI,
+        .xclk = 24000000,
+        .width = 240,
+        .height = 320,
+        .regs = bf3901_spi_2bit_24Minput_240x320_yuv422_yuyv_20fps,
+        .regs_size = ARRAY_SIZE(bf3901_spi_2bit_24Minput_240x320_yuv422_yuyv_20fps),
+        .fps = 20,
+        .isp_info = NULL,
+        .spi_info = {
+            .rx_lines = 2,
+            .frame_info = &bf3901_frame_info_spi[0],
+        },
+        .reserved = NULL,
+    },
+#endif
 };
+
+static uint8_t get_bf3901_actual_format_index(void)
+{
+    for (int i = 0; i < ARRAY_SIZE(bf3901_format_index); i++) {
+        if (bf3901_format_index[i] == bf3901_format_default_index) {
+            return i;
+        }
+    }
+
+    return 0;
+}
 
 static esp_err_t bf3901_read(esp_sccb_io_handle_t sccb_handle, uint8_t reg, uint8_t *read_buf)
 {
@@ -387,7 +574,7 @@ static esp_err_t bf3901_set_format(esp_cam_sensor_device_t *dev, const esp_cam_s
     /* Depending on the interface type, an available configuration is automatically loaded.
     You can set the output format of the sensor without using query_format().*/
     if (format == NULL) {
-        format = &bf3901_format_info_spi[CONFIG_CAMERA_BF3901_SPI_IF_FORMAT_INDEX_DEFAULT];
+        format = &bf3901_format_info_spi[get_bf3901_actual_format_index()];
     }
 
     /* Todo, I2C NACK error causes the I2C driver to fail(AEG-2481).
@@ -568,7 +755,7 @@ esp_cam_sensor_device_t *bf3901_detect(esp_cam_sensor_config_t *config)
     dev->pwdn_pin = config->pwdn_pin;
     dev->sensor_port = config->sensor_port;
     dev->ops = &bf3901_ops;
-    dev->cur_format = &bf3901_format_info_spi[CONFIG_CAMERA_BF3901_SPI_IF_FORMAT_INDEX_DEFAULT];
+    dev->cur_format = &bf3901_format_info_spi[get_bf3901_actual_format_index()];
 
 // Configure sensor power, clock, and SCCB port
     if (bf3901_power_on(dev) != ESP_OK) {

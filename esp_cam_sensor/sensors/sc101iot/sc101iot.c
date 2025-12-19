@@ -29,36 +29,103 @@
 
 static const char *TAG = "sc101iot";
 
+#ifndef CONFIG_CAMERA_SC101IOT_DVP_IF_FORMAT_INDEX_DEFAULT
+#error "Please choose at least one format in menuconfig for SC101IOT"
+#endif
+
+static const uint8_t sc101iot_format_default_index = CONFIG_CAMERA_SC101IOT_DVP_IF_FORMAT_INDEX_DEFAULT;
+
+static const uint8_t sc101iot_format_index[] = {
+#if CONFIG_CAMERA_SC101IOT_DVP_YUV422_1280X720_15FPS
+    0,
+#endif
+#if CONFIG_CAMERA_SC101IOT_DVP_YUV422_1280X720_25FPS
+    1,
+#endif
+#if CONFIG_CAMERA_SC101IOT_DVP_YUV422_YUYV_1280X720_15FPS
+    2,
+#endif
+#if CONFIG_CAMERA_SC101IOT_DVP_YUV422_YUYV_1280X720_25FPS
+    3,
+#endif
+};
+
 static const esp_cam_sensor_format_t sc101iot_format_info[] = {
+#if CONFIG_CAMERA_SC101IOT_DVP_YUV422_1280X720_15FPS
     {
-        .name = "DVP_8bit_20Minput_YUV422_1280x720_15fps",
-        .format = ESP_CAM_SENSOR_PIXFORMAT_YUV422,
+        .name = "DVP_8bit_20Minput_YUV422_UYVY_1280x720_15fps",
+        .format = ESP_CAM_SENSOR_PIXFORMAT_YUV422_UYVY,
         .port = ESP_CAM_SENSOR_DVP,
         .xclk = 20000000,
         .width = 1280,
         .height = 720,
-        .regs = DVP_8bit_20Minput_1280x720_yuv422_15fps,
-        .regs_size = ARRAY_SIZE(DVP_8bit_20Minput_1280x720_yuv422_15fps),
+        .regs = sc101iot_dvp_8bit_20Minput_1280x720_yuv422_uyvy_15fps,
+        .regs_size = ARRAY_SIZE(sc101iot_dvp_8bit_20Minput_1280x720_yuv422_uyvy_15fps),
         .fps = 15,
         .isp_info = NULL,
         .mipi_info = {},
         .reserved = NULL,
     },
+#endif
+#if CONFIG_CAMERA_SC101IOT_DVP_YUV422_1280X720_25FPS
     {
-        .name = "DVP_8bit_20Minput_YUV422_1280x720_25fps",
-        .format = ESP_CAM_SENSOR_PIXFORMAT_YUV422,
+        .name = "DVP_8bit_20Minput_YUV422_UYVY_1280x720_25fps",
+        .format = ESP_CAM_SENSOR_PIXFORMAT_YUV422_UYVY,
         .port = ESP_CAM_SENSOR_DVP,
         .xclk = 20000000,
         .width = 1280,
         .height = 720,
-        .regs = DVP_8bit_20Minput_1280x720_yuv422_25fps,
-        .regs_size = ARRAY_SIZE(DVP_8bit_20Minput_1280x720_yuv422_25fps),
+        .regs = sc101iot_dvp_8bit_20Minput_1280x720_yuv422_uyvy_25fps,
+        .regs_size = ARRAY_SIZE(sc101iot_dvp_8bit_20Minput_1280x720_yuv422_uyvy_25fps),
         .fps = 25,
         .isp_info = NULL,
         .mipi_info = {},
         .reserved = NULL,
     },
+#endif
+#if CONFIG_CAMERA_SC101IOT_DVP_YUV422_YUYV_1280X720_15FPS
+    {
+        .name = "DVP_8bit_20Minput_YUV422_YUYV_1280x720_15fps",
+        .format = ESP_CAM_SENSOR_PIXFORMAT_YUV422_YUYV,
+        .port = ESP_CAM_SENSOR_DVP,
+        .xclk = 20000000,
+        .width = 1280,
+        .height = 720,
+        .regs = sc101iot_dvp_8bit_20Minput_1280x720_yuv422_yuyv_15fps,
+        .regs_size = ARRAY_SIZE(sc101iot_dvp_8bit_20Minput_1280x720_yuv422_yuyv_15fps),
+        .fps = 15,
+        .isp_info = NULL,
+        .mipi_info = {},
+        .reserved = NULL,
+    },
+#endif
+#if CONFIG_CAMERA_SC101IOT_DVP_YUV422_YUYV_1280X720_25FPS
+    {
+        .name = "DVP_8bit_20Minput_YUV422_YUYV_1280x720_25fps",
+        .format = ESP_CAM_SENSOR_PIXFORMAT_YUV422_YUYV,
+        .port = ESP_CAM_SENSOR_DVP,
+        .xclk = 20000000,
+        .width = 1280,
+        .height = 720,
+        .regs = sc101iot_dvp_8bit_20Minput_1280x720_yuv422_yuyv_25fps,
+        .regs_size = ARRAY_SIZE(sc101iot_dvp_8bit_20Minput_1280x720_yuv422_yuyv_25fps),
+        .fps = 25,
+        .isp_info = NULL,
+        .mipi_info = {},
+        .reserved = NULL,
+    },
+#endif
 };
+
+static uint8_t get_sc101iot_actual_format_index(void)
+{
+    for (int i = 0; i < ARRAY_SIZE(sc101iot_format_index); i++) {
+        if (sc101iot_format_index[i] == sc101iot_format_default_index) {
+            return i;
+        }
+    }
+    return 0;
+}
 
 /* sc101 use "i2c paging mode", so the high byte of the register needs to be written to the 0xf0 reg.
 For more information please refer to the Technical Reference Manual.*/
@@ -271,7 +338,7 @@ static esp_err_t sc101iot_set_format(esp_cam_sensor_device_t *dev, const esp_cam
     /* Depending on the interface type, an available configuration is automatically loaded.
     You can set the output format of the sensor without using query_format().*/
     if (format == NULL) {
-        format = &sc101iot_format_info[CONFIG_CAMERA_SC101IOT_DVP_IF_FORMAT_INDEX_DEFAULT];
+        format = &sc101iot_format_info[get_sc101iot_actual_format_index()];
     }
 
     ret = sc101iot_write_array(dev->sccb_handle, (sc101iot_reginfo_t *)format->regs, format->regs_size);
@@ -448,7 +515,7 @@ esp_cam_sensor_device_t *sc101iot_detect(esp_cam_sensor_config_t *config)
     dev->pwdn_pin = config->pwdn_pin;
     dev->sensor_port = config->sensor_port;
     dev->ops = &sc101iot_ops;
-    dev->cur_format = &sc101iot_format_info[CONFIG_CAMERA_SC101IOT_DVP_IF_FORMAT_INDEX_DEFAULT];
+    dev->cur_format = &sc101iot_format_info[get_sc101iot_actual_format_index()];
 
     // Configure sensor power, clock, and SCCB port
     if (sc101iot_power_on(dev) != ESP_OK) {

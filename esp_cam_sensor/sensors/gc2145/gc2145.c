@@ -87,16 +87,35 @@ typedef enum {
 static const char *TAG = "gc2145";
 
 #if CONFIG_SOC_MIPI_CSI_SUPPORTED
+#ifndef CONFIG_CAMERA_GC2145_MIPI_IF_FORMAT_INDEX_DEFAULT
+#error "Please choose at least one format in menuconfig for GC2145 MIPI interface"
+#endif
+
+static const uint8_t gc2145_mipi_format_default_index = CONFIG_CAMERA_GC2145_MIPI_IF_FORMAT_INDEX_DEFAULT;
+
+static const uint8_t gc2145_mipi_format_index[] = {
+#if CONFIG_CAMERA_GC2145_MIPI_RGB565_1600X1200_7FPS
+    0,
+#endif
+#if CONFIG_CAMERA_GC2145_MIPI_RGB565_800X600_30FPS
+    1,
+#endif
+#if CONFIG_CAMERA_GC2145_MIPI_RGB565_640X480_15FPS
+    2,
+#endif
+};
+
 static const esp_cam_sensor_format_t gc2145_format_info_mipi[] = {
+#if CONFIG_CAMERA_GC2145_MIPI_RGB565_1600X1200_7FPS
     {
-        .name = "MIPI_1lane_24Minput_RGB565_1600x1200_7fps",
-        .format = ESP_CAM_SENSOR_PIXFORMAT_RGB565,
+        .name = "MIPI_1lane_24Minput_RGB565_LE_1600x1200_7fps",
+        .format = ESP_CAM_SENSOR_PIXFORMAT_RGB565_LE,
         .port = ESP_CAM_SENSOR_MIPI_CSI,
         .xclk = 24000000,
         .width = 1600,
         .height = 1200,
-        .regs = gc2145_mipi_1lane_24Minput_1600x1200_rgb565_7fps,
-        .regs_size = ARRAY_SIZE(gc2145_mipi_1lane_24Minput_1600x1200_rgb565_7fps),
+        .regs = gc2145_mipi_1lane_24Minput_1600x1200_rgb565_le_7fps,
+        .regs_size = ARRAY_SIZE(gc2145_mipi_1lane_24Minput_1600x1200_rgb565_le_7fps),
         .fps = 7,
         .isp_info = NULL,
         .mipi_info = {
@@ -106,15 +125,17 @@ static const esp_cam_sensor_format_t gc2145_format_info_mipi[] = {
         },
         .reserved = NULL,
     },
+#endif
+#if CONFIG_CAMERA_GC2145_MIPI_RGB565_800X600_30FPS
     {
-        .name = "MIPI_1lane_24Minput_RGB565_800x600_30fps",
-        .format = ESP_CAM_SENSOR_PIXFORMAT_RGB565,
+        .name = "MIPI_1lane_24Minput_RGB565_LE_800x600_30fps",
+        .format = ESP_CAM_SENSOR_PIXFORMAT_RGB565_LE,
         .port = ESP_CAM_SENSOR_MIPI_CSI,
         .xclk = 24000000,
         .width = 800,
         .height = 600,
-        .regs = gc2145_mipi_1lane_24Minput_800x600_rgb565_30fps,
-        .regs_size = ARRAY_SIZE(gc2145_mipi_1lane_24Minput_800x600_rgb565_30fps),
+        .regs = gc2145_mipi_1lane_24Minput_800x600_rgb565_le_30fps,
+        .regs_size = ARRAY_SIZE(gc2145_mipi_1lane_24Minput_800x600_rgb565_le_30fps),
         .fps = 30,
         .isp_info = NULL,
         .mipi_info = {
@@ -124,15 +145,17 @@ static const esp_cam_sensor_format_t gc2145_format_info_mipi[] = {
         },
         .reserved = NULL,
     },
+#endif
+#if CONFIG_CAMERA_GC2145_MIPI_RGB565_640X480_15FPS
     {
-        .name = "MIPI_1lane_24Minput_rgb565_640x480_15fps",
-        .format = ESP_CAM_SENSOR_PIXFORMAT_RGB565,
+        .name = "MIPI_1lane_24Minput_RGB565_LE_640x480_15fps",
+        .format = ESP_CAM_SENSOR_PIXFORMAT_RGB565_LE,
         .port = ESP_CAM_SENSOR_MIPI_CSI,
         .xclk = 24000000,
         .width = 640,
         .height = 480,
-        .regs = gc2145_mipi_1lane_24Minput_640x480_rgb565_15fps,
-        .regs_size = ARRAY_SIZE(gc2145_mipi_1lane_24Minput_640x480_rgb565_15fps),
+        .regs = gc2145_mipi_1lane_24Minput_640x480_rgb565_le_15fps,
+        .regs_size = ARRAY_SIZE(gc2145_mipi_1lane_24Minput_640x480_rgb565_le_15fps),
         .fps = 15,
         .isp_info = NULL,
         .mipi_info = {
@@ -141,69 +164,140 @@ static const esp_cam_sensor_format_t gc2145_format_info_mipi[] = {
             .line_sync_en = false,
         },
         .reserved = NULL,
-    }
+    },
+#endif
 };
+
+static uint8_t get_gc2145_mipi_actual_format_index(void)
+{
+    for (int i = 0; i < ARRAY_SIZE(gc2145_mipi_format_index); i++) {
+        if (gc2145_mipi_format_index[i] == gc2145_mipi_format_default_index) {
+            return i;
+        }
+    }
+
+    return 0;
+}
 #endif
 
 #if CONFIG_SOC_LCDCAM_CAM_SUPPORTED
+#ifndef CONFIG_CAMERA_GC2145_DVP_IF_FORMAT_INDEX_DEFAULT
+#error "Please choose at least one format in menuconfig for GC2145 DVP interface"
+#endif
+
+static const uint8_t gc2145_dvp_format_default_index = CONFIG_CAMERA_GC2145_DVP_IF_FORMAT_INDEX_DEFAULT;
+
+static const uint8_t gc2145_dvp_format_index[] = {
+#if CONFIG_CAMERA_GC2145_DVP_RGB565_BE_640X480_15FPS
+    0,
+#endif
+#if CONFIG_CAMERA_GC2145_DVP_RGB565_BE_1600X1200_13FPS
+    1,
+#endif
+#if CONFIG_CAMERA_GC2145_DVP_RGB565_BE_800X600_20FPS
+    2,
+#endif
+#if CONFIG_CAMERA_GC2145_DVP_YUV422_320X240_13FPS
+    3,
+#endif
+#if CONFIG_CAMERA_GC2145_DVP_YUV422_YUYV_320X240_13FPS
+    4,
+#endif
+};
+
 static const esp_cam_sensor_format_t gc2145_format_info_dvp[] = {
+#if CONFIG_CAMERA_GC2145_DVP_RGB565_BE_640X480_15FPS
     {
-        .name = "DVP_8bit_20Minput_RGB565_640x480_15fps",
-        .format = ESP_CAM_SENSOR_PIXFORMAT_RGB565,
+        .name = "DVP_8bit_20Minput_RGB565_BE_640x480_15fps",
+        .format = ESP_CAM_SENSOR_PIXFORMAT_RGB565_BE,
         .port = ESP_CAM_SENSOR_DVP,
         .xclk = 20000000,
         .width = 640,
         .height = 480,
-        .regs = gc2145_DVP_8bit_20Minput_640x480_rgb565_15fps_windowing,
-        .regs_size = ARRAY_SIZE(gc2145_DVP_8bit_20Minput_640x480_rgb565_15fps_windowing),
+        .regs = gc2145_dvp_8bit_20Minput_640x480_rgb565_be_15fps_windowing,
+        .regs_size = ARRAY_SIZE(gc2145_dvp_8bit_20Minput_640x480_rgb565_be_15fps_windowing),
         .fps = 15,
         .isp_info = NULL,
         .mipi_info = {},
         .reserved = NULL,
     },
+#endif
+#if CONFIG_CAMERA_GC2145_DVP_RGB565_BE_1600X1200_13FPS
     {
-        .name = "DVP_8bit_20Minput_RGB565_1600x1200_13fps",
-        .format = ESP_CAM_SENSOR_PIXFORMAT_RGB565,
+        .name = "DVP_8bit_20Minput_RGB565_BE_1600x1200_13fps",
+        .format = ESP_CAM_SENSOR_PIXFORMAT_RGB565_BE,
         .port = ESP_CAM_SENSOR_DVP,
         .xclk = 20000000,
         .width = 1600,
         .height = 1200,
-        .regs = gc2145_DVP_8bit_20Minput_1600x1200_rgb565_13fps,
-        .regs_size = ARRAY_SIZE(gc2145_DVP_8bit_20Minput_1600x1200_rgb565_13fps),
+        .regs = gc2145_dvp_8bit_20Minput_1600x1200_rgb565_be_13fps,
+        .regs_size = ARRAY_SIZE(gc2145_dvp_8bit_20Minput_1600x1200_rgb565_be_13fps),
         .fps = 13,
         .isp_info = NULL,
         .mipi_info = {},
         .reserved = NULL,
     },
+#endif
+#if CONFIG_CAMERA_GC2145_DVP_RGB565_BE_800X600_20FPS
     {
-        .name = "DVP_8bit_20Minput_RGB565_800x600_20fps",
-        .format = ESP_CAM_SENSOR_PIXFORMAT_RGB565,
+        .name = "DVP_8bit_20Minput_RGB565_BE_800x600_20fps",
+        .format = ESP_CAM_SENSOR_PIXFORMAT_RGB565_BE,
         .port = ESP_CAM_SENSOR_DVP,
         .xclk = 20000000,
         .width = 800,
         .height = 600,
-        .regs = gc2145_DVP_8bit_20Minput_800x600_rgb565_20fps,
-        .regs_size = ARRAY_SIZE(gc2145_DVP_8bit_20Minput_800x600_rgb565_20fps),
+        .regs = gc2145_dvp_8bit_20Minput_800x600_rgb565_be_20fps,
+        .regs_size = ARRAY_SIZE(gc2145_dvp_8bit_20Minput_800x600_rgb565_be_20fps),
         .fps = 20,
         .isp_info = NULL,
         .mipi_info = {},
         .reserved = NULL,
     },
+#endif
+#if CONFIG_CAMERA_GC2145_DVP_YUV422_320X240_13FPS
     {
-        .name = "DVP_8bit_10Minput_YUV422_320x240_13fps",
-        .format = ESP_CAM_SENSOR_PIXFORMAT_YUV422,
+        .name = "DVP_8bit_10Minput_YUV422_UYVY_320x240_13fps",
+        .format = ESP_CAM_SENSOR_PIXFORMAT_YUV422_UYVY,
         .port = ESP_CAM_SENSOR_DVP,
         .xclk = 10000000,
         .width = 320,
         .height = 240,
-        .regs = gc2145_DVP_8bit_10Minput_320x240_yuv422_13fps,
-        .regs_size = ARRAY_SIZE(gc2145_DVP_8bit_10Minput_320x240_yuv422_13fps),
+        .regs = gc2145_dvp_8bit_10Minput_320x240_yuv422_uyvy_13fps,
+        .regs_size = ARRAY_SIZE(gc2145_dvp_8bit_10Minput_320x240_yuv422_uyvy_13fps),
         .fps = 13,
         .isp_info = NULL,
         .mipi_info = {},
         .reserved = NULL,
     },
+#endif
+#if CONFIG_CAMERA_GC2145_DVP_YUV422_YUYV_320X240_13FPS
+    {
+        .name = "DVP_8bit_10Minput_YUV422_YUYV_320x240_13fps",
+        .format = ESP_CAM_SENSOR_PIXFORMAT_YUV422_YUYV,
+        .port = ESP_CAM_SENSOR_DVP,
+        .xclk = 10000000,
+        .width = 320,
+        .height = 240,
+        .regs = gc2145_dvp_8bit_10Minput_320x240_yuv422_yuyv_13fps,
+        .regs_size = ARRAY_SIZE(gc2145_dvp_8bit_10Minput_320x240_yuv422_yuyv_13fps),
+        .fps = 13,
+        .isp_info = NULL,
+        .mipi_info = {},
+        .reserved = NULL,
+    },
+#endif
 };
+
+static uint8_t get_gc2145_dvp_actual_format_index(void)
+{
+    for (int i = 0; i < ARRAY_SIZE(gc2145_dvp_format_index); i++) {
+        if (gc2145_dvp_format_index[i] == gc2145_dvp_format_default_index) {
+            return i;
+        }
+    }
+
+    return 0;
+}
 #endif
 
 static esp_err_t gc2145_read(esp_sccb_io_handle_t sccb_handle, uint8_t reg, uint8_t *read_buf)
@@ -625,8 +719,6 @@ static esp_err_t gc2145_get_para_value(esp_cam_sensor_device_t *dev, uint32_t id
         if (dev->cur_format->port == ESP_CAM_SENSOR_MIPI_CSI) {
 #if CONFIG_CAMERA_GC2145_MIPI_DATA_SHORT_SWAPPED
             *(uint32_t *)arg = ESP_CAM_SENSOR_DATA_SEQ_SHORT_SWAPPED;
-#elif CONFIG_CAMERA_GC2145_MIPI_DATA_INTERNAL_SWAPPED
-            *(uint32_t *)arg = ESP_CAM_SENSOR_DATA_SEQ_WORD_INTERNAL_SWAPPED;
 #else
             *(uint32_t *)arg = ESP_CAM_SENSOR_DATA_SEQ_NONE;
 #endif
@@ -761,12 +853,12 @@ static esp_err_t gc2145_set_format(esp_cam_sensor_device_t *dev, const esp_cam_s
     if (format == NULL) {
 #if CONFIG_SOC_MIPI_CSI_SUPPORTED
         if (dev->sensor_port == ESP_CAM_SENSOR_MIPI_CSI) {
-            format = &gc2145_format_info_mipi[CONFIG_CAMERA_GC2145_MIPI_IF_FORMAT_INDEX_DEFAULT];
+            format = &gc2145_format_info_mipi[get_gc2145_mipi_actual_format_index()];
         }
 #endif
 #if CONFIG_SOC_LCDCAM_CAM_SUPPORTED
         if (dev->sensor_port == ESP_CAM_SENSOR_DVP) {
-            format = &gc2145_format_info_dvp[CONFIG_CAMERA_GC2145_DVP_IF_FORMAT_INDEX_DEFAULT];
+            format = &gc2145_format_info_dvp[get_gc2145_dvp_actual_format_index()];
         }
 #endif
     }
@@ -945,13 +1037,13 @@ esp_cam_sensor_device_t *gc2145_detect(esp_cam_sensor_config_t *config)
     dev->ops = &gc2145_ops;
 #if CONFIG_SOC_MIPI_CSI_SUPPORTED
     if (config->sensor_port == ESP_CAM_SENSOR_MIPI_CSI) {
-        dev->cur_format = &gc2145_format_info_mipi[CONFIG_CAMERA_GC2145_MIPI_IF_FORMAT_INDEX_DEFAULT];
+        dev->cur_format = &gc2145_format_info_mipi[get_gc2145_mipi_actual_format_index()];
     }
 #endif
 
 #if CONFIG_SOC_LCDCAM_CAM_SUPPORTED
     if (config->sensor_port == ESP_CAM_SENSOR_DVP) {
-        dev->cur_format = &gc2145_format_info_dvp[CONFIG_CAMERA_GC2145_DVP_IF_FORMAT_INDEX_DEFAULT];
+        dev->cur_format = &gc2145_format_info_dvp[get_gc2145_dvp_actual_format_index()];
     }
 #endif
 

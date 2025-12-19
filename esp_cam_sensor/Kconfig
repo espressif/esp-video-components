@@ -22,35 +22,6 @@ menu "Espressif Camera Sensors Configurations"
             rsource "sensors/sc2336/Kconfig.sc2336"
         endmenu
 
-        config CAMERA_SENSOR_SWAP_PIXEL_BYTE_ORDER
-            bool "Enable pixel byte order swapping"
-            default y if IDF_TARGET_ESP32P4
-            default n if IDF_TARGET_ESP32S3
-            depends on CAMERA_OV2640 || CAMERA_BF3901 || CAMERA_GC0308 || CAMERA_SC030IOT || CAMERA_SC101IOT || CAMERA_BF3A03 || CAMERA_OV5640 || CAMERA_GC2145 || CAMERA_MT9D111
-            help
-                Enable pixel byte order swapping to match display or processing requirements.
-
-                This feature exchanges the byte order of pixel data, which is useful when interfacing
-                with different display controllers or image processing pipelines that expect specific
-                byte ordering.
-
-                Supported transformations:
-
-                RGB565 format:
-                  Original: [R₁G₁B₁][R₂G₂B₂] → Swapped: [B₁G₁R₁][B₂G₂R₂]
-                  Byte sequence: 0xRG 0xBR 0xGB → 0xBG 0xRB 0xGR
-
-                YUYV format:
-                  Original: [Y₁U₁Y₂V₁] → Swapped: [U₁Y₁V₁Y₂]
-                  Byte sequence: Y U Y V → U Y V Y
-
-                Platform compatibility:
-                - ESP32-P4: Default enabled
-                - ESP32-S3: Default disabled
-
-                Note: This option only applies to OV2640 BF3901 GC0308 SC030IOT BF3A03 OV5640 GC2145 and MT9D111 sensors.
-                For other sensors, use ESP_VIDEO_ENABLE_SWAP_BYTE (ESP32-P4 only).
-
         config CAMERA_SENSOR_XCLK_INPUT_24M
             bool
             default y if IDF_TARGET_ESP32P4 || IDF_TARGET_ESP32S3 || IDF_TARGET_ESP32C5

@@ -17,9 +17,39 @@ if CAMERA_SC035HGS
                 manual detection call(sc035hgs_detect) in your application.
     endmenu
 
+    menu "Choose supported formats for MIPI CSI interface"
+        config CAMERA_SC035HGS_MIPI_RAW8_640X480_50FPS
+            bool "MIPI 2-lane, 24M input, 640x480  50fps, RAW8"
+            default n
+            help
+                RAW8 format at 640x480 resolution (VGA) with 50fps framerate.
+                Requires MIPI CSI-2 2-lane interface with 24MHz input clock.
+
+        config CAMERA_SC035HGS_MIPI_RAW8_640X480_100FPS
+            bool "MIPI 2-lane, 24M input, 640x480 100fps, RAW8"
+            default n
+            help
+                RAW8 format at 640x480 resolution (VGA) with 100fps framerate.
+                Requires MIPI CSI-2 2-lane interface with 24MHz input clock.
+
+        config CAMERA_SC035HGS_MIPI_RAW10_640X480_48FPS
+            bool "MIPI 1-lane, 20M input, 640x480  48fps, RAW10"
+            default y
+            help
+                RAW10 format at 640x480 resolution (VGA) with 48fps framerate.
+                Requires MIPI CSI-2 1-lane interface with 20MHz input clock.
+
+        config CAMERA_SC035HGS_MIPI_RAW10_640X480_120FPS
+            bool "MIPI 1-lane, 24M input, 640x480 120fps, RAW10"
+            default n
+            help
+                RAW10 format at 640x480 resolution (VGA) with 120fps framerate.
+                Requires MIPI CSI-2 1-lane interface with 24MHz input clock.
+    endmenu
+
     choice CAMERA_SC035HGS_MIPI_DEFAULT_FMT
         prompt "Select default output format for MIPI CSI interface"
-        default CAMERA_SC035HGS_MIPI_RAW10_640X480_48FPS
+        default CAMERA_SC035HGS_MIPI_DEFAULT_FMT_RAW10_640X480_48FPS
         depends on SOC_MIPI_CSI_SUPPORTED
         help
             This option allows you to select the default video format for the SC035HGS sensor
@@ -27,35 +57,30 @@ if CAMERA_SC035HGS
             when the sensor is detected and initialized, and can be changed later when the
             sensor is in stream off state.
 
-        config CAMERA_SC035HGS_MIPI_RAW10_640X480_48FPS
-            bool "RAW10 640x480 48fps, MIPI 1-lane, 20M input"
-            help
-                RAW10 format at 640x480 resolution (VGA) with 48fps framerate.
-                Requires MIPI CSI-2 1-lane interface with 20MHz input clock.
-        config CAMERA_SC035HGS_MIPI_RAW10_640X480_120FPS
-            bool "RAW10 640x480 120fps, MIPI 1-lane, 24M input"
-            help
-                RAW10 format at 640x480 resolution (VGA) with 120fps framerate.
-                Requires MIPI CSI-2 1-lane interface with 24MHz input clock.
-        config CAMERA_SC035HGS_MIPI_RAW8_640X480_50FPS
-            bool "RAW8 640x480 50fps, MIPI 2-lane, 24M input"
-            help
-                RAW8 format at 640x480 resolution (VGA) with 50fps framerate.
-                Requires MIPI CSI-2 2-lane interface with 24MHz input clock.
-        config CAMERA_SC035HGS_MIPI_RAW8_640X480_100FPS
-            bool "RAW8 640x480 100fps, MIPI 2-lane, 24M input"
-            help
-                RAW8 format at 640x480 resolution (VGA) with 100fps framerate.
-                Requires MIPI CSI-2 2-lane interface with 24MHz input clock.
+        config CAMERA_SC035HGS_MIPI_DEFAULT_FMT_RAW8_640X480_50FPS
+            bool "MIPI 2-lane, 24M input, 640x480  50fps, RAW8"
+            depends on CAMERA_SC035HGS_MIPI_RAW8_640X480_50FPS
+
+        config CAMERA_SC035HGS_MIPI_DEFAULT_FMT_RAW8_640X480_100FPS
+            bool "MIPI 2-lane, 24M input, 640x480 100fps, RAW8"
+            depends on CAMERA_SC035HGS_MIPI_RAW8_640X480_100FPS
+
+        config CAMERA_SC035HGS_MIPI_DEFAULT_FMT_RAW10_640X480_48FPS
+            bool "MIPI 1-lane, 20M input, 640x480  48fps, RAW10"
+            depends on CAMERA_SC035HGS_MIPI_RAW10_640X480_48FPS
+
+        config CAMERA_SC035HGS_MIPI_DEFAULT_FMT_RAW10_640X480_120FPS
+            bool "MIPI 1-lane, 24M input, 640x480 120fps, RAW10"
+            depends on CAMERA_SC035HGS_MIPI_RAW10_640X480_120FPS
     endchoice # CAMERA_SC035HGS_MIPI_DEFAULT_FMT
 
     config CAMERA_SC035HGS_MIPI_IF_FORMAT_INDEX_DEFAULT
         int
         depends on SOC_MIPI_CSI_SUPPORTED
-        default 0 if CAMERA_SC035HGS_MIPI_RAW10_640X480_48FPS
-        default 1 if CAMERA_SC035HGS_MIPI_RAW10_640X480_120FPS
-        default 2 if CAMERA_SC035HGS_MIPI_RAW8_640X480_50FPS
-        default 3 if CAMERA_SC035HGS_MIPI_RAW8_640X480_100FPS
+        default 0 if CAMERA_SC035HGS_MIPI_DEFAULT_FMT_RAW10_640X480_48FPS
+        default 1 if CAMERA_SC035HGS_MIPI_DEFAULT_FMT_RAW10_640X480_120FPS
+        default 2 if CAMERA_SC035HGS_MIPI_DEFAULT_FMT_RAW8_640X480_50FPS
+        default 3 if CAMERA_SC035HGS_MIPI_DEFAULT_FMT_RAW8_640X480_100FPS
         help
             Sets the default configuration for the MIPI CSI interface.
             Use query_support_formats() API to get more format options.

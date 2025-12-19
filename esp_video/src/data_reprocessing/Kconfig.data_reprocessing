@@ -226,7 +226,7 @@ menuconfig ESP_VIDEO_ENABLE_SWAP_BYTE
     bool "Enable 8-bit data swapping"
     default y
     select ESP_VIDEO_ENABLE_DATA_PREPROCESSING
-    depends on SOC_BITSCRAMBLER_SUPPORTED && ESP_VIDEO_ENABLE_DVP_VIDEO_DEVICE
+    depends on IDF_TARGET_ARCH_RISCV && ESP_VIDEO_ENABLE_DVP_VIDEO_DEVICE
     help
         Enable swapping of 8-bit (byte) data for DVP video streams.
 

@@ -497,6 +497,7 @@ static esp_err_t init_web_cam_video(web_cam_video_t *video, const web_cam_video_
 {
     int fd;
     int ret;
+    struct v4l2_format format;
     struct v4l2_streamparm sparm;
     struct v4l2_requestbuffers req;
     struct v4l2_captureparm *cparam = &sparm.parm.capture;
@@ -504,6 +505,24 @@ static esp_err_t init_web_cam_video(web_cam_video_t *video, const web_cam_video_
 
     fd = open(config->dev_name, O_RDWR);
     ESP_RETURN_ON_FALSE(fd >= 0, ESP_ERR_NOT_FOUND, TAG, "Open video device %s failed", config->dev_name);
+
+    memset(&format, 0, sizeof(struct v4l2_format));
+    format.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
+    ESP_GOTO_ON_ERROR(ioctl(fd, VIDIOC_G_FMT, &format), fail0, TAG, "Failed get fmt from %s", config->dev_name);
+
+#if CONFIG_EXAMPLE_SELECT_JPEG_HW_DRIVER
+    if (format.fmt.pix.pixelformat == V4L2_PIX_FMT_RGB565X) {
+#if CONFIG_ESP_VIDEO_ENABLE_SWAP_BYTE
+        ESP_LOGW(TAG, "The hardware JPEG encoder does not support RGB565 big endian. Instead, use RGB565 little endian by enabling the byte swap function.");
+
+        format.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
+        format.fmt.pix.pixelformat = V4L2_PIX_FMT_RGB565;
+        ESP_GOTO_ON_ERROR(ioctl(fd, VIDIOC_S_FMT, &format), fail0, TAG, "failed to set fmt to %s", config->dev_name);
+#else
+        ESP_GOTO_ON_ERROR(ESP_FAIL, fail0, TAG, "The hardware JPEG encoder does not support RGB565 big endian. Please enable the byte swap function ESP_VIDEO_ENABLE_SWAP_BYTE in menuconfig.");
+#endif
+    }
+#endif
 
     memset(&sparm, 0, sizeof(sparm));
     sparm.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
@@ -550,11 +569,6 @@ static esp_err_t init_web_cam_video(web_cam_video_t *video, const web_cam_video_
 
         ESP_GOTO_ON_ERROR(ioctl(fd, VIDIOC_QBUF, &buf), fail0, TAG, "failed to queue frame vbuf from %s", config->dev_name);
     }
-
-    struct v4l2_format format;
-    memset(&format, 0, sizeof(struct v4l2_format));
-    format.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
-    ESP_GOTO_ON_ERROR(ioctl(fd, VIDIOC_G_FMT, &format), fail0, TAG, "Failed get fmt from %s", config->dev_name);
 
     video->fd = fd;
     video->width = format.fmt.pix.width;

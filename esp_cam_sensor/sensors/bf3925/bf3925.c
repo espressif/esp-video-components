@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2024 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2024-2025 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -79,22 +79,47 @@ typedef enum {
 
 static const char *TAG = "bf3925";
 
+#ifndef CONFIG_CAMERA_BF3925_DVP_IF_FORMAT_INDEX_DEFAULT
+#error "Please choose at least one format in menuconfig for BF3925"
+#endif
+
+static const uint8_t bf3925_format_default_index = CONFIG_CAMERA_BF3925_DVP_IF_FORMAT_INDEX_DEFAULT;
+
+static const uint8_t bf3925_format_index[] = {
+#if CONFIG_CAMERA_BF3925_DVP_YUV422_1600X1200_9FPS
+    0,
+#endif
+};
+
 static const esp_cam_sensor_format_t bf3925_format_info[] = {
+#if CONFIG_CAMERA_BF3925_DVP_YUV422_1600X1200_9FPS
     {
-        .name = "DVP_8bit_20Minput_YUV422_1600x1200_9fps",
-        .format = ESP_CAM_SENSOR_PIXFORMAT_YUV422,
+        .name = "DVP_8bit_20Minput_YUV422_UYVY_1600x1200_9fps",
+        .format = ESP_CAM_SENSOR_PIXFORMAT_YUV422_UYVY,
         .port = ESP_CAM_SENSOR_DVP,
         .xclk = 20000000,
         .width = 1600,
         .height = 1200,
-        .regs = DVP_8bit_20Minput_1600x1200_yuv422_9fps,
-        .regs_size = ARRAY_SIZE(DVP_8bit_20Minput_1600x1200_yuv422_9fps),
+        .regs = bf3925_dvp_8bit_20Minput_1600x1200_yuv422_uyvy_9fps,
+        .regs_size = ARRAY_SIZE(bf3925_dvp_8bit_20Minput_1600x1200_yuv422_uyvy_9fps),
         .fps = 9,
         .isp_info = NULL,
         .mipi_info = {},
         .reserved = NULL,
     },
+#endif
 };
+
+static uint8_t get_bf3925_actual_format_index(void)
+{
+    for (int i = 0; i < ARRAY_SIZE(bf3925_format_index); i++) {
+        if (bf3925_format_index[i] == bf3925_format_default_index) {
+            return i;
+        }
+    }
+
+    return 0;
+}
 
 static esp_err_t bf3925_read(esp_sccb_io_handle_t sccb_handle, uint8_t reg, uint8_t *read_buf)
 {
@@ -490,7 +515,7 @@ static esp_err_t bf3925_set_format(esp_cam_sensor_device_t *dev, const esp_cam_s
     /* Depending on the interface type, an available configuration is automatically loaded.
     You can set the output format of the sensor without using query_format().*/
     if (format == NULL) {
-        format = &bf3925_format_info[CONFIG_CAMERA_BF3925_DVP_IF_FORMAT_INDEX_DEFAULT];
+        format = &bf3925_format_info[get_bf3925_actual_format_index()];
     }
     /*Todo, IDF I2C driver to be fixed*/
     // bf3925_write(dev->sccb_handle, BF3925_REG_PAGE_SELECT, 0x01); // select reg page
@@ -669,7 +694,7 @@ esp_cam_sensor_device_t *bf3925_detect(esp_cam_sensor_config_t *config)
     dev->pwdn_pin = config->pwdn_pin;
     dev->sensor_port = config->sensor_port;
     dev->ops = &bf3925_ops;
-    dev->cur_format = &bf3925_format_info[CONFIG_CAMERA_BF3925_DVP_IF_FORMAT_INDEX_DEFAULT];
+    dev->cur_format = &bf3925_format_info[get_bf3925_actual_format_index()];
 
     // Configure sensor power, clock, and SCCB port
     if (bf3925_power_on(dev) != ESP_OK) {

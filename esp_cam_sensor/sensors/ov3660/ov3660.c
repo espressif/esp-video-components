@@ -46,63 +46,96 @@ struct ov3660_cam {
 
 static const char *TAG = "ov3660";
 
+#ifndef CONFIG_CAMERA_OV3660_DVP_IF_FORMAT_INDEX_DEFAULT
+#error "Please choose at least one format in menuconfig for OV3660"
+#endif
+
+static const uint8_t ov3660_format_default_index = CONFIG_CAMERA_OV3660_DVP_IF_FORMAT_INDEX_DEFAULT;
+
+static const uint8_t ov3660_format_index[] = {
+#if CONFIG_CAMERA_OV3660_DVP_RGB565_BE_240X240_24FPS
+    0,
+#endif
+#if CONFIG_CAMERA_OV3660_DVP_YUV422_YUYV_240X240_24FPS
+    1,
+#endif
+#if CONFIG_CAMERA_OV3660_DVP_RGB565_BE_640X480_10FPS
+    2,
+#endif
+#if CONFIG_CAMERA_OV3660_DVP_YUV422_YUYV_640X480_10FPS
+    3,
+#endif
+#if CONFIG_CAMERA_OV3660_DVP_JPEG_1280X720_12FPS
+    4,
+#endif
+};
+
 static const esp_cam_sensor_format_t ov3660_format_info[] = {
+#if CONFIG_CAMERA_OV3660_DVP_RGB565_BE_240X240_24FPS
     {
-        .name = "DVP_8bit_20Minput_RGB565_240x240_24fps",
-        .format = ESP_CAM_SENSOR_PIXFORMAT_RGB565,
+        .name = "DVP_8bit_20Minput_RGB565_BE_240x240_24fps",
+        .format = ESP_CAM_SENSOR_PIXFORMAT_RGB565_BE,
         .port = ESP_CAM_SENSOR_DVP,
         .xclk = 20000000,
         .width = 240,
         .height = 240,
-        .regs = DVP_8bit_RGB565_240x240_XCLK_20_24fps,
-        .regs_size = ARRAY_SIZE(DVP_8bit_RGB565_240x240_XCLK_20_24fps),
+        .regs = ov3660_dvp_8bit_20Minput_240x240_rgb565_be_24fps,
+        .regs_size = ARRAY_SIZE(ov3660_dvp_8bit_20Minput_240x240_rgb565_be_24fps),
         .fps = 24,
         .isp_info = NULL,
         .mipi_info = {},
         .reserved = NULL,
     },
+#endif
+#if CONFIG_CAMERA_OV3660_DVP_YUV422_YUYV_240X240_24FPS
     {
-        .name = "DVP_8bit_20Minput_YUV422_240x240_24fps",
-        .format = ESP_CAM_SENSOR_PIXFORMAT_YUV422,
+        .name = "DVP_8bit_20Minput_YUV422_YUYV_240x240_24fps",
+        .format = ESP_CAM_SENSOR_PIXFORMAT_YUV422_YUYV,
         .port = ESP_CAM_SENSOR_DVP,
         .xclk = 20000000,
         .width = 240,
         .height = 240,
-        .regs = DVP_8bit_YUV422_240x240_XCLK_20_24fps,
-        .regs_size = ARRAY_SIZE(DVP_8bit_YUV422_240x240_XCLK_20_24fps),
+        .regs = ov3660_dvp_8bit_20Minput_240x240_yuv422_yuyv_24fps,
+        .regs_size = ARRAY_SIZE(ov3660_dvp_8bit_20Minput_240x240_yuv422_yuyv_24fps),
         .fps = 24,
         .isp_info = NULL,
         .mipi_info = {},
         .reserved = NULL,
     },
+#endif
+#if CONFIG_CAMERA_OV3660_DVP_RGB565_BE_640X480_10FPS
     {
-        .name = "DVP_8bit_20Minput_RGB565_640x480_10fps",
-        .format = ESP_CAM_SENSOR_PIXFORMAT_RGB565,
+        .name = "DVP_8bit_20Minput_RGB565_BE_640x480_10fps",
+        .format = ESP_CAM_SENSOR_PIXFORMAT_RGB565_BE,
         .port = ESP_CAM_SENSOR_DVP,
         .xclk = 20000000,
         .width = 640,
         .height = 480,
-        .regs = DVP_8bit_RGB565_640x480_XCLK_20_10fps,
-        .regs_size = ARRAY_SIZE(DVP_8bit_RGB565_640x480_XCLK_20_10fps),
+        .regs = ov3660_dvp_8bit_20Minput_640x480_rgb565_be_10fps,
+        .regs_size = ARRAY_SIZE(ov3660_dvp_8bit_20Minput_640x480_rgb565_be_10fps),
         .fps = 10,
         .isp_info = NULL,
         .mipi_info = {},
         .reserved = NULL,
     },
+#endif
+#if CONFIG_CAMERA_OV3660_DVP_YUV422_YUYV_640X480_10FPS
     {
-        .name = "DVP_8bit_20Minput_YUV422_640x480_10fps",
-        .format = ESP_CAM_SENSOR_PIXFORMAT_YUV422,
+        .name = "DVP_8bit_20Minput_YUV422_YUYV_640x480_10fps",
+        .format = ESP_CAM_SENSOR_PIXFORMAT_YUV422_YUYV,
         .port = ESP_CAM_SENSOR_DVP,
         .xclk = 20000000,
         .width = 640,
         .height = 480,
-        .regs = DVP_8bit_YUV422_640x480_XCLK_20_10fps,
-        .regs_size = ARRAY_SIZE(DVP_8bit_YUV422_640x480_XCLK_20_10fps),
+        .regs = ov3660_dvp_8bit_20Minput_640x480_yuv422_yuyv_10fps,
+        .regs_size = ARRAY_SIZE(ov3660_dvp_8bit_20Minput_640x480_yuv422_yuyv_10fps),
         .fps = 10,
         .isp_info = NULL,
         .mipi_info = {},
         .reserved = NULL,
     },
+#endif
+#if CONFIG_CAMERA_OV3660_DVP_JPEG_1280X720_12FPS
     {
         .name = "DVP_8bit_20Minput_JPEG_1280x720_12fps",
         .format = ESP_CAM_SENSOR_PIXFORMAT_JPEG,
@@ -110,14 +143,26 @@ static const esp_cam_sensor_format_t ov3660_format_info[] = {
         .xclk = 20000000,
         .width = 1280,
         .height = 720,
-        .regs = DVP_8bit_JPEG_1280x720_XCLK_10_12fps,
-        .regs_size = ARRAY_SIZE(DVP_8bit_JPEG_1280x720_XCLK_10_12fps),
+        .regs = ov3660_dvp_8bit_10Minput_1280x720_jpeg_12fps,
+        .regs_size = ARRAY_SIZE(ov3660_dvp_8bit_10Minput_1280x720_jpeg_12fps),
         .fps = 12,
         .isp_info = NULL,
         .mipi_info = {},
         .reserved = NULL,
-    }
+    },
+#endif
 };
+
+static uint8_t get_ov3660_actual_format_index(void)
+{
+    for (int i = 0; i < ARRAY_SIZE(ov3660_format_index); i++) {
+        if (ov3660_format_index[i] == ov3660_format_default_index) {
+            return i;
+        }
+    }
+
+    return 0;
+}
 
 static esp_err_t ov3660_read(esp_sccb_io_handle_t sccb_handle, uint16_t reg, uint8_t *read_buf)
 {
@@ -511,7 +556,7 @@ static esp_err_t ov3660_set_format(esp_cam_sensor_device_t *dev, const esp_cam_s
     /* Depending on the interface type, an available configuration is automatically loaded.
     You can set the output format of the sensor without using query_format().*/
     if (format == NULL) {
-        format = &ov3660_format_info[CONFIG_CAMERA_OV3660_DVP_IF_FORMAT_INDEX_DEFAULT];
+        format = &ov3660_format_info[get_ov3660_actual_format_index()];
     }
 
     ret = ov3660_write_array(dev->sccb_handle, ov3660_sensor_default_regs);
@@ -711,7 +756,7 @@ esp_cam_sensor_device_t *ov3660_detect(esp_cam_sensor_config_t *config)
     dev->ops = &ov3660_ops;
     dev->priv = cam_ov3660;
 
-    dev->cur_format = &ov3660_format_info[CONFIG_CAMERA_OV3660_DVP_IF_FORMAT_INDEX_DEFAULT];
+    dev->cur_format = &ov3660_format_info[get_ov3660_actual_format_index()];
 
     // Configure sensor power, clock, and SCCB port
     if (ov3660_power_on(dev) != ESP_OK) {

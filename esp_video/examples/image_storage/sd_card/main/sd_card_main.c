@@ -391,7 +391,7 @@ static esp_err_t example_video_start(image_sd_card_t *sd)
         int fmt_index = 0;
         const uint32_t jpeg_input_formats[] = {
             V4L2_PIX_FMT_RGB565,
-            V4L2_PIX_FMT_YUV422P,
+            V4L2_PIX_FMT_UYVY,
             V4L2_PIX_FMT_RGB24,
             V4L2_PIX_FMT_GREY
         };

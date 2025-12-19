@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2024 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2024-2025 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: ESPRESSIF MIT
  */
@@ -90,9 +90,14 @@ static esp_err_t csi_get_input_frame_type(uint32_t sensor_fmt, cam_ctlr_color_t 
         *in_fmt = V4L2_PIX_FMT_SBGGR12;
         *csi_in_bpp = 12;
         break;
-    case ESP_CAM_SENSOR_PIXFORMAT_RGB565:
+    case ESP_CAM_SENSOR_PIXFORMAT_RGB565_LE:
         *csi_color = CAM_CTLR_COLOR_RGB565;
         *in_fmt = V4L2_PIX_FMT_RGB565;
+        *csi_in_bpp = 16;
+        break;
+    case ESP_CAM_SENSOR_PIXFORMAT_RGB565_BE:
+        *csi_color = CAM_CTLR_COLOR_RGB565;
+        *in_fmt = V4L2_PIX_FMT_RGB565X;
         *csi_in_bpp = 16;
         break;
     case ESP_CAM_SENSOR_PIXFORMAT_RGB888:
@@ -105,9 +110,14 @@ static esp_err_t csi_get_input_frame_type(uint32_t sensor_fmt, cam_ctlr_color_t 
         *in_fmt = V4L2_PIX_FMT_YUV420;
         *csi_in_bpp = 12;
         break;
-    case ESP_CAM_SENSOR_PIXFORMAT_YUV422:
+    case ESP_CAM_SENSOR_PIXFORMAT_YUV422_UYVY:
         *csi_color = CAM_CTLR_COLOR_YUV422;
-        *in_fmt = V4L2_PIX_FMT_YUV422P;
+        *in_fmt = V4L2_PIX_FMT_UYVY;
+        *csi_in_bpp = 16;
+        break;
+    case ESP_CAM_SENSOR_PIXFORMAT_YUV422_YUYV:
+        *csi_color = CAM_CTLR_COLOR_YUV422;
+        *in_fmt = V4L2_PIX_FMT_YUYV;
         *csi_in_bpp = 16;
         break;
     default:
@@ -139,6 +149,10 @@ static esp_err_t csi_get_output_frame_type_from_v4l2(uint32_t output_fmt, cam_ct
         *csi_color = CAM_CTLR_COLOR_RGB565;
         *out_bpp = 16;
         break;
+    case V4L2_PIX_FMT_RGB565X:
+        *csi_color = CAM_CTLR_COLOR_RGB565;
+        *out_bpp = 16;
+        break;
     case V4L2_PIX_FMT_RGB24:
         *csi_color = CAM_CTLR_COLOR_RGB888;
         *out_bpp = 24;
@@ -147,7 +161,11 @@ static esp_err_t csi_get_output_frame_type_from_v4l2(uint32_t output_fmt, cam_ct
         *csi_color = CAM_CTLR_COLOR_YUV420;
         *out_bpp = 12;
         break;
-    case V4L2_PIX_FMT_YUV422P:
+    case V4L2_PIX_FMT_UYVY:
+        *csi_color = CAM_CTLR_COLOR_YUV422;
+        *out_bpp = 16;
+        break;
+    case V4L2_PIX_FMT_YUYV:
         *csi_color = CAM_CTLR_COLOR_YUV422;
         *out_bpp = 16;
         break;
@@ -193,8 +211,11 @@ static esp_err_t v4l2_get_input_frame_type_from_sensor(uint32_t sensor_fmt, uint
     case ESP_CAM_SENSOR_PIXFORMAT_RAW12:
         *v4l2_format = V4L2_PIX_FMT_SBGGR12;
         break;
-    case ESP_CAM_SENSOR_PIXFORMAT_RGB565:
+    case ESP_CAM_SENSOR_PIXFORMAT_RGB565_LE:
         *v4l2_format = V4L2_PIX_FMT_RGB565;
+        break;
+    case ESP_CAM_SENSOR_PIXFORMAT_RGB565_BE:
+        *v4l2_format = V4L2_PIX_FMT_RGB565X;
         break;
     case ESP_CAM_SENSOR_PIXFORMAT_RGB888:
         *v4l2_format = V4L2_PIX_FMT_RGB24;
@@ -202,8 +223,11 @@ static esp_err_t v4l2_get_input_frame_type_from_sensor(uint32_t sensor_fmt, uint
     case ESP_CAM_SENSOR_PIXFORMAT_YUV420:
         *v4l2_format = V4L2_PIX_FMT_YUV420;
         break;
-    case ESP_CAM_SENSOR_PIXFORMAT_YUV422:
-        *v4l2_format = V4L2_PIX_FMT_YUV422P;
+    case ESP_CAM_SENSOR_PIXFORMAT_YUV422_UYVY:
+        *v4l2_format = V4L2_PIX_FMT_UYVY;
+        break;
+    case ESP_CAM_SENSOR_PIXFORMAT_YUV422_YUYV:
+        *v4l2_format = V4L2_PIX_FMT_YUYV;
         break;
     default:
         ret = ESP_ERR_NOT_SUPPORTED;

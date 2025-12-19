@@ -255,11 +255,11 @@ static const ov3660_reginfo_t ov3660_sensor_default_regs[] = {
     {FORMAT_CTRL, 0x00}, \
     {FORMAT_CTRL00, 0x10}, \
 
-#define ov3660_settings_fmt_yuv422 \
+#define ov3660_settings_fmt_yuv422_yuyv \
     {FORMAT_CTRL, 0x00}, \
     {FORMAT_CTRL00, 0x30}, \
 
-#define ov3660_settings_fmt_rgb565 \
+#define ov3660_settings_fmt_rgb565_be \
     {FORMAT_CTRL, 0x01}, \
     {FORMAT_CTRL00, 0x61}, \
 
@@ -403,35 +403,11 @@ static const ov3660_reginfo_t ov3660_sensor_default_regs[] = {
     {0x3824, 0x0a}, \
     {0x460c, 0x22}, \
 
-static const ov3660_reginfo_t DVP_8bit_RGB565_240x240_XCLK_20_24fps[] = {
-    ov3660_settings_240X240
-    ov3660_settings_fmt_rgb565
-    {OV3660_REGLIST_TAIL, 0x00}, // tail
-};
-
-static const ov3660_reginfo_t DVP_8bit_YUV422_240x240_XCLK_20_24fps[] = {
-    ov3660_settings_240X240
-    ov3660_settings_fmt_yuv422
-    {OV3660_REGLIST_TAIL, 0x00}, // tail
-};
-
-static const ov3660_reginfo_t DVP_8bit_RGB565_640x480_XCLK_20_10fps[] = {
-    ov3660_settings_640X480_10fps
-    ov3660_settings_fmt_rgb565
-    {OV3660_REGLIST_TAIL, 0x00}, // tail
-};
-
-static const ov3660_reginfo_t DVP_8bit_YUV422_640x480_XCLK_20_10fps[] = {
-    ov3660_settings_640X480_10fps
-    ov3660_settings_fmt_yuv422
-    {OV3660_REGLIST_TAIL, 0x00}, // tail
-};
-
-static const ov3660_reginfo_t DVP_8bit_JPEG_1280x720_XCLK_10_12fps[] = {
-    ov3660_settings_1280X720
-    ov3660_settings_fmt_jpeg
-    {OV3660_REGLIST_TAIL, 0x00}, // tail
-};
+#include "ov3660_dvp_8bit_10Minput_1280x720_jpeg_12fps.h"
+#include "ov3660_dvp_8bit_20Minput_240x240_rgb565_be_24fps.h"
+#include "ov3660_dvp_8bit_20Minput_240x240_yuv422_yuyv_24fps.h"
+#include "ov3660_dvp_8bit_20Minput_640x480_rgb565_be_10fps.h"
+#include "ov3660_dvp_8bit_20Minput_640x480_yuv422_yuyv_10fps.h"
 
 static const uint8_t sensor_saturation_levels[9][11] = {
     {0x1d, 0x60, 0x03, 0x07, 0x48, 0x4f, 0x4b, 0x40, 0x0b, 0x01, 0x98},//-4

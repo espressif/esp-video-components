@@ -186,7 +186,7 @@ static esp_err_t video_start_cb(uvc_format_t uvc_format, int width, int height, 
         int fmt_index = 0;
         const uint32_t jpeg_input_formats[] = {
             V4L2_PIX_FMT_RGB565,
-            V4L2_PIX_FMT_YUV422P,
+            V4L2_PIX_FMT_UYVY,
             V4L2_PIX_FMT_RGB24,
             V4L2_PIX_FMT_GREY
         };

@@ -50,36 +50,104 @@ typedef enum {
 
 static const char *TAG = "bf3a03";
 
-static const esp_cam_sensor_format_t bf3a03_format_info[] = {
-    {
-        .name = "DVP_8bit_20Minput_YUV422_640x480_15fps",
-        .format = ESP_CAM_SENSOR_PIXFORMAT_YUV422,
-        .port = ESP_CAM_SENSOR_DVP,
-        .xclk = 20000000,
-        .width = 640,
-        .height = 480,
-        .regs = DVP_8bit_20Minput_640x480_yuv422_15fps_color,
-        .regs_size = ARRAY_SIZE(DVP_8bit_20Minput_640x480_yuv422_15fps_color),
-        .fps = 15,
-        .isp_info = NULL,
-        .mipi_info = {},
-        .reserved = NULL,
-    },
-    {
-        .name = "DVP_8bit_20Minput_YUV422_Mono_640x480_20fps",
-        .format = ESP_CAM_SENSOR_PIXFORMAT_YUV422,
-        .port = ESP_CAM_SENSOR_DVP,
-        .xclk = 20000000,
-        .width = 640,
-        .height = 480,
-        .regs = DVP_8bit_20Minput_640x480_yuv422_15fps_mono,
-        .regs_size = ARRAY_SIZE(DVP_8bit_20Minput_640x480_yuv422_15fps_mono),
-        .fps = 15,
-        .isp_info = NULL,
-        .mipi_info = {},
-        .reserved = NULL,
-    },
+#ifndef CONFIG_CAMERA_BF3A03_DVP_IF_FORMAT_INDEX_DEFAULT
+#error "Please choose at least one format in menuconfig for BF3A03"
+#endif
+
+static const uint8_t bf3a03_format_default_index = CONFIG_CAMERA_BF3A03_DVP_IF_FORMAT_INDEX_DEFAULT;
+
+static const uint8_t bf3a03_format_index[] = {
+#if CONFIG_CAMERA_BF3A03_DVP_YUV422_640X480_15FPS
+    0,
+#endif
+#if CONFIG_CAMERA_BF3A03_DVP_YUV422_MONO_640X480_15FPS
+    1,
+#endif
+#if CONFIG_CAMERA_BF3A03_DVP_YUV422_YUYV_640X480_15FPS
+    2,
+#endif
+#if CONFIG_CAMERA_BF3A03_DVP_YUV422_YUYV_MONO_640X480_15FPS
+    3,
+#endif
 };
+
+static const esp_cam_sensor_format_t bf3a03_format_info[] = {
+#if CONFIG_CAMERA_BF3A03_DVP_YUV422_640X480_15FPS
+    {
+        .name = "DVP_8bit_20Minput_YUV422_UYVY_640x480_15fps",
+        .format = ESP_CAM_SENSOR_PIXFORMAT_YUV422_UYVY,
+        .port = ESP_CAM_SENSOR_DVP,
+        .xclk = 20000000,
+        .width = 640,
+        .height = 480,
+        .regs = bf3a03_dvp_8bit_20Minput_640x480_yuv422_uyvy_15fps,
+        .regs_size = ARRAY_SIZE(bf3a03_dvp_8bit_20Minput_640x480_yuv422_uyvy_15fps),
+        .fps = 15,
+        .isp_info = NULL,
+        .mipi_info = {},
+        .reserved = NULL,
+    },
+#endif
+#if CONFIG_CAMERA_BF3A03_DVP_YUV422_MONO_640X480_15FPS
+    {
+        .name = "DVP_8bit_20Minput_YUV422_UYVY_MONO_640x480_15fps",
+        .format = ESP_CAM_SENSOR_PIXFORMAT_YUV422_UYVY,
+        .port = ESP_CAM_SENSOR_DVP,
+        .xclk = 20000000,
+        .width = 640,
+        .height = 480,
+        .regs = bf3a03_dvp_8bit_20Minput_640x480_yuv422_uyvy_15fps_mono,
+        .regs_size = ARRAY_SIZE(bf3a03_dvp_8bit_20Minput_640x480_yuv422_uyvy_15fps_mono),
+        .fps = 15,
+        .isp_info = NULL,
+        .mipi_info = {},
+        .reserved = NULL,
+    },
+#endif
+#if CONFIG_CAMERA_BF3A03_DVP_YUV422_YUYV_640X480_15FPS
+    {
+        .name = "DVP_8bit_20Minput_YUV422_YUYV_640x480_15fps",
+        .format = ESP_CAM_SENSOR_PIXFORMAT_YUV422_YUYV,
+        .port = ESP_CAM_SENSOR_DVP,
+        .xclk = 20000000,
+        .width = 640,
+        .height = 480,
+        .regs = bf3a03_dvp_8bit_20Minput_640x480_yuv422_yuyv_15fps,
+        .regs_size = ARRAY_SIZE(bf3a03_dvp_8bit_20Minput_640x480_yuv422_yuyv_15fps),
+        .fps = 15,
+        .isp_info = NULL,
+        .mipi_info = {},
+        .reserved = NULL,
+    },
+#endif
+#if CONFIG_CAMERA_BF3A03_DVP_YUV422_YUYV_MONO_640X480_15FPS
+    {
+        .name = "DVP_8bit_20Minput_YUV422_YUYV_MONO_640x480_15fps",
+        .format = ESP_CAM_SENSOR_PIXFORMAT_YUV422_YUYV,
+        .port = ESP_CAM_SENSOR_DVP,
+        .xclk = 20000000,
+        .width = 640,
+        .height = 480,
+        .regs = bf3a03_dvp_8bit_20Minput_640x480_yuv422_yuyv_15fps_mono,
+        .regs_size = ARRAY_SIZE(bf3a03_dvp_8bit_20Minput_640x480_yuv422_yuyv_15fps_mono),
+        .fps = 15,
+        .isp_info = NULL,
+        .mipi_info = {},
+        .reserved = NULL,
+    },
+#endif
+};
+
+static uint8_t get_bf3a03_actual_format_index(void)
+{
+    for (int i = 0; i < ARRAY_SIZE(bf3a03_format_index); i++) {
+        if (bf3a03_format_index[i] == bf3a03_format_default_index) {
+            return i;
+        }
+    }
+
+    return 0;
+}
 
 static esp_err_t bf3a03_read(esp_sccb_io_handle_t sccb_handle, uint8_t reg, uint8_t *read_buf)
 {
@@ -429,7 +497,7 @@ static esp_err_t bf3a03_set_format(esp_cam_sensor_device_t *dev, const esp_cam_s
     /* Depending on the interface type, an available configuration is automatically loaded.
     You can set the output format of the sensor without using query_format().*/
     if (format == NULL) {
-        format = &bf3a03_format_info[CONFIG_CAMERA_BF3A03_DVP_IF_FORMAT_INDEX_DEFAULT];
+        format = &bf3a03_format_info[get_bf3a03_actual_format_index()];
     }
 
     /* Todo, I2C NACK error causes the I2C driver to fail. After fixing the error, re-enable the reset.*/
@@ -609,7 +677,7 @@ esp_cam_sensor_device_t *bf3a03_detect(esp_cam_sensor_config_t *config)
     dev->pwdn_pin = config->pwdn_pin;
     dev->sensor_port = config->sensor_port;
     dev->ops = &bf3a03_ops;
-    dev->cur_format = &bf3a03_format_info[CONFIG_CAMERA_BF3A03_DVP_IF_FORMAT_INDEX_DEFAULT];
+    dev->cur_format = &bf3a03_format_info[get_bf3a03_actual_format_index()];
 
     // Configure sensor power, clock, and SCCB port
     if (bf3a03_power_on(dev) != ESP_OK) {

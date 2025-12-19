@@ -16,43 +16,68 @@ if CAMERA_SC202CS
                 manual detection call(sc202cs_detect) in your application.
     endmenu
 
+    menu "Choose supported formats for MIPI CSI interface"
+        config CAMERA_SC202CS_MIPI_RAW8_1280X720_30FPS
+            bool "MIPI 1-lane, 24M input, 1280x720  30fps, RAW8"
+            default y
+            help
+                RAW8 color format at 1280x720 resolution (HD) with 30fps framerate.
+                Requires MIPI CSI-2 1-lane interface with 24MHz input clock.
+
+        config CAMERA_SC202CS_MIPI_RAW8_1600X1200_30FPS
+            bool "MIPI 1-lane, 24M input, 1600x1200 30fps, RAW8"
+            default n
+            help
+                RAW8 color format at 1600x1200 resolution (UXGA) with 30fps framerate.
+                Requires MIPI CSI-2 1-lane interface with 24MHz input clock.
+
+        config CAMERA_SC202CS_MIPI_RAW10_1600X900_30FPS
+            bool "MIPI 1-lane, 24M input, 1600x900  30fps, RAW10"
+            default n
+            help
+                RAW10 color format at 1600x900 resolution (HD+) with 30fps framerate.
+                Requires MIPI CSI-2 1-lane interface with 24MHz input clock.
+
+        config CAMERA_SC202CS_MIPI_RAW10_1600X1200_30FPS
+            bool "MIPI 1-lane, 24M input, 1600x1200 30fps, RAW10"
+            default n
+            help
+                RAW10 color format at 1600x1200 resolution (UXGA) with 30fps framerate.
+                Requires MIPI CSI-2 1-lane interface with 24MHz input clock.
+    endmenu
+
     choice CAMERA_SC202CS_MIPI_DEFAULT_FMT
         prompt "Select default output format for MIPI CSI interface"
-        default CAMERA_SC202CS_MIPI_RAW8_1280X720_30FPS
+        default CAMERA_SC202CS_MIPI_DEFAULT_FMT_RAW8_1280X720_30FPS
         help
             This option allows you to select the default video format for the SC202CS sensor
             when it is initialized on the MIPI CSI interface. The selected format will be used
             when the sensor is detected and initialized, and can be changed later when the
             sensor is in stream off state.
 
-        config CAMERA_SC202CS_MIPI_RAW8_1280X720_30FPS
-            bool "RAW8 1280x720 30fps, MIPI 1-lane, 24M input"
-            help
-                RAW8 color format at 1280x720 resolution (HD) with 30fps framerate.
-                Requires MIPI CSI-2 1-lane interface with 24MHz input clock.
-        config CAMERA_SC202CS_MIPI_RAW8_1600X1200_30FPS
-            bool "RAW8 1600x1200 30fps, MIPI 1-lane, 24M input"
-            help
-                RAW8 color format at 1600x1200 resolution (Full HD) with 30fps framerate.
-                Requires MIPI CSI-2 1-lane interface with 24MHz input clock.
-        config CAMERA_SC202CS_MIPI_RAW10_1600X1200_30FPS
-            bool "RAW10 1600x1200 30fps, MIPI 1-lane, 24M input"
-            help
-                RAW10 color format at 1600x1200 resolution (Full HD) with 30fps framerate.
-                Requires MIPI CSI-2 1-lane interface with 24MHz input clock.
-        config CAMERA_SC202CS_MIPI_RAW10_1600X900_30FPS
-            bool "RAW10 1600x900 30fps, MIPI 1-lane, 24M input"
-            help
-                RAW10 color format at 1600x900 resolution (HD+) with 30fps framerate.
-                Requires MIPI CSI-2 1-lane interface with 24MHz input clock.
+        config CAMERA_SC202CS_MIPI_DEFAULT_FMT_RAW8_1280X720_30FPS
+            bool "MIPI 1-lane, 24M input, 1280x720  30fps, RAW8"
+            depends on CAMERA_SC202CS_MIPI_RAW8_1280X720_30FPS
+
+        config CAMERA_SC202CS_MIPI_DEFAULT_FMT_RAW8_1600X1200_30FPS
+            bool "MIPI 1-lane, 24M input, 1600x1200 30fps, RAW8"
+            depends on CAMERA_SC202CS_MIPI_RAW8_1600X1200_30FPS
+
+        config CAMERA_SC202CS_MIPI_DEFAULT_FMT_RAW10_1600X900_30FPS
+            bool "MIPI 1-lane, 24M input, 1600x900  30fps, RAW10"
+            depends on CAMERA_SC202CS_MIPI_RAW10_1600X900_30FPS
+
+        config CAMERA_SC202CS_MIPI_DEFAULT_FMT_RAW10_1600X1200_30FPS
+            bool "MIPI 1-lane, 24M input, 1600x1200 30fps, RAW10"
+            depends on CAMERA_SC202CS_MIPI_RAW10_1600X1200_30FPS
     endchoice # CAMERA_SC202CS_MIPI_DEFAULT_FMT
 
     config CAMERA_SC202CS_MIPI_IF_FORMAT_INDEX_DEFAULT
         int
-        default 0 if CAMERA_SC202CS_MIPI_RAW8_1280X720_30FPS
-        default 1 if CAMERA_SC202CS_MIPI_RAW8_1600X1200_30FPS
-        default 2 if CAMERA_SC202CS_MIPI_RAW10_1600X1200_30FPS
-        default 3 if CAMERA_SC202CS_MIPI_RAW10_1600X900_30FPS
+        default 0 if CAMERA_SC202CS_MIPI_DEFAULT_FMT_RAW8_1280X720_30FPS
+        default 1 if CAMERA_SC202CS_MIPI_DEFAULT_FMT_RAW8_1600X1200_30FPS
+        default 2 if CAMERA_SC202CS_MIPI_DEFAULT_FMT_RAW10_1600X1200_30FPS
+        default 3 if CAMERA_SC202CS_MIPI_DEFAULT_FMT_RAW10_1600X900_30FPS
         help
             Sets the default configuration for the MIPI CSI interface.
             Use query_support_formats() API to get more format options.

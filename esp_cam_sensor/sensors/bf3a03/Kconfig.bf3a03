@@ -15,33 +15,69 @@ if CAMERA_BF3A03
                 and initialized on the DVP interface at startup without requiring
                 manual detection call(bf3a03_detect) in your application.
     endmenu
-
-    choice CAMERA_BF3A03_DVP_DEFAULT_FMT
-        prompt "Select default output format for DVP interface"
-        default CAMERA_BF3A03_DVP_YUV422_640X480_15FPS
-        help
-            This option allows you to select the default video format for the BF3A03 sensor
-            when it is initialized on the DVP interface. The selected format will be used
-            when the sensor is detected and initialized, and can be changed later when the
-            sensor is in stream off state.
-
+    
+    menu "Choose supported formats for DVP interface"
         config CAMERA_BF3A03_DVP_YUV422_640X480_15FPS
-            bool "YUV422 640x480 15fps, DVP 8-bit, 20M input"
+            bool "DVP 8-bit, 20M input, 640x480 15fps, YUV422(UYVY)"
+            default y if IDF_TARGET_ESP32P4
+            default n
             help
-                Standard color format using YUV422 at 640x480 resolution (VGA)
+                Standard color format using YUV422(UYVY) at 640x480 resolution (VGA)
                 with 15fps framerate. Requires 8-bit DVP interface and 20MHz input.
 
         config CAMERA_BF3A03_DVP_YUV422_MONO_640X480_15FPS
-            bool "YUV422(MONO) 640x480 15fps, DVP 8-bit, 20M input"
+            bool "DVP 8-bit, 20M input, 640x480 15fps, YUV422(UYVY & MONO)"
+            default n
             help
-                Grayscale format using YUV422 mono at 640x480 resolution (VGA)
+                Grayscale format using YUV422(UYVY) mono at 640x480 resolution (VGA)
                 with 15fps framerate. Requires 8-bit DVP interface and 20MHz input.
+
+        config CAMERA_BF3A03_DVP_YUV422_YUYV_640X480_15FPS
+            bool "DVP 8-bit, 20M input, 640x480 15fps, YUV422(YUYV)"
+            default y if !IDF_TARGET_ESP32P4
+            default n
+            help
+                Standard color format using YUV422(YUYV) at 640x480 resolution (VGA)
+                with 15fps framerate. Requires 8-bit DVP interface and 20MHz input.
+
+        config CAMERA_BF3A03_DVP_YUV422_YUYV_MONO_640X480_15FPS
+            bool "DVP 8-bit, 20M input, 640x480 15fps, YUV422(YUYV & MONO)"
+            default n
+            help
+                Grayscale format using YUV422(YUYV) mono at 640x480 resolution (VGA)
+                with 15fps framerate. Requires 8-bit DVP interface and 20MHz input.
+    endmenu
+
+    choice CAMERA_BF3A03_DVP_DEFAULT_FMT
+        prompt "Select default output format for DVP interface"
+        default CAMERA_BF3A03_DVP_DEFAULT_FMT_YUV422_640X480_15FPS
+        help
+            This is an internal choice that ensures only one format can be selected as default.
+            It is automatically controlled by the "Set as default format" options above.
+
+        config CAMERA_BF3A03_DVP_DEFAULT_FMT_YUV422_640X480_15FPS
+            bool "DVP 8-bit, 20M input, 640x480 15fps, YUV422(UYVY)"
+            depends on CAMERA_BF3A03_DVP_YUV422_640X480_15FPS
+
+        config CAMERA_BF3A03_DVP_DEFAULT_FMT_YUV422_MONO_640X480_15FPS
+            bool "DVP 8-bit, 20M input, 640x480 15fps, YUV422(UYVY & MONO)"
+            depends on CAMERA_BF3A03_DVP_YUV422_MONO_640X480_15FPS
+
+        config CAMERA_BF3A03_DVP_DEFAULT_FMT_YUV422_YUYV_640X480_15FPS
+            bool "DVP 8-bit, 20M input, 640x480 15fps, YUV422(YUYV)"
+            depends on CAMERA_BF3A03_DVP_YUV422_YUYV_640X480_15FPS
+
+        config CAMERA_BF3A03_DVP_DEFAULT_FMT_YUV422_YUYV_MONO_640X480_15FPS
+            bool "DVP 8-bit, 20M input, 640x480 15fps, YUV422(YUYV & MONO)"
+            depends on CAMERA_BF3A03_DVP_YUV422_YUYV_MONO_640X480_15FPS
     endchoice # CAMERA_BF3A03_DVP_DEFAULT_FMT
 
     config CAMERA_BF3A03_DVP_IF_FORMAT_INDEX_DEFAULT
         int
-        default 0 if CAMERA_BF3A03_DVP_YUV422_640X480_15FPS
-        default 1 if CAMERA_BF3A03_DVP_YUV422_MONO_640X480_15FPS
+        default 0 if CAMERA_BF3A03_DVP_DEFAULT_FMT_YUV422_640X480_15FPS
+        default 1 if CAMERA_BF3A03_DVP_DEFAULT_FMT_YUV422_MONO_640X480_15FPS
+        default 2 if CAMERA_BF3A03_DVP_DEFAULT_FMT_YUV422_YUYV_640X480_15FPS
+        default 3 if CAMERA_BF3A03_DVP_DEFAULT_FMT_YUV422_YUYV_MONO_640X480_15FPS
         help
             Sets the default configuration for the DVP interface.
             Use query_support_formats() API to get more format options.

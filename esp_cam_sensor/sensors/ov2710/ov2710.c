@@ -78,8 +78,24 @@ static const esp_cam_sensor_isp_info_t ov2710_isp_info[] = {
     },
 };
 
+#ifndef CONFIG_CAMERA_OV2710_MIPI_IF_FORMAT_INDEX_DEFAULT
+#error "Please choose at least one format in menuconfig for OV2710"
+#endif
+
+static const uint8_t ov2710_format_default_index = CONFIG_CAMERA_OV2710_MIPI_IF_FORMAT_INDEX_DEFAULT;
+
+static const uint8_t ov2710_format_index[] = {
+#if CONFIG_CAMERA_OV2710_MIPI_RAW10_1920X1080_25FPS
+    0,
+#endif
+#if CONFIG_CAMERA_OV2710_MIPI_RAW10_1280X720_25FPS
+    1,
+#endif
+};
+
 static const esp_cam_sensor_format_t ov2710_format_info[] = {
     /* For MIPI */
+#if CONFIG_CAMERA_OV2710_MIPI_RAW10_1920X1080_25FPS
     {
         .name = "MIPI_1lane_24Minput_RAW10_1920x1080_25fps",
         .format = ESP_CAM_SENSOR_PIXFORMAT_RAW10,
@@ -87,8 +103,8 @@ static const esp_cam_sensor_format_t ov2710_format_info[] = {
         .xclk = OV2710_MCLK,
         .width = 1920,
         .height = 1080,
-        .regs = init_reglist_MIPI_1lane_1920_1080_25fps,
-        .regs_size = ARRAY_SIZE(init_reglist_MIPI_1lane_1920_1080_25fps),
+        .regs = ov2710_mipi_1lane_24Minput_1920x1080_raw10_25fps,
+        .regs_size = ARRAY_SIZE(ov2710_mipi_1lane_24Minput_1920x1080_raw10_25fps),
         .fps = 25,
         .isp_info = &ov2710_isp_info[0],
         .mipi_info = {
@@ -98,6 +114,8 @@ static const esp_cam_sensor_format_t ov2710_format_info[] = {
         },
         .reserved = NULL,
     },
+#endif
+#if CONFIG_CAMERA_OV2710_MIPI_RAW10_1280X720_25FPS
     {
         .name = "MIPI_1lane_24Minput_RAW10_1280x720_25fps",
         .format = ESP_CAM_SENSOR_PIXFORMAT_RAW10,
@@ -105,8 +123,8 @@ static const esp_cam_sensor_format_t ov2710_format_info[] = {
         .xclk = OV2710_MCLK,
         .width = 1280,
         .height = 720,
-        .regs = init_reglist_MIPI_1lane_1280_720_25fps,
-        .regs_size = ARRAY_SIZE(init_reglist_MIPI_1lane_1280_720_25fps),
+        .regs = ov2710_mipi_1lane_24Minput_1280x720_raw10_25fps,
+        .regs_size = ARRAY_SIZE(ov2710_mipi_1lane_24Minput_1280x720_raw10_25fps),
         .fps = 25,
         .isp_info = &ov2710_isp_info[1],
         .mipi_info = {
@@ -116,7 +134,18 @@ static const esp_cam_sensor_format_t ov2710_format_info[] = {
         },
         .reserved = NULL,
     },
+#endif
 };
+
+static uint8_t get_ov2710_actual_format_index(void)
+{
+    for (int i = 0; i < ARRAY_SIZE(ov2710_format_index); i++) {
+        if (ov2710_format_index[i] == ov2710_format_default_index) {
+            return i;
+        }
+    }
+    return 0;
+}
 
 static esp_err_t ov2710_read(esp_sccb_io_handle_t sccb_handle, uint16_t reg, uint8_t *read_buf)
 {
@@ -424,7 +453,7 @@ static esp_err_t ov2710_set_format(esp_cam_sensor_device_t *dev, const esp_cam_s
     /* Depending on the interface type, an available configuration is automatically loaded.
     You can set the output format of the sensor without using query_format().*/
     if (format == NULL) {
-        format = &ov2710_format_info[CONFIG_CAMERA_OV2710_MIPI_IF_FORMAT_INDEX_DEFAULT];
+        format = &ov2710_format_info[get_ov2710_actual_format_index()];
     }
 
     ret = ov2710_write_array(dev->sccb_handle, (ov2710_reginfo_t *)format->regs);
@@ -623,7 +652,7 @@ esp_cam_sensor_device_t *ov2710_detect(esp_cam_sensor_config_t *config)
     dev->priv = cam_ov2710;
 
     if (config->sensor_port != ESP_CAM_SENSOR_DVP) {
-        dev->cur_format = &ov2710_format_info[CONFIG_CAMERA_OV2710_MIPI_IF_FORMAT_INDEX_DEFAULT];
+        dev->cur_format = &ov2710_format_info[get_ov2710_actual_format_index()];
     }
 
     // Configure sensor power, clock, and SCCB port

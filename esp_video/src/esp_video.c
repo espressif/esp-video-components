@@ -57,28 +57,31 @@ static const struct esp_video_format_desc_map esp_video_format_desc_maps[] = {
         V4L2_PIX_FMT_SBGGR12, "RAW12 BGGR", 12
     },
     {
-        V4L2_PIX_FMT_RGB565, "RGB 5-6-5", 16
+        V4L2_PIX_FMT_RGB565, "RGB 5-6-5 LE", 16
     },
     {
-        V4L2_PIX_FMT_RGB24,  "RGB 8-8-8", 24
+        V4L2_PIX_FMT_RGB565X, "RGB 5-6-5 BE", 16
+    },
+    {
+        V4L2_PIX_FMT_RGB24, "RGB 8-8-8", 24
     },
     {
         V4L2_PIX_FMT_YUV420, "YUV 4:2:0", 12
     },
     {
-        V4L2_PIX_FMT_YUV422P, "YVU 4:2:2 planar", 16
+        V4L2_PIX_FMT_UYVY, "YUV 4:2:2 UYVY", 16
     },
     {
-        V4L2_PIX_FMT_YUYV,  "YUV 4:2:2 packed", 16
+        V4L2_PIX_FMT_YUYV, "YUV 4:2:2 YUYV", 16
     },
     {
-        V4L2_PIX_FMT_JPEG,   "JPEG", 8
+        V4L2_PIX_FMT_JPEG, "JPEG", 8
     },
     {
         V4L2_PIX_FMT_H264, "H264", 8
     },
     {
-        V4L2_PIX_FMT_GREY,   "Grey 8", 8
+        V4L2_PIX_FMT_GREY, "Grey 8", 8
     },
 };
 

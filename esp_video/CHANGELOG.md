@@ -2,6 +2,9 @@
 
 - Fix USB UVC device initialization timeout issue when devices are already enumerated
 - Add configurable UVC device initialization timeout via menuconfig (CONFIG_USB_UVC_INIT_TIMEOUT_MS)
+- Update to use YUV422 and RGB565 image data formats with byte order
+  - YUV422 supports two byte orders: YUYV and UYVY, represented by `V4L2_PIX_FMT_YUYV` and `V4L2_PIX_FMT_UYVY` respectively; RGB565 supports two byte orders: RGB565_LE and RGB565_BE, represented by `V4L2_PIX_FMT_RGB565` and `V4L2_PIX_FMT_RGB565X` respectively.
+  - `V4L2_PIX_FMT_YUV422P` format is no longer used in the application; replace it with formats `V4L2_PIX_FMT_YUYV` or `V4L2_PIX_FMT_UYVY`.
 
 ## 1.4.1
 
