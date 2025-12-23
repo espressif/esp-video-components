@@ -6,6 +6,7 @@
 - Added SP0A39 DVP & SPI camera driver.
 - Added OS04C10 MIPI camera sensor driver.
 - Added STI2250 MIPI driver.
+- Added BF3045 DVP camera sensor driver.
 - Added detection for all sensors to the `test_apps\detect` test code.
 - Added IPA configuration parameters for the OS02N10 RAW8 1080p format. 
 - Added support for 4-bit data mode in the SPI camera sensor driver.

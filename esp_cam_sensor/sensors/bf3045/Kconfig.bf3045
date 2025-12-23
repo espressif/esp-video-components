@@ -1,0 +1,47 @@
+menuconfig CAMERA_BF3045
+    bool "BF3045"
+    default n
+    depends on SOC_LCDCAM_CAM_SUPPORTED
+    help
+        Enable support for the BF3045 CMOS image sensor.
+
+if CAMERA_BF3045
+    menu "Auto detect BF3045"
+        config CAMERA_BF3045_AUTO_DETECT_DVP_INTERFACE_SENSOR
+            bool "Detect for DVP interface sensor"
+            default y
+            help
+                When enabled, the BF3045 sensor will be automatically detected
+                and initialized on the DVP interface at startup without requiring
+                manual detection call(bf3045_detect) in your application.
+    endmenu
+
+    menu "Choose supported formats for DVP interface"
+        config CAMERA_BF3045_DVP_RGB565_BE_640X480_15FPS
+            bool "DVP 8-bit, 20M input, 640x480 15fps, RGB565(BE)"
+            default y
+            help
+                Standard color format using RGB565(BE) at 640x480 resolution (VGA)
+                with 15fps framerate. Requires 8-bit DVP interface and 20MHz input.
+                Only format supported by BF3045.
+    endmenu
+
+    choice CAMERA_BF3045_DVP_DEFAULT_FMT
+        prompt "Select default output format for DVP interface"
+        default CAMERA_BF3045_DVP_DEFAULT_FMT_RGB565_BE_640X480_15FPS
+        help
+            This is an internal choice that ensures only one format can be selected as default.
+            It is automatically controlled by the "Set as default format" options above.
+
+        config CAMERA_BF3045_DVP_DEFAULT_FMT_RGB565_BE_640X480_15FPS
+            bool "DVP 8-bit, 20M input, 640x480 15fps, RGB565(BE)"
+            depends on CAMERA_BF3045_DVP_RGB565_BE_640X480_15FPS
+    endchoice # CAMERA_BF3045_DVP_DEFAULT_FMT
+
+    config CAMERA_BF3045_DVP_IF_FORMAT_INDEX_DEFAULT
+        int
+        default 0 if CAMERA_BF3045_DVP_DEFAULT_FMT_RGB565_BE_640X480_15FPS
+        help
+            Sets the default configuration for the DVP interface.
+            Use query_support_formats() API to get more format options.
+endif
