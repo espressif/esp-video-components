@@ -1,3 +1,8 @@
+## 1.3.1
+
+- Fix ATC Json parameter compatibility
+- Fix ISP header file compilation issue when esp-idf version >= 6.0
+
 ## 1.3.0
 
 - Add auto BLC(black level correction) algorithm

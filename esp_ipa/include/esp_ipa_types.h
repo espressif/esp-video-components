@@ -9,7 +9,7 @@
 #include <stdint.h>
 #include <sys/param.h>
 #include <stdbool.h>
-#include "hal/isp_types.h"
+#include "driver/isp.h"
 
 #ifdef __cplusplus
 extern "C" {
