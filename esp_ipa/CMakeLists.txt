@@ -7,6 +7,7 @@ set(srcs ${ipa_config_source} "src/version.c")
 
 idf_component_register(SRCS ${srcs}
                        INCLUDE_DIRS ${include_dirs}
+                       REQUIRES esp_driver_isp
                        LDFRAGMENTS linker.lf)
 
 include(package_manager)

@@ -951,6 +951,15 @@ class ipa_unit_atc_c(ipa_unit_c):
     def decode_atc(name, obj):
         if not hasattr(obj, 'model'):
             obj.model = 0
+        
+        if not hasattr(obj, 'delay_frames'):
+            obj.delay_frames = 0
+        
+        if not hasattr(obj, 'luma_env'):
+            obj.luma_env = 'NULL'
+        
+        if not hasattr(obj, 'min_ae_value_step'):
+            obj.min_ae_value_step = 1
 
         def luma_lut_code(name, obj):
             luma_lut_text = str()
@@ -965,12 +974,17 @@ class ipa_unit_atc_c(ipa_unit_c):
 
         atc_code = str()
         atc_obj_code = str()
+        atc_luma_lut = 'NULL'
+        atc_luma_lut_size = '0'
         if hasattr(obj, 'luma_lut'):
             atc_code += cfmt_string('''
                 static const esp_ipa_atc_luma_lut_t s_ipa_atc_luma_lut_%s_config[] = {
                     %s
                 };'''%(name, luma_lut_code(name, obj))
             )
+
+            atc_luma_lut = f's_ipa_atc_luma_lut_{name}_config'
+            atc_luma_lut_size = f'ARRAY_SIZE(s_ipa_atc_luma_lut_{name}_config)'
 
         atc_code += cfmt_string('''
             static const esp_ipa_atc_config_t s_ipa_atc_%s_config = {
@@ -979,11 +993,11 @@ class ipa_unit_atc_c(ipa_unit_c):
                 .delay_frames = %d,
                 .luma_env = \"%s\",
                 .min_ae_value_step = %d,
-                .luma_lut = s_ipa_atc_luma_lut_%s_config,
-                .luma_lut_size = ARRAY_SIZE(s_ipa_atc_luma_lut_%s_config)
+                .luma_lut = %s,
+                .luma_lut_size = %s 
             };
             '''%(name, obj.model, obj.init_value, obj.delay_frames, obj.luma_env, obj.min_ae_value_step,
-                 name, name)
+                 atc_luma_lut, atc_luma_lut_size)
         )
 
         return atc_code
