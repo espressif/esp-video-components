@@ -469,6 +469,27 @@ menu "Example Video Initialization Configuration"
                         ESP32-C5 and ESP32-C6 series.
             endchoice
 
+            choice EXAMPLE_SPI_CAM_0_IO_MODE
+                prompt "I/O Mode Of SPI Camera Sensor 0"
+                default EXAMPLE_SPI_CAM_0_IO_MODE_1BIT
+                depends on EXAMPLE_SPI_CAM_0_INTERFACE_PARLIO
+                help
+                    Select the I/O mode for SPI camera sensor 0:
+
+                    - 1-bit: the data I/O bus transforms 1-bit data per clock
+                    - 2-bit: the data I/O bus transforms 2-bit data per clock, this is faster than 1-bit
+
+                config EXAMPLE_SPI_CAM_0_IO_MODE_1BIT
+                    bool "1-bit"
+                    help
+                        The data I/O bus transforms 1-bit data per clock.
+                
+                config EXAMPLE_SPI_CAM_0_IO_MODE_2BIT
+                    bool "2-bit"
+                    help
+                        The data I/O bus transforms 2-bit data per clock.
+            endchoice
+
             config EXAMPLE_SPI_CAM_0_SCCB_I2C_PORT
                 int "SCCB(I2C) Port Number"
                 default 0
@@ -667,7 +688,18 @@ menu "Example Video Initialization Configuration"
                     range 0 29 if IDF_TARGET_ESP32C61
                     range 0 28 if IDF_TARGET_ESP32C5
                     help
-                        GPIO pin for SPI data input/output to camera sensor.
+                        GPIO pin for SPI data0 input/output to camera sensor.
+
+                config EXAMPLE_SPI_CAM_0_DATA1_IO_PIN
+                    int "Data1 I/O Pin"
+                    default 5 if IDF_TARGET_ESP32P4
+                    default 9
+                    range 0 54 if IDF_TARGET_ESP32P4
+                    range 0 29 if IDF_TARGET_ESP32C61
+                    range 0 28 if IDF_TARGET_ESP32C5
+                    depends on EXAMPLE_SPI_CAM_0_IO_MODE_2BIT
+                    help
+                        GPIO pin for SPI data1 input/output to camera sensor.
             endif
         endif
 

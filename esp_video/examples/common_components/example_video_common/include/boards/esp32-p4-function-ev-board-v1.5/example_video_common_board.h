@@ -103,6 +103,11 @@ extern "C" {
 #define EXAMPLE_SPI_CAM_0_CS_PIN                        37
 #define EXAMPLE_SPI_CAM_0_SCLK_PIN                      4
 #define EXAMPLE_SPI_CAM_0_DATA0_IO_PIN                  21
+#if CONFIG_EXAMPLE_SPI_CAM_0_IO_MODE_2BIT
+#define EXAMPLE_SPI_CAM_0_DATA1_IO_PIN                  5
+#else /* CONFIG_EXAMPLE_SPI_CAM_0_IO_MODE_2BIT */
+#define EXAMPLE_SPI_CAM_0_DATA1_IO_PIN                  -1
+#endif /* CONFIG_EXAMPLE_SPI_CAM_0_IO_MODE_2BIT */
 
 /**
  * @brief SPI camera sensor clock resource configuration

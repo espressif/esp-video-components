@@ -35,6 +35,8 @@
 #include "esp_private/esp_cache_private.h"
 #include "esp_private/spi_share_hw_ctrl.h"
 
+#if ESP_CAM_SPI_DRIVER
+
 static const char *SPI_TAG = "spi_slave";
 
 #define SPI_CHECK(a, str, ret_val)  ESP_RETURN_ON_FALSE(a, ret_val, SPI_TAG, str)
@@ -162,7 +164,6 @@ static esp_err_t s_spi_create_sleep_retention_cb(void *arg)
 
 esp_err_t esp_cam_spi_slave_initialize(spi_host_device_t host, const spi_bus_config_t *bus_config, const spi_slave_interface_config_t *slave_config, spi_dma_chan_t dma_chan)
 {
-    bool spi_chan_claimed;
     esp_err_t ret = ESP_OK;
     esp_err_t err;
     SPI_CHECK(is_valid_host(host), "invalid host", ESP_ERR_INVALID_ARG);
@@ -184,8 +185,12 @@ esp_err_t esp_cam_spi_slave_initialize(spi_host_device_t host, const spi_bus_con
         SPI_CHECK(slave_config->post_trans_cb != NULL, "use feature flag 'SPI_SLAVE_NO_RETURN_RESULT' but no post_trans_cb function sets", ESP_ERR_INVALID_ARG);
     }
 
-    spi_chan_claimed = spicommon_periph_claim(host, "spi slave");
+#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(6, 0, 0)
+    SPI_CHECK(ESP_OK == spicommon_bus_alloc(host, "spi slave"), "host already in use", ESP_ERR_INVALID_STATE);
+#else
+    bool spi_chan_claimed = spicommon_periph_claim(host, "spi slave");
     SPI_CHECK(spi_chan_claimed, "host already in use", ESP_ERR_INVALID_STATE);
+#endif
 
     // spi_slave_t contains atomic variable, memory must be allocated from internal memory
     spihost[host] = heap_caps_malloc(sizeof(spi_slave_t), MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT);
@@ -856,3 +861,4 @@ static void SPI_SLAVE_ISR_ATTR spi_intr(void *arg)
         portYIELD_FROM_ISR();
     }
 }
+#endif /* ESP_CAM_SPI_DRIVER */

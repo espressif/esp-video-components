@@ -53,10 +53,12 @@ typedef struct esp_video_csi_state {
  */
 typedef struct esp_video_spi_device_config {
     esp_cam_ctlr_spi_cam_intf_t intf;       /*!< SPI CAM interface type */
+    esp_cam_ctlr_spi_cam_io_mode_t io_mode; /*!< SPI CAM data I/O mode */
     spi_host_device_t spi_port;             /*!< SPI port */
     gpio_num_t spi_cs_pin;                  /*!< SPI CS pin */
     gpio_num_t spi_sclk_pin;                /*!< SPI SCLK pin */
     gpio_num_t spi_data0_io_pin;            /*!< SPI data0 I/O pin */
+    gpio_num_t spi_data1_io_pin;            /*!< SPI data1 I/O pin */
 } esp_video_spi_device_config_t;
 #endif
 

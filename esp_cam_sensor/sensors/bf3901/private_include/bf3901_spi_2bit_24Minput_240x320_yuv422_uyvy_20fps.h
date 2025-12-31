@@ -7,7 +7,7 @@ static const bf3901_reginfo_t bf3901_spi_2bit_24Minput_240x320_yuv422_uyvy_20fps
     {0x09, 0x13}, // standby enable
     {BF3901_REG_DELAY, 0x01},
     {0x0b, 0x03}, // en frame header, frame end, line data packet; skip 2 frame
-    {0x11, 0x30}, // CLKRC
+    {0x11, 0x10}, // CLKRC
     {0x1b, 0x06}, // disable PLL
     {0x6b, 0x41}, // Enable CCIR656; Enable CK-GATE subsample.
     {0x12, 0x00}, // Zhan Xun or MTK CCIR; YUV422,
