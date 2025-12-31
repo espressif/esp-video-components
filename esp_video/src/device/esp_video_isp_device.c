@@ -638,12 +638,15 @@ static void isp_init_awb_param(struct isp_video *isp_video, esp_isp_awb_config_t
     awb_config->white_patch.blue_green_ratio.min = awb->bg_min;
 
     video_rect2window(isp_video->video, &awb_config->window);
+#if ESP_VIDEO_ISP_DEVICE_AWB_SUBWIN
+    video_rect2window(isp_video->video, &awb_config->subwindow);
+#endif
 }
 
 static esp_err_t isp_start_awb(struct isp_video *isp_video)
 {
     esp_err_t ret;
-    esp_isp_awb_config_t awb_config;
+    esp_isp_awb_config_t awb_config = {0};
     esp_isp_awb_cbs_t awb_cb = {
         .on_statistics_done = isp_awb_stats_done,
     };

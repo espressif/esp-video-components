@@ -7,6 +7,7 @@
 #pragma once
 
 #include "sdkconfig.h"
+#include "esp_idf_version.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -38,6 +39,15 @@ extern "C" {
 #if CONFIG_SOC_ISP_CROP_SUPPORTED
 #define ESP_VIDEO_ISP_DEVICE_CROP   1       /*!< ISP video device enable crop */
 #endif /* CONFIG_SOC_ISP_CROP_SUPPORTED */
+
+/**
+ * @brief ISP video device configuration
+ *
+ * @note Currently, only the ESP-IDF >= v6.0.0 versions support AWB subwindow.
+ */
+#if (ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(6, 0, 0))
+#define ESP_VIDEO_ISP_DEVICE_AWB_SUBWIN 1   /*!< ISP video device enable AWB subwindow */
+#endif /* (ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(6, 0, 0)) */
 
 #if CONFIG_SOC_JPEG_CODEC_SUPPORTED
 #define ESP_VIDEO_JPEG_DEVICE_YUV420    1   /*!< JPEG video device supports YUV420 format */
