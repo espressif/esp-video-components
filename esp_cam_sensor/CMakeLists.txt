@@ -36,6 +36,12 @@ if(CONFIG_CAMERA_OV5647)
     list(APPEND priv_include_dirs "sensors/ov5647/private_include")
 endif()
 
+if(CONFIG_CAMERA_OV9281)
+    list(APPEND srcs "sensors/ov9281/ov9281.c")
+    list(APPEND include_dirs "sensors/ov9281/include")
+    list(APPEND priv_include_dirs "sensors/ov9281/private_include")
+endif()
+
 if(CONFIG_CAMERA_SC2336)
     list(APPEND srcs "sensors/sc2336/sc2336.c")
     list(APPEND include_dirs "sensors/sc2336/include")
@@ -153,6 +159,10 @@ endif()
 
 if(CONFIG_CAMERA_OV5647_AUTO_DETECT_MIPI_INTERFACE_SENSOR)
     target_link_libraries(${COMPONENT_LIB} INTERFACE "-u ov5647_detect")
+endif()
+
+if(CONFIG_CAMERA_OV9281_AUTO_DETECT)
+    target_link_libraries(${COMPONENT_LIB} INTERFACE "-u ov9281_detect")
 endif()
 
 if(CONFIG_CAMERA_SC2336_AUTO_DETECT_MIPI_INTERFACE_SENSOR OR CONFIG_CAMERA_SC2336_AUTO_DETECT_DVP_INTERFACE_SENSOR)
