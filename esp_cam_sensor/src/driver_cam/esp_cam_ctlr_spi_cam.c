@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2025 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2025-2026 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -26,9 +26,9 @@
 #include "esp_cam_ctlr_spi.h"
 
 /**
- * Current the parlio RX driver is not available in esp-idf versions which is less than v6.1.0.
+ * Current the parlio RX driver is not available in esp-idf versions which is less than v5.5.2.
  */
-#if (ESP_IDF_VERSION < ESP_IDF_VERSION_VAL(6, 1, 0))
+#if (ESP_IDF_VERSION < ESP_IDF_VERSION_VAL(5, 5, 2))
 #if CONFIG_CAM_CTLR_SPI_ENABLE_PARLIO
 #undef CONFIG_CAM_CTLR_SPI_ENABLE_PARLIO
 #pragma message("PARLIO RX driver is not available for SPI camera sensor driver in current IDF version")
