@@ -1,3 +1,7 @@
+## 0.0.7
+
+- Fix `transmit_receive_reg_a8v8()` compatibility issues caused by stop signal
+
 ## 0.0.6
 
 - Fix `transmit_reg_a8v16()` transmission length
