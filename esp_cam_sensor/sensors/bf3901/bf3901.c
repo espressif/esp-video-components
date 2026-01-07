@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2025 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2025-2026 Espressif Systems (Shanghai) CO LTD
 *
 * SPDX-License-Identifier: Apache-2.0
 */
@@ -114,6 +114,12 @@ static const uint8_t bf3901_format_index[] = {
 #if CONFIG_CAMERA_BF3901_SPI2_YUV422_YUYV_240X320_20FPS
     12,
 #endif
+#if CONFIG_CAMERA_BF3901_SPI2_YUV422_240X320_18FPS
+    13,
+#endif
+#if CONFIG_CAMERA_BF3901_SPI2_YUV422_YUYV_240X320_18FPS
+    14,
+#endif
 };
 
 static const esp_cam_sensor_format_t bf3901_format_info_spi[] = {
@@ -131,6 +137,7 @@ static const esp_cam_sensor_format_t bf3901_format_info_spi[] = {
         .isp_info = NULL,
         .spi_info = {
             .rx_lines = 1,
+            .pclk = 48000000,
             .frame_info = &bf3901_frame_info_spi[0],
         },
         .reserved = NULL,
@@ -150,6 +157,7 @@ static const esp_cam_sensor_format_t bf3901_format_info_spi[] = {
         .isp_info = NULL,
         .spi_info = {
             .rx_lines = 1,
+            .pclk = 48000000,
             .frame_info = &bf3901_frame_info_spi[0],
         },
         .reserved = NULL,
@@ -169,6 +177,7 @@ static const esp_cam_sensor_format_t bf3901_format_info_spi[] = {
         .isp_info = NULL,
         .spi_info = {
             .rx_lines = 1,
+            .pclk = 40000000,
             .frame_info = &bf3901_frame_info_spi[0],
         },
         .reserved = NULL,
@@ -188,6 +197,7 @@ static const esp_cam_sensor_format_t bf3901_format_info_spi[] = {
         .isp_info = NULL,
         .spi_info = {
             .rx_lines = 1,
+            .pclk = 48000000,
             .frame_info = &bf3901_frame_info_spi[1],
         },
         .reserved = NULL,
@@ -207,6 +217,7 @@ static const esp_cam_sensor_format_t bf3901_format_info_spi[] = {
         .isp_info = NULL,
         .spi_info = {
             .rx_lines = 1,
+            .pclk = 48000000,
             .frame_info = &bf3901_frame_info_spi[2],
         },
         .reserved = NULL,
@@ -226,6 +237,7 @@ static const esp_cam_sensor_format_t bf3901_format_info_spi[] = {
         .isp_info = NULL,
         .spi_info = {
             .rx_lines = 1,
+            .pclk = 20000000,
             .frame_info = &bf3901_frame_info_spi[2],
         },
         .reserved = NULL,
@@ -245,6 +257,7 @@ static const esp_cam_sensor_format_t bf3901_format_info_spi[] = {
         .isp_info = NULL,
         .spi_info = {
             .rx_lines = 2,
+            .pclk = 48000000,
             .frame_info = &bf3901_frame_info_spi[0],
         },
         .reserved = NULL,
@@ -264,6 +277,7 @@ static const esp_cam_sensor_format_t bf3901_format_info_spi[] = {
         .isp_info = NULL,
         .spi_info = {
             .rx_lines = 1,
+            .pclk = 48000000,
             .frame_info = &bf3901_frame_info_spi[0],
         },
         .reserved = NULL,
@@ -283,6 +297,7 @@ static const esp_cam_sensor_format_t bf3901_format_info_spi[] = {
         .isp_info = NULL,
         .spi_info = {
             .rx_lines = 1,
+            .pclk = 40000000,
             .frame_info = &bf3901_frame_info_spi[0],
         },
         .reserved = NULL,
@@ -302,6 +317,7 @@ static const esp_cam_sensor_format_t bf3901_format_info_spi[] = {
         .isp_info = NULL,
         .spi_info = {
             .rx_lines = 1,
+            .pclk = 48000000,
             .frame_info = &bf3901_frame_info_spi[1],
         },
         .reserved = NULL,
@@ -321,6 +337,7 @@ static const esp_cam_sensor_format_t bf3901_format_info_spi[] = {
         .isp_info = NULL,
         .spi_info = {
             .rx_lines = 1,
+            .pclk = 48000000,
             .frame_info = &bf3901_frame_info_spi[2],
         },
         .reserved = NULL,
@@ -340,6 +357,7 @@ static const esp_cam_sensor_format_t bf3901_format_info_spi[] = {
         .isp_info = NULL,
         .spi_info = {
             .rx_lines = 1,
+            .pclk = 20000000,
             .frame_info = &bf3901_frame_info_spi[2],
         },
         .reserved = NULL,
@@ -359,6 +377,47 @@ static const esp_cam_sensor_format_t bf3901_format_info_spi[] = {
         .isp_info = NULL,
         .spi_info = {
             .rx_lines = 2,
+            .pclk = 48000000,
+            .frame_info = &bf3901_frame_info_spi[0],
+        },
+        .reserved = NULL,
+    },
+#endif
+#if CONFIG_CAMERA_BF3901_SPI2_YUV422_240X320_18FPS
+    {
+        .name = "SPI_2bit_24Minput_YUV422_UYVY_240x320_18fps",
+        .format = ESP_CAM_SENSOR_PIXFORMAT_YUV422_UYVY,
+        .port = ESP_CAM_SENSOR_SPI,
+        .xclk = 24000000,
+        .width = 240,
+        .height = 320,
+        .regs = bf3901_spi_2bit_24Minput_240x320_yuv422_uyvy_18fps,
+        .regs_size = ARRAY_SIZE(bf3901_spi_2bit_24Minput_240x320_yuv422_uyvy_18fps),
+        .fps = 18,
+        .isp_info = NULL,
+        .spi_info = {
+            .rx_lines = 2,
+            .pclk = 24000000,
+            .frame_info = &bf3901_frame_info_spi[0],
+        },
+        .reserved = NULL,
+    },
+#endif
+#if CONFIG_CAMERA_BF3901_SPI2_YUV422_YUYV_240X320_18FPS
+    {
+        .name = "SPI_2bit_24Minput_YUV422_YUYV_240x320_18fps",
+        .format = ESP_CAM_SENSOR_PIXFORMAT_YUV422_YUYV,
+        .port = ESP_CAM_SENSOR_SPI,
+        .xclk = 24000000,
+        .width = 240,
+        .height = 320,
+        .regs = bf3901_spi_2bit_24Minput_240x320_yuv422_yuyv_18fps,
+        .regs_size = ARRAY_SIZE(bf3901_spi_2bit_24Minput_240x320_yuv422_yuyv_18fps),
+        .fps = 18,
+        .isp_info = NULL,
+        .spi_info = {
+            .rx_lines = 2,
+            .pclk = 24000000,
             .frame_info = &bf3901_frame_info_spi[0],
         },
         .reserved = NULL,
@@ -603,6 +662,17 @@ static esp_err_t bf3901_get_format(esp_cam_sensor_device_t *dev, esp_cam_sensor_
     esp_err_t ret = ESP_FAIL;
 
     if (dev->cur_format != NULL) {
+#if 0
+        /* Print the output data clock frequency and the PLL register value when debugging */
+        const bf3901_reginfo_t *regs = (bf3901_reginfo_t *)dev->cur_format->regs;
+        for (int i = 0; i < dev->cur_format->regs_size; i++) {
+            if (regs[i].reg == 0x1b) {
+                ESP_LOGW(TAG, "Output data clock frequency %" PRIu32 ", PLL register value is 0x%02x, name is %s", dev->cur_format->spi_info.pclk, regs[i].val, dev->cur_format->name);
+                break;
+            }
+        }
+#endif
+
         memcpy(format, dev->cur_format, sizeof(esp_cam_sensor_format_t));
         ret = ESP_OK;
     }

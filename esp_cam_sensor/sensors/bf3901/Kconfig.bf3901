@@ -58,6 +58,13 @@ if CAMERA_BF3901
                 YUV422(UYVY) color format at 240x320 resolution with 15fps framerate.
                 Requires 1-bit SPI interface with 24MHz input clock.
 
+       config CAMERA_BF3901_SPI2_YUV422_240X320_18FPS
+            bool "SPI 2-bit, 24M input, 240x320 18fps, YUV422(UYVY)"
+            default n
+            help
+                YUV422(UYVY) color format at 240x320 resolution with 18fps framerate.
+                Requires 2-bit SPI interface with 24MHz input clock.
+
         config CAMERA_BF3901_SPI2_YUV422_240X320_20FPS
             bool "SPI 2-bit, 24M input, 240x320 20fps, YUV422(UYVY)"
             default n
@@ -99,6 +106,13 @@ if CAMERA_BF3901
             help
                 YUV422(YUYV) color format at 240x320 resolution with 15fps framerate.
                 Requires 1-bit SPI interface with 24MHz input clock.
+
+        config CAMERA_BF3901_SPI2_YUV422_YUYV_240X320_18FPS
+            bool "SPI 2-bit, 24M input, 240x320 18fps, YUV422(YUYV)"
+            default n
+            help
+                YUV422(YUYV) color format at 240x320 resolution with 18fps framerate.
+                Requires 2-bit SPI interface with 24MHz input clock.
 
         config CAMERA_BF3901_SPI2_YUV422_YUYV_240X320_20FPS
             bool "SPI 2-bit, 24M input, 240x320 20fps, YUV422(YUYV)"
@@ -142,6 +156,10 @@ if CAMERA_BF3901
             bool "SPI 1-bit, 24M input, 240x320 15fps, YUV422(UYVY)"
             depends on CAMERA_BF3901_SPI_YUV422_240X320_15FPS
 
+        config CAMERA_BF3901_SPI2_DEFAULT_FMT_YUV422_240X320_18FPS
+            bool "SPI 2-bit, 24M input, 240x320 18fps, YUV422(UYVY)"
+            depends on CAMERA_BF3901_SPI2_YUV422_240X320_18FPS
+
         config CAMERA_BF3901_SPI2_DEFAULT_FMT_YUV422_240X320_20FPS
             bool "SPI 2-bit, 24M input, 240x320 20fps, YUV422(UYVY)"
             depends on CAMERA_BF3901_SPI2_YUV422_240X320_20FPS
@@ -166,6 +184,10 @@ if CAMERA_BF3901
             bool "SPI 1-bit, 24M input, 240x320 15fps, YUV422(YUYV)"
             depends on CAMERA_BF3901_SPI_YUV422_YUYV_240X320_15FPS
 
+        config CAMERA_BF3901_SPI2_DEFAULT_FMT_YUV422_YUYV_240X320_18FPS
+            bool "SPI 2-bit, 24M input, 240x320 18fps, YUV422(YUYV)"
+            depends on CAMERA_BF3901_SPI2_YUV422_YUYV_240X320_18FPS
+
         config CAMERA_BF3901_SPI2_DEFAULT_FMT_YUV422_YUYV_240X320_20FPS
             bool "SPI 2-bit, 24M input, 240x320 20fps, YUV422(YUYV)"
             depends on CAMERA_BF3901_SPI2_YUV422_YUYV_240X320_20FPS
@@ -186,6 +208,8 @@ if CAMERA_BF3901
         default 10 if CAMERA_BF3901_SPI_DEFAULT_FMT_YUV422_YUYV_120X160_10FPS
         default 11 if CAMERA_BF3901_SPI_DEFAULT_FMT_YUV422_YUYV_120X160_5FPS
         default 12 if CAMERA_BF3901_SPI2_DEFAULT_FMT_YUV422_YUYV_240X320_20FPS
+        default 13 if CAMERA_BF3901_SPI2_DEFAULT_FMT_YUV422_240X320_18FPS
+        default 14 if CAMERA_BF3901_SPI2_DEFAULT_FMT_YUV422_YUYV_240X320_18FPS
         help
             Sets the default configuration for the SPI interface.
             Use query_support_formats() API to get more format options.

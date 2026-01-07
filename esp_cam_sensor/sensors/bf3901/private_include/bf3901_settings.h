@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2025 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2025-2026 Espressif Systems (Shanghai) CO LTD
 *
 * SPDX-License-Identifier: Apache-2.0
 */
@@ -42,6 +42,8 @@ extern "C" {
 #include "bf3901_spi_2bit_24Minput_240x320_yuv422_uyvy_20fps.h"
 #include "bf3901_spi_2bit_24Minput_240x320_yuv422_yuyv_20fps.h"
 
+#include "bf3901_spi_2bit_24Minput_240x320_yuv422_uyvy_18fps.h"
+#include "bf3901_spi_2bit_24Minput_240x320_yuv422_yuyv_18fps.h"
 #ifdef __cplusplus
 }
 #endif

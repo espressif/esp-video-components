@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2023-2025 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2023-2026 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -306,6 +306,7 @@ typedef struct _cam_sensor_spi_frame_info_t {
  */
 typedef struct {
     uint8_t rx_lines;                                 /*!< Number of SPI lines used to RX data */
+    uint32_t pclk;                                    /*!< Sensor output data clock frequency, valid when value is larger than 0 */
     const esp_cam_sensor_spi_frame_info *frame_info;  /*!< Info of the transmitted frame */
 } esp_cam_sensor_spi_info_t;
 
