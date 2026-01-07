@@ -526,6 +526,8 @@ exit_0:
         video->reference--;
     } else {
         *video_ret = video;
+
+        video->dqbuf_timeout_ticks = portMAX_DELAY;
     }
     xSemaphoreGive(video->mutex);
 
@@ -2123,6 +2125,66 @@ esp_err_t esp_video_config_buffer(struct esp_video *video, const struct v4l2_for
     SET_STREAM_FORMAT_HEIGHT(stream, pix->height);
     SET_STREAM_FORMAT_PIXEL_FORMAT(stream, pix->pixelformat);
     SET_STREAM_BUF_INFO(stream, buf_size, alignments, frame_caps);
+
+    return ESP_OK;
+}
+
+/**
+ * @brief Set DQBUF timeout
+ *
+ * @param video     Video object
+ * @param timeout   Timeout value, consider the FreeRTOS total timeout limit is portMAX_DELAY, so the too
+ *                  long timeout value will be treated as portMAX_DELAY
+ *
+ * @return
+ *      - ESP_OK on success
+ *      - Others if failed
+ */
+esp_err_t esp_video_set_dqbuf_timeout(struct esp_video *video, const struct timeval *timeout)
+{
+    TickType_t ticks;
+    uint64_t timeout_ms;
+    uint64_t total_ticks;
+
+    CHECK_VIDEO_OBJ(video);
+    if (!timeout) {
+        return ESP_ERR_INVALID_ARG;
+    }
+
+    timeout_ms = timeout->tv_sec * 1000 + timeout->tv_usec / 1000;
+    total_ticks = pdMS_TO_TICKS(timeout_ms);
+
+    if (total_ticks >= portMAX_DELAY) {
+        ticks = portMAX_DELAY;
+    } else {
+        ticks = (TickType_t)total_ticks;
+    }
+    video->dqbuf_timeout_ticks = ticks;
+
+    return ESP_OK;
+}
+
+/**
+ * @brief Get DQBUF timeout
+ *
+ * @param video     Video object
+ * @param timeout   Timeout value
+ *
+ * @return
+ *      - ESP_OK on success
+ *      - Others if failed
+ */
+esp_err_t esp_video_get_dqbuf_timeout(struct esp_video *video, struct timeval *timeout)
+{
+    CHECK_VIDEO_OBJ(video);
+
+    uint64_t timeout_ms = pdTICKS_TO_MS(video->dqbuf_timeout_ticks);
+    if (!timeout) {
+        return ESP_ERR_INVALID_ARG;
+    }
+
+    timeout->tv_sec = timeout_ms / 1000;
+    timeout->tv_usec = (timeout_ms % 1000) * 1000;
 
     return ESP_OK;
 }
