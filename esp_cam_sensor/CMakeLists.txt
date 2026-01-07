@@ -92,6 +92,12 @@ if(CONFIG_CAMERA_GC2145)
     list(APPEND priv_include_dirs "sensors/gc2145/private_include")
 endif()
 
+if(CONFIG_CAMERA_GC2607)
+    list(APPEND srcs "sensors/gc2607/gc2607.c")
+    list(APPEND include_dirs "sensors/gc2607/include")
+    list(APPEND priv_include_dirs "sensors/gc2607/private_include")
+endif()
+
 if(CONFIG_CAMERA_LT6911)
     list(APPEND srcs "sensors/lt6911/lt6911.c")
     list(APPEND include_dirs "sensors/lt6911/include")
@@ -268,6 +274,10 @@ if(CONFIG_CAMERA_SENSOR_MOTOR_DETECT_METHOD_DYNAMIC_LINK)
 
     if(CONFIG_CAMERA_GC2145_AUTO_DETECT_MIPI_INTERFACE_SENSOR OR CONFIG_CAMERA_GC2145_AUTO_DETECT_DVP_INTERFACE_SENSOR)
         target_link_libraries(${COMPONENT_LIB} INTERFACE "-u gc2145_detect")
+    endif()
+
+    if(CONFIG_CAMERA_GC2607_AUTO_DETECT_MIPI_INTERFACE_SENSOR)
+        target_link_libraries(${COMPONENT_LIB} INTERFACE "-u gc2607_detect")
     endif()
 
     if(CONFIG_CAMERA_LT6911_AUTO_DETECT_MIPI_INTERFACE_SENSOR)
