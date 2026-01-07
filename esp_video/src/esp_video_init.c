@@ -316,7 +316,22 @@ static bool sensor_is_detected(esp_cam_sensor_detect_fn_t *p, esp_cam_sensor_dev
 {
     return true;
 }
-#endif
+
+#if CONFIG_ESP_VIDEO_CHECK_PARAMETERS
+static void check_cam_dev_clock(esp_cam_sensor_device_t *cam_dev, int xclk_freq)
+{
+    esp_err_t ret;
+    esp_cam_sensor_format_t sensor_format;
+
+    ret = esp_cam_sensor_get_format(cam_dev, &sensor_format);
+    if (ret == ESP_OK) {
+        if ((sensor_format.xclk > 0) && (sensor_format.xclk != xclk_freq)) {
+            ESP_LOGW(TAG, "Configured xclk frequency %d is not equal to sensor xclk frequency %d, the sensor output image may be unexpected", xclk_freq, sensor_format.xclk);
+        }
+    }
+}
+#endif /* CONFIG_ESP_VIDEO_CHECK_PARAMETERS */
+#endif /* ESP_VIDEO_ENABLE_SCCB_DEVICE */
 
 /**
  * @brief Initialize video hardware and software, including I2C, MIPI CSI and so on.
@@ -518,6 +533,12 @@ esp_err_t esp_video_init(const esp_video_init_config_t *config)
                 continue;
             }
 
+#if CONFIG_ESP_VIDEO_CHECK_PARAMETERS
+            if (config->dvp->dvp_pin.xclk_io >= 0 && config->dvp->xclk_freq > 0) {
+                check_cam_dev_clock(cam_dev, config->dvp->xclk_freq);
+            }
+#endif /* CONFIG_ESP_VIDEO_CHECK_PARAMETERS */
+
             ret = esp_video_create_dvp_video_device(cam_dev);
             if (ret != ESP_OK) {
                 ESP_LOGE(TAG, "failed to create DVP video device");
@@ -600,6 +621,12 @@ esp_err_t esp_video_init(const esp_video_init_config_t *config)
                     ESP_LOGE(TAG, "failed to detect SPI camera %d with address=%x", i, p->sccb_addr);
                     continue;
                 }
+
+#if CONFIG_ESP_VIDEO_CHECK_PARAMETERS
+                if (spi_config->xclk_pin >= 0 && spi_config->xclk_freq > 0) {
+                    check_cam_dev_clock(cam_dev, spi_config->xclk_freq);
+                }
+#endif /* CONFIG_ESP_VIDEO_CHECK_PARAMETERS */
 
                 esp_video_spi_device_config_t spi_dev_config = {
                     .intf = spi_config->intf,
