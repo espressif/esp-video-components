@@ -12,6 +12,7 @@
   - Apply this feature in the BF3901 driver.
 - Added SPI 2-bit + 24MHz output data clock frequency configuration for the BF3901 driver.
 - Fixed spi slave build error caused by spicommon_xxx private api change
+- Added LCD_CAM DVP driver for ESP32-S3.
 
 ## 1.7.0
 

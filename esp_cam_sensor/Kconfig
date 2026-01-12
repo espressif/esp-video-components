@@ -95,6 +95,63 @@ menu "Espressif Camera Sensors Configurations"
 
     endmenu
 
+    menuconfig CAM_CTRL_DVP_ENABLE
+        bool "Enable Camera DVP Controller Driver(Only for ESP32-S3)"
+        default y
+        depends on IDF_TARGET_ESP32S3 && SOC_LCDCAM_CAM_SUPPORTED
+        help
+            Select this option, enable DVP based camera controller driver,
+            which is only supported for ESP32-S3.
+
+            DVP is a parallel interface for connecting camera sensors.
+
+            Features:
+            - Parallel data transmission (8-bit typical)
+            - Separate sync signals (VSYNC)
+            - Pixel clock for synchronization
+            - Lower bandwidth than MIPI-CSI
+
+            Suitable for moderate resolution sensors and applications
+            where MIPI-CSI is not available.
+
+    if CAM_CTRL_DVP_ENABLE
+        config CAM_CTRL_DVP_DMA_BUFFER_SIZE
+            int "DVP DMA buffer size"
+            range 8192 32768
+            default 32768
+            help
+                Configure the size of the DVP DMA buffer.
+
+                The DVP DMA buffer is used to store the received data from the camera sensor temporarily,
+                and then the cached data is copied to the application buffer by DVP task. The size of the
+                DVP DMA buffer should be large enough to store the received data from the camera sensor.
+                Please do not set the value too small, otherwise the camera sensor data will be lost.
+
+        config CAM_CTRL_DVP_TASK_STACK_SIZE
+            int "DVP task stack size"
+            range 2048 8192
+            default 3072
+            help
+                Configure the stack size for the DVP CAM task.
+
+                The DVP CAM task is used to copy the cached data to the application buffer.
+                The stack size should be sufficient to handle the data copying operations and callback processing
+                without causing stack overflow. Please note that the log print operations may also consume much
+                stack space.
+
+        config CAM_CTRL_DVP_LOG_ENABLE
+            bool "Enable DVP RX Process Log"
+            default y
+            help
+                Enable DVP RX process log to print the DVP RX process debug information.
+
+                When enabled, the DVP will print the DVP RX process debug information to the console,
+                but it will affect the performance of the camera receive process, so dropped frames may increase.
+
+                When disabled, the DVP will not print the DVP RX process debug information to the console,
+                but it will reduce CPU cost in the camera receive process, so dropped frames may decrease.
+    endif
+
     menuconfig CAM_CTRL_SPI_ENABLE
         bool "Enable Camera SPI Controller Driver"
         default y

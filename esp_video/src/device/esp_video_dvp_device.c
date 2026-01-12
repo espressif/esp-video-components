@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2024-2025 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2024-2026 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: ESPRESSIF MIT
  */
@@ -10,7 +10,7 @@
 #include "esp_log.h"
 #include "esp_attr.h"
 #include "esp_private/esp_cache_private.h"
-#include "esp_cam_ctlr_dvp.h"
+#include "esp_cam_ctlr_dvp_ext.h"
 
 #include "esp_video.h"
 #include "esp_video_cam.h"
@@ -252,7 +252,7 @@ static esp_err_t dvp_video_start(struct esp_video *video, uint32_t type)
         .external_xtal = true,
 #endif
     };
-    ret = esp_cam_new_dvp_ctlr(&dvp_config, &dvp_video->cam_ctrl_handle);
+    ret = esp_cam_new_dvp_ctlr_ext(&dvp_config, &dvp_video->cam_ctrl_handle);
     if (ret != ESP_OK) {
         ESP_LOGE(TAG, "failed to create DVP");
         goto exit_0;

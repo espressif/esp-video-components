@@ -8,6 +8,10 @@ if(CONFIG_CAM_CTRL_SPI_ENABLE)
     endif()
 endif()
 
+if(CONFIG_CAM_CTRL_DVP_ENABLE)
+    list(APPEND srcs "src/driver_dvp/esp_cam_ctlr_dvp_cam.c")
+endif()
+
 set(include_dirs "include")
 set(requires "esp_sccb_intf" "esp_driver_cam" "esp_driver_gpio" "esp_driver_ledc" "esp_driver_spi" "esp_driver_parlio")
 set(priv_requires "esp_timer")
