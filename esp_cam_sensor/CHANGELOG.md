@@ -8,6 +8,9 @@
 - Added the 2-bit data I/O mode for the parallel I/O interface of the SPI camera interface driver.
   - The parallel I/O interface is supported in ESP-IDF version 5.5.2 and later.
 - Added OV9281 MIPI camera sensor driver.
+- Added the "pclk" parameter to "spi_info" to allow the application to verify if the SPI driver supports the specified data clock frequency.
+  - Apply this feature in the BF3901 driver.
+- Added SPI 2-bit + 24MHz output data clock frequency configuration for the BF3901 driver.
 
 ## 1.7.0
 

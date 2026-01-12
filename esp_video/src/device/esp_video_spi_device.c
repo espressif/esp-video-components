@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2025 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2025-2026 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: ESPRESSIF MIT
  */
@@ -26,6 +26,12 @@
 
 #ifndef ARRAY_SIZE
 #define ARRAY_SIZE(x)                   sizeof(x) / sizeof((x)[0])
+#endif
+
+#if CONFIG_IDF_TARGET_ESP32P4
+#define PARLIO_RX_CLK_MAX_HZ            (48 * 1000 * 1000)
+#else
+#define PARLIO_RX_CLK_MAX_HZ            (30 * 1000 * 1000)
 #endif
 
 struct spi_video {
@@ -167,6 +173,19 @@ static esp_err_t init_config(struct esp_video *video)
 static esp_err_t spi_video_init(struct esp_video *video)
 {
     struct spi_video *spi_video = VIDEO_PRIV_DATA(struct spi_video *, video);
+
+#ifdef CONFIG_CAM_CTLR_SPI_ENABLE_PARLIO
+    if (spi_video->spi_config.intf == ESP_CAM_CTLR_SPI_CAM_INTF_PARLIO) {
+        esp_cam_sensor_format_t sensor_format;
+
+        ESP_RETURN_ON_ERROR(esp_cam_sensor_get_format(spi_video->cam.sensor, &sensor_format), TAG, "failed to get sensor format");
+
+        if (sensor_format.spi_info.pclk > PARLIO_RX_CLK_MAX_HZ) {
+            ESP_LOGE(TAG, "sensor output data clock frequency %" PRIu32 " is too high, beyond the parlio maximum supported clock frequency %d", sensor_format.spi_info.pclk, PARLIO_RX_CLK_MAX_HZ);
+            return ESP_FAIL;
+        }
+    }
+#endif
 
     ESP_RETURN_ON_ERROR(esp_cam_sensor_set_format(spi_video->cam.sensor, NULL), TAG, "failed to set basic format");
     ESP_RETURN_ON_ERROR(init_config(video), TAG, "failed to initialize config");
