@@ -11,6 +11,7 @@
 - Added the "pclk" parameter to "spi_info" to allow the application to verify if the SPI driver supports the specified data clock frequency.
   - Apply this feature in the BF3901 driver.
 - Added SPI 2-bit + 24MHz output data clock frequency configuration for the BF3901 driver.
+- Fixed spi slave build error caused by spicommon_xxx private api change
 
 ## 1.7.0
 
