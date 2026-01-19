@@ -51,10 +51,10 @@ struct mira220_cam {
 #define mira220_DISABLE_OUT_XCLK(pin)
 
 #define EXPOSURE_V4L2_UNIT_US                   100
-#define EXPOSURE_V4L2_TO_mira220(v, sf)          \
-    ((uint32_t)(((double)v) * (sf)->fps * (sf)->isp_info->isp_v1_info.vts / (1000000 / EXPOSURE_V4L2_UNIT_US) + 0.5))
-#define EXPOSURE_mira220_TO_V4L2(v, sf)          \
-    ((int32_t)(((double)v) * 1000000 / (sf)->fps / (sf)->isp_info->isp_v1_info.vts / EXPOSURE_V4L2_UNIT_US + 0.5))
+#define EXPOSURE_V4L2_TO_MIRA220(v, sf)          \
+    ((uint32_t)(((double)v) * EXPOSURE_V4L2_UNIT_US * 1000 / (((sf)->isp_info->isp_v1_info.tline_ns)) + 0.5))
+#define EXPOSURE_MIRA220_TO_V4L2(v, sf)          \
+    ((int32_t)(((double)v) * (((sf)->isp_info->isp_v1_info.tline_ns)) / EXPOSURE_V4L2_UNIT_US / 1000 + 0.5))
 
 #define mira220_VTS_MAX          0x7fff // Max exposure is VTS-6
 #define mira220_EXP_MAX_OFFSET   0x06
@@ -77,6 +77,8 @@ void mira220_get_settings(esp_cam_sensor_device_t *dev);
 static esp_err_t mira220_set_exp_val(esp_cam_sensor_device_t *dev, uint32_t u32_val);
 void mira220_set_exp_us(esp_cam_sensor_device_t *dev, uint32_t u32_val);
 void mira220_set_fps(esp_cam_sensor_device_t *dev, uint32_t u32_val);
+// static size_t s_limited_gain_index;
+// static const uint32_t s_limited_gain = 1;
 
 
 static const char *TAG = "mira220";
@@ -94,15 +96,15 @@ typedef struct {
         uint32_t VBLANK_reg_val;
         uint32_t VBLANK_reg_val_max;
         uint32_t VBLANK_reg_val_min;
-        float time_unit;
+        float row_length_us;
 
-        float time_frame;
+        float time_frame_us;
         float sensor_fps;
         float sensor_fps_min;
         float sensor_fps_max;
 
-        float time_exposure;
-        float time_exp_max;
+        float time_exposure_us;
+        float time_exp_max_us;
         uint32_t exp_reg_val;
         uint32_t exp_reg_min_val;
         uint32_t exp_reg_max_val;
@@ -116,12 +118,12 @@ static const esp_cam_sensor_isp_info_t mira220_isp_info[] = {
     {
         .isp_v1_info = {
             .version = SENSOR_ISP_INFO_VERSION_DEFAULT,
-            .vts = 4100,  // 600 + 3500
-            .hts = 1500,
-            .pclk = 36900000,
-            .tline_ns = 22222,
+            .vts = 11831,  // 600 + 3500
+            .hts = 1024,
+            .pclk = 65536000,
+            .tline_ns = 15500,
             .gain_def = 0,
-            .exp_def = 0x37e,
+            .exp_def = 0x1,
             .bayer_type = ESP_CAM_SENSOR_BAYER_BGGR,
         }
     }
@@ -238,7 +240,7 @@ static esp_err_t mira220_set_stream(esp_cam_sensor_device_t *dev, int enable)
 {
     esp_err_t ret = ESP_OK;
     mira220_get_settings(dev);
-    mira220_set_exp_us(dev, 20000);
+    // mira220_set_exp_us(dev, 20000);
     mira220_set_fps(dev, 30);
 
     ret = mira220_write(dev->sccb_handle, mira220_REG_MODE , enable ? 0x10 : 0x02);
@@ -286,33 +288,39 @@ static esp_err_t mira220_set_exp_val(esp_cam_sensor_device_t *dev, uint32_t u32_
 static esp_err_t mira220_set_total_gain_val(esp_cam_sensor_device_t *dev, uint32_t u32_val)
 {
     esp_err_t ret = ESP_OK;
+    // struct mira220_cam *cam_mira220 = (struct mira220_cam *)dev->priv;
+    // u32_val = MIN(u32_val, s_limited_gain_index);
+
+    // if (ret == ESP_OK) {
+    //     cam_mira220->mira220_para.gain_index = u32_val;
+    // }
     return ret;
 }
 
 static esp_err_t mira220_query_para_desc(esp_cam_sensor_device_t *dev, esp_cam_sensor_param_desc_t *qdesc)
 {
     esp_err_t ret = ESP_OK;
-    ESP_LOGI(TAG, "id=%"PRIx32" is ", qdesc->id);
+    // ESP_LOGI(TAG, "id=%"PRIx32" is ", qdesc->id);
 
     switch (qdesc->id) {
     case ESP_CAM_SENSOR_EXPOSURE_VAL:
-        ESP_LOGI(TAG, "ESP_CAM_SENSOR_EXPOSURE_VAL", qdesc->id);
+        // ESP_LOGI(TAG, "query ESP_CAM_SENSOR_EXPOSURE_VAL", qdesc->id);
 
         qdesc->type = ESP_CAM_SENSOR_PARAM_TYPE_NUMBER;
-        qdesc->number.minimum = 0xF;
+        qdesc->number.minimum = 0x1;
         qdesc->number.maximum = 0xFFFF; 
-        qdesc->number.step = 0xF;
-        qdesc->default_value = 0XF;
+        qdesc->number.step = 0x1;
+        qdesc->default_value = 0X1;
         break;
 
     case ESP_CAM_SENSOR_EXPOSURE_US:
          ESP_LOGI(TAG, "ESP_CAM_SENSOR_EXPOSURE_US", qdesc->id);
 
         qdesc->type = ESP_CAM_SENSOR_PARAM_TYPE_NUMBER;
-        qdesc->number.minimum = 400;
-        qdesc->number.maximum = MIRA220.time_exp_max;
-        qdesc->number.step = 20;
-        qdesc->default_value = MIRA220.time_exposure;
+        qdesc->number.minimum = MIRA220.row_length_us;
+        qdesc->number.maximum = MIRA220.time_exp_max_us;
+        qdesc->number.step = 10;
+        qdesc->default_value = MIRA220.row_length_us;
         break;
     case ESP_CAM_SENSOR_GAIN:
         ESP_LOGI(TAG, "ESP_CAM_SENSOR_GAIN", qdesc->id);
@@ -372,33 +380,42 @@ static esp_err_t mira220_set_para_value(esp_cam_sensor_device_t *dev, uint32_t i
         ESP_LOGI(TAG, "mira220_set_para_value ESP_CAM_SENSOR_EXPOSURE_VAL");
         uint32_t u32_val = *(uint32_t *)arg;
         mira220_set_exp_val(dev, u32_val);
+        ESP_LOGI(TAG, "MIRA220 set_para ESP_CAM_SENSOR_EXPOSURE_VAL  %d "  , u32_val);
+
         break;
     }
     case ESP_CAM_SENSOR_EXPOSURE_US: {
         ESP_LOGI(TAG, "mira220_set_para_value ESP_CAM_SENSOR_EXPOSURE_US");
         uint32_t u32_val = *(uint32_t *)arg;
-        uint32_t ori_exp = EXPOSURE_V4L2_TO_mira220(u32_val, dev->cur_format);
+        uint32_t ori_exp = EXPOSURE_V4L2_TO_MIRA220(u32_val, dev->cur_format);
         mira220_set_exp_us(dev, ori_exp);
+        ESP_LOGI(TAG, "MIRA220 set_para ESP_CAM_SENSOR_EXPOSURE_US           %d "    , ori_exp);
+
         break;
     }
     case ESP_CAM_SENSOR_GAIN: {
         ESP_LOGI(TAG, "mira220_set_para_value ESP_CAM_SENSOR_GAIN");
         uint32_t u32_val = *(uint32_t *)arg;
-        //ret = mira220_set_total_gain_val(dev, u32_val);
+        ret = mira220_set_total_gain_val(dev, u32_val);
         break;
     }
     case ESP_CAM_SENSOR_GROUP_EXP_GAIN: {
         ESP_LOGI(TAG, "mira220_set_para_value ESP_CAM_SENSOR_GROUP_EXP_GAIN");
         uint32_t u32_val = *(uint32_t *)arg;
-        ret = mira220_set_total_gain_val(dev, u32_val);
+        // ret = mira220_set_total_gain_val(dev, u32_val);
 
-        // esp_cam_sensor_gh_exp_gain_t *value = (esp_cam_sensor_gh_exp_gain_t *)arg;
-        // uint32_t ori_exp = EXPOSURE_V4L2_TO_mira220(value->exposure_us, dev->cur_format);
-        // ret = mira220_write(dev->sccb_handle, mira220_REG_GROUP_HOLD, mira220_GROUP_HOLD_START);
-        // ret |= mira220_set_exp_val(dev, ori_exp);
-        // //ret |= mira220_set_total_gain_val(dev, value->gain_index);
-        // ret |= mira220_write(dev->sccb_handle, mira220_REG_GROUP_HOLD_DELAY, mira220_GROUP_HOLD_DELAY_FRAMES);
-        // ret |= mira220_write(dev->sccb_handle, mira220_REG_GROUP_HOLD, mira220_GROUP_HOLD_END);
+        esp_cam_sensor_gh_exp_gain_t *value = (esp_cam_sensor_gh_exp_gain_t *)arg;
+        uint32_t ori_exp = 0;
+        if (value->exposure_us != 0) {
+            ori_exp = EXPOSURE_V4L2_TO_MIRA220(value->exposure_us, dev->cur_format);
+        } else if (value->exposure_val != 0) {
+            ori_exp = value->exposure_val;
+        } else {
+            ret = ESP_ERR_INVALID_ARG;
+            break;
+        }
+        ret = mira220_set_exp_val(dev, ori_exp);
+        ret |= mira220_set_total_gain_val(dev, value->gain_index);
         break;
     }
     case ESP_CAM_SENSOR_VFLIP: {
@@ -567,6 +584,7 @@ esp_cam_sensor_device_t *mira220_detect(esp_cam_sensor_config_t *config)
 {
     esp_cam_sensor_device_t *dev = NULL;
     struct mira220_cam *cam_mira220;
+    // s_limited_gain_index = ARRAY_SIZE(mira220_total_gain_val_map);
 
 
     dev = calloc(1, sizeof(esp_cam_sensor_device_t));
@@ -592,7 +610,11 @@ esp_cam_sensor_device_t *mira220_detect(esp_cam_sensor_config_t *config)
     dev->cur_format = &mira220_format_info[CONFIG_CAMERA_MIRA220_MIPI_IF_FORMAT_INDEX_DEFAULT];
 
 
-
+    // for (size_t i = 0; i < ARRAY_SIZE(mira220_total_gain_val_map); i++) {
+    //     if (mira220_total_gain_val_map[i] > s_limited_gain) {
+    //         s_limited_gain_index = i - 1;
+    //         break;
+    //     }
 
     // Configure sensor power, clock, and SCCB port
     // if (mira220_power_on(dev) != ESP_OK) {
@@ -635,13 +657,13 @@ void mira220_get_settings(esp_cam_sensor_device_t *dev)
     MIRA220.exp_reg_val     = (exp_reg_val_MSB*256 +  exp_reg_val_LSB);
     MIRA220.VSIZE_reg_val   = (VSIZE_reg_val_MSB*256 +  VSIZE_reg_val_LSB);
     MIRA220.VBLANK_reg_val  = (VBLANK_reg_val_MSB*256 +  VBLANK_reg_val_LSB);
-    MIRA220.time_unit       = MIRA220.row_lenght / (mira220_format_info->xclk/1.0);
-    MIRA220.time_exposure   = MIRA220.time_unit * MIRA220.exp_reg_val;
-    MIRA220.time_frame      = (1.0f / (mira220_format_info->xclk/1.0)) * MIRA220.row_lenght * (MIRA220.VSIZE_reg_val + MIRA220.VBLANK_reg_val);
-    MIRA220.sensor_fps      = 1.0f / MIRA220.time_frame;
-    MIRA220.time_exp_max    = MIRA220.time_frame - (1928.0f / (mira220_format_info->xclk/1.0));
+    MIRA220.row_length_us       = MIRA220.row_lenght*1000000 / (mira220_format_info->xclk/1.0);
+    MIRA220.time_exposure_us   = MIRA220.row_length_us * MIRA220.exp_reg_val;
+    MIRA220.time_frame_us      = (1000000.0f / (mira220_format_info->xclk/1.0)) * MIRA220.row_lenght * (MIRA220.VSIZE_reg_val + MIRA220.VBLANK_reg_val);
+    MIRA220.sensor_fps      = 1000000.0f / MIRA220.time_frame_us;
+    MIRA220.time_exp_max_us    = MIRA220.time_frame_us -( 1000000*1928.0f / (mira220_format_info->xclk/1.0));
     MIRA220.exp_reg_min_val = 0x1;
-    MIRA220.exp_reg_max_val = (MIRA220.time_exp_max / MIRA220.time_unit);
+    MIRA220.exp_reg_max_val = (MIRA220.time_exp_max_us / MIRA220.row_length_us);
 
     uint32_t vblank_max = 0xFFFF;
     MIRA220.sensor_fps_min = (mira220_format_info->xclk/1.0)/ ( MIRA220.row_lenght * (MIRA220.VSIZE_reg_val + vblank_max));
@@ -653,11 +675,11 @@ void mira220_get_settings(esp_cam_sensor_device_t *dev)
     ESP_LOGI(TAG, "MIRA220 EXP REG              %d "    , MIRA220.exp_reg_val);
     ESP_LOGI(TAG, "MIRA220 VSIZE                %d "    , MIRA220.VSIZE_reg_val);
     ESP_LOGI(TAG, "MIRA220 VBLANK               %d "    , MIRA220.VBLANK_reg_val);
-    ESP_LOGI(TAG, "MIRA220 TIME UNIT            %.6f "  , MIRA220.time_unit);
-    ESP_LOGI(TAG, "MIRA220 TIME EXPOSURE        %.6f "  , MIRA220.time_exposure);
-    ESP_LOGI(TAG, "MIRA220 TIME FRAME           %.6f "  , MIRA220.time_frame);
+    ESP_LOGI(TAG, "MIRA220 ROW LEN   US         %.6f "  , MIRA220.row_length_us);
+    ESP_LOGI(TAG, "MIRA220 TIME EXPOSURE us     %.6f "  , MIRA220.time_exposure_us);
+    ESP_LOGI(TAG, "MIRA220 TIME FRAME us        %.6f "  , MIRA220.time_frame_us);
     ESP_LOGI(TAG, "MIRA220 SENSOR FPS           %.6f "  , MIRA220.sensor_fps);
-    ESP_LOGI(TAG, "MIRA220 TIME EXPOSURE MAX    %.6f "  , MIRA220.time_exp_max);
+    ESP_LOGI(TAG, "MIRA220 TIME EXPOSURE MAXus  %.6f "  , MIRA220.time_exp_max_us);
     ESP_LOGI(TAG, "MIRA220 MIN EXP REG VALUE    %d "    , MIRA220.exp_reg_min_val);
     ESP_LOGI(TAG, "MIRA220 MAX EXP REG VALUE    %d "    , MIRA220.exp_reg_max_val);
     return ;
@@ -665,7 +687,7 @@ void mira220_get_settings(esp_cam_sensor_device_t *dev)
 
 void mira220_set_exp_us(esp_cam_sensor_device_t *dev, uint32_t u32_val)
 {
-    uint32_t EXP_REG_VAL = (u32_val/1000000.0) / MIRA220.time_unit; 
+    uint32_t EXP_REG_VAL = (u32_val) / MIRA220.row_length_us; 
      mira220_set_exp_val(dev, EXP_REG_VAL); 
     return;
 }
