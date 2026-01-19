@@ -5,25 +5,25 @@
         "awb":
         {
             "model": 0,
-            "min_red_gain_step": 0.34,
-            "min_blue_gain_step": 0.40,
-            "min_counted": 2000,
+            "min_red_gain_step": 0.1,
+            "min_blue_gain_step": 0.1,
+            "min_counted": 1000,
             "range":
             {
                 "green":
                 {
                     "max": 190,
-                    "min": 81
+                    "min": 70
                 },
                 "rg":
                 {
                     "max": 0.9096,
-                    "min": 0.573
+                    "min": 0.43
                 },
                 "bg":
                 {
                     "max": 0.9634,
-                    "min": 0.5368
+                    "min": 0.468
                 }
             },
             "green_luma_env": "dummy_awb_luma",
@@ -34,13 +34,13 @@
         {
             "exposure":
             {
-                "frame_delay": 3,
-                "adjust_delay": 0
+                "frame_delay": 2,
+                "adjust_delay": 2
             },
             "gain":
             {
-                "min_step": 0.03,
-                "frame_delay": 3
+                "min_step": 1,
+                "frame_delay": 2
             },
             "anti_flicker":
             {
@@ -51,12 +51,12 @@
             "f_m0": 0.42,
             "luma_adjust":
             {
-                "target_low": 62,
-                "target_high": 69,
-                "target": 65,
-                "low_threshold": 14,
+                "target_low": 130,
+                "target_high": 180,
+                "target": 150,
+                "low_threshold": 20,
                 "low_regions": 5,
-                "high_threshold": 239,
+                "high_threshold": 220,
                 "high_regions": 3,
                 "weight":
                 [
@@ -70,15 +70,15 @@
             "mode": "high_light_priority",
             "high_light_priority":
             {
-                "low_threshold": 119,
+                "low_threshold": 140,
                 "high_threshold": 202,
                 "weight_offset": 5,
                 "luma_offset": -3
             },
             "low_light_priority":
             {
-                "low_threshold": 49,
-                "high_threshold": 64,
+                "low_threshold": 60,
+                "high_threshold": 100,
                 "weight_offset": 5,
                 "luma_offset": 1
             },
@@ -125,11 +125,28 @@
         },
         "acc":
         {
+            "blc":
+            {
+                "model": 0,
+                "stretch": false,
+                "blc_table":
+                [
+                    {
+                        "gain": 1,
+                        "blc_param": {
+                            "blc_top_left": 22,
+                            "blc_top_right": 22,
+                            "blc_bottom_left": 22,
+                            "blc_bottom_right": 22
+                        }
+                    }
+                ]
+            },
             "saturation":
             [
                 {
                     "color_temp": 0,
-                    "value": 136
+                    "value": 200
                 }
             ],
             "ccm":
@@ -140,9 +157,9 @@
                     "threshold": 28,
                     "matrix":
                     [
-                        1.00,  0.00, 0.00,
-                        0.00,    1.00,  0.00,
-                        0.00,  0.00,  1.00
+                            1.408,  -0.094, -0.314,
+                            -0.13,    1.28,  -0.15,
+                            -0.072,  -0.173,  1.245
                     ]
                 },
                 "table":
@@ -271,16 +288,19 @@
         {
             "gamma":
             {
-                "use_gamma_param": true,
+                "use_gamma_param": false,
                 "luma_env": "ae.luma.avg",
                 "luma_min_step": 16.0,
                 "table":
                 [
                     {
                         "luma": 71.1,
-                        "gamma_param": 0.518
+                        "gamma_param": 0.518,
+                        "y":
+                        [0.0, 70.4, 100.1, 123.2, 143.0, 160.6, 176.0, 190.3, 203.5, 216.7, 227.7, 239.8, 250.8, 255, 255, 255]
                     }
                 ]
+                
             },    
             "sharpen":
             [
