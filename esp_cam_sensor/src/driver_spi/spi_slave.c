@@ -368,11 +368,13 @@ esp_err_t esp_cam_spi_slave_free(spi_host_device_t host)
         free(spihost[host]->dma_ctx->dmadesc_rx);
         spicommon_dma_chan_free(spihost[host]->dma_ctx);
     }
-    spicommon_bus_free_io_cfg(&spihost[host]->bus_config
-#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(6, 0, 0)
-                              , &spihost[host]->gpio_reserve
+#if ESP_IDF_VERSION < ESP_IDF_VERSION_VAL(6, 0, 0)
+    spicommon_bus_free_io_cfg(&spihost[host]->bus_config);
+#elif ESP_IDF_VERSION < ESP_IDF_VERSION_VAL(6, 1, 0)
+    spicommon_bus_free_io_cfg(&spihost[host]->bus_config, &spihost[host]->gpio_reserve);
+#else
+    spicommon_bus_free_io_cfg(host);
 #endif
-                             );
     esp_intr_free(spihost[host]->intr);
 
 #if SOC_SPI_SUPPORT_SLEEP_RETENTION && CONFIG_PM_POWER_DOWN_PERIPHERAL_IN_LIGHT_SLEEP
