@@ -1,10 +1,11 @@
 /*
- * SPDX-FileCopyrightText: 2025 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2025-2026 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Apache-2.0
  */
 
 #include <string.h>
+#include <stdbool.h>
 #include <sys/param.h>
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>
@@ -57,11 +58,11 @@ struct os02n10_cam {
 #define delay_ms(ms)  vTaskDelay((ms > portTICK_PERIOD_MS ? ms/ portTICK_PERIOD_MS : 1))
 #define OS02N10_SUPPORT_NUM CONFIG_CAMERA_OS02N10_MAX_SUPPORT
 
-#define CAMERA_OS02N10_EXPOSURE_TEST_EN 0
+#define OS02N10_EXPOSURE_TEST_EN 0
+#define OS02N10_EXPOSURE_TEST_EN_GAIN 0
 
 static size_t s_limited_gain_index;
 static const uint8_t s_os02n10_exp_min = 0x02;
-static volatile os02n10_bank_t s_reg_bank = OS02N10_BANK_MAX; // current bank
 static const char *TAG = "os02n10";
 
 #define EXPOSURE_V4L2_UNIT_US                   100
@@ -352,20 +353,6 @@ static uint8_t get_os02n10_actual_format_index(void)
 }
 #endif
 
-static esp_err_t os02n10_set_bank(esp_sccb_io_handle_t sccb_handle, os02n10_bank_t bank)
-{
-    esp_err_t ret = ESP_OK;
-    if (bank != s_reg_bank) {
-        ret = esp_sccb_transmit_reg_a8v8(sccb_handle, OS02N10_REG_BANK_SEL, bank);
-        if (ret == ESP_OK) {
-            s_reg_bank = bank;
-        } else {
-            ESP_LOGE(TAG, "Bank update failed");
-        }
-    }
-    return ret;
-}
-
 static esp_err_t os02n10_read(esp_sccb_io_handle_t sccb_handle, uint8_t reg, uint8_t *read_buf)
 {
     return esp_sccb_transmit_receive_reg_a8v8(sccb_handle, reg, read_buf);
@@ -383,7 +370,7 @@ static esp_err_t os02n10_write_array(esp_sccb_io_handle_t sccb_handle, const os0
     esp_err_t ret = ESP_OK;
     while ((ret == ESP_OK) && i < regs_size) {
         if (regs[i].reg == OS02N10_REG_BANK_SEL) {
-            ret = os02n10_set_bank(sccb_handle, regs[i].val);
+            ret = os02n10_write(sccb_handle, OS02N10_REG_BANK_SEL, regs[i].val);
         } else if (regs[i].reg == OS02N10_REG_DELAY) {
             delay_ms(regs[i].val);
         } else {
@@ -412,7 +399,8 @@ static esp_err_t os02n10_set_reg_bits(esp_sccb_io_handle_t sccb_handle, uint8_t 
 
 static esp_err_t os02n10_set_test_pattern(esp_cam_sensor_device_t *dev, int enable)
 {
-    if (os02n10_set_bank(dev->sccb_handle, OS02N10_BANKI_ISP) != ESP_OK) {
+    esp_err_t ret = os02n10_write(dev->sccb_handle, OS02N10_REG_BANK_SEL, OS02N10_BANKI_ISP);
+    if (ret != ESP_OK) {
         return ESP_FAIL;
     }
     // 0x03 is gradient mode
@@ -442,7 +430,8 @@ static esp_err_t os02n10_get_sensor_id(esp_cam_sensor_device_t *dev, esp_cam_sen
     esp_err_t ret = ESP_FAIL;
     uint8_t pid_hh, pid_lh;
     esp_rom_delay_us(2000);
-    if (os02n10_set_bank(dev->sccb_handle, OS02N10_BANK_SYSTEM) != ESP_OK) {
+    ret = os02n10_write(dev->sccb_handle, OS02N10_REG_BANK_SEL, OS02N10_BANK_SYSTEM);
+    if (ret != ESP_OK) {
         return ret;
     }
 
@@ -459,26 +448,10 @@ static esp_err_t os02n10_get_sensor_id(esp_cam_sensor_device_t *dev, esp_cam_sen
     return ret;
 }
 
-static esp_err_t os02n10_set_stream(esp_cam_sensor_device_t *dev, int enable)
-{
-    esp_err_t ret = ESP_FAIL;
-    if (os02n10_set_bank(dev->sccb_handle, OS02N10_BANK_SYSTEM) != ESP_OK) {
-        return ret;
-    }
-
-    ret = os02n10_write(dev->sccb_handle, OS02N10_REG_COMC03, enable ? 0x00 : 0x03);
-
-    if (ret == ESP_OK) {
-        dev->stream_status = enable;
-    }
-
-    ESP_LOGD(TAG, "Stream=%d", enable);
-    return ret;
-}
-
 static esp_err_t os02n10_set_mirror(esp_cam_sensor_device_t *dev, int enable)
 {
-    if (os02n10_set_bank(dev->sccb_handle, OS02N10_BANK_SENSOR) != ESP_OK) {
+    esp_err_t ret = os02n10_write(dev->sccb_handle, OS02N10_REG_BANK_SEL, OS02N10_BANK_SENSOR);
+    if (ret != ESP_OK) {
         return ESP_FAIL;
     }
     return os02n10_set_reg_bits(dev->sccb_handle, 0x12, 1, 1, enable ? 0x01 : 0x00);
@@ -486,7 +459,8 @@ static esp_err_t os02n10_set_mirror(esp_cam_sensor_device_t *dev, int enable)
 
 static esp_err_t os02n10_set_vflip(esp_cam_sensor_device_t *dev, int enable)
 {
-    if (os02n10_set_bank(dev->sccb_handle, OS02N10_BANK_SENSOR) != ESP_OK) {
+    esp_err_t ret = os02n10_write(dev->sccb_handle, OS02N10_REG_BANK_SEL, OS02N10_BANK_SENSOR);
+    if (ret != ESP_OK) {
         return ESP_FAIL;
     }
     return os02n10_set_reg_bits(dev->sccb_handle, 0x12, 0, 1, enable ? 0x01 : 0x00);
@@ -494,9 +468,6 @@ static esp_err_t os02n10_set_vflip(esp_cam_sensor_device_t *dev, int enable)
 
 static esp_err_t os02n10_trigger_gain(esp_cam_sensor_device_t *dev)
 {
-    if (os02n10_set_bank(dev->sccb_handle, OS02N10_BANK_SENSOR) != ESP_OK) {
-        return ESP_FAIL;
-    }
     return os02n10_write(dev->sccb_handle, 0xfe, 0x02);
 }
 
@@ -515,8 +486,9 @@ static esp_err_t os02n10_set_exp_val(esp_cam_sensor_device_t *dev, uint32_t u32_
     * Set p1:0x0f = 0x02 to trigger the new exposure
     * enable auto prolong vts, see P1:0x18 = 0x01
     */
-    if (os02n10_set_bank(dev->sccb_handle, OS02N10_BANK_SENSOR) != ESP_OK) {
-        return ESP_FAIL;
+    ret = os02n10_write(dev->sccb_handle, OS02N10_REG_BANK_SEL, OS02N10_BANK_SENSOR);
+    if (ret != ESP_OK) {
+        return ret;
     }
 
     ret = os02n10_write(dev->sccb_handle,
@@ -542,8 +514,9 @@ static esp_err_t os02n10_set_total_gain_val(esp_cam_sensor_device_t *dev, uint32
     /* analog gain is p1:0x24, 1~15.5x, set p1:0xfe = 0x02 to trigger it */
     /* digital gain is p1:0x1f&0x20, 1~32x, min step is 1/64, */
     /* The exposure/gain will be valid form N + 2 frames when 0xfe=0x02 is written */
-    if (os02n10_set_bank(dev->sccb_handle, OS02N10_BANK_SENSOR) != ESP_OK) {
-        return ESP_FAIL;
+    ret = os02n10_write(dev->sccb_handle, OS02N10_REG_BANK_SEL, OS02N10_BANK_SENSOR);
+    if (ret != ESP_OK) {
+        return ret;
     }
 
     ESP_LOGD(TAG, "a_gain %" PRIx8 ", dgain_m %" PRIx8 ", dgain_l %" PRIx8, os02n10_gain_map[u32_val].analog_gain, os02n10_gain_map[u32_val].dgain_msb, os02n10_gain_map[u32_val].dgain_lsb);
@@ -559,6 +532,70 @@ static esp_err_t os02n10_set_total_gain_val(esp_cam_sensor_device_t *dev, uint32
     if (ret == ESP_OK) {
         cam_os02n10->os02n10_para.gain_index = u32_val;
     }
+    return ret;
+}
+
+#if OS02N10_EXPOSURE_TEST_EN
+static int s_exp_v = s_os02n10_exp_min;
+static int s_exp_step = 10;
+static uint32_t s_exp_add = true;
+static TimerHandle_t s_ae_timer_handle;
+
+static void ae_timer_callback(TimerHandle_t timer)
+{
+    esp_cam_sensor_device_t *dev = (esp_cam_sensor_device_t *)pvTimerGetTimerID(timer);
+#if OS02N10_EXPOSURE_TEST_EN_GAIN
+    if (s_exp_v + s_exp_step >= s_limited_gain_index) {
+        s_exp_add = false;
+    } else if (s_exp_v - s_exp_step < 1) {
+        s_exp_add = true;
+    }
+    os02n10_set_total_gain_val(dev, s_exp_v);
+    if (s_exp_add == true) {
+        s_exp_v += s_exp_step;
+    } else {
+        s_exp_v -= s_exp_step;
+    }
+#else
+    struct os02n10_cam *cam_os02n10 = (struct os02n10_cam *)dev->priv;
+    if (s_exp_v + s_exp_step >= cam_os02n10->os02n10_para.exposure_max) {
+        s_exp_add = false;
+    } else if (s_exp_v - s_exp_step <= s_os02n10_exp_min) {
+        s_exp_add = true;
+    }
+    os02n10_set_exp_val(dev, s_exp_v);
+    if (s_exp_add == true) {
+        s_exp_v += s_exp_step;
+    } else {
+        s_exp_v -= s_exp_step;
+    }
+#endif
+    os02n10_trigger_gain(dev);
+    ESP_LOGI(TAG, "val=%d", s_exp_v);
+}
+#endif
+
+static esp_err_t os02n10_set_stream(esp_cam_sensor_device_t *dev, int enable)
+{
+    esp_err_t ret = ESP_FAIL;
+    ret = os02n10_write(dev->sccb_handle, OS02N10_REG_BANK_SEL, OS02N10_BANK_SYSTEM);
+    if (ret != ESP_OK) {
+        return ret;
+    }
+
+    ret = os02n10_write(dev->sccb_handle, OS02N10_REG_COMC03, enable ? 0x00 : 0x03);
+
+    if (ret == ESP_OK) {
+        dev->stream_status = enable;
+    }
+#if OS02N10_EXPOSURE_TEST_EN
+    if (enable) {
+        xTimerStart(s_ae_timer_handle, portMAX_DELAY);
+    } else {
+        xTimerStop(s_ae_timer_handle, portMAX_DELAY);
+    }
+#endif
+    ESP_LOGD(TAG, "Stream=%d", enable);
     return ret;
 }
 
@@ -888,18 +925,6 @@ static const esp_cam_sensor_ops_t os02n10_ops = {
     .del = os02n10_delete
 };
 
-#if CAMERA_OS02N10_EXPOSURE_TEST_EN
-static uint32_t exp_v = 2;
-TimerHandle_t ae_timer_handle;
-static void ae_timer_callback(TimerHandle_t timer)
-{
-    esp_cam_sensor_device_t *dev = (esp_cam_sensor_device_t *)pvTimerGetTimerID(timer);
-    os02n10_set_total_gain_val(dev, exp_v);
-    os02n10_trigger_gain(dev);
-    exp_v++;
-}
-#endif
-
 esp_cam_sensor_device_t *os02n10_detect(esp_cam_sensor_config_t *config)
 {
     esp_cam_sensor_device_t *dev = NULL;
@@ -957,10 +982,9 @@ esp_cam_sensor_device_t *os02n10_detect(esp_cam_sensor_config_t *config)
     }
     ESP_LOGI(TAG, "Detected Camera sensor PID=0x%x", dev->id.pid);
 
-#if CAMERA_OS02N10_EXPOSURE_TEST_EN
-    ae_timer_handle = xTimerCreate("AE_t", 100 / portTICK_PERIOD_MS, pdTRUE,
-                                   (void *)dev, ae_timer_callback);
-    xTimerStart(ae_timer_handle, portMAX_DELAY);
+#if OS02N10_EXPOSURE_TEST_EN
+    s_ae_timer_handle = xTimerCreate("AE_t", 100 / portTICK_PERIOD_MS, pdTRUE,
+                                     (void *)dev, ae_timer_callback);
 #endif
 
     return dev;
