@@ -662,7 +662,7 @@ static esp_err_t ov2640_query_para_desc(esp_cam_sensor_device_t *dev, esp_cam_se
     case ESP_CAM_SENSOR_JPEG_QUALITY:
         qdesc->type = ESP_CAM_SENSOR_PARAM_TYPE_NUMBER;
         qdesc->number.minimum = 1;
-        qdesc->number.maximum = 63;
+        qdesc->number.maximum = 60;
         qdesc->number.step = 1;
         qdesc->default_value = OV2640_JPEG_QUALITY_DEFAULT;
         break;
