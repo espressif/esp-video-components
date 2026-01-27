@@ -1,0 +1,80 @@
+menuconfig CAMERA_STI2250
+    bool "STI2250"
+    default n
+    depends on SOC_MIPI_CSI_SUPPORTED
+    help
+        Enabling this option will add the support for STI2250.
+
+if CAMERA_STI2250
+    menuconfig CAMERA_STI2250_AUTO_DETECT
+        bool "Auto detect STI2250"
+        default y
+        help
+            When enabled, it provides the ability in application layer to automatically
+            detect camera sensors one by one.
+
+    if CAMERA_STI2250_AUTO_DETECT
+        config CAMERA_STI2250_AUTO_DETECT_MIPI_INTERFACE_SENSOR
+            bool "Detect for MIPI interface sensor"
+            default y
+            help
+                When enabled, you don't need to call sti2250_detect manually, STI2250 will
+                be automatically detected and connected to the MIPI interface when the
+                application starts.
+    endif
+
+    menu "Choose supported formats for MIPI CSI interface"
+        config CAMERA_STI2250_MIPI_RAW8_800X600_50FPS
+            bool "MIPI 1-lane, 24M input, 800x600 50fps, RAW8"
+            default y
+            help
+                RAW8 format at 800x600 resolution with 50fps framerate.
+                Requires MIPI CSI-2 1-lane interface with 24MHz input clock.
+    endmenu
+
+    choice CAMERA_STI2250_MIPI_DEFAULT_FMT
+        prompt "Select default output format for MIPI CSI interface"
+        default CAMERA_STI2250_MIPI_DEFAULT_FMT_RAW8_800X600_50FPS
+        help
+            Select the default format to load when the sensor is detected.
+            When the sensor is in stream off state, the format can be changed.
+
+        config CAMERA_STI2250_MIPI_DEFAULT_FMT_RAW8_800X600_50FPS
+            bool "MIPI 1-lane, 24M input, 800x600 50fps, RAW8"
+            depends on CAMERA_STI2250_MIPI_RAW8_800X600_50FPS
+    endchoice # CAMERA_STI2250_MIPI_DEFAULT_FMT
+
+    config CAMERA_STI2250_MIPI_IF_FORMAT_INDEX_DEFAULT
+        int
+        default 0 if CAMERA_STI2250_MIPI_DEFAULT_FMT_RAW8_800X600_50FPS
+        help
+            Set the configuration loaded by default for the MIPI interface.
+            More information can be obtained by calling the query_support_formats().
+
+    choice CAMERA_STI2250_IPA_JSON_CONFIGURATION_FILE
+        prompt "IPA Configuration File"
+        default CAMERA_STI2250_DEFAULT_IPA_JSON_CONFIGURATION_FILE
+        help
+            Select the Image Processing Algorithm (IPA) JSON configuration file
+            for the STI2250 sensor.
+
+        config CAMERA_STI2250_DEFAULT_IPA_JSON_CONFIGURATION_FILE
+            bool "Use default configuration"
+            help
+                Use the built-in default IPA configuration file:
+                "esp_cam_sensor/sensors/STI2250/cfg/STI2250_default.json"
+
+                This configuration provides optimized settings for monochrome
+                machine vision applications and is recommended for most use cases.
+
+        config CAMERA_STI2250_CUSTOMIZED_IPA_JSON_CONFIGURATION_FILE
+            bool "Use custom configuration"
+            help
+                Use a custom IPA configuration file with your own optimized settings.
+
+                This option allows you to fine-tune sensor parameters for specific
+                lighting conditions, exposure requirements, or application needs.
+
+                You must specify the custom file path in the configuration below.
+    endchoice
+endif

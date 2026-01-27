@@ -5,6 +5,7 @@
 - Added Mira220 MIPI driver.
 - Added SP0A39 DVP & SPI camera driver.
 - Added OS04C10 MIPI camera sensor driver.
+- Added STI2250 MIPI driver.
 - Added detection for all sensors to the `test_apps\detect` test code.
 
 - Disabled manual exposure control in the ov5647_mipi_2lane_24Minput_800x1280_raw8_50fps.h.
