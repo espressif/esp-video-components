@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2024-2025 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2024-2026 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: ESPRESSIF MIT
  */
@@ -28,7 +28,8 @@
 #include "esp_video_init.h"
 #include "esp_video_device_internal.h"
 #if CONFIG_ESP_VIDEO_ENABLE_DVP_VIDEO_DEVICE
-#include "esp_private/esp_cam_dvp.h"
+
+#include "esp_cam_ctlr_dvp_ext.h"
 #endif
 #if CONFIG_ESP_VIDEO_ENABLE_ISP_PIPELINE_CONTROLLER
 #include "esp_video_pipeline_isp.h"
@@ -506,7 +507,7 @@ esp_err_t esp_video_init(const esp_video_init_config_t *config)
             esp_cam_sensor_config_t cfg;
             esp_cam_sensor_device_t *cam_dev;
 
-            ret = esp_cam_ctlr_dvp_init(dvp_ctlr_id, CAM_CLK_SRC_DEFAULT, &config->dvp->dvp_pin);
+            ret = esp_cam_ctlr_dvp_init_ext(dvp_ctlr_id, CAM_CLK_SRC_DEFAULT, &config->dvp->dvp_pin);
             if (ret != ESP_OK) {
                 return ret;
             }
