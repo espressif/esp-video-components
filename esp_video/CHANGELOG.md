@@ -12,6 +12,7 @@
 - Fix USB UVC device initialization timeout issue when devices are already enumerated
 - Fix USB UVC device and ISP compatibility issues for ESP32-P4 ECO5
 - Fix the WBG stop issue after starting the WBG module twice
+- Fix the ISP driver compatibility for the new version ISP driver
 
 ## 1.4.1
 

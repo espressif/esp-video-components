@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2025 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2025-2026 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: ESPRESSIF MIT
  */
@@ -43,11 +43,13 @@ extern "C" {
 /**
  * @brief ISP video device configuration
  *
- * @note Currently, only the ESP-IDF >= v6.0.0 versions support AWB subwindow.
+ * @note Currently, only the ESP-IDF >= v5.4.4 && < v5.5.0 versions and ESP-IDF >= v5.5.3 versions support AWB subwindow and support once-configured mode.
  */
-#if (ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(6, 0, 0))
+#if ((ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 4, 4)) && (ESP_IDF_VERSION < ESP_IDF_VERSION_VAL(5, 5, 0))) || \
+     (ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 5, 3))
 #define ESP_VIDEO_ISP_DEVICE_AWB_SUBWIN 1   /*!< ISP video device enable AWB subwindow */
-#endif /* (ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(6, 0, 0)) */
+#define ESP_VIDEO_ISP_DEVICE_ONCE_CONFIG 1  /*!< ISP video device supports once-configured mode */
+#endif /* ((ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 4, 4)) && (ESP_IDF_VERSION < ESP_IDF_VERSION_VAL(5, 5, 0))) || (ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 5, 3)) */
 
 #if CONFIG_SOC_JPEG_CODEC_SUPPORTED
 #define ESP_VIDEO_JPEG_DEVICE_YUV420    1   /*!< JPEG video device supports YUV420 format */
