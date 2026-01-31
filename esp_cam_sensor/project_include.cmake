@@ -42,6 +42,12 @@ if(CONFIG_CAMERA_SC035HGS)
     endif()
 endif()
 
+if(CONFIG_CAMERA_MIRA220)
+    if(CONFIG_CAMERA_MIRA220_DEFAULT_IPA_JSON_CONFIGURATION_FILE)
+        idf_build_set_property(ESP_IPA_JSON_CONFIG_FILE_PATH "${COMPONENT_PATH}/sensors/mira220/cfg/mira220_default.json" APPEND)
+    endif()
+endif()
+
 if(CONFIG_CAMERA_SC202CS)
     if(CONFIG_CAMERA_SC202CS_DEFAULT_IPA_JSON_CONFIGURATION_FILE)
         idf_build_set_property(ESP_IPA_JSON_CONFIG_FILE_PATH "${COMPONENT_PATH}/sensors/sc202cs/cfg/sc202cs_default.json" APPEND)

@@ -1,0 +1,82 @@
+menuconfig CAMERA_MIRA220
+    bool "MIRA220"
+    default n
+    help
+        Enabling this option will add the support for MIRA220.
+
+if CAMERA_MIRA220
+    menuconfig CAMERA_MIRA220_AUTO_DETECT
+        bool "Auto detect MIRA220"
+        default y
+        help
+            When enabled, it provides the ability in application layer to automatically
+            detect camera sensors one by one.
+
+    if CAMERA_MIRA220_AUTO_DETECT
+        config CAMERA_MIRA220_AUTO_DETECT_MIPI_INTERFACE_SENSOR
+            bool "Detect for MIPI interface sensor"
+            default y
+            help
+                When enabled, you don't need to call mira220_detect manaually, MIRA220 will
+                be automatically detected and connected to the MIPI CSI interface when
+                the application starts.
+
+    endif
+
+    choice CAMERA_MIRA220_MIPI_DEFAULT_FMT
+        prompt "Default format select for MIPI"
+        default CAMERA_MIRA220_MIPI_RAW8_1024_600_6fps
+        help
+            Select the default format to load when the sensor is detected.
+            When the sensor is in stream off state, the format can be changed.
+    
+        config CAMERA_MIRA220_MIPI_RAW8_1024_600_6fps
+            bool "MIRA220_MIPI_RAW8_1024_600_6fps"
+                                    
+    endchoice # CAMERA_MIRA220_MIPI_DEFAULT_FMT
+
+    config CAMERA_MIRA220_MIPI_IF_FORMAT_INDEX_DEFAULT
+        int
+        default 0 if CAMERA_MIRA220_MIPI_RAW8_1024_600_6fps
+
+        help
+            Set the configuration loaded by default for the MIPI interface.
+            More information can be obtained by calling the query_support_formats().
+
+    
+    
+    config CAMERA_MIRA220_ABSOLUTE_GAIN_LIMIT
+            int "Maximum absolute gain limit"
+            default 1000
+            range 1000 1000
+            help
+                Use this value to limit the maximum gain that upper level applications can use.
+                To avoid using float type, the size of this value is gain x 1000.
+                Excessive gain can lead to a worse signal-to-noise ratio and may cause the device to overheat, affecting its functionality. 
+
+
+    choice CAMERA_MIRA220_IPA_JSON_CONFIGURATION_FILE
+        prompt "IPA JSON Configuration File"
+        default CAMERA_MIRA220_DEFAULT_IPA_JSON_CONFIGURATION_FILE
+        help
+            Select MIRA220 JSON configuration file.
+
+        config CAMERA_MIRA220_DEFAULT_IPA_JSON_CONFIGURATION_FILE
+            bool "Default"
+            help
+                Use the "esp_cam_sensor/sensors/mira220/cfg/mira220_default.json".
+
+        config CAMERA_MIRA220_CUSTOMIZED_IPA_JSON_CONFIGURATION_FILE
+            bool "Customized"
+            help
+                Use a customized MIRA220 JSON configuration file. Users should configure
+                the file's path using the option "CAMERA_MIRA220_CUSTOMIZED_IPA_JSON_CONFIGURATION_FILE_PATH."
+    endchoice
+
+    config CAMERA_MIRA220_CUSTOMIZED_IPA_JSON_CONFIGURATION_FILE_PATH
+        string "MIRA220 Customized JSON Configuration File Path"
+        depends on CAMERA_MIRA220_CUSTOMIZED_IPA_JSON_CONFIGURATION_FILE
+        help
+            Customized MIRA220 JSON configuration file's path and this path is evaluated
+            relative to the project root directory by default.
+endif
