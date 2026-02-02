@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2024 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2026 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -12,9 +12,9 @@ extern "C" {
 #include "esp_cam_sensor_types.h"
 #include "mira220_types.h"
 
-//#define mira220_SCCB_ADDR   0xA8
-
-#define mira220_SCCB_ADDR   0x54
+#define MIRA220_SCCB_ADDR   0x54
+#define MIRA220_PID         0x130 // 0xcb3a
+#define MIRA220_SENSOR_NAME "MIRA220"
 
 /**
  * @brief Power on camera sensor device and detect the device connected to the designated sccb bus.
