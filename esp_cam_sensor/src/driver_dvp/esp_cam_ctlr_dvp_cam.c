@@ -317,10 +317,16 @@ static esp_err_t dvp_get_frame_size(const esp_cam_ctlr_dvp_config_t *config, siz
     if (config->pic_format_jpeg) {
         *p_size = config->h_res * config->v_res;
     } else {
+        uint32_t depth;
+
+#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(6, 0, 0)
+        depth = color_hal_pixel_format_fourcc_get_bit_depth(config->input_data_color_type);
+#else
         color_space_pixel_format_t pixel_format = {
             .color_type_id = config->input_data_color_type
         };
-        uint32_t depth = color_hal_pixel_format_get_bit_depth(pixel_format);
+        depth = color_hal_pixel_format_get_bit_depth(pixel_format);
+#endif
         if (!depth) {
             return ESP_ERR_INVALID_ARG;
         }

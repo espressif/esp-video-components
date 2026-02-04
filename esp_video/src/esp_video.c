@@ -72,7 +72,13 @@ static const struct esp_video_format_desc_map esp_video_format_desc_maps[] = {
         V4L2_PIX_FMT_UYVY, "YUV 4:2:2 UYVY", 16
     },
     {
+        V4L2_PIX_FMT_VYUY, "YUV 4:2:2 VYUY", 16
+    },
+    {
         V4L2_PIX_FMT_YUYV, "YUV 4:2:2 YUYV", 16
+    },
+    {
+        V4L2_PIX_FMT_YVYU, "YUV 4:2:2 YVYU", 16
     },
     {
         V4L2_PIX_FMT_JPEG, "JPEG", 8

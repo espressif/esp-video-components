@@ -1,3 +1,10 @@
+## 2.0.1
+
+- Improve ISP driver compatibility with the new peripheral drivers introduced in ESP-IDF v6.0 and later
+    - Resolve compilation issues
+    - Use the SPI slave driver provided by ESP-IDF v6.0 and later, replacing the `spi_slave.c` from `esp_cam_sensor`
+    - Add support for image pixel format conversion for ESP32-P4 ECO5 and newer
+
 ## 2.0.0
 
 - Update to use YUV422 and RGB565 image data formats with byte order

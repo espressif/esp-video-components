@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2024-2025 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2024-2026 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: ESPRESSIF MIT
  */
@@ -18,6 +18,7 @@
 
 #include "esp_video.h"
 #include "esp_video_cam.h"
+#include "esp_video_ioctl.h"
 #include "esp_video_device_internal.h"
 #if CONFIG_ESP_VIDEO_ENABLE_SWAP_SHORT
 #include "esp_video_swap_short.h"
@@ -70,6 +71,15 @@ struct csi_video {
 
 static const char *TAG = "csi_video";
 
+#if ESP_VIDEO_CSI_DEVICE_CONV_FORMAT
+static bool csi_need_convert_format(cam_ctlr_color_t out_color)
+{
+    return out_color == CAM_CTLR_COLOR_YUV422_YVYU ||
+           out_color == CAM_CTLR_COLOR_YUV422_YUYV ||
+           out_color == CAM_CTLR_COLOR_YUV422_VYUY;
+}
+#endif
+
 static esp_err_t csi_get_input_frame_type(uint32_t sensor_fmt, cam_ctlr_color_t *csi_color, uint8_t *csi_in_bpp, uint32_t *in_fmt)
 {
     esp_err_t ret = ESP_OK;
@@ -111,12 +121,12 @@ static esp_err_t csi_get_input_frame_type(uint32_t sensor_fmt, cam_ctlr_color_t 
         *csi_in_bpp = 12;
         break;
     case ESP_CAM_SENSOR_PIXFORMAT_YUV422_UYVY:
-        *csi_color = CAM_CTLR_COLOR_YUV422;
+        *csi_color = CAM_CTLR_COLOR_YUV422_UYVY;
         *in_fmt = V4L2_PIX_FMT_UYVY;
         *csi_in_bpp = 16;
         break;
     case ESP_CAM_SENSOR_PIXFORMAT_YUV422_YUYV:
-        *csi_color = CAM_CTLR_COLOR_YUV422;
+        *csi_color = CAM_CTLR_COLOR_YUV422_YUYV;
         *in_fmt = V4L2_PIX_FMT_YUYV;
         *csi_in_bpp = 16;
         break;
@@ -162,13 +172,23 @@ static esp_err_t csi_get_output_frame_type_from_v4l2(uint32_t output_fmt, cam_ct
         *out_bpp = 12;
         break;
     case V4L2_PIX_FMT_UYVY:
-        *csi_color = CAM_CTLR_COLOR_YUV422;
+        *csi_color = CAM_CTLR_COLOR_YUV422_UYVY;
         *out_bpp = 16;
         break;
     case V4L2_PIX_FMT_YUYV:
-        *csi_color = CAM_CTLR_COLOR_YUV422;
+        *csi_color = CAM_CTLR_COLOR_YUV422_YUYV;
         *out_bpp = 16;
         break;
+#if ESP_VIDEO_CSI_DEVICE_CONV_FORMAT
+    case V4L2_PIX_FMT_YVYU:
+        *csi_color = CAM_CTLR_COLOR_YUV422_YVYU;
+        *out_bpp = 16;
+        break;
+    case V4L2_PIX_FMT_VYUY:
+        *csi_color = CAM_CTLR_COLOR_YUV422_VYUY;
+        *out_bpp = 16;
+        break;
+#endif
     default:
         ret = ESP_ERR_NOT_SUPPORTED;
         *out_bpp = 0;
@@ -439,6 +459,36 @@ static esp_err_t csi_video_start(struct esp_video *video, uint32_t type)
         .bk_buffer_dis = true,
 #endif
     };
+
+#if ESP_VIDEO_CSI_DEVICE_CONV_FORMAT
+    if (csi_video->state.bypass_isp) {
+        csi_config.input_data_color_type = csi_video->state.in_color;
+        csi_config.output_data_color_type = csi_video->state.out_color;
+    } else {
+        if (csi_need_convert_format(csi_video->state.out_color)) {
+            /**
+             * Convert YUV422 UYVY to other YUV422 series format
+             */
+            csi_config.input_data_color_type = CAM_CTLR_COLOR_YUV422_UYVY;
+            csi_config.output_data_color_type = csi_video->state.out_color;
+        } else {
+            /**
+             * Bypass CSI convert function
+             */
+            csi_config.input_data_color_type = csi_video->state.out_color;
+            csi_config.output_data_color_type = csi_video->state.out_color;
+        }
+    }
+#else
+#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(6, 0, 0)
+    csi_config.input_data_color_type = csi_video->state.out_color;
+    csi_config.output_data_color_type = csi_video->state.out_color;
+#else
+    csi_config.input_data_color_type = csi_video->state.in_color;
+    csi_config.output_data_color_type = csi_video->state.out_color;
+#endif
+#endif
+
     ESP_GOTO_ON_ERROR(esp_cam_new_csi_ctlr(&csi_config, &csi_video->cam_ctrl_handle), exit_0, TAG, "failed to new CSI");
 
     esp_cam_ctlr_evt_cbs_t cam_ctrl_cbs = {
@@ -528,8 +578,65 @@ static esp_err_t csi_video_enum_format(struct esp_video *video, uint32_t type, u
 {
     esp_err_t ret = ESP_OK;
     struct csi_video *csi_video = VIDEO_PRIV_DATA(struct csi_video *, video);
+    uint32_t isp_format_nums = 0;
 
-    ret = esp_video_isp_enum_format(&csi_video->state, index, pixel_format);
+    ret = esp_video_isp_enum_format(&csi_video->state, index, pixel_format, &isp_format_nums);
+
+#if ESP_VIDEO_CSI_DEVICE_CONV_FORMAT
+    if (ret != ESP_OK) {
+        if (csi_video->state.bypass_isp) {
+            static const uint32_t s_csi_conv_format[] = {
+                // V4L2_PIX_FMT_RGB24,// Not supported really by CSI driver
+                V4L2_PIX_FMT_RGB565,
+                V4L2_PIX_FMT_YUV420,
+                V4L2_PIX_FMT_YUYV,
+                V4L2_PIX_FMT_VYUY,
+                V4L2_PIX_FMT_YVYU,
+                V4L2_PIX_FMT_UYVY,
+            };
+            uint32_t s_csi_conv_format_nums = sizeof(s_csi_conv_format) / sizeof(s_csi_conv_format[0]);
+
+            if (index < (isp_format_nums + s_csi_conv_format_nums) && index >= isp_format_nums) {
+                index -= isp_format_nums;
+
+                int input_format_index = -1;
+                for (int i = 0; i < s_csi_conv_format_nums; i++) {
+                    if (s_csi_conv_format[i] == csi_video->state.in_fmt) {
+                        input_format_index = i;
+                        break;
+                    }
+                }
+                if (input_format_index == -1) {
+                    return ESP_ERR_NOT_SUPPORTED;
+                }
+
+                if (index >= input_format_index) {
+                    index++;
+                    if (index >= s_csi_conv_format_nums) {
+                        return ESP_ERR_NOT_SUPPORTED;
+                    }
+                }
+
+                *pixel_format = s_csi_conv_format[index];
+                ret = ESP_OK;
+            }
+        } else {
+            static const uint32_t s_csi_conv_format[] = {
+                V4L2_PIX_FMT_YUYV,
+                V4L2_PIX_FMT_VYUY,
+                V4L2_PIX_FMT_YVYU,
+            };
+            uint32_t s_csi_conv_format_nums = sizeof(s_csi_conv_format) / sizeof(s_csi_conv_format[0]);
+
+            if (index < (isp_format_nums + s_csi_conv_format_nums) && index >= isp_format_nums) {
+                index -= isp_format_nums;
+
+                *pixel_format = s_csi_conv_format[index];
+                ret = ESP_OK;
+            }
+        }
+    }
+#endif
 
     return ret;
 }
@@ -548,13 +655,15 @@ static esp_err_t csi_video_set_format(struct esp_video *video, const struct v4l2
     }
 
     ESP_RETURN_ON_ERROR(csi_get_output_frame_type_from_v4l2(pix->pixelformat, &out_color, &out_bpp),
-                        TAG, "CSI does not support format=%" PRIx32, pix->pixelformat);
+                        TAG, "CSI can't support format=" V4L2_FMT_STR, V4L2_FMT_STR_ARG(pix->pixelformat));
 
     if (esp_video_isp_check_format(&csi_video->state, format) == ESP_OK) {
         csi_video->state.bypass_isp = false;
     } else {
+#ifndef ESP_VIDEO_CSI_DEVICE_CONV_FORMAT
         ESP_RETURN_ON_FALSE(csi_video->state.in_color == out_color, ESP_ERR_NOT_SUPPORTED,
-                            TAG, "ISP does not support format=%" PRIx32, pix->pixelformat);
+                            TAG, "ISP does not support format=" V4L2_FMT_STR, V4L2_FMT_STR_ARG(pix->pixelformat));
+#endif
         csi_video->state.bypass_isp = true;
     }
 

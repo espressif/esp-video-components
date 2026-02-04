@@ -51,6 +51,15 @@ extern "C" {
 #define ESP_VIDEO_ISP_DEVICE_ONCE_CONFIG 1  /*!< ISP video device supports once-configured mode */
 #endif /* ((ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 4, 4)) && (ESP_IDF_VERSION < ESP_IDF_VERSION_VAL(5, 5, 0))) || (ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 5, 3)) */
 
+/**
+ * @brief Enable convert frame format if ESP-IDF version is greater than or equal to v6.0.0
+ *
+ * @note This is a breaking change for ESP-IDF MIPI-CSI driver API.
+ */
+#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(6, 0, 0)
+#define ESP_VIDEO_CSI_DEVICE_CONV_FORMAT 1  /*!< CSI video device supports convert frame format */
+#endif /* ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(6, 0, 0) */
+
 #if CONFIG_SOC_JPEG_CODEC_SUPPORTED
 #define ESP_VIDEO_JPEG_DEVICE_YUV420    1   /*!< JPEG video device supports YUV420 format */
 #define ESP_VIDEO_JPEG_DEVICE_YUV444    1   /*!< JPEG video device supports YUV444 format */
