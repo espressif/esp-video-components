@@ -42,6 +42,7 @@ It is highly recommended that users use it in the [esp-video](https://github.com
 | SC101IOT  | 1280 x 720    | DVP | YCbCr422<br/>8/10-bit Raw RGB data | 1/4.2"     |
 | SC202CS(SC2356) | 1600 x 1200    | MIPI      | 8/10-bit Raw RGB data | 1/5.1"     |
 | SC2336  | 1920 x 1080    | MIPI & DVP      | 8/10-bit Raw RGB data | 1/3"     |
+| SP0A39  | 640 x 480    | SPI & DVP      | YCbCr422<br/>Grayscale | 1/10"     |
 
 ## Steps to add a new camera sensor driver
 
