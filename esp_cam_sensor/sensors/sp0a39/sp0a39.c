@@ -229,7 +229,7 @@ static esp_err_t sp0a39_write_array(esp_sccb_io_handle_t sccb_handle, sp0a39_reg
         }
         i++;
     }
-    ESP_LOGW(TAG, "Set array done[i=%d]", i);
+    ESP_LOGD(TAG, "Set array done[i=%d]", i);
     return ret;
 }
 
@@ -383,15 +383,19 @@ static esp_err_t sp0a39_query_support_formats(esp_cam_sensor_device_t *dev, esp_
     if (dev->sensor_port == ESP_CAM_SENSOR_SPI) {
         formats->count = ARRAY_SIZE(sp0a39_format_info_spi);
         formats->format_array = &sp0a39_format_info_spi[0];
+        return ESP_OK;
     }
 
 #if CONFIG_SOC_LCDCAM_CAM_SUPPORTED
     if (dev->sensor_port == ESP_CAM_SENSOR_DVP) {
         formats->count = ARRAY_SIZE(sp0a39_format_info_dvp);
         formats->format_array = &sp0a39_format_info_dvp[0];
+        return ESP_OK;
     }
 #endif
-    return ESP_OK;
+
+    ESP_LOGE(TAG, "Unsupported sensor port: %d", dev->sensor_port);
+    return ESP_ERR_NOT_SUPPORTED;
 }
 
 static esp_err_t sp0a39_query_support_capability(esp_cam_sensor_device_t *dev, esp_cam_sensor_capability_t *sensor_cap)
@@ -400,7 +404,7 @@ static esp_err_t sp0a39_query_support_capability(esp_cam_sensor_device_t *dev, e
     ESP_CAM_SENSOR_NULL_POINTER_CHECK(TAG, sensor_cap);
 
     sensor_cap->fmt_yuv = 1;
-    return 0;
+    return ESP_OK;
 }
 
 static esp_err_t sp0a39_set_format(esp_cam_sensor_device_t *dev, const esp_cam_sensor_format_t *format)
@@ -408,6 +412,19 @@ static esp_err_t sp0a39_set_format(esp_cam_sensor_device_t *dev, const esp_cam_s
     ESP_CAM_SENSOR_NULL_POINTER_CHECK(TAG, dev);
 
     esp_err_t ret = ESP_OK;
+    if (dev->sensor_port != ESP_CAM_SENSOR_SPI &&
+            dev->sensor_port != ESP_CAM_SENSOR_DVP) {
+        ESP_LOGE(TAG, "Invalid sensor port: %d", dev->sensor_port);
+        return ESP_ERR_INVALID_ARG;
+    }
+
+#if !CONFIG_SOC_LCDCAM_CAM_SUPPORTED
+    if (dev->sensor_port == ESP_CAM_SENSOR_DVP) {
+        ESP_LOGE(TAG, "DVP interface not supported in current configuration");
+        return ESP_ERR_NOT_SUPPORTED;
+    }
+#endif
+
     /* Depending on the interface type, an available configuration is automatically loaded.
     You can set the output format of the sensor without using query_format().*/
     if (format == NULL) {
@@ -419,6 +436,11 @@ static esp_err_t sp0a39_set_format(esp_cam_sensor_device_t *dev, const esp_cam_s
             format = &sp0a39_format_info_dvp[get_sp0a39_dvp_actual_format_index()];
         }
 #endif
+    }
+
+    if (format == NULL) {
+        ESP_LOGE(TAG, "No format found for sensor port %d", dev->sensor_port);
+        return ESP_ERR_NOT_SUPPORTED;
     }
 
     /* Todo, I2C NACK error causes the I2C driver to fail. After fixing the error, re-enable the reset.*/
@@ -498,18 +520,24 @@ static esp_err_t sp0a39_priv_ioctl(esp_cam_sensor_device_t *dev, uint32_t cmd, v
 static esp_err_t sp0a39_power_on(esp_cam_sensor_device_t *dev)
 {
     esp_err_t ret = ESP_OK;
+    bool xclk_enabled = false;
+    bool pwdn_configured = false;
 
     if (dev->xclk_pin >= 0) {
         SP0A39_ENABLE_OUT_XCLK(dev->xclk_pin, dev->xclk_freq_hz);
+        xclk_enabled = true;
     }
 
     if (dev->pwdn_pin >= 0) {
         gpio_config_t conf = { 0 };
         conf.pin_bit_mask = 1LL << dev->pwdn_pin;
         conf.mode = GPIO_MODE_OUTPUT;
-        gpio_config(&conf);
+        ret = gpio_config(&conf);
+        if (ret != ESP_OK) {
+            goto cleanup;
+        }
+        pwdn_configured = true;
 
-        // carefully, logic is inverted compared to reset pin
         gpio_set_level(dev->pwdn_pin, 1);
         delay_ms(10);
         gpio_set_level(dev->pwdn_pin, 0);
@@ -520,7 +548,10 @@ static esp_err_t sp0a39_power_on(esp_cam_sensor_device_t *dev)
         gpio_config_t conf = { 0 };
         conf.pin_bit_mask = 1LL << dev->reset_pin;
         conf.mode = GPIO_MODE_OUTPUT;
-        gpio_config(&conf);
+        ret = gpio_config(&conf);
+        if (ret != ESP_OK) {
+            goto cleanup;
+        }
 
         gpio_set_level(dev->reset_pin, 0);
         delay_ms(10);
@@ -528,6 +559,15 @@ static esp_err_t sp0a39_power_on(esp_cam_sensor_device_t *dev)
         delay_ms(10);
     }
 
+    return ESP_OK;
+
+cleanup:
+    if (pwdn_configured) {
+        gpio_reset_pin(dev->pwdn_pin);
+    }
+    if (xclk_enabled) {
+        SP0A39_DISABLE_OUT_XCLK(dev->xclk_pin);
+    }
     return ret;
 }
 
@@ -560,10 +600,9 @@ static esp_err_t sp0a39_delete(esp_cam_sensor_device_t *dev)
 {
     ESP_LOGD(TAG, "del sp0a39 (%p)", dev);
     if (dev) {
+        sp0a39_power_off(dev);
         free(dev);
-        dev = NULL;
     }
-
     return ESP_OK;
 }
 
@@ -585,6 +624,19 @@ esp_cam_sensor_device_t *sp0a39_detect(esp_cam_sensor_config_t *config)
     if (config == NULL) {
         return NULL;
     }
+
+    if (config->sensor_port != ESP_CAM_SENSOR_SPI &&
+            config->sensor_port != ESP_CAM_SENSOR_DVP) {
+        ESP_LOGE(TAG, "Unsupported sensor port: %d", config->sensor_port);
+        return NULL;
+    }
+
+#if !CONFIG_SOC_LCDCAM_CAM_SUPPORTED
+    if (config->sensor_port == ESP_CAM_SENSOR_DVP) {
+        ESP_LOGE(TAG, "DVP interface not supported on this chip");
+        return NULL;
+    }
+#endif
 
     dev = calloc(1, sizeof(esp_cam_sensor_device_t));
     if (dev == NULL) {
