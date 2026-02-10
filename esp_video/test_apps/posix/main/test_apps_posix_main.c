@@ -638,6 +638,116 @@ TEST_CASE("RISCV swap byte", "[video]")
 }
 #endif
 
+TEST_CASE("FATFS mount and unmount in SPI flash", "[video]")
+{
+    example_storage_handle_t handle;
+    int count = 32;
+    const char *mount_point = CONFIG_EXAMPLE_SPI_FLASH_MOUNT_POINT;
+
+    setUp();
+
+    for (int i = 0; i < count; i++)  {
+        TEST_ESP_OK(example_mount_fatfs_to_spiflash(&handle));
+
+        char name[64];
+        snprintf(name, sizeof(name), "%s/test_%04d.txt", mount_point, i);
+        int fd = open(name, O_RDWR | O_CREAT | O_TRUNC, 0666);
+        TEST_ASSERT_GREATER_OR_EQUAL(0, fd);
+        int ret = close(fd);
+        TEST_ASSERT_EQUAL_INT(0, ret);
+        ret = unlink(name);
+        TEST_ASSERT_EQUAL_INT(0, ret);
+
+        printf("File %s testing is passed\n", name);
+
+        TEST_ESP_OK(example_unmount_fatfs_in_spiflash(handle));
+    }
+}
+
+#if CONFIG_TINYUSB_MSC_ENABLED
+TEST_CASE("MSC mount and unmount in SPI flash", "[video]")
+{
+    example_storage_handle_t handle;
+    int count = 32;
+    const char *mount_point = CONFIG_EXAMPLE_SPI_FLASH_MOUNT_POINT;
+
+    setUp();
+
+    for (int i = 0; i < count; i++)  {
+        TEST_ESP_OK(example_mount_msc_to_spiflash(&handle));
+
+        char name[64];
+        snprintf(name, sizeof(name), "%s/test_%04d.txt", mount_point, i);
+        int fd = open(name, O_RDWR | O_CREAT | O_TRUNC, 0666);
+        TEST_ASSERT_GREATER_OR_EQUAL(0, fd);
+        int ret = close(fd);
+        TEST_ASSERT_EQUAL_INT(0, ret);
+        ret = unlink(name);
+        TEST_ASSERT_EQUAL_INT(0, ret);
+
+        printf("File %s testing is passed\n", name);
+
+        TEST_ESP_OK(example_unmount_msc_from_spiflash(handle));
+    }
+}
+#endif /* CONFIG_TINYUSB_MSC_ENABLED */
+
+#if CONFIG_SOC_SDMMC_HOST_SUPPORTED
+TEST_CASE("FATFS mount and unmount in SD card", "[video]")
+{
+    example_storage_handle_t handle;
+    int count = 32;
+    const char *mount_point = CONFIG_EXAMPLE_SDMMC_MOUNT_POINT;
+
+    setUp();
+
+    for (int i = 0; i < count; i++)  {
+        TEST_ESP_OK(example_mount_fatfs_to_mmc(&handle));
+
+        char name[64];
+        snprintf(name, sizeof(name), "%s/test_%04d.txt", mount_point, i);
+        int fd = open(name, O_RDWR | O_CREAT | O_TRUNC, 0666);
+        TEST_ASSERT_GREATER_OR_EQUAL(0, fd);
+        int ret = close(fd);
+        TEST_ASSERT_EQUAL_INT(0, ret);
+        ret = unlink(name);
+        TEST_ASSERT_EQUAL_INT(0, ret);
+
+        printf("File %s testing is passed\n", name);
+
+        TEST_ESP_OK(example_unmount_fatfs_in_mmc(handle));
+    }
+}
+
+#if CONFIG_TINYUSB_MSC_ENABLED
+TEST_CASE("MSC mount and unmount in SD card", "[video]")
+{
+    example_storage_handle_t handle;
+    int count = 32;
+    const char *mount_point = CONFIG_EXAMPLE_SDMMC_MOUNT_POINT;
+
+    setUp();
+
+    for (int i = 0; i < count; i++)  {
+        TEST_ESP_OK(example_mount_msc_to_mmc(&handle));
+
+        char name[64];
+        snprintf(name, sizeof(name), "%s/test_%04d.txt", mount_point, i);
+        int fd = open(name, O_RDWR | O_CREAT | O_TRUNC, 0666);
+        TEST_ASSERT_GREATER_OR_EQUAL(0, fd);
+        int ret = close(fd);
+        TEST_ASSERT_EQUAL_INT(0, ret);
+        ret = unlink(name);
+        TEST_ASSERT_EQUAL_INT(0, ret);
+
+        printf("File %s testing is passed\n", name);
+
+        TEST_ESP_OK(example_unmount_msc_from_mmc(handle));
+    }
+}
+#endif /* CONFIG_TINYUSB_MSC_ENABLED */
+#endif /* CONFIG_SOC_SDMMC_HOST_SUPPORTED */
+
 static void check_leak(size_t before_free, size_t after_free, const char *type)
 {
     ssize_t delta = after_free - before_free;

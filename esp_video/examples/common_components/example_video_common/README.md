@@ -38,6 +38,14 @@ This component provides board-level initialization for esp_video, including MIPI
 | SPI SCLK Pin                | NA |  4 | NA | 13 |
 | SPI Data0 I/O Pin           | NA | 21 | NA | 16 |
 | SPI Data1 I/O Pin           | NA |  5 | NA | NA |
+|   |   |   |   |
+| SDMMC Data Bus Width        |  4 |  4 |  4 | 1  |
+| SDMMC CMD Pin               | 44 | 44 | 44 | 38 |
+| SDMMC CLK Pin               | 43 | 43 | 43 | 39 |
+| SDMMC D0 Pin                | 39 | 39 | 39 | 40 |
+| SDMMC D1 Pin                | 40 | 40 | 40 | NA |
+| SDMMC D2 Pin                | 41 | 41 | 41 | NA |
+| SDMMC D3 Pin                | 42 | 42 | 42 | NA |
 
 **Note 1:** The ESP32-P4-Function-EV v1.4 board and ESP32-P4-EYE do not support DVP interface camera sensors by default. If you need to connect a DVP interface camera sensor to these boards, please select "Customized Development Board" in the menu and configure the GPIO pins and clock according to your specific hardware setup.
 
@@ -323,4 +331,99 @@ Example Video Initialization Configuration  --->
         (0) SCCB(I2C) Port Number
         (8) SCCB(I2C) SCL Pin
         (7) SCCB(I2C) SDA Pin
+```
+
+### Storage Configuration
+
+This component provides flexible file system storage across multiple media types. Supported storage functionalities include:
+
+- FATFS on SPI Flash
+- FATFS on SD/MMC cards
+- USB MSC on SPI Flash
+- USB MSC on SD/MMC cards
+
+**Note:** SD/MMC card support (including FATFS on SD/MMC and USB MSC on SD/MMC) is available only for ESP32-S3 and ESP32-P4 targets.
+
+If you select the "Customized Development Board" option, you must manually set the SD/MMC card parameters to match your board's hardware configuration. Example configuration:
+
+```
+Example Video Initialization Configuration  --->
+    Select Target Development Board (Customized Development Board)  --->
+        ......
+        (X) Customized Development Board
+
+    Storage Configuration  --->
+        (/spiflash) SPI Flash Mount Point
+        (storage) SPI Flash Partition Label
+        (/sdmmc) SD/MMC Card Mount Point
+        [ ] Format Storage If Mount Fails
+        [ ] Always Format Storage At Startup
+            SD/MMC Speed Mode (Default Speed (25 MHz))  --->
+            SD/MMC Bus Width (1-line mode (D0 only))  --->
+        [*] Debug SD/MMC Pins Connections And Pullup Strength
+        [ ]     Enable ADC Signal Level Measurement For SD/MMC
+        (44) CMD GPIO Pin Number
+        (43) CLK GPIO Pin Number
+        (39) D0 GPIO Pin Number
+        [*] SD card powered by internal LDO
+        (4)     Internal LDO ID
+```
+
+If your hardware features a 4-line data bus, choose `4-line mode (D0-D3)` as shown:
+
+```
+Example Video Initialization Configuration  --->
+    Storage Configuration  --->
+        SD/MMC Bus Width (4-line mode (D0-D3))  --->
+            (X) 4-line mode (D0-D3)
+            ( ) 1-line mode (D0 only)
+```
+
+Then, assign the GPIO numbers for D1–D3 pins to match your hardware wiring:
+
+```
+Example Video Initialization Configuration  --->
+    Storage Configuration  --->
+        ...
+        (40) D1 GPIO Pin Number
+        (41) D2 GPIO Pin Number
+        (42) D3 GPIO Pin Number
+        ...
+```
+
+To use USB MSC functionality, add `espressif/esp_tinyusb` as a dependency in your project's `main/idf_component.yml` file:
+
+```yml
+dependencies:
+  ......
+  espressif/esp_tinyusb:
+    version: "~2.1.*"
+    rules:
+      - if: "target in [esp32p4, esp32s3]"
+```
+
+To enable SD/MMC GPIO pin debugging, make sure to include the `sd_card` component in your project's CMake setup:
+
+```cmake
+include($ENV{IDF_PATH}/tools/cmake/project.cmake)
+
+set(SD_CARD_COMPONENT_DIR "$ENV{IDF_PATH}/examples/storage/sd_card/sdmmc/components/sd_card")
+if (EXISTS "${SD_CARD_COMPONENT_DIR}")
+    list(APPEND EXTRA_COMPONENT_DIRS "${SD_CARD_COMPONENT_DIR}")
+else()
+    message(FATAL_ERROR "Could not find sd_card component at ${SD_CARD_COMPONENT_DIR}")
+endif()
+
+project(your_project)
+```
+
+Finally, activate the debugging features in menuconfig:
+
+```
+Example Video Initialization Configuration  --->
+    Storage Configuration  --->
+        ...
+        [*] Debug SD/MMC Pins Connections And Pullup Strength
+        [*]     Enable ADC Signal Level Measurement For SD/MMC
+        ...
 ```

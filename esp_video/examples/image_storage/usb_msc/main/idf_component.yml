@@ -1,8 +1,11 @@
 ## IDF Component Manager Manifest File
 dependencies:
-  espressif/esp_tinyusb: "^1.4.2"
   idf: ">=5.4"
   esp_video:
     override_path: "../../../../"
   example_video_common:
     override_path: "../../../common_components/example_video_common"
+  espressif/esp_tinyusb:
+    version: "~2.1.*"
+    rules:
+      - if: "target in [esp32p4, esp32s3]"

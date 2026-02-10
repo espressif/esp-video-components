@@ -1,5 +1,5 @@
-| Supported Targets | ESP32-P4 |
-| ----------------- | -------- |
+| Supported Targets | ESP32-P4 | ESP32-S3 |
+| ----------------- | -------- | -------- |
 
 # Image storage on USB MSC
 
@@ -27,7 +27,7 @@ __WARNING:__ This example can potentially delete all data from your SD card (whe
 
 ### Configure the Project
 
-Please refer to the example video initialization configuration [document](../common_components/example_video_common/README.md) for more details about the board-level configuration, including the camera sensor interface, GPIO pins, clock frequency, and so on.
+Please refer to the example video initialization configuration [document](../common_components/example_video_common/README.md) for more details about the board-level configuration, including the camera sensor interface, GPIO pins, clock frequency, SD/MMC card GPIO pin, and so on.
 
 Select and configure camera sensor based on development kit:
 
@@ -77,14 +77,8 @@ Example Configuration  --->
 		Image Storage Format  --->
 			(X) Non-Encode
 ```
-#### Configure USB MSC
 
-```
-Example Configuration  --->
-	Example TinyUSB MSC Configuration
-```
-
-Note: For custom development boards, please update the `I2C pins` and `SD card pins` configuration in the `Example Configuration` menu.
+Note: For custom development boards, please update the `I2C pins` configuration in the `Example Configuration` menu. For `SD/MMC pins` and other configurations, please refer to the [document](../common_components/example_video_common/README.md).
 
 #### Enable ISP Pipeline
 

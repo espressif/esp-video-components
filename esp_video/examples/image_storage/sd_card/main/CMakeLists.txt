@@ -1,9 +1,4 @@
-set(srcs "sd_card_main.c")
-
-idf_component_register(SRCS ${srcs}
-                       INCLUDE_DIRS "."
-                       REQUIRES fatfs sd_card esp_timer example_video_common
-                       WHOLE_ARCHIVE)
+idf_component_register(SRCS "sd_card_main.c")
 
 if(NOT CONFIG_SOC_SDMMC_HOST_SUPPORTED)
     fail_at_build_time(sdmmc ""

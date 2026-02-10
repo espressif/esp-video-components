@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2025 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2025-2026 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: ESPRESSIF MIT
  */
@@ -141,6 +141,35 @@ extern "C" {
 #define EXAMPLE_SPI_CAM_1_DATA0_IO_PIN                  CONFIG_EXAMPLE_SPI_CAM_1_DATA0_IO_PIN
 #endif /* CONFIG_EXAMPLE_ENABLE_SPI_CAM_1_SENSOR */
 #endif /* CONFIG_EXAMPLE_ENABLE_SPI_CAM_0_SENSOR */
+
+#if CONFIG_SOC_SDMMC_HOST_SUPPORTED
+/**
+ * @brief SD/MMC configuration
+ */
+#define EXAMPLE_SDMMC_CMD_PIN                           CONFIG_EXAMPLE_SDMMC_CMD_PIN
+#define EXAMPLE_SDMMC_CLK_PIN                           CONFIG_EXAMPLE_SDMMC_CLK_PIN
+#define EXAMPLE_SDMMC_D0_PIN                            CONFIG_EXAMPLE_SDMMC_D0_PIN
+
+#if CONFIG_EXAMPLE_SDMMC_BUS_WIDTH_1
+#define EXAMPLE_SDMMC_BUS_WIDTH_1                       1
+#else /* CONFIG_EXAMPLE_SDMMC_BUS_WIDTH_1 */
+#define EXAMPLE_SDMMC_BUS_WIDTH_4                       1
+#define EXAMPLE_SDMMC_D1_PIN                            CONFIG_EXAMPLE_SDMMC_D1_PIN
+#define EXAMPLE_SDMMC_D2_PIN                            CONFIG_EXAMPLE_SDMMC_D2_PIN
+#define EXAMPLE_SDMMC_D3_PIN                            CONFIG_EXAMPLE_SDMMC_D3_PIN
+#endif /* CONFIG_EXAMPLE_SDMMC_BUS_WIDTH_1 */
+
+/**
+ * @brief SD/MMC power control configuration
+ */
+
+#if CONFIG_SOC_SDMMC_IO_POWER_EXTERNAL
+#if CONFIG_EXAMPLE_SD_PWR_CTRL_LDO_INTERNAL_IO
+#define EXAMPLE_SD_PWR_CTRL_LDO_INTERNAL_IO             1
+#define EXAMPLE_SD_PWR_CTRL_LDO_IO_ID                   CONFIG_EXAMPLE_SD_PWR_CTRL_LDO_IO_ID
+#endif /* CONFIG_EXAMPLE_SD_PWR_CTRL_LDO_INTERNAL_IO */
+#endif /* CONFIG_SOC_SDMMC_IO_POWER_EXTERNAL */
+#endif /* CONFIG_SOC_SDMMC_HOST_SUPPORTED */
 
 #ifdef __cplusplus
 }
