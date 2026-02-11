@@ -440,6 +440,18 @@ static void config_exposure_and_gain(esp_video_isp_t *isp, esp_ipa_metadata_t *m
     struct v4l2_ext_controls controls;
     struct v4l2_ext_control control[1];
 
+    /**
+     * If the gain or exposure is not supported by the sensor, clear the flag bit of the metadata
+     */
+    if (!isp->sensor_attr.gain && (metadata->flags & IPA_METADATA_FLAGS_GN)) {
+        ESP_LOGW(TAG, "IPA requested gain control but sensor doesn't support it, clearing flag");
+        metadata->flags &= ~IPA_METADATA_FLAGS_GN;
+    }
+    if (!isp->sensor_attr.exposure && (metadata->flags & IPA_METADATA_FLAGS_ET)) {
+        ESP_LOGW(TAG, "IPA requested exposure control but sensor doesn't support it, clearing flag");
+        metadata->flags &= ~IPA_METADATA_FLAGS_ET;
+    }
+
     if (metadata->flags & IPA_METADATA_FLAGS_GN) {
         int ret;
         int32_t base_gain;
@@ -601,8 +613,7 @@ static void config_exposure_and_gain(esp_video_isp_t *isp, esp_ipa_metadata_t *m
             isp->prev_gain_index = gain_index;
         }
     } else {
-        if ((metadata->flags & IPA_METADATA_FLAGS_ET) &&
-                isp->sensor_attr.exposure) {
+        if (metadata->flags & IPA_METADATA_FLAGS_ET) {
             controls.ctrl_class = V4L2_CID_CAMERA_CLASS;
             controls.count      = 1;
             controls.controls   = control;
@@ -616,8 +627,7 @@ static void config_exposure_and_gain(esp_video_isp_t *isp, esp_ipa_metadata_t *m
             }
         }
 
-        if ((metadata->flags & IPA_METADATA_FLAGS_GN) &&
-                isp->sensor_attr.gain) {
+        if (metadata->flags & IPA_METADATA_FLAGS_GN) {
             controls.ctrl_class = V4L2_CID_USER_CLASS;
             controls.count      = 1;
             controls.controls   = control;
@@ -1060,6 +1070,15 @@ static esp_err_t init_cam_dev(const esp_video_isp_config_t *config, esp_video_is
         ESP_LOGD(TAG, "  current: %0.4f", isp->sensor.cur_gain);
     } else {
         ESP_LOGD(TAG, "V4L2_CID_GAIN is not supported");
+
+        /**
+         * If the gain is not supported by the sensor, set the default value to 1.0 for esp_ipa
+         */
+
+        isp->sensor.cur_gain = 1.0;
+        isp->sensor.min_gain = 1.0;
+        isp->sensor.max_gain = 1.0;
+        isp->sensor_attr.gain = 0;
     }
 
     qctrl.id = V4L2_CID_EXPOSURE;
@@ -1095,6 +1114,15 @@ static esp_err_t init_cam_dev(const esp_video_isp_config_t *config, esp_video_is
         ESP_LOGD(TAG, "  current: %"PRIi32, control[0].value);
     } else {
         ESP_LOGD(TAG, "V4L2_CID_EXPOSURE is not supported");
+
+        /**
+         * If the exposure is not supported by the sensor, set the default value to 1 for esp_ipa
+         */
+
+        isp->sensor.cur_exposure = 1;
+        isp->sensor.min_exposure = 1;
+        isp->sensor.max_exposure = 1;
+        isp->sensor_attr.exposure = 0;
     }
 
     qctrl.id = V4L2_CID_CAMERA_STATS;

@@ -1,3 +1,7 @@
+## Unreleased
+
+- ISP pipeline controller supports the sensor without gain control
+
 ## 2.0.1
 
 - Improve ISP driver compatibility with the new peripheral drivers introduced in ESP-IDF v6.0 and later
