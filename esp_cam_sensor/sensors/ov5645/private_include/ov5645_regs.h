@@ -36,6 +36,7 @@ extern "C" {
  * Bit[3:0]: Output sequence
  */
 #define FORMAT_CTRL0        0x4300
+#define OV5645_FORMAT_CTRL0_YUV422_UYVY_SWAP  0x30
 
 #ifdef __cplusplus
 }
