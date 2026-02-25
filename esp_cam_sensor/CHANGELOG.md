@@ -1,7 +1,9 @@
 # Changelog
 
-## Unreleased
+## 2.0.0
 
+- Fixed spi slave build error caused by spicommon_xxx private api change.
+- Fixed JPEG quality parameter overflow in OV2640 dvp driver.
 - Added configuration options for supported formats. Once a supported format is enabled, it can be found in the configuration menu or enumeration command `VIDIOC_ENUM_FMT`.
 - Added YUV422 and RGB565 image data formats with byte order.
   - YUV422 supports two byte orders: YUYV and UYVY, represented by `ESP_CAM_SENSOR_PIXFORMAT_YUV422_YUYV` and `ESP_CAM_SENSOR_PIXFORMAT_YUV422_UYVY` respectively; RGB565 supports two byte orders: RGB565_LE and RGB565_BE, represented by `ESP_CAM_SENSOR_PIXFORMAT_RGB565_LE` and `ESP_CAM_SENSOR_PIXFORMAT_RGB565_BE` respectively.
@@ -11,7 +13,14 @@
 - Added the "pclk" parameter to "spi_info" to allow the application to verify if the SPI driver supports the specified data clock frequency.
   - Apply this feature in the BF3901 driver.
 - Added SPI 2-bit + 24MHz output data clock frequency configuration for the BF3901 driver.
-- Fixed spi slave build error caused by spicommon_xxx private api change
+- Added LCD_CAM DVP driver for ESP32-S3.
+- Added support for OV2640 qvga yuv422 yuyv and uyvy.
+
+### Breaking change
+
+- The sensor format configuration has been redesigned; users should update and re-select the desired formats in menuconfig.
+- RGB565 is now split into little-endian and big-endian formats; users must select the appropriate formats in menuconfig.
+- YUV422 is now divided into YUYV and UYVY byte orders; users must select the appropriate formats in menuconfig.
 
 ## 1.7.0
 

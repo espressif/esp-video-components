@@ -1,3 +1,7 @@
+## 0.0.8
+
+- Added support for transmitting / receiving `a16v32` register type
+
 ## 0.0.7
 
 - Fix `transmit_receive_reg_a8v8()` compatibility issues caused by stop signal

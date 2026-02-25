@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2024-2025 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2024-2026 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: ESPRESSIF MIT
  */
@@ -74,6 +74,25 @@
 #define ISP_STATS_FLAGS             (ISP_STATS_AE_FLAG | ISP_STATS_HIST_FLAG)
 
 #define ISP_LSC_GET_GRIDS(res)      (((res) - 1) / 2 / ISP_LL_LSC_GRID_HEIGHT + 2)
+
+#if ESP_VIDEO_ISP_DEVICE_ONCE_CONFIG
+#define ISP_CHECK_RETURN(ret)      (ret != ESP_OK)
+#else
+#define ISP_CHECK_RETURN(ret)      (ret != ESP_ERR_INVALID_STATE)
+#endif
+
+#define ISP_CONFIGURE_HANDLE(call, module_name)                                     \
+do {                                                                                \
+    esp_err_t __ret = (call);                                                       \
+    if (__ret != ESP_OK) {                                                          \
+        if (ISP_CHECK_RETURN(__ret)) {                                              \
+            ESP_RETURN_ON_ERROR(__ret, TAG, "failed to configure %s", module_name); \
+        }                                                                           \
+        else {                                                                      \
+            ESP_LOGW(TAG, "%s has been configured, skip this step", module_name);   \
+        }                                                                           \
+    }                                                                               \
+} while (0)
 
 struct isp_video {
     isp_proc_handle_t isp_proc;
@@ -626,6 +645,8 @@ static void isp_init_awb_param(struct isp_video *isp_video, esp_isp_awb_config_t
 {
     esp_video_isp_awb_t *awb = &isp_video->awb;
 
+    memset(awb_config, 0, sizeof(esp_isp_awb_config_t));
+
     awb_config->sample_point = ISP_AWB_SAMPLE_POINT_BEFORE_CCM;
 
     awb_config->white_patch.luminance.max = (float)awb->green_max * (1 + awb->rg_max + awb->bg_max);
@@ -646,7 +667,7 @@ static void isp_init_awb_param(struct isp_video *isp_video, esp_isp_awb_config_t
 static esp_err_t isp_start_awb(struct isp_video *isp_video)
 {
     esp_err_t ret;
-    esp_isp_awb_config_t awb_config = {0};
+    esp_isp_awb_config_t awb_config;
     esp_isp_awb_cbs_t awb_cb = {
         .on_statistics_done = isp_awb_stats_done,
     };
@@ -722,9 +743,13 @@ static esp_err_t isp_start_bf(struct isp_video *isp_video)
         .padding_line_tail_valid_end_pixel = 0,
     };
 
+#if ESP_VIDEO_ISP_DEVICE_ONCE_CONFIG
+    bf_config.flags.update_once_configured = true;
+#endif
+
     memcpy(bf_config.bf_template, isp_video->bf_matrix, sizeof(bf_config.bf_template));
 
-    ESP_RETURN_ON_ERROR(esp_isp_bf_configure(isp_video->isp_proc, &bf_config), TAG, "failed to configure BF");
+    ISP_CONFIGURE_HANDLE(esp_isp_bf_configure(isp_video->isp_proc, &bf_config), "BF");
     ESP_RETURN_ON_ERROR(esp_isp_bf_enable(isp_video->isp_proc), TAG, "failed to enable BF");
     isp_video->bf_started = true;
 
@@ -747,6 +772,10 @@ static void isp_init_ccm_param(struct isp_video *isp_video, esp_isp_ccm_config_t
 {
     memset(ccm_config, 0, sizeof(esp_isp_ccm_config_t));
     ccm_config->saturation = true;
+
+#if ESP_VIDEO_ISP_DEVICE_ONCE_CONFIG
+    ccm_config->flags.update_once_configured = true;
+#endif
 
 #ifndef ESP_VIDEO_ISP_DEVICE_WBG
     if (isp_video->ccm_enable) {
@@ -788,7 +817,7 @@ static esp_err_t isp_start_ccm(struct isp_video *isp_video)
     }
 
     isp_init_ccm_param(isp_video, &ccm_config);
-    ESP_RETURN_ON_ERROR(esp_isp_ccm_configure(isp_video->isp_proc, &ccm_config), TAG, "failed to configure CCM");
+    ISP_CONFIGURE_HANDLE(esp_isp_ccm_configure(isp_video->isp_proc, &ccm_config), "CCM");
     ESP_RETURN_ON_ERROR(esp_isp_ccm_enable(isp_video->isp_proc), TAG, "failed to enable CCM");
     isp_video->ccm_started = true;
 
@@ -800,7 +829,7 @@ static esp_err_t isp_reconfigure_ccm(struct isp_video *isp_video)
     esp_isp_ccm_config_t ccm_config;
 
     isp_init_ccm_param(isp_video, &ccm_config);
-    ESP_RETURN_ON_ERROR(esp_isp_ccm_configure(isp_video->isp_proc, &ccm_config), TAG, "failed to configure CCM");
+    ISP_CONFIGURE_HANDLE(esp_isp_ccm_configure(isp_video->isp_proc, &ccm_config), "CCM");
     if (!isp_video->ccm_started) {
         ESP_RETURN_ON_ERROR(esp_isp_ccm_enable(isp_video->isp_proc), TAG, "failed to enable CCM");
         isp_video->ccm_started = true;
@@ -898,6 +927,10 @@ static void isp_init_sharpen_param(struct isp_video *isp_video, esp_isp_sharpen_
     sharpen_config->l_thresh = isp_video->l_thresh;
     sharpen_config->padding_mode = ISP_SHARPEN_EDGE_PADDING_MODE_SRND_DATA;
 
+#if ESP_VIDEO_ISP_DEVICE_ONCE_CONFIG
+    sharpen_config->flags.update_once_configured = true;
+#endif
+
     for (int i = 0; i < ISP_SHARPEN_TEMPLATE_X_NUMS; i++) {
         for (int j = 0; j < ISP_SHARPEN_TEMPLATE_Y_NUMS; j++) {
             sharpen_config->sharpen_template[i][j] = isp_video->sharpen_matrix[i][j];
@@ -914,7 +947,7 @@ static esp_err_t isp_start_sharpen(struct isp_video *isp_video)
     }
 
     isp_init_sharpen_param(isp_video, &sharpen_config);
-    ESP_RETURN_ON_ERROR(esp_isp_sharpen_configure(isp_video->isp_proc, &sharpen_config), TAG, "failed to configure sharpen");
+    ISP_CONFIGURE_HANDLE(esp_isp_sharpen_configure(isp_video->isp_proc, &sharpen_config), "sharpen");
     ESP_RETURN_ON_ERROR(esp_isp_sharpen_enable(isp_video->isp_proc), TAG, "failed to enable sharpen");
     isp_video->sharpen_started = true;
 
@@ -1056,7 +1089,11 @@ static esp_err_t isp_stop_demosaic(struct isp_video *isp_video)
 
 static esp_err_t isp_start_color(struct isp_video *isp_video)
 {
-    ESP_RETURN_ON_ERROR(esp_isp_color_configure(isp_video->isp_proc, &isp_video->color_config), TAG, "failed to configure color");
+#if ESP_VIDEO_ISP_DEVICE_ONCE_CONFIG
+    isp_video->color_config.flags.update_once_configured = true;
+#endif
+
+    ISP_CONFIGURE_HANDLE(esp_isp_color_configure(isp_video->isp_proc, &isp_video->color_config), "color");
     ESP_RETURN_ON_ERROR(esp_isp_color_enable(isp_video->isp_proc), TAG, "failed to enable color");
 
     return ESP_OK;
@@ -1064,7 +1101,11 @@ static esp_err_t isp_start_color(struct isp_video *isp_video)
 
 static esp_err_t isp_reconfigure_color(struct isp_video *isp_video)
 {
-    ESP_RETURN_ON_ERROR(esp_isp_color_configure(isp_video->isp_proc, &isp_video->color_config), TAG, "failed to configure color");
+#if ESP_VIDEO_ISP_DEVICE_ONCE_CONFIG
+    isp_video->color_config.flags.update_once_configured = true;
+#endif
+
+    ISP_CONFIGURE_HANDLE(esp_isp_color_configure(isp_video->isp_proc, &isp_video->color_config), "color");
 
     return ESP_OK;
 }
@@ -1086,9 +1127,11 @@ static esp_err_t isp_start_wbg(struct isp_video *isp_video)
     uint32_t wbg_r = isp_video->red_balance_gain * (1 << ESP_VIDEO_ISP_WBG_DEC_BITS);
     uint32_t wbg_b = isp_video->blue_balance_gain * (1 << ESP_VIDEO_ISP_WBG_DEC_BITS);
 
-    esp_isp_wbg_config_t wbg_cfg;
-    memset(&wbg_cfg, 0, sizeof(esp_isp_wbg_config_t));
-    ESP_RETURN_ON_ERROR(esp_isp_wbg_configure(isp_video->isp_proc, &wbg_cfg), TAG, "failed to configure wbg");
+    esp_isp_wbg_config_t wbg_cfg = {0};
+#if ESP_VIDEO_ISP_DEVICE_ONCE_CONFIG
+    wbg_cfg.flags.update_once_configured = true;
+#endif
+    ISP_CONFIGURE_HANDLE(esp_isp_wbg_configure(isp_video->isp_proc, &wbg_cfg), "WBG");
     ESP_RETURN_ON_ERROR(esp_isp_wbg_enable(isp_video->isp_proc), TAG, "failed to enable wbg");
 
     isp_wbg_gain_t wbg_gain = {
@@ -1097,7 +1140,7 @@ static esp_err_t isp_start_wbg(struct isp_video *isp_video)
         .gain_b = wbg_b,
     };
 
-    ESP_RETURN_ON_ERROR(esp_isp_wbg_set_wb_gain(isp_video->isp_proc, wbg_gain), TAG, "failed to start wbg");
+    ISP_CONFIGURE_HANDLE(esp_isp_wbg_set_wb_gain(isp_video->isp_proc, wbg_gain), "WBG");
 
     isp_video->wbg_started = true;
     return ESP_OK;
@@ -1118,7 +1161,7 @@ static esp_err_t isp_reconfigure_wbg(struct isp_video *isp_video)
         .gain_b = wbg_b,
     };
 
-    ESP_RETURN_ON_ERROR(esp_isp_wbg_set_wb_gain(isp_video->isp_proc, wbg_gain), TAG, "failed to reconfigure wbg");
+    ISP_CONFIGURE_HANDLE(esp_isp_wbg_set_wb_gain(isp_video->isp_proc, wbg_gain), "WBG");
 
     return ESP_OK;
 }
@@ -1225,7 +1268,11 @@ static esp_err_t isp_start_blc(struct isp_video *isp_video)
         }
     };
 
-    ESP_RETURN_ON_ERROR(esp_isp_blc_configure(isp_video->isp_proc, &blc_config), TAG, "failed to configure BLC");
+#if ESP_VIDEO_ISP_DEVICE_ONCE_CONFIG
+    blc_config.flags.update_once_configured = true;
+#endif
+
+    ISP_CONFIGURE_HANDLE(esp_isp_blc_configure(isp_video->isp_proc, &blc_config), "BLC");
     ESP_RETURN_ON_ERROR(esp_isp_blc_enable(isp_video->isp_proc), TAG, "failed to enable BLC");
 
     esp_isp_blc_offset_t offset = {
@@ -1255,7 +1302,7 @@ static esp_err_t isp_reconfigure_blc(struct isp_video *isp_video)
         .bottom_right_chan_offset = isp_video->blc_config.bottom_right_offset
     };
 
-    ESP_RETURN_ON_ERROR(esp_isp_blc_set_correction_offset(isp_video->isp_proc, &offset), TAG, "failed to set BLC correction offset");
+    ISP_CONFIGURE_HANDLE(esp_isp_blc_set_correction_offset(isp_video->isp_proc, &offset), "BLC");
 
     return ESP_OK;
 }

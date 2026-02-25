@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2023-2025 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2023-2026 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -107,6 +107,12 @@ static const uint8_t ov2640_format_index[] = {
 #endif
 #if CONFIG_CAMERA_OV2640_DVP_YUV422_YUYV_240X240_25FPS
     15,
+#endif
+#if CONFIG_CAMERA_OV2640_DVP_YUV422_320x240_25FPS
+    16,
+#endif
+#if CONFIG_CAMERA_OV2640_DVP_YUV422_YUYV_320x240_25FPS
+    17,
 #endif
 };
 
@@ -362,6 +368,38 @@ static const esp_cam_sensor_format_t ov2640_format_info[] = {
         .height = 240,
         .regs = ov2640_dvp_8bit_20Minput_240x240_yuv422_yuyv_25fps,
         .regs_size = ARRAY_SIZE(ov2640_dvp_8bit_20Minput_240x240_yuv422_yuyv_25fps),
+        .fps = 25,
+        .isp_info = NULL,
+        .mipi_info = {},
+        .reserved = NULL,
+    },
+#endif
+#if CONFIG_CAMERA_OV2640_DVP_YUV422_320x240_25FPS
+    {
+        .name = "DVP_8bit_20Minput_YUV422_UYVY_320x240_25fps",
+        .format = ESP_CAM_SENSOR_PIXFORMAT_YUV422_UYVY,
+        .port = ESP_CAM_SENSOR_DVP,
+        .xclk = 20000000,
+        .width = 320,
+        .height = 240,
+        .regs = ov2640_dvp_8bit_20Minput_320x240_yuv422_uyvy_25fps,
+        .regs_size = ARRAY_SIZE(ov2640_dvp_8bit_20Minput_320x240_yuv422_uyvy_25fps),
+        .fps = 25,
+        .isp_info = NULL,
+        .mipi_info = {},
+        .reserved = NULL,
+    },
+#endif
+#if CONFIG_CAMERA_OV2640_DVP_YUV422_YUYV_320x240_25FPS
+    {
+        .name = "DVP_8bit_20Minput_YUV422_YUYV_320x240_25fps",
+        .format = ESP_CAM_SENSOR_PIXFORMAT_YUV422_YUYV,
+        .port = ESP_CAM_SENSOR_DVP,
+        .xclk = 20000000,
+        .width = 320,
+        .height = 240,
+        .regs = ov2640_dvp_8bit_20Minput_320x240_yuv422_yuyv_25fps,
+        .regs_size = ARRAY_SIZE(ov2640_dvp_8bit_20Minput_320x240_yuv422_yuyv_25fps),
         .fps = 25,
         .isp_info = NULL,
         .mipi_info = {},
@@ -662,7 +700,7 @@ static esp_err_t ov2640_query_para_desc(esp_cam_sensor_device_t *dev, esp_cam_se
     case ESP_CAM_SENSOR_JPEG_QUALITY:
         qdesc->type = ESP_CAM_SENSOR_PARAM_TYPE_NUMBER;
         qdesc->number.minimum = 1;
-        qdesc->number.maximum = 63;
+        qdesc->number.maximum = 60;
         qdesc->number.step = 1;
         qdesc->default_value = OV2640_JPEG_QUALITY_DEFAULT;
         break;

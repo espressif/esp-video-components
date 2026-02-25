@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2024-2025 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2024-2026 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -64,6 +64,18 @@ esp_err_t esp_sccb_transmit_reg_a8v16(esp_sccb_io_handle_t io_handle, uint8_t re
 esp_err_t esp_sccb_transmit_reg_a16v16(esp_sccb_io_handle_t io_handle, uint16_t reg_addr, uint16_t reg_val);
 
 /**
+ * @brief Perform a write transaction for 16-bit reg_addr and 32-bit reg_val.
+ *
+ * @param[in] handle SCCB IO handle
+ * @param[in] reg_addr address to send on the sccb bus.
+ * @param[in] reg_val  Data to send on the sccb bus.
+ * @return
+ *      - ESP_OK: sccb transmit success
+ *      - ESP_ERR_INVALID_ARG: sccb transmit parameter invalid.
+ */
+esp_err_t esp_sccb_transmit_reg_a16v32(esp_sccb_io_handle_t io_handle, uint16_t reg_addr, uint32_t reg_val);
+
+/**
  * @brief Perform a write-read transaction for 8-bit reg_addr and 8-bit reg_val.
  *
  * @param[in] handle SCCB IO handle
@@ -110,6 +122,18 @@ esp_err_t esp_sccb_transmit_receive_reg_a8v16(esp_sccb_io_handle_t io_handle, ui
  *      - ESP_ERR_INVALID_ARG: sccb transmit parameter invalid.
  */
 esp_err_t esp_sccb_transmit_receive_reg_a16v16(esp_sccb_io_handle_t io_handle, uint16_t reg_addr, uint16_t *reg_val);
+
+/**
+ * @brief Perform a write-read transaction for 16-bit reg_addr and 32-bit reg_val.
+ *
+ * @param[in] handle SCCB IO handle
+ * @param[in] reg_addr address to send on the sccb bus.
+ * @param[out] reg_val Data bytes received from sccb bus.
+ * @return
+ *      - ESP_OK: sccb transmit-receive success
+ *      - ESP_ERR_INVALID_ARG: sccb transmit parameter invalid.
+ */
+esp_err_t esp_sccb_transmit_receive_reg_a16v32(esp_sccb_io_handle_t io_handle, uint16_t reg_addr, uint32_t *reg_val);
 
 /**
  * @brief Perform a write transaction for 16-bit val.

@@ -1,4 +1,4 @@
-## Unreleased
+## 2.0.0
 
 - Update to use YUV422 and RGB565 image data formats with byte order
   - YUV422 supports two byte orders: YUYV and UYVY, represented by `V4L2_PIX_FMT_YUYV` and `V4L2_PIX_FMT_UYVY` respectively; RGB565 supports two byte orders: RGB565_LE and RGB565_BE, represented by `V4L2_PIX_FMT_RGB565` and `V4L2_PIX_FMT_RGB565X` respectively.
@@ -10,8 +10,22 @@
 - Add sensor output data clock frequency checking for SPI video devices when using the parallel I/O port
 
 - Fix USB UVC device initialization timeout issue when devices are already enumerated
+- Fix USB UVC device closing issue when some captured frames have not yet been queued into the buffer
 - Fix USB UVC device and ISP compatibility issues for ESP32-P4 ECO5
 - Fix the WBG stop issue after starting the WBG module twice
+- Fix the ISP driver compatibility for the new version ISP driver
+
+### Breaking change
+
+- The RGB565 format is now separated into little-endian and big-endian options. Please ensure you select the correct format for your application:
+
+    - Little-endian: V4L2_PIX_FMT_RGB565
+    - Big-endian: V4L2_PIX_FMT_RGB565X
+
+- The `V4L2_PIX_FMT_YUV422P` configuration for YUV422 has been removed. YUV422 is now categorized by byte order, and users should choose the appropriate format:
+
+    - YUYV byte order: V4L2_PIX_FMT_YUYV
+    - UYVY byte order: V4L2_PIX_FMT_UYVY
 
 ## 1.4.1
 

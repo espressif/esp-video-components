@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2025 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2025-2026 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: ESPRESSIF MIT
  */
@@ -415,11 +415,20 @@ fail0:
 
 static esp_err_t uvc_video_stop(struct esp_video *video, uint32_t type)
 {
+    struct esp_video_buffer_element *element;
     struct uvc_video *device = VIDEO_PRIV_DATA(struct uvc_video *, video);
 
     ESP_RETURN_ON_FALSE(device->dev_addr, ESP_ERR_NOT_FOUND, TAG, "UVC device=%p is not connected", device);
 
     ESP_RETURN_ON_ERROR(uvc_host_stream_stop(device->stream_hdl), TAG, "Failed to stop UVC stream");
+
+    /**
+     * Free all cached frames to avoid UVC stream stop failed
+     */
+    while ((element = esp_video_get_done_element(video, V4L2_BUF_TYPE_VIDEO_CAPTURE)) != NULL) {
+        uvc_host_frame_return(device->stream_hdl, (uvc_host_frame_t *)element->priv_data);
+    }
+
     ESP_RETURN_ON_ERROR(uvc_host_stream_close(device->stream_hdl), TAG, "Failed to close UVC stream");
 
     return ESP_OK;

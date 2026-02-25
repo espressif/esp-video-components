@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2024-2025 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2024-2026 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -434,6 +434,32 @@ static const ov2640_reginfo_t ov2640_settings_cif[] = {
     {R_BYPASS, R_BYPASS_DSP_EN},    \
     {REG_DELAY, 0x05}
 
+#define init_reglist_DVP_8bit_320x240_XCLK_20_25fps_common \
+    {BANK_SEL, BANK_DSP},   \
+    {R_BYPASS, R_BYPASS_DSP_BYPAS}, \
+    /* switch cif mode */    \
+    ov2640_settings_to_cif,    \
+    /* set win_regs, zoom from cif */    \
+    {BANK_SEL, BANK_DSP}, \
+    {0x51, 0x64}, \
+    {0x52, 0x4a}, \
+    {0x53, 0x00}, \
+    {0x54, 0x00}, \
+    {0x55, 0x00}, \
+    {0x57, 0x00}, \
+    {0x5a, 0x50}, \
+    {0x5b, 0x3c}, \
+    {0x5c, 0x00}, \
+    /* sensor clk */    \
+    {BANK_SEL, BANK_SENSOR},    \
+    {CLKRC, 0x83},   \
+    /* DSP PCLK */    \
+    {BANK_SEL, BANK_DSP},    \
+    {R_DVP_SP, 0x88},    \
+    /* DSP output en */    \
+    {R_BYPASS, R_BYPASS_DSP_EN},    \
+    {REG_DELAY, 0x05}
+
 #define init_reglist_DVP_8bit_240x240_XCLK_20_25fps_common \
     {BANK_SEL, BANK_DSP},   \
     {R_BYPASS, R_BYPASS_DSP_BYPAS}, \
@@ -465,6 +491,9 @@ static const ov2640_reginfo_t ov2640_settings_cif[] = {
 
 #include "ov2640_dvp_8bit_20Minput_240x240_yuv422_uyvy_25fps.h"
 #include "ov2640_dvp_8bit_20Minput_240x240_yuv422_yuyv_25fps.h"
+
+#include "ov2640_dvp_8bit_20Minput_320x240_yuv422_uyvy_25fps.h"
+#include "ov2640_dvp_8bit_20Minput_320x240_yuv422_yuyv_25fps.h"
 
 #include "ov2640_dvp_8bit_20Minput_320x240_jpeg_50fps.h"
 
