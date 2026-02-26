@@ -35,7 +35,7 @@
 #define H264_VIDEO_MIN_I_PERIOD     1
 #define H264_VIDEO_I_PERIOD_STEP    1
 
-#define H264_VIDEO_MAX_BITRATE      2500000
+#define H264_VIDEO_MAX_BITRATE      25000000
 #define H264_VIDEO_MIN_BITRATE      25000
 #define H264_VIDEO_BITRATE_STEP     25000
 
@@ -43,8 +43,11 @@
 #define H264_VIDEO_MIN_QP           0
 #define H264_VIDEO_QP_STEP          1
 
+#define H264_VIDEO_MIN_WIDTH            64
+#define H264_VIDEO_MIN_HEIGHT           64
+
 #ifndef ARRAY_SIZE
-#define ARRAY_SIZE(x)   sizeof(x) / sizeof((x)[0])
+#define ARRAY_SIZE(x)   (sizeof(x) / sizeof((x)[0]))
 #endif
 
 struct h264_video {
@@ -56,6 +59,53 @@ struct h264_video {
     uint8_t max_qp;
     uint32_t bitrate;
     esp_h264_enc_handle_t enc_handle;
+};
+
+static const struct v4l2_query_ext_ctrl s_h264_qctrl[] = {
+    {
+        .id = V4L2_CID_MPEG_VIDEO_H264_I_PERIOD,
+        .type = V4L2_CTRL_TYPE_INTEGER,
+        .maximum = H264_VIDEO_MAX_I_PERIOD,
+        .minimum = H264_VIDEO_MIN_I_PERIOD,
+        .step = H264_VIDEO_I_PERIOD_STEP,
+        .elems = 1,
+        .nr_of_dims = 0,
+        .default_value = H264_VIDEO_DEVICE_GOP,
+        .name = "H264 I-Frame Period",
+    },
+    {
+        .id = V4L2_CID_MPEG_VIDEO_H264_MIN_QP,
+        .type = V4L2_CTRL_TYPE_INTEGER,
+        .maximum = H264_VIDEO_MAX_QP,
+        .minimum = H264_VIDEO_MIN_QP,
+        .step = H264_VIDEO_QP_STEP,
+        .elems = 1,
+        .nr_of_dims = 0,
+        .default_value = H264_VIDEO_DEVICE_MIN_QP,
+        .name = "H264 Minimum QP Value",
+    },
+    {
+        .id = V4L2_CID_MPEG_VIDEO_H264_MAX_QP,
+        .type = V4L2_CTRL_TYPE_INTEGER,
+        .maximum = H264_VIDEO_MAX_QP,
+        .minimum = H264_VIDEO_MIN_QP,
+        .step = H264_VIDEO_QP_STEP,
+        .elems = 1,
+        .nr_of_dims = 0,
+        .default_value = H264_VIDEO_DEVICE_MAX_QP,
+        .name = "H264 Maximum QP Value",
+    },
+    {
+        .id = V4L2_CID_MPEG_VIDEO_BITRATE,
+        .type = V4L2_CTRL_TYPE_INTEGER,
+        .maximum = H264_VIDEO_MAX_BITRATE,
+        .minimum = H264_VIDEO_MIN_BITRATE,
+        .step = H264_VIDEO_BITRATE_STEP,
+        .elems = 1,
+        .nr_of_dims = 0,
+        .default_value = H264_VIDEO_DEVICE_BITRATE,
+        .name = "Video Bitrate"
+    },
 };
 
 static const char *TAG = "h.264_video";
@@ -124,8 +174,8 @@ static esp_err_t h264_video_m2m_process(struct esp_video *video, uint8_t *src, u
 
 static esp_err_t h264_video_init(struct esp_video *video)
 {
-    M2M_VIDEO_SET_CAPTURE_FORMAT(video, 0, 0, 0);
-    M2M_VIDEO_SET_OUTPUT_FORMAT(video, 0, 0, 0);
+    M2M_VIDEO_SET_CAPTURE_FORMAT(video, H264_VIDEO_MIN_WIDTH, H264_VIDEO_MIN_HEIGHT, V4L2_PIX_FMT_H264);
+    M2M_VIDEO_SET_OUTPUT_FORMAT(video, H264_VIDEO_MIN_WIDTH, H264_VIDEO_MIN_HEIGHT, V4L2_PIX_FMT_YUV420);
 
     return ESP_OK;
 }
@@ -142,7 +192,7 @@ static esp_err_t h264_video_start(struct esp_video *video, uint32_t type)
 
     if ((M2M_VIDEO_GET_CAPTURE_FORMAT_WIDTH(video) != M2M_VIDEO_GET_OUTPUT_FORMAT_WIDTH(video)) ||
             (M2M_VIDEO_GET_CAPTURE_FORMAT_HEIGHT(video) != M2M_VIDEO_GET_OUTPUT_FORMAT_HEIGHT(video))) {
-        ESP_LOGE(TAG, "width or height is invalid");
+        ESP_LOGE(TAG, "capture and output width or height is invalid");
         return ESP_ERR_INVALID_ARG;
     }
 
@@ -245,22 +295,19 @@ static esp_err_t h264_video_set_format(struct esp_video *video, const struct v4l
     struct h264_video *h264_video = VIDEO_PRIV_DATA(struct h264_video *, video);
 
     if (format->type == V4L2_BUF_TYPE_VIDEO_CAPTURE) {
-        uint32_t width = M2M_VIDEO_GET_OUTPUT_FORMAT_WIDTH(video);
-        uint32_t height = M2M_VIDEO_GET_OUTPUT_FORMAT_HEIGHT(video);
-
         if ((pix->pixelformat != V4L2_PIX_FMT_H264) ||
-                (width && (pix->width != width)) ||
-                (height && (pix->height != height))) {
+                (pix->width < H264_VIDEO_MIN_WIDTH) ||
+                (pix->height < H264_VIDEO_MIN_HEIGHT)) {
             ESP_LOGE(TAG, "pixel format or width or height is invalid");
             return ESP_ERR_INVALID_ARG;
         }
     } else if (format->type == V4L2_BUF_TYPE_VIDEO_OUTPUT) {
         uint8_t input_bpp;
-        uint32_t width = M2M_VIDEO_GET_CAPTURE_FORMAT_WIDTH(video);
-        uint32_t height = M2M_VIDEO_GET_CAPTURE_FORMAT_HEIGHT(video);
 
-        if ((width && (pix->width != width)) ||
-                (height && (pix->height != height))) {
+        /**
+         * Output data is input source image, so width and height are not limited by capture image.
+         */
+        if ((pix->width < H264_VIDEO_MIN_WIDTH) || (pix->height < H264_VIDEO_MIN_HEIGHT)) {
             ESP_LOGE(TAG, "width or height is invalid");
             return ESP_ERR_INVALID_ARG;
         }
@@ -365,57 +412,45 @@ static esp_err_t h264_video_get_ext_ctrl(struct esp_video *video, struct v4l2_ex
 
 static esp_err_t h264_video_query_ext_ctrl(struct esp_video *video, struct v4l2_query_ext_ctrl *qctrl)
 {
-    esp_err_t ret = ESP_OK;
+    int num = -1;
+    uint32_t id = qctrl->id;
+    int h264_qctrl_cnt = ARRAY_SIZE(s_h264_qctrl);
+    esp_err_t ret = ESP_ERR_NOT_SUPPORTED;
 
-    switch (qctrl->id) {
-    case V4L2_CID_MPEG_VIDEO_H264_I_PERIOD:
-        qctrl->type = V4L2_CTRL_TYPE_INTEGER;
-        qctrl->maximum = H264_VIDEO_MAX_I_PERIOD;
-        qctrl->minimum = H264_VIDEO_MIN_I_PERIOD;
-        qctrl->step = H264_VIDEO_I_PERIOD_STEP;
-        qctrl->elems = 1;
-        qctrl->nr_of_dims = 0;
-        qctrl->default_value = H264_VIDEO_DEVICE_GOP;
-        break;
-    case V4L2_CID_MPEG_VIDEO_BITRATE_MODE:
-        qctrl->type = V4L2_CTRL_TYPE_INTEGER_MENU;
-        qctrl->elem_size = sizeof(uint8_t);
-        qctrl->elems = 1;
-        qctrl->nr_of_dims = 0;
-        qctrl->dims[0] = qctrl->elem_size;
-        qctrl->default_value = V4L2_MPEG_VIDEO_BITRATE_MODE_VBR;
-        break;
-    case V4L2_CID_MPEG_VIDEO_BITRATE:
-        qctrl->type = V4L2_CTRL_TYPE_INTEGER;
-        qctrl->maximum = H264_VIDEO_MAX_BITRATE;
-        qctrl->minimum = H264_VIDEO_MIN_BITRATE;
-        qctrl->step = H264_VIDEO_BITRATE_STEP;
-        qctrl->elems = 1;
-        qctrl->nr_of_dims = 0;
-        qctrl->default_value = H264_VIDEO_DEVICE_BITRATE;
-        break;
-    case V4L2_CID_MPEG_VIDEO_H264_MIN_QP:
-        qctrl->type = V4L2_CTRL_TYPE_INTEGER;
-        qctrl->maximum = H264_VIDEO_MAX_QP;
-        qctrl->minimum = H264_VIDEO_MIN_QP;
-        qctrl->step = H264_VIDEO_QP_STEP;
-        qctrl->elems = 1;
-        qctrl->nr_of_dims = 0;
-        qctrl->default_value = H264_VIDEO_DEVICE_MIN_QP;
-        break;
-    case V4L2_CID_MPEG_VIDEO_H264_MAX_QP:
-        qctrl->type = V4L2_CTRL_TYPE_INTEGER;
-        qctrl->maximum = H264_VIDEO_MAX_QP;
-        qctrl->minimum = H264_VIDEO_MIN_QP;
-        qctrl->step = H264_VIDEO_QP_STEP;
-        qctrl->elems = 1;
-        qctrl->nr_of_dims = 0;
-        qctrl->default_value = H264_VIDEO_DEVICE_MAX_QP;
-        break;
-    default:
-        ret = ESP_ERR_NOT_SUPPORTED;
-        ESP_LOGE(TAG, "id=%" PRIx32 " is not supported", qctrl->id);
-        break;
+    if (id & V4L2_CTRL_FLAG_NEXT_CTRL) {
+        uint32_t new_id = UINT32_MAX; // UINT32_MAX is out of range of V4L2_CTRL_ID_MASK, so used to indicate that the new ID is not found
+
+        id &= ~V4L2_CTRL_FLAG_NEXT_CTRL;
+        if (id == 0) {
+            new_id = s_h264_qctrl[0].id;
+            num = 0;
+        } else {
+            for (int i = 0; i < h264_qctrl_cnt; i++) {
+                if (id == s_h264_qctrl[i].id) {
+                    if (i < (h264_qctrl_cnt - 1)) {
+                        new_id = s_h264_qctrl[i + 1].id;
+                        num = i + 1;
+                        break;
+                    }
+                }
+            }
+        }
+
+        if (new_id == UINT32_MAX) {
+            return ESP_ERR_INVALID_ARG;
+        }
+    } else {
+        for (int i = 0; i < h264_qctrl_cnt; i++) {
+            if (id == s_h264_qctrl[i].id) {
+                num = i;
+                break;
+            }
+        }
+    }
+
+    if (num >= 0) {
+        memcpy(qctrl, &s_h264_qctrl[num], sizeof(struct v4l2_query_ext_ctrl));
+        ret = ESP_OK;
     }
 
     return ret;

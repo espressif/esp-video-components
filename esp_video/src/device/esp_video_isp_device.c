@@ -2094,12 +2094,12 @@ static esp_err_t isp_video_get_ext_ctrl(struct esp_video *video, struct v4l2_ext
 static esp_err_t isp_video_query_ext_ctrl(struct esp_video *video, struct v4l2_query_ext_ctrl *qctrl)
 {
     int num = -1;
-    int id = qctrl->id;
+    uint32_t id = qctrl->id;
     int isp_qctrl_cnt = ARRAY_SIZE(s_isp_qctrl);
     esp_err_t ret = ESP_ERR_NOT_SUPPORTED;
 
     if (id & V4L2_CTRL_FLAG_NEXT_CTRL) {
-        int new_id = -1;
+        uint32_t new_id = UINT32_MAX; // UINT32_MAX is out of range of V4L2_CTRL_ID_MASK, so used to indicate that the new ID is not found
 
         id &= ~V4L2_CTRL_FLAG_NEXT_CTRL;
         if (id == 0) {
@@ -2117,11 +2117,9 @@ static esp_err_t isp_video_query_ext_ctrl(struct esp_video *video, struct v4l2_q
             }
         }
 
-        if (new_id < 0) {
-            return ESP_ERR_NOT_SUPPORTED;
+        if (new_id == UINT32_MAX) {
+            return ESP_ERR_INVALID_ARG;
         }
-
-        qctrl->id = new_id;
     } else {
         for (int i = 0; i < isp_qctrl_cnt; i++) {
             if (id == s_isp_qctrl[i].id) {

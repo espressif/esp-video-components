@@ -33,8 +33,11 @@
 #define JPEG_VIDEO_CHROMA_SUBSAMPLING   JPEG_DOWN_SAMPLING_YUV422
 #define JPEG_VIDEO_COMP_QUALITY         80
 
+#define JPEG_VIDEO_MIN_WIDTH            64
+#define JPEG_VIDEO_MIN_HEIGHT           64
+
 #ifndef ARRAY_SIZE
-#define ARRAY_SIZE(x)                   sizeof(x) / sizeof((x)[0])
+#define ARRAY_SIZE(x)                   (sizeof(x) / sizeof((x)[0]))
 #endif
 
 struct jpeg_video {
@@ -44,6 +47,37 @@ struct jpeg_video {
     jpeg_enc_input_format_t src_type;
     jpeg_down_sampling_type_t sub_sample;
     uint8_t image_quality;
+};
+
+static const struct v4l2_query_ext_ctrl s_jpeg_qctrl[] = {
+    {
+        .id = V4L2_CID_JPEG_CHROMA_SUBSAMPLING,
+        .type = V4L2_CTRL_TYPE_INTEGER_MENU,
+        .minimum = 0,
+#if CONFIG_ESP32P4_REV_MIN_FULL >= 300
+        .maximum = 5,
+#else
+        .maximum = 3,
+#endif
+        .step = 1,
+        .elem_size = sizeof(uint8_t),
+        .elems = 1,
+        .nr_of_dims = 0,
+        .default_value = 3,
+        .name = "Chroma Subsampling",
+    },
+    {
+        .id = V4L2_CID_JPEG_COMPRESSION_QUALITY,
+        .type = V4L2_CTRL_TYPE_INTEGER,
+        .minimum = JPEG_VIDEO_MIN_COMP_QUALITY,
+        .maximum = JPEG_VIDEO_MAX_COMP_QUALITY,
+        .step = JPEG_VIDEO_COMP_QUALITY_STEP,
+        .default_value = JPEG_VIDEO_COMP_QUALITY,
+        .elem_size = sizeof(uint8_t),
+        .elems = 1,
+        .nr_of_dims = 0,
+        .name = "Compression Quality",
+    },
 };
 
 static const char *TAG = "jpeg_video";
@@ -100,6 +134,13 @@ static esp_err_t jpeg_video_m2m_process(struct esp_video *video, uint8_t *src, u
     esp_err_t ret;
     uint32_t jpeg_codeced_size;
     struct jpeg_video *jpeg_video = VIDEO_PRIV_DATA(struct jpeg_video *, video);
+
+    if ((M2M_VIDEO_GET_CAPTURE_FORMAT_WIDTH(video) != M2M_VIDEO_GET_OUTPUT_FORMAT_WIDTH(video)) ||
+            (M2M_VIDEO_GET_CAPTURE_FORMAT_HEIGHT(video) != M2M_VIDEO_GET_OUTPUT_FORMAT_HEIGHT(video))) {
+        ESP_LOGE(TAG, "capture and output width or height is invalid");
+        return ESP_ERR_INVALID_ARG;
+    }
+
     jpeg_encode_cfg_t enc_config = {
         .src_type = jpeg_video->src_type,
         .sub_sample = jpeg_video->sub_sample,
@@ -140,8 +181,8 @@ static esp_err_t jpeg_video_init(struct esp_video *video)
         }
     }
 
-    M2M_VIDEO_SET_CAPTURE_FORMAT(video, 0, 0, 0);
-    M2M_VIDEO_SET_OUTPUT_FORMAT(video, 0, 0, 0);
+    M2M_VIDEO_SET_CAPTURE_FORMAT(video, JPEG_VIDEO_MIN_WIDTH, JPEG_VIDEO_MIN_HEIGHT, V4L2_PIX_FMT_JPEG);
+    M2M_VIDEO_SET_OUTPUT_FORMAT(video, JPEG_VIDEO_MIN_WIDTH, JPEG_VIDEO_MIN_HEIGHT, V4L2_PIX_FMT_RGB565);
 
     return ESP_OK;
 }
@@ -219,22 +260,22 @@ static esp_err_t jpeg_video_set_format(struct esp_video *video, const struct v4l
     struct jpeg_video *jpeg_video = VIDEO_PRIV_DATA(struct jpeg_video *, video);
 
     if (format->type == V4L2_BUF_TYPE_VIDEO_CAPTURE) {
-        uint32_t width = M2M_VIDEO_GET_OUTPUT_FORMAT_WIDTH(video);
-        uint32_t height = M2M_VIDEO_GET_OUTPUT_FORMAT_HEIGHT(video);
-
+        /**
+         * Capture data is JPEG image, so width and height are limited by output image.
+         */
         if ((pix->pixelformat != V4L2_PIX_FMT_JPEG) ||
-                (width && (pix->width != width)) ||
-                (height && (pix->height != height))) {
+                (pix->width < JPEG_VIDEO_MIN_WIDTH) ||
+                (pix->height < JPEG_VIDEO_MIN_HEIGHT)) {
             ESP_LOGE(TAG, "pixel format or width or height is invalid");
             return ESP_ERR_INVALID_ARG;
         }
     } else if (format->type == V4L2_BUF_TYPE_VIDEO_OUTPUT) {
         uint8_t input_bpp;
-        uint32_t width = M2M_VIDEO_GET_CAPTURE_FORMAT_WIDTH(video);
-        uint32_t height = M2M_VIDEO_GET_CAPTURE_FORMAT_HEIGHT(video);
 
-        if ((width && (pix->width != width)) ||
-                (height && (pix->height != height))) {
+        /**
+         * Output data is input source image, so width and height are not limited by capture image.
+         */
+        if ((pix->width < JPEG_VIDEO_MIN_WIDTH) || (pix->height < JPEG_VIDEO_MIN_HEIGHT)) {
             ESP_LOGE(TAG, "width or height is invalid");
             return ESP_ERR_INVALID_ARG;
         }
@@ -327,30 +368,44 @@ static esp_err_t jpeg_video_get_ext_ctrl(struct esp_video *video, struct v4l2_ex
 
 static esp_err_t jpeg_video_query_ext_ctrl(struct esp_video *video, struct v4l2_query_ext_ctrl *qctrl)
 {
-    esp_err_t ret = ESP_OK;
+    int num = -1;
+    uint32_t id = qctrl->id;
+    int jpeg_qctrl_cnt = ARRAY_SIZE(s_jpeg_qctrl);
+    esp_err_t ret = ESP_ERR_NOT_SUPPORTED;
+    if (id & V4L2_CTRL_FLAG_NEXT_CTRL) {
+        int new_id = UINT32_MAX; // UINT32_MAX is out of range of V4L2_CTRL_ID_MASK, so used to indicate that the new ID is not found
 
-    switch (qctrl->id) {
-    case V4L2_CID_JPEG_CHROMA_SUBSAMPLING:
-        qctrl->type = V4L2_CTRL_TYPE_INTEGER_MENU;
-        qctrl->elem_size = sizeof(uint8_t);
-        qctrl->elems = 1;
-        qctrl->nr_of_dims = 0;
-        qctrl->dims[0] = qctrl->elem_size;
-        qctrl->default_value = JPEG_VIDEO_CHROMA_SUBSAMPLING;
-        break;
-    case V4L2_CID_JPEG_COMPRESSION_QUALITY:
-        qctrl->type = V4L2_CTRL_TYPE_INTEGER;
-        qctrl->maximum = JPEG_VIDEO_MAX_COMP_QUALITY;
-        qctrl->minimum = JPEG_VIDEO_MIN_COMP_QUALITY;
-        qctrl->step = JPEG_VIDEO_COMP_QUALITY_STEP;
-        qctrl->elems = 1;
-        qctrl->nr_of_dims = 0;
-        qctrl->default_value = JPEG_VIDEO_COMP_QUALITY;
-        break;
-    default:
-        ret = ESP_ERR_NOT_SUPPORTED;
-        ESP_LOGE(TAG, "id=%" PRIx32 " is not supported", qctrl->id);
-        break;
+        id &= ~V4L2_CTRL_FLAG_NEXT_CTRL;
+        if (id == 0) {
+            new_id = s_jpeg_qctrl[0].id;
+            num = 0;
+        } else {
+            for (int i = 0; i < jpeg_qctrl_cnt; i++) {
+                if (id == s_jpeg_qctrl[i].id) {
+                    if (i < (jpeg_qctrl_cnt - 1)) {
+                        new_id = s_jpeg_qctrl[i + 1].id;
+                        num = i + 1;
+                        break;
+                    }
+                }
+            }
+        }
+
+        if (new_id == UINT32_MAX) {
+            return ESP_ERR_INVALID_ARG;
+        }
+    } else {
+        for (int i = 0; i < jpeg_qctrl_cnt; i++) {
+            if (id == s_jpeg_qctrl[i].id) {
+                num = i;
+                break;
+            }
+        }
+    }
+
+    if (num >= 0) {
+        memcpy(qctrl, &s_jpeg_qctrl[num], sizeof(struct v4l2_query_ext_ctrl));
+        ret = ESP_OK;
     }
 
     return ret;
