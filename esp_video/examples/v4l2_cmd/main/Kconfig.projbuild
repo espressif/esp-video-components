@@ -1,0 +1,79 @@
+menu "Example Configuration"
+
+    choice EXAMPLE_STORAGE_MEDIA
+        prompt "Storage media type"
+        default EXAMPLE_STORAGE_MEDIA_SDMMC
+        help
+            Select the storage media that will be exposed to the USB host as a mass storage device.
+
+            The selected storage will appear as a removable drive on the connected computer,
+            allowing direct file access through the USB Mass Storage Class (MSC) interface.
+
+        config EXAMPLE_STORAGE_MEDIA_SPIFLASH
+            bool "SPI Flash memory"
+            help
+                Use internal SPI flash memory as the storage medium.
+
+                Benefits:
+                - Always available on ESP32 devices
+                - Fast access speeds
+                - No external hardware required
+
+                Limitations:
+                - Limited storage capacity
+                - Shared with firmware and other data
+
+                Best for: Small file storage, testing, or embedded applications.
+
+        config EXAMPLE_STORAGE_MEDIA_SDMMC
+            bool "SD/MMC card"
+            depends on IDF_TARGET_ESP32P4
+            help
+                Use external SD/MMC card as the storage medium.
+
+                Benefits:
+                - Large storage capacity (up to several TB)
+                - Removable media for data transfer
+                - Standard filesystem support
+
+                Requirements:
+                - SD card slot hardware
+                - Proper GPIO pin configuration
+
+                Best for: Large file storage, video recording, or data logging.
+    endchoice
+
+    config EXAMPLE_V4L2_CMD_PROMPT
+        string "Command Line Prompt"
+        default "video:>"
+        help
+            Set the command line prompt string displayed in the console.
+
+    config EXAMPLE_V4L2_CMD_CTL
+        bool "v4l2-ctl"
+        default y
+        select TINYUSB_MSC_ENABLED
+        help
+            Enable the "v4l2-ctl" command to control V4L2 video devices.
+
+    config EXAMPLE_V4L2_CMD_BF
+        bool "v4l2-bf"
+        default y
+        depends on ESP_VIDEO_ENABLE_ISP_VIDEO_DEVICE
+        help
+            Enable the "v4l2-bf" command to control the Bayer filter (BF) of the ISP hardware pipeline.
+
+    config EXAMPLE_V4L2_CMD_CCM
+        bool "v4l2-ccm"
+        default y
+        depends on ESP_VIDEO_ENABLE_ISP_VIDEO_DEVICE
+        help
+            Enable the "v4l2-ccm" command to control the color correction matrix (CCM) of the ISP hardware pipeline.
+
+    config EXAMPLE_V4L2_CMD_GAMMA
+        bool "v4l2-gamma"
+        default y
+        depends on ESP_VIDEO_ENABLE_ISP_VIDEO_DEVICE
+        help
+            Enable the "v4l2-gamma" command to control the gamma correction of the ISP hardware pipeline.
+endmenu

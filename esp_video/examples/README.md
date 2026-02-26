@@ -9,6 +9,8 @@
 
 * [uvc](https://github.com/espressif/esp-video-components/tree/master/esp_video/examples/uvc) demonstrates how to implement a USB camera through the USB peripheral and camera drivers.
 
+* [v4l2_cmd](https://github.com/espressif/esp-video-components/tree/master/esp_video/examples/v4l2_cmd) provides a solution for controlling V4L2 video devices using commands similar to v4l2-utils.
+
 * [video_custom_format](https://github.com/espressif/esp-video-components/tree/master/esp_video/examples/video_custom_format) demonstrates how to initialize the video system using a custom format description.
 
 * [Video LCD Display](https://github.com/espressif/esp-iot-solution/tree/master/examples/camera/video_lcd_display) demonstrates how to display images from the camera on an LCD screen.
