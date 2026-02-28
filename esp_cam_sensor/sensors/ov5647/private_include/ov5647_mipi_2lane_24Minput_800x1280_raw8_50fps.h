@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2025 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2025-2026 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -18,21 +18,6 @@ static const ov5647_reginfo_t ov5647_mipi_2lane_24Minput_800x1280_raw8_50fps[] =
     {0x3618, 0x00},
     {0x5025, 0x01},
 
-#define GAIN_MAN_EN (0)
-#if GAIN_MAN_EN
-    {0x5180, GAIN_MAN_EN << 3}, // gain_man_en
-    {0x5181, 0x10},
-
-#define rg  (0x590-20)
-#define gg  (0x530-150)
-#define bg  (0x5fc-10)
-    {0x5186, (rg >> 8) & 0xff},
-    {0x5187, (rg >> 0) & 0xff},
-    {0x5188, (gg >> 8) & 0xff},
-    {0x5189, (gg >> 0) & 0xff},
-    {0x518a, (bg >> 8) & 0xff},
-    {0x518b, (bg >> 0) & 0xff},
-#endif
     {0x5003, 0x08},
     {0x5a00, 0x08},
     {0x3000, 0x00},
@@ -93,25 +78,6 @@ static const ov5647_reginfo_t ov5647_mipi_2lane_24Minput_800x1280_raw8_50fps[] =
     // y inc
     {0x3815, 0x11},
 
-#define GAIN_MAN  (64775)
-    {0x350a, (GAIN_MAN >> 8) & 0xff}, //AGC
-    {0x350b, (GAIN_MAN >> 0) & 0xff},
-
-#define EXPOSURE_MAN (0x0fffff)
-    {0x3500, ((EXPOSURE_MAN >> 16) & 0xff)},
-    {0x3501, ((EXPOSURE_MAN >> 8) & 0xff)},
-    {0x3502, ((EXPOSURE_MAN >> 0) & 0xff)},
-
-#define MIN_EXPORE (0x01)
-#define MAX_EXPORT (0x100)
-    {0x3a01, MIN_EXPORE},
-    {0x3a02, (MAX_EXPORT >> 8)},
-    {0x3a03, MAX_EXPORT & 0xff},
-    // aec auto step
-    {0x3a05, 0x20 | 0x10},
-
-    {0x3A05, 0x22}, //step_auto_en
-
     // WPT2 > WPT > BPT > BPT2
 #define REG_WPT   (0x3A0F)
 #define REG_BPT   (0x3A10)
@@ -128,22 +94,7 @@ static const ov5647_reginfo_t ov5647_mipi_2lane_24Minput_800x1280_raw8_50fps[] =
     {0x3a18, 0x00},// gain celling
     {0x3a19, 0x22},
 
-#define AG_MAN_EN (1) //1
-#define AE_MAN_EN (0) //0
-#define MENU_AG_AE ((AG_MAN_EN<<1)|AE_MAN_EN)
-
-    {0x3503, (0x3 << 5) | MENU_AG_AE}, //menu AEC,AGC
-
-// auto AGC mode configuration aec gain
-#if AG_MAN_EN == 0
-    {0x3a18, 0x00},
-    {0x3a19, 0x00}, // 148
-#endif
-
     {0x5000, 0xff}, // LENC en
-    {0x583e, 0xff}, // max gain
-    {0x583f, 0x80}, // min gain
-    {0x5840, 0xff}, // min gain
 
     {0x4001, 0x02},
     {0x4004, 0x04},
