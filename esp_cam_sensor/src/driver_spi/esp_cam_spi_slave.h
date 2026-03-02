@@ -8,6 +8,7 @@
 
 #include "freertos/FreeRTOS.h"
 #include "driver/spi_slave.h"
+#include "esp_idf_version.h"
 
 #ifdef __cplusplus
 extern "C"
@@ -15,10 +16,12 @@ extern "C"
 #endif
 
 /**
- * @brief Enable Camera private SPI slave driver
+ * @brief Enable Camera private SPI slave driver, only for ESP-IDF versions < v6.0.0
  */
+#if ESP_IDF_VERSION < ESP_IDF_VERSION_VAL(6, 0, 0)
 #if CONFIG_SPIRAM
 #define ESP_CAM_SPI_DRIVER 1
+#endif
 #endif
 
 /**

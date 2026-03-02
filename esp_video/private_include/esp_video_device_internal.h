@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2024-2025 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2024-2026 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: ESPRESSIF MIT
  */
@@ -17,10 +17,24 @@
 #include "esp_cam_ctlr_spi.h"
 #include "esp_video_caps.h"
 #include "linux/videodev2.h"
-#include "linux/videodev2.h"
 
 #ifdef __cplusplus
 extern "C" {
+#endif
+
+/**
+ * @brief On IDF versions prior to 6.0.0, CAM_CTLR_COLOR_YUV422_UYVY and CAM_CTLR_COLOR_YUV422_YUYV
+ * are not defined in the HAL; both are aliased here to CAM_CTLR_COLOR_YUV422. Therefore
+ * UYVY vs YUYV byte-order cannot be distinguished at compile- or run-time on IDF < 6.0.0.
+ *
+ * WARNING: Downstream code that relies on these two macros to differentiate YUV422
+ * arrangements (UYVY vs YUYV) will not work correctly on IDF < 6.0.0. Callers should
+ * either check ESP_IDF_VERSION and branch accordingly, or use an alternate mechanism
+ * (e.g. format hints, runtime config) to handle byte ordering when supporting older IDF.
+ */
+#if (ESP_IDF_VERSION < ESP_IDF_VERSION_VAL(6, 0, 0))
+#define CAM_CTLR_COLOR_YUV422_UYVY CAM_CTLR_COLOR_YUV422  /* alias: cannot distinguish UYVY on IDF < 6.0.0 */
+#define CAM_CTLR_COLOR_YUV422_YUYV CAM_CTLR_COLOR_YUV422  /* alias: cannot distinguish YUYV on IDF < 6.0.0 */
 #endif
 
 /**
@@ -255,12 +269,13 @@ esp_err_t esp_video_isp_stop(const esp_video_csi_state_t *state);
  * @param state        MIPI-CSI state object
  * @param index        Enumerated number index
  * @param pixel_format Supported output pixel format
+ * @param isp_format_nums ISP supported output pixel format number pointer
  *
  * @return
  *      - ESP_OK on success
  *      - Others if failed
  */
-esp_err_t esp_video_isp_enum_format(esp_video_csi_state_t *state, uint32_t index, uint32_t *pixel_format);
+esp_err_t esp_video_isp_enum_format(esp_video_csi_state_t *state, uint32_t index, uint32_t *pixel_format, uint32_t *isp_format_nums);
 
 /**
  * @brief Check if input format is valid

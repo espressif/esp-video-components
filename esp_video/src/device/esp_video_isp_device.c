@@ -460,7 +460,15 @@ static esp_err_t isp_get_output_frame_type(cam_ctlr_color_t ctlr_color, isp_colo
     case CAM_CTLR_COLOR_YUV420:
         *isp_color = ISP_COLOR_YUV420;
         break;
-    case CAM_CTLR_COLOR_YUV422:
+#if ESP_VIDEO_CSI_DEVICE_CONV_FORMAT
+    /**
+     * @brief For ESP-IDF versions < v6.0.0, CAM_CTLR_COLOR_YUV422_YUYV = CAM_CTLR_COLOR_YUV422_UYVY = CAM_CTLR_COLOR_YUV422
+     */
+    case CAM_CTLR_COLOR_YUV422_YUYV:
+    case CAM_CTLR_COLOR_YUV422_VYUY:
+    case CAM_CTLR_COLOR_YUV422_YVYU:
+#endif
+    case CAM_CTLR_COLOR_YUV422_UYVY:
         *isp_color = ISP_COLOR_YUV422;
         break;
     default:
@@ -471,7 +479,35 @@ static esp_err_t isp_get_output_frame_type(cam_ctlr_color_t ctlr_color, isp_colo
     return ret;
 }
 
+static bool cam_ctlr_color_is_raw_type(cam_ctlr_color_t color)
+{
+    switch (color) {
+    case CAM_CTLR_COLOR_RAW8:
+        return true;
+    case CAM_CTLR_COLOR_RAW10:
+        return true;
+    case CAM_CTLR_COLOR_RAW12:
+        return true;
+    default:
+        return false;
+    }
+}
+
 #if CONFIG_ESP_VIDEO_ENABLE_ISP_VIDEO_DEVICE
+static bool isp_color_is_raw_type(isp_color_t color)
+{
+    switch (color) {
+    case ISP_COLOR_RAW8:
+        return true;
+    case ISP_COLOR_RAW10:
+        return true;
+    case ISP_COLOR_RAW12:
+        return true;
+    default:
+        return false;
+    }
+}
+
 static void video_rect2window(struct esp_video *video, isp_window_t *window)
 {
     struct v4l2_rect *r = META_VIDEO_GET_RECT(video);
@@ -479,8 +515,8 @@ static void video_rect2window(struct esp_video *video, isp_window_t *window)
     window->top_left.x = r->left;
     window->top_left.y = r->top;
 
-    window->btm_right.x = r->left + r->width;
-    window->btm_right.y = r->top + r->height;
+    window->btm_right.x = r->left + r->width - 1;
+    window->btm_right.y = r->top + r->height - 1;
 }
 
 static esp_err_t isp_stats_done(struct isp_video *isp_video, const void *buffer, uint32_t flags)
@@ -2331,8 +2367,7 @@ esp_err_t esp_video_isp_start_by_csi(const esp_video_csi_state_t *state, const s
         }
 #endif
 
-        if ((COLOR_SPACE_TYPE(isp_in_color) == COLOR_SPACE_RAW) &&
-                (COLOR_SPACE_TYPE(isp_out_color) != COLOR_SPACE_RAW)) {
+        if ((isp_color_is_raw_type(isp_in_color)) && !isp_color_is_raw_type(isp_out_color)) {
             isp_video->af_support = 1;
         } else {
             isp_video->af_support = 0;
@@ -2425,16 +2460,23 @@ exit:
  * @param state        MIPI-CSI state object
  * @param index        Enumerated number index
  * @param pixel_format Supported output pixel format
+ * @param isp_format_nums ISP supported output pixel format number pointer
  *
  * @return
  *      - ESP_OK on success
  *      - Others if failed
  */
-esp_err_t esp_video_isp_enum_format(esp_video_csi_state_t *state, uint32_t index, uint32_t *pixel_format)
+esp_err_t esp_video_isp_enum_format(esp_video_csi_state_t *state, uint32_t index, uint32_t *pixel_format, uint32_t *isp_format_nums)
 {
     if (state->bypass_isp) {
-        if (COLOR_SPACE_TYPE(state->in_color) == COLOR_SPACE_RAW) {
+        *isp_format_nums = 1;
+
+        if (cam_ctlr_color_is_raw_type(state->in_color)) {
+#if ESP_VIDEO_CSI_DEVICE_CONV_FORMAT
             if (index == s_isp_isp_format_nums) {
+#else
+            if (index == 0) {
+#endif
                 *pixel_format = state->in_fmt;
             } else {
                 return ESP_ERR_INVALID_ARG;
@@ -2447,6 +2489,8 @@ esp_err_t esp_video_isp_enum_format(esp_video_csi_state_t *state, uint32_t index
             }
         }
     } else {
+        *isp_format_nums = s_isp_isp_format_nums;
+
         if (index < s_isp_isp_format_nums) {
             *pixel_format = s_isp_isp_format[index];
         } else if (index == s_isp_isp_format_nums) {
@@ -2477,13 +2521,23 @@ esp_err_t esp_video_isp_check_format(esp_video_csi_state_t *state, const struct 
 {
     bool found = false;
     isp_color_t isp_in_color;
+    uint32_t pixel_format = format->fmt.pix.pixelformat;
 
     if (isp_get_input_frame_type(state->in_color, &isp_in_color) != ESP_OK) {
         return ESP_ERR_NOT_SUPPORTED;
     }
 
+#if ESP_VIDEO_CSI_DEVICE_CONV_FORMAT
+    /**
+     * ISP only support UYVY format, and the other YUV422 series format will be converted to UYVY format by CSI
+     */
+    if (pixel_format == V4L2_PIX_FMT_YVYU || pixel_format == V4L2_PIX_FMT_VYUY || pixel_format == V4L2_PIX_FMT_YUYV) {
+        pixel_format = V4L2_PIX_FMT_UYVY;
+    }
+#endif
+
     for (int i = 0; i < s_isp_isp_format_nums; i++) {
-        if (format->fmt.pix.pixelformat == s_isp_isp_format[i]) {
+        if (pixel_format == s_isp_isp_format[i]) {
             found = true;
             break;
         }
