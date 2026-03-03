@@ -1,5 +1,11 @@
 # Changelog
 
+## 2.0.1
+
+- Fixed compilation issues with the DVP driver when using ESP-IDF release/v6.0 and later.
+- Fixed compilation issues with the SPI slave driver when using ESP-IDF release/v6.0 and later.
+  - For ESP-IDF release/v6.0 and later, the built-in SPI slave driver is excluded, and the SPI slave driver provided by ESP-IDF is used instead.
+
 ## 2.0.0
 
 - Fixed spi slave build error caused by spicommon_xxx private api change.
