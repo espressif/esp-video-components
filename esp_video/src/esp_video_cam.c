@@ -190,6 +190,9 @@ static esp_err_t get_opt_value_desc(esp_video_cam_t *cam, const struct v4l2_ext_
             ret = esp_cam_sensor_query_para_desc(cam->sensor, qdesc);
         } else {
 #if CONFIG_ESP_VIDEO_ENABLE_CAMERA_MOTOR_CONTROLLER
+            if (!cam->motor) {
+                return ESP_ERR_NOT_SUPPORTED;
+            }
             ret = esp_cam_motor_query_para_desc(cam->motor, qdesc);
 #else
             ret = ESP_ERR_NOT_SUPPORTED;
@@ -436,6 +439,9 @@ esp_err_t esp_video_cam_query_ext_ctrls(esp_video_cam_t *cam, struct v4l2_query_
         ret = esp_cam_sensor_query_para_desc(cam->sensor, &qdesc);
     } else {
 #if CONFIG_ESP_VIDEO_ENABLE_CAMERA_MOTOR_CONTROLLER
+        if (!cam->motor) {
+            return ESP_ERR_NOT_SUPPORTED;
+        }
         ret = esp_cam_motor_query_para_desc(cam->motor, &qdesc);
 #else
         ret = ESP_ERR_NOT_SUPPORTED;
@@ -532,6 +538,9 @@ esp_err_t esp_video_cam_query_menu(esp_video_cam_t *cam, struct v4l2_querymenu *
         ret = esp_cam_sensor_query_para_desc(cam->sensor, &qdesc);
     } else {
 #if CONFIG_ESP_VIDEO_ENABLE_CAMERA_MOTOR_CONTROLLER
+        if (!cam->motor) {
+            return ESP_ERR_NOT_SUPPORTED;
+        }
         ret = esp_cam_motor_query_para_desc(cam->motor, &qdesc);
 #else
         ret = ESP_ERR_NOT_SUPPORTED;

@@ -752,12 +752,20 @@ static esp_err_t csi_video_set_motor_format(struct esp_video *video, const esp_c
 {
     struct csi_video *csi_video = VIDEO_PRIV_DATA(struct csi_video *, video);
 
+    if (!csi_video->cam.motor) {
+        return ESP_ERR_NOT_SUPPORTED;
+    }
+
     return esp_cam_motor_set_format(csi_video->cam.motor, format);
 }
 
 static esp_err_t csi_video_get_motor_format(struct esp_video *video, esp_cam_motor_format_t *format)
 {
     struct csi_video *csi_video = VIDEO_PRIV_DATA(struct csi_video *, video);
+
+    if (!csi_video->cam.motor) {
+        return ESP_ERR_NOT_SUPPORTED;
+    }
 
     return esp_cam_motor_get_format(csi_video->cam.motor, format);
 }
