@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- Disabled manual exposure control in the ov5647_mipi_2lane_24Minput_800x1280_raw8_50fps.h.
+
 ## 2.0.1
 
 - Fixed compilation issues with the DVP driver when using ESP-IDF release/v6.0 and later.
