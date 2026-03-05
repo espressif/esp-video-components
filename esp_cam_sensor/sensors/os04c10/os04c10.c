@@ -30,9 +30,7 @@ typedef struct {
     uint32_t exposure_val;
     uint32_t exposure_max;
     uint32_t gain_index; // current gain index
-
-    uint32_t vflip_en : 1;
-    uint32_t hmirror_en : 1;
+    size_t limited_gain_index; // max valid gain index (0 means use full table)
 } os04c10_para_t;
 
 struct os04c10_cam {
@@ -63,7 +61,6 @@ struct os04c10_cam {
 
 static const uint8_t s_os04c10_exp_min = 0x02;
 static const uint8_t s_os04c10_exp_max_offset = 8;
-static size_t s_os04c10_limited_gain_index;
 static const char *TAG = "os04c10";
 
 /* 0x3503[2] = 0, gain format is gain[12:0], where low 7bits are fraction bits.
@@ -292,7 +289,7 @@ static const esp_cam_sensor_isp_info_t os04c10_isp_info[] = {
             .hts = 2140, // 0x085c
             .tline_ns = 21158, // 21.15819209 us
             .gain_def = 16, // default gain index
-            .exp_def = 0x313, // default exposure value
+            .exp_def = 0x140, // default exposure value
             .bayer_type = ESP_CAM_SENSOR_BAYER_BGGR,
         }
     },
@@ -304,11 +301,31 @@ static const esp_cam_sensor_format_t os04c10_format_info[] = {
         .name = "MIPI_1lane_24Minput_RAW10_810x1080_30fps",
         .format = ESP_CAM_SENSOR_PIXFORMAT_RAW10,
         .port = ESP_CAM_SENSOR_MIPI_CSI,
+        .xclk = 24000000,
         .width = 810,
         .height = 1080,
-        .xclk = 24000000,
         .regs = os04c10_mipi_1lane_24Minput_810x1080_raw10_30fps,
         .regs_size = ARRAY_SIZE(os04c10_mipi_1lane_24Minput_810x1080_raw10_30fps),
+        .fps = 30,
+        .isp_info = &os04c10_isp_info[0],
+        .mipi_info = {
+            .mipi_clk = 992000000, // 992Mbps/lane
+            .lane_num = 1,
+            .line_sync_en = false,
+        },
+        .reserved = NULL,
+    },
+#endif
+#if CONFIG_CAMERA_OS04C10_MIPI_RAW10_960X1280_30FPS
+    {
+        .name = "MIPI_1lane_24Minput_RAW10_960x1280_30fps",
+        .format = ESP_CAM_SENSOR_PIXFORMAT_RAW10,
+        .port = ESP_CAM_SENSOR_MIPI_CSI,
+        .xclk = 24000000,
+        .width = 960,
+        .height = 1280,
+        .regs = os04c10_mipi_1lane_24Minput_960x1280_raw10_30fps,
+        .regs_size = ARRAY_SIZE(os04c10_mipi_1lane_24Minput_960x1280_raw10_30fps),
         .fps = 30,
         .isp_info = &os04c10_isp_info[0],
         .mipi_info = {
@@ -325,17 +342,24 @@ static const esp_cam_sensor_format_t os04c10_format_info[] = {
 #error "Please choose at least one format in menuconfig for OS04C10"
 #endif
 
-static const uint8_t os04c10_format_default_index = CONFIG_CAMERA_OS04C10_MIPI_IF_FORMAT_INDEX_DEFAULT;
-
-static const uint8_t os04c10_format_index[] = {
+static const int os04c10_format_index[] = {
 #if CONFIG_CAMERA_OS04C10_MIPI_RAW10_810X1080_30FPS
     0,
 #endif
+#if CONFIG_CAMERA_OS04C10_MIPI_RAW10_960X1280_30FPS
+    1,
+#endif
 };
 
-static inline uint8_t get_os04c10_actual_format_index(void)
+static int get_os04c10_actual_format_index(void)
 {
-    return os04c10_format_index[os04c10_format_default_index];
+    int default_index = CONFIG_CAMERA_OS04C10_MIPI_IF_FORMAT_INDEX_DEFAULT;
+    for (size_t i = 0; i < ARRAY_SIZE(os04c10_format_index); i++) {
+        if (os04c10_format_index[i] == default_index) {
+            return i;
+        }
+    }
+    return 0;
 }
 
 static esp_err_t os04c10_read(esp_sccb_io_handle_t sccb_handle, uint16_t reg, uint8_t *read_buf)
@@ -433,12 +457,13 @@ static esp_err_t os04c10_set_exp_val(esp_cam_sensor_device_t *dev, uint32_t u32_
     ret = os04c10_write(dev->sccb_handle,
                         OS04C10_REG_EXP_L,
                         OS04C10_FETCH_EXP_L(value_buf));
-    ret |= os04c10_write(dev->sccb_handle,
-                         OS04C10_REG_EXP_H,
-                         OS04C10_FETCH_EXP_H(value_buf));
-    if (ret == ESP_OK) {
-        cam_os04c10->os04c10_para.exposure_val = value_buf;
-    }
+    ESP_RETURN_ON_FALSE(ret == ESP_OK, ret, TAG, "exp reg low write failed");
+    ret = os04c10_write(dev->sccb_handle,
+                        OS04C10_REG_EXP_H,
+                        OS04C10_FETCH_EXP_H(value_buf));
+    ESP_RETURN_ON_FALSE(ret == ESP_OK, ret, TAG, "exp reg high write failed");
+
+    cam_os04c10->os04c10_para.exposure_val = value_buf;
     return ret;
 }
 
@@ -448,9 +473,9 @@ static esp_err_t os04c10_set_total_gain_val(esp_cam_sensor_device_t *dev, uint32
     struct os04c10_cam *cam_os04c10 = (struct os04c10_cam *)dev->priv;
 
     // Limit gain index to valid range
-    if (u32_val >= s_os04c10_limited_gain_index) {
-        if (s_os04c10_limited_gain_index > 0) {
-            u32_val = s_os04c10_limited_gain_index - 1;
+    if (u32_val >= cam_os04c10->os04c10_para.limited_gain_index) {
+        if (cam_os04c10->os04c10_para.limited_gain_index > 0) {
+            u32_val = cam_os04c10->os04c10_para.limited_gain_index - 1;
         } else {
             u32_val = 0;  // Fallback to minimum gain if limit is 0
         }
@@ -461,17 +486,17 @@ static esp_err_t os04c10_set_total_gain_val(esp_cam_sensor_device_t *dev, uint32
 
     // Write gain registers: 0x3508[5:0] = gain[12:8], 0x3509[7:0] = gain[7:0]
     // Note: 0x3508[5:0] means bits 5 to 0, which is the low 6 bits of the register
+    ret = os04c10_write(dev->sccb_handle,
+                        OS04C10_REG_ANALOG_GAIN_L,
+                        os04c10_gain_map[u32_val].analog_gain_l);
+    ESP_RETURN_ON_FALSE(ret == ESP_OK, ret, TAG, "gain reg low write failed");
     ret = os04c10_set_reg_bits(dev->sccb_handle,
                                OS04C10_REG_ANALOG_GAIN_H,
                                0, 6,  // offset=0, length=6, modify bits [5:0]
                                os04c10_gain_map[u32_val].analog_gain_h & 0x3F);  // Mask to 6 bits
-    ret |= os04c10_write(dev->sccb_handle,
-                         OS04C10_REG_ANALOG_GAIN_L,
-                         os04c10_gain_map[u32_val].analog_gain_l);
+    ESP_RETURN_ON_FALSE(ret == ESP_OK, ret, TAG, "gain reg high write failed");
 
-    if (ret == ESP_OK) {
-        cam_os04c10->os04c10_para.gain_index = u32_val;
-    }
+    cam_os04c10->os04c10_para.gain_index = u32_val;
     return ret;
 }
 
@@ -490,7 +515,7 @@ static void ae_timer_callback(TimerHandle_t timer)
 #if OS04C10_EXPOSURE_TEST_EN_GAIN
     // Gain mode: s_exp_v is gain index
     uint32_t min_gain_index = 0;
-    uint32_t max_gain_index = (s_os04c10_limited_gain_index > 0) ? (s_os04c10_limited_gain_index - 1) : 0;
+    uint32_t max_gain_index = (cam_os04c10->os04c10_para.limited_gain_index > 0) ? (cam_os04c10->os04c10_para.limited_gain_index - 1) : 0;
 
     // Check boundaries first and reverse direction if needed
     if (s_exp_add) {
@@ -622,6 +647,12 @@ static esp_err_t os04c10_set_vflip(esp_cam_sensor_device_t *dev, int enable)
 static esp_err_t os04c10_query_para_desc(esp_cam_sensor_device_t *dev, esp_cam_sensor_param_desc_t *qdesc)
 {
     esp_err_t ret = ESP_OK;
+    struct os04c10_cam *cam_os04c10 = (struct os04c10_cam *)dev->priv;
+    if (dev->cur_format == NULL) {
+        ESP_LOGE(TAG, "cur_format is not initialized");
+        return ESP_ERR_INVALID_STATE;
+    }
+
     switch (qdesc->id) {
     case ESP_CAM_SENSOR_EXPOSURE_VAL:
         qdesc->type = ESP_CAM_SENSOR_PARAM_TYPE_NUMBER;
@@ -639,7 +670,7 @@ static esp_err_t os04c10_query_para_desc(esp_cam_sensor_device_t *dev, esp_cam_s
         break;
     case ESP_CAM_SENSOR_GAIN:
         qdesc->type = ESP_CAM_SENSOR_PARAM_TYPE_ENUMERATION;
-        qdesc->enumeration.count = s_os04c10_limited_gain_index;
+        qdesc->enumeration.count = cam_os04c10->os04c10_para.limited_gain_index;
         qdesc->enumeration.elements = os04c10_total_gain_val_map;
         qdesc->default_value = dev->cur_format->isp_info->isp_v1_info.gain_def;
         break;
@@ -718,7 +749,10 @@ static esp_err_t os04c10_set_para_value(esp_cam_sensor_device_t *dev, uint32_t i
             break;
         }
         ret = os04c10_set_exp_val(dev, ori_exp);
-        ret |= os04c10_set_total_gain_val(dev, value->gain_index);
+        if (ret != ESP_OK) {
+            break;
+        }
+        ret = os04c10_set_total_gain_val(dev, value->gain_index);
         break;
     }
     case ESP_CAM_SENSOR_VFLIP: {
@@ -907,6 +941,7 @@ static esp_err_t os04c10_power_off(esp_cam_sensor_device_t *dev)
     return ret;
 }
 
+// After calling this function, set the dev pointer to null.
 static esp_err_t os04c10_delete(esp_cam_sensor_device_t *dev)
 {
     ESP_LOGD(TAG, "del os04c10 (%p)", dev);
@@ -938,13 +973,11 @@ esp_cam_sensor_device_t *os04c10_detect(esp_cam_sensor_config_t *config)
 {
     esp_cam_sensor_device_t *dev = NULL;
     struct os04c10_cam *cam_os04c10;
-    // Initialize gain limit index
-    s_os04c10_limited_gain_index = ARRAY_SIZE(os04c10_total_gain_val_map);
     if (config == NULL) {
         return NULL;
     }
 
-    dev = calloc(1, sizeof(esp_cam_sensor_device_t));
+    dev = heap_caps_calloc(1, sizeof(esp_cam_sensor_device_t), MALLOC_CAP_DEFAULT);
     if (dev == NULL) {
         ESP_LOGE(TAG, "No memory for camera");
         return NULL;
@@ -965,12 +998,17 @@ esp_cam_sensor_device_t *os04c10_detect(esp_cam_sensor_config_t *config)
     dev->sensor_port = config->sensor_port;
     dev->ops = &os04c10_ops;
     dev->priv = cam_os04c10;
-    dev->cur_format = &os04c10_format_info[get_os04c10_actual_format_index()];
+
+    // Initialize gain limit index
+    cam_os04c10->os04c10_para.limited_gain_index = ARRAY_SIZE(os04c10_total_gain_val_map);
+#if CONFIG_SOC_MIPI_CSI_SUPPORTED
+    if (config->sensor_port == ESP_CAM_SENSOR_MIPI_CSI) {
+        dev->cur_format = &os04c10_format_info[get_os04c10_actual_format_index()];
+    }
+#endif
     for (size_t i = 0; i < ARRAY_SIZE(os04c10_total_gain_val_map); i++) {
         if (os04c10_total_gain_val_map[i] > CONFIG_CAMERA_OS04C10_ABSOLUTE_GAIN_LIMIT) {
-            // Ensure limited_index is at least 0 (first valid gain index)
-            s_os04c10_limited_gain_index = i - 1;
-            ESP_LOGD(TAG, "Limit gain index is %d", s_os04c10_limited_gain_index);
+            cam_os04c10->os04c10_para.limited_gain_index = (i > 0) ? (i - 1) : 0;
             break;
         }
     }

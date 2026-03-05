@@ -20,6 +20,8 @@ extern "C" {
 
 #include "os04c10_mipi_1lane_24Minput_810x1080_raw10_30fps.h"
 
+#include "os04c10_mipi_1lane_24Minput_960x1280_raw10_30fps.h"
+
 #endif
 
 #ifdef __cplusplus

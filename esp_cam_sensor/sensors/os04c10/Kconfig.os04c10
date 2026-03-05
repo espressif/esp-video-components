@@ -31,6 +31,13 @@ if CAMERA_OS04C10
             help
                 RAW10 color format at 810x1080 resolution with 30fps framerate.
                 Requires MIPI CSI-2 1-lane interface with 24MHz input clock.
+
+        config CAMERA_OS04C10_MIPI_RAW10_960X1280_30FPS
+            bool "MIPI 1-lane, 24M input, 960x1280 30fps, RAW10"
+            default n
+            help
+                RAW10 color format at 960x1280 resolution with 30fps framerate.
+                Requires MIPI CSI-2 1-lane interface with 24MHz input clock.
     endmenu
 
     choice CAMERA_OS04C10_MIPI_DEFAULT_FMT
@@ -45,11 +52,16 @@ if CAMERA_OS04C10
         config CAMERA_OS04C10_MIPI_DEFAULT_FMT_RAW10_810X1080_30FPS
             bool "MIPI 1-lane, 24M input, 810x1080 30fps, RAW10"
             depends on CAMERA_OS04C10_MIPI_RAW10_810X1080_30FPS
+
+        config CAMERA_OS04C10_MIPI_DEFAULT_FMT_RAW10_960X1280_30FPS
+            bool "MIPI 1-lane, 24M input, 960x1280 30fps, RAW10"
+            depends on CAMERA_OS04C10_MIPI_RAW10_960X1280_30FPS
     endchoice # CAMERA_OS04C10_MIPI_DEFAULT_FMT
 
     config CAMERA_OS04C10_MIPI_IF_FORMAT_INDEX_DEFAULT
         int
         default 0 if CAMERA_OS04C10_MIPI_DEFAULT_FMT_RAW10_810X1080_30FPS
+        default 1 if CAMERA_OS04C10_MIPI_DEFAULT_FMT_RAW10_960X1280_30FPS
         help
             Sets the default configuration for the MIPI CSI interface.
             Use query_support_formats() API to get more format options.

@@ -4,14 +4,14 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 /*
- * os04c10_mipi_1lane_24Minput_810x1080_raw10_30fps
- * BGGR, RAW10, Mipi_data rate : 992Mbps/lane, Tline: 21.15819209 us
- * HTS:0x085c, VTS:0x0626
+ * os04c10_mipi_1lane_24Minput_960x1280_raw10_30fps
+ * BGGR, RAW10, Mipi_data rate : 992Mbps/lane
+ *
  */
 #include "os04c10_regs.h"
 #include "os04c10_types.h"
 
-static const os04c10_reginfo_t os04c10_mipi_1lane_24Minput_810x1080_raw10_30fps[] = {
+static const os04c10_reginfo_t os04c10_mipi_1lane_24Minput_960x1280_raw10_30fps[] = {
     {0x0103, 0x01},
     {0x0301, 0x84},
     {0x0303, 0x01},
@@ -258,22 +258,22 @@ static const os04c10_reginfo_t os04c10_mipi_1lane_24Minput_810x1080_raw10_30fps[
     {0x4009, 0x0d},
 
     {0x3800, 0x03},
-    {0x3801, 0x20},//880
+    {0x3801, 0x20},//800
 
     {0x3802, 0x00},
-    {0x3803, 0xdc},//220
+    {0x3803, 0x78},//120
 
     {0x3804, 0x06},
-    {0x3805, 0xa9},//1705
+    {0x3805, 0xef},//1775
 
     {0x3806, 0x05},
-    {0x3807, 0x23},//1315
+    {0x3807, 0x87},//1415
 
     {0x3808, 0x03},
-    {0x3809, 0x2a},//810
+    {0x3809, 0xc0},//960
 
-    {0x380a, 0x04},
-    {0x380b, 0x38},//1080
+    {0x380a, 0x05},
+    {0x380b, 0x00},//1280
 
     {0x380c, 0x08},
     {0x380d, 0x5c},
