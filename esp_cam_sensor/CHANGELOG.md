@@ -3,6 +3,7 @@
 ## Unreleased
 
 - Disabled manual exposure control in the ov5647_mipi_2lane_24Minput_800x1280_raw8_50fps.h.
+- Added Mira220 MIPI driver.
 
 ## 2.0.1
 

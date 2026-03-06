@@ -1,0 +1,88 @@
+menuconfig CAMERA_MIRA220
+    bool "MIRA220"
+    default n
+    depends on SOC_MIPI_CSI_SUPPORTED
+    help
+        Enable support for the MIRA220 CMOS image sensor.
+
+if CAMERA_MIRA220
+    menu "Auto detect MIRA220"
+        config CAMERA_MIRA220_AUTO_DETECT_MIPI_INTERFACE_SENSOR
+            bool "Detect for MIPI CSI interface sensor"
+            default y
+            help
+                When enabled, the MIRA220 sensor will be automatically detected
+                and initialized on the MIPI CSI interface at startup without requiring
+                manual detection call(mira220_detect) in your application.
+    endmenu
+
+    menu "Choose supported formats for MIPI CSI interface"
+        config CAMERA_MIRA220_MIPI_RAW8_1024X600_15FPS
+            bool "MIPI 2-lane, 24M input, 1024x600  15fps, RAW8"
+            default y
+            help
+                RAW8 color format at 1024x600 resolution with 15fps framerate.
+                Requires MIPI CSI-2 2-lane interface with 24MHz input clock.
+    endmenu
+
+    choice CAMERA_MIRA220_MIPI_DEFAULT_FMT
+        prompt "Select default output format for MIPI CSI interface"
+        default CAMERA_MIRA220_MIPI_DEFAULT_FMT_RAW8_1024X600_15FPS
+        help
+            This option allows you to select the default video format for the MIRA220 sensor
+            when it is initialized on the MIPI CSI interface. The selected format will be used
+            when the sensor is detected and initialized, and can be changed later when the
+            sensor is in stream off state.
+
+        config CAMERA_MIRA220_MIPI_DEFAULT_FMT_RAW8_1024X600_15FPS
+            bool "MIPI 2-lane, 24M input, 1024x600  15fps, RAW8"
+            depends on CAMERA_MIRA220_MIPI_RAW8_1024X600_15FPS
+    endchoice # CAMERA_MIRA220_MIPI_DEFAULT_FMT
+
+    config CAMERA_MIRA220_MIPI_IF_FORMAT_INDEX_DEFAULT
+        int
+        default 0 if CAMERA_MIRA220_MIPI_DEFAULT_FMT_RAW8_1024X600_15FPS
+        help
+            Sets the default configuration for the MIPI CSI interface.
+            Use query_support_formats() API to get more format options.
+
+    choice CAMERA_MIRA220_IPA_JSON_CONFIGURATION_FILE
+        prompt "IPA Configuration File"
+        default CAMERA_MIRA220_DEFAULT_IPA_JSON_CONFIGURATION_FILE
+        help
+            Select the Image Processing Algorithm (IPA) JSON configuration file
+            for the MIRA220 sensor.
+
+        config CAMERA_MIRA220_DEFAULT_IPA_JSON_CONFIGURATION_FILE
+            bool "Use default configuration"
+            help
+                Use the built-in default IPA configuration file:
+                "esp_cam_sensor/sensors/mira220/cfg/mira220_default.json"
+
+                This configuration provides optimized settings for general use cases
+                and is recommended for most applications.
+
+        config CAMERA_MIRA220_CUSTOMIZED_IPA_JSON_CONFIGURATION_FILE
+            bool "Use custom configuration"
+            help
+                Use a custom IPA configuration file with your own optimized settings.
+
+                This option allows you to fine-tune sensor parameters for specific
+                lighting conditions, color requirements, or application needs.
+
+                You must specify the custom file path in the configuration below.
+    endchoice
+
+    config CAMERA_MIRA220_CUSTOMIZED_IPA_JSON_CONFIGURATION_FILE_PATH
+        string "Custom IPA configuration file path"
+        depends on CAMERA_MIRA220_CUSTOMIZED_IPA_JSON_CONFIGURATION_FILE
+        help
+            Specify the path to your custom MIRA220 IPA JSON configuration file.
+
+            The path is relative to your project root directory.
+
+            Example: "components/my_camera_config/mira220_custom.json"
+
+            Ensure the file exists and contains valid JSON configuration
+            parameters compatible with the MIRA220 sensor.
+endif
