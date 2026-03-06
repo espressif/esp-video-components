@@ -1,3 +1,7 @@
+## Unreleased
+
+- AGC supports the sensor without gain control
+
 ## 1.3.1
 
 - Fix ATC Json parameter compatibility
