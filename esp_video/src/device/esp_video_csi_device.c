@@ -20,8 +20,10 @@
 #include "esp_video_cam.h"
 #include "esp_video_ioctl.h"
 #include "esp_video_device_internal.h"
-#if CONFIG_ESP_VIDEO_ENABLE_SWAP_SHORT
+#if CONFIG_ESP_VIDEO_ENABLE_SWAP_SHORT && !ESP_VIDEO_CSI_DEVICE_SWAP_SHORT
 #include "esp_video_swap_short.h"
+
+#define ESP_VIDEO_CSI_DEVICE_SW_SWAP_SHORT 1 /* Software swap short */
 #endif
 
 #define CSI_NAME                    "MIPI-CSI"
@@ -56,7 +58,7 @@ struct csi_video {
     struct esp_video_buffer_element *element;
 #endif
 
-#if CONFIG_ESP_VIDEO_ENABLE_SWAP_SHORT
+#if ESP_VIDEO_CSI_DEVICE_SW_SWAP_SHORT
     esp_video_swap_short_t *swap_short;
 #endif
 
@@ -77,6 +79,14 @@ static bool csi_need_convert_format(cam_ctlr_color_t out_color)
     return out_color == CAM_CTLR_COLOR_YUV422_YVYU ||
            out_color == CAM_CTLR_COLOR_YUV422_YUYV ||
            out_color == CAM_CTLR_COLOR_YUV422_VYUY;
+}
+#endif
+
+#if ESP_VIDEO_CSI_DEVICE_SWAP_SHORT
+static bool sensor_format_is_yuv422(esp_cam_sensor_output_format_t format)
+{
+    return format == ESP_CAM_SENSOR_PIXFORMAT_YUV422_YUYV ||
+           format == ESP_CAM_SENSOR_PIXFORMAT_YUV422_UYVY;
 }
 #endif
 
@@ -432,7 +442,7 @@ static esp_err_t csi_video_start(struct esp_video *video, uint32_t type)
     esp_err_t ret;
     struct csi_video *csi_video = VIDEO_PRIV_DATA(struct csi_video *, video);
 
-#if CONFIG_ESP_VIDEO_ENABLE_SWAP_SHORT
+#if ESP_VIDEO_CSI_DEVICE_SW_SWAP_SHORT
     uint32_t data_seq;
 
     ret = esp_cam_sensor_get_para_value(csi_video->cam.sensor, ESP_CAM_SENSOR_DATA_SEQ, &data_seq, sizeof(data_seq));
@@ -459,6 +469,18 @@ static esp_err_t csi_video_start(struct esp_video *video, uint32_t type)
         .bk_buffer_dis = true,
 #endif
     };
+
+#if ESP_VIDEO_CSI_DEVICE_SWAP_SHORT
+    /**
+     * If the sensor output format is YUV422, enable 16-bit swap for input data
+     */
+    esp_cam_sensor_format_t sensor_format;
+
+    ESP_RETURN_ON_ERROR(esp_cam_sensor_get_format(csi_video->cam.sensor, &sensor_format), TAG, "failed to get sensor format");
+    if (sensor_format_is_yuv422(sensor_format.format)) {
+        csi_config.input_16bit_swap_en = true;
+    }
+#endif
 
 #if ESP_VIDEO_CSI_DEVICE_CONV_FORMAT
     if (csi_video->state.bypass_isp) {
@@ -527,7 +549,7 @@ exit_1:
     esp_cam_ctlr_del(csi_video->cam_ctrl_handle);
     csi_video->cam_ctrl_handle = NULL;
 exit_0:
-#if CONFIG_ESP_VIDEO_ENABLE_SWAP_SHORT
+#if ESP_VIDEO_CSI_DEVICE_SW_SWAP_SHORT
     if (csi_video->swap_short) {
         esp_video_swap_short_free(csi_video->swap_short);
         csi_video->swap_short = NULL;
@@ -552,7 +574,7 @@ static esp_err_t csi_video_stop(struct esp_video *video, uint32_t type)
     ESP_RETURN_ON_ERROR(esp_cam_ctlr_del(csi_video->cam_ctrl_handle), TAG, "failed to delete CAM ctlr");
     csi_video->cam_ctrl_handle = NULL;
 
-#if CONFIG_ESP_VIDEO_ENABLE_SWAP_SHORT
+#if ESP_VIDEO_CSI_DEVICE_SW_SWAP_SHORT
     if (csi_video->swap_short) {
         esp_video_swap_short_free(csi_video->swap_short);
         csi_video->swap_short = NULL;
@@ -682,7 +704,7 @@ static esp_err_t csi_video_notify(struct esp_video *video, enum esp_video_event 
 {
     esp_err_t ret = ESP_OK;
 
-#if CONFIG_ESP_VIDEO_ENABLE_SWAP_SHORT
+#if ESP_VIDEO_CSI_DEVICE_SW_SWAP_SHORT
     struct csi_video *csi_video = VIDEO_PRIV_DATA(struct csi_video *, video);
 
     if (event == ESP_VIDEO_DATA_PREPROCESSING && csi_video->swap_short) {
