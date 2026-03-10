@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2025 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2025-2026 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: ESPRESSIF MIT
  */
@@ -72,6 +72,18 @@ extern "C" {
  */
 #define EXAMPLE_SPI_CAM_0_XCLK_PIN                      15
 #endif /* CONFIG_EXAMPLE_ENABLE_SPI_CAM_0_SENSOR */
+
+/**
+ * @brief SD/MMC configuration
+ */
+#if CONFIG_EXAMPLE_SDMMC_BUS_WIDTH_4
+#error "4-line mode is not supported on ESP32-S3-EYE"
+#else /* CONFIG_EXAMPLE_SDMMC_BUS_WIDTH_4 */
+#define EXAMPLE_SDMMC_BUS_WIDTH_1                       1
+#define EXAMPLE_SDMMC_CMD_PIN                           38
+#define EXAMPLE_SDMMC_CLK_PIN                           39
+#define EXAMPLE_SDMMC_D0_PIN                            40
+#endif /* CONFIG_EXAMPLE_SDMMC_BUS_WIDTH_4 */
 
 #ifdef __cplusplus
 }

@@ -11,4 +11,15 @@ else()
 endif()
 
 include($ENV{IDF_PATH}/tools/cmake/project.cmake)
+
+# (Not part of the boilerplate)
+# This example uses extra components for the following -
+# 1. Check sd card pins info
+set(SD_CARD_COMPONENT_DIR "$ENV{IDF_PATH}/examples/storage/sd_card/sdmmc/components/sd_card")
+if (EXISTS "${SD_CARD_COMPONENT_DIR}")
+    list(APPEND EXTRA_COMPONENT_DIRS "${SD_CARD_COMPONENT_DIR}")
+else()
+    message(FATAL_ERROR "Could not find sd_card component at ${SD_CARD_COMPONENT_DIR}")
+endif()
+
 project(test_apps_posix)

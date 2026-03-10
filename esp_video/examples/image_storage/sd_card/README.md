@@ -1,5 +1,5 @@
-| Supported Targets | ESP32-P4 |
-| ----------------- | -------- |
+| Supported Targets | ESP32-P4 | ESP32-S3 |
+| ----------------- | -------- | -------- |
 
 # Image storage on the SD card example
 
@@ -27,7 +27,7 @@ __WARNING:__ This example can potentially delete all data from your SD card (whe
 
 ### Configure the Project
 
-Please refer to the example video initialization configuration [document](../common_components/example_video_common/README.md) for more details about the board-level configuration, including the camera sensor interface, GPIO pins, clock frequency, and so on.
+Please refer to the example video initialization configuration [document](../common_components/example_video_common/README.md) for more details about the board-level configuration, including the camera sensor interface, camera GPIO pins, clock frequency, SD/MMC card GPIO pins, and so on.
 
 Select and configure camera sensor based on development kit:
 
@@ -71,17 +71,7 @@ Example Configuration  --->
 
 ***Please note that the OV2640 doesn't support H.264 format, it only supports the JPEG format***.
 
-#### SD/MMC Configuration
-
-```
-Example Configuration  --->
-	Example SD/MMC Configuration --->
-        (44) CMD GPIO number
-        (43) CLK GPIO number
-        (39) D0 GPIO number
-```
-
-Note: For custom development boards, please update the `I2C pins` and `SD card pins` configuration in the `Example Configuration` menu.
+Note: For custom development boards, please update the `I2C pins` configuration in the `Example Configuration` menu. For `SD/MMC pins` and other configurations, please refer to the [document](../common_components/example_video_common/README.md).
 
 #### Enable ISP Pipeline
 

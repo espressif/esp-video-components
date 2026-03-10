@@ -175,9 +175,23 @@ extern "C" {
 #endif /* CONFIG_EXAMPLE_ENABLE_MIPI_CSI_CAM_SENSOR */
 
 /**
+ * @brief TinyUSB MSC storage configuration
+ *
+ * @note This is only used when the USB MSC storage is enabled and the TinyUSB MSC is enabled.
+ */
+#if !CONFIG_EXAMPLE_DISABLE_USB_MSC_STORAGE && CONFIG_TINYUSB_MSC_ENABLED
+#define EXAMPLE_TINYUSB_MSC_STORAGE                     1
+#endif /* !CONFIG_EXAMPLE_DISABLE_USB_MSC_STORAGE && CONFIG_TINYUSB_MSC_ENABLED */
+
+/**
  * @brief Example encoder handle
  */
 typedef void *example_encoder_handle_t;
+
+/**
+ * @brief Example storage handle
+ */
+typedef void *example_storage_handle_t;
 
 /**
  * @brief Example encoder configuration
@@ -265,6 +279,126 @@ esp_err_t example_encoder_set_jpeg_quality(example_encoder_handle_t handle, uint
  * @return ESP_OK on success or other value on failure
  */
 esp_err_t example_encoder_deinit(example_encoder_handle_t handle);
+
+/**
+ * @brief Initialize SPI flash and mount FATFS to it
+ *
+ * @param handle_ret Example storage handle pointer
+ *
+ * @return ESP_OK if success, otherwise error code
+ *
+ * @note: This function is not thread-safe.
+ */
+esp_err_t example_mount_fatfs_to_spiflash(example_storage_handle_t *handle_ret);
+
+/**
+ * @brief Unmount the SPI flash from FATFS and free the resources
+ *
+ * @param handle Example storage handle
+ *
+ * @return ESP_OK if success, otherwise error code
+ *
+ * @note: This function is not thread-safe.
+ */
+esp_err_t example_unmount_fatfs_in_spiflash(example_storage_handle_t handle);
+
+#if EXAMPLE_TINYUSB_MSC_STORAGE
+/**
+ * @brief Initialize MSC and mount to SPI flash
+ *
+ * @param handle_ret Example storage handle pointer
+ *
+ * @return ESP_OK if success, otherwise error code
+ *
+ * @note: This function is not thread-safe.
+ */
+esp_err_t example_mount_msc_to_spiflash(example_storage_handle_t *handle_ret);
+
+/**
+ * @brief Unmount MSC in SPI flash
+ *
+ * @param handle Example storage handle
+ *
+ * @return ESP_OK if success, otherwise error code
+ *
+ * @note: This function is not thread-safe.
+ */
+esp_err_t example_unmount_msc_from_spiflash(example_storage_handle_t handle);
+#endif /* EXAMPLE_TINYUSB_MSC_STORAGE */
+
+#if CONFIG_SOC_SDMMC_HOST_SUPPORTED
+/**
+ * @brief Initialize SD card and mount FATFS to SD card
+ *
+ * @param handle_ret Example storage handle pointer
+ *
+ * @return ESP_OK if success, otherwise error code
+ *
+ * @note: This function is not thread-safe.
+ */
+esp_err_t example_mount_fatfs_to_mmc(example_storage_handle_t *handle_ret);
+
+/**
+ * @brief Unmount FATFS in SD card and deinitialize SD card
+ *
+ * @param handle Example storage handle
+ *
+ * @return ESP_OK if success, otherwise error code
+ *
+ * @note: This function is not thread-safe.
+ */
+esp_err_t example_unmount_fatfs_in_mmc(example_storage_handle_t handle);
+
+#if EXAMPLE_TINYUSB_MSC_STORAGE
+/**
+ * @brief Initialize MSC and mount to SD card
+ *
+ * @param handle_ret Example storage handle pointer
+ *
+ * @return ESP_OK if success, otherwise error code
+ *
+ * @note: This function is not thread-safe.
+ */
+esp_err_t example_mount_msc_to_mmc(example_storage_handle_t *handle_ret);
+
+/**
+ * @brief Unmount MSC in SD card
+ *
+ * @param handle Example storage handle
+ *
+ * @return ESP_OK if success, otherwise error code
+ *
+ * @note: This function is not thread-safe.
+ */
+esp_err_t example_unmount_msc_from_mmc(example_storage_handle_t handle);
+#endif /* EXAMPLE_TINYUSB_MSC_STORAGE */
+#endif /* CONFIG_SOC_SDMMC_HOST_SUPPORTED */
+
+#if EXAMPLE_TINYUSB_MSC_STORAGE
+/**
+ * @brief Check if the MSC storage is in use by USB host
+ *
+ * @param handle Example storage handle
+ * @param is_in_use Pointer to store the result
+ *
+ * @return true if the MSC storage is in use by USB host, false otherwise
+ *
+ * @note: This function is not thread-safe.
+ */
+esp_err_t example_msc_storage_in_use_by_usb_host(example_storage_handle_t handle, bool *is_in_use);
+#endif /* EXAMPLE_TINYUSB_MSC_STORAGE */
+
+/**
+ * @brief Get the capacity of the storage
+ *
+ * @param handle Example storage handle
+ * @param capacity Pointer to store the capacity of the storage in bytes
+ *
+ * @return ESP_OK if success, otherwise error code
+ *
+ * @note: This function is not thread-safe.
+ */
+esp_err_t example_storage_get_capacity(example_storage_handle_t handle, uint64_t *capacity);
 
 #ifdef __cplusplus
 }

@@ -1,6 +1,18 @@
 ## Unreleased
 
 - ISP pipeline controller supports the sensor without gain control
+- Added storage support to the example_video_common component, providing the following features:
+    - Mounting and unmounting FATFS on SPI Flash
+    - Mounting and unmounting FATFS on SD/MMC cards
+    - Mounting and unmounting USB MSC on SPI Flash
+    - Mounting and unmounting USB MSC on SD/MMC cards
+
+  Note:
+  - USB MSC support requires `espressif/esp_tinyusb` version 2.1.x
+  - SD/MMC configuration has been moved from example-specific Kconfig to
+    `example_video_common` component for unified configuration
+  - Added `example_storage_handle_t` type for storage operations
+  - See `example_video_common/README.md` for usage details
 
 ## 2.0.1
 
