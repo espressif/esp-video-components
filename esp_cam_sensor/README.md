@@ -30,6 +30,7 @@ It is highly recommended that users use it in the [esp-video](https://github.com
 | Mira220 | 1600 x 1400    | MIPI      | 8/10/12-bit Raw MONO data | 1/2.7"     |
 | MT9D111 | 1600 x 1200    | DVP | RGB565<br/>YCbCr422<br/>8bit Raw RGB data | 1/3.2"     |
 | OS02N10 | 1920 x 1080    | MIPI | 8/10-bit Raw RGB data | 1/3.27"     |
+| OS04C10 | 2688 x 1520    | MIPI | 10/12-bit Raw RGB data | 1/3"     |
 | OV2640  | 1600 x 1200    | DVP | 8/10-bit Raw RGB data<br/>JPEG compression<br/>YUV/YCbCr422<br/>RGB565 | 1/4"     |
 | OV2710  | 1920 x 1080    | MIPI | Raw RGB data | 1/2.7"     |
 | OV3660  | 2048 x 1536    | DVP | 8/10-bit Raw RGB data<br/>JPEG compression<br/>YUV/YCbCr422<br/>RGB565 | 1/5"     |

@@ -82,6 +82,12 @@ if(CONFIG_CAMERA_OS02N10)
     list(APPEND priv_include_dirs "sensors/os02n10/private_include")
 endif()
 
+if(CONFIG_CAMERA_OS04C10)
+    list(APPEND srcs "sensors/os04c10/os04c10.c")
+    list(APPEND include_dirs "sensors/os04c10/include")
+    list(APPEND priv_include_dirs "sensors/os04c10/private_include")
+endif()
+
 if(CONFIG_CAMERA_SC101IOT)
     list(APPEND srcs "sensors/sc101iot/sc101iot.c")
     list(APPEND include_dirs "sensors/sc101iot/include")
@@ -203,6 +209,10 @@ endif()
 
 if(CONFIG_CAMERA_OS02N10_AUTO_DETECT_MIPI_INTERFACE_SENSOR)
     target_link_libraries(${COMPONENT_LIB} INTERFACE "-u os02n10_detect")
+endif()
+
+if(CONFIG_CAMERA_OS04C10_AUTO_DETECT_MIPI_INTERFACE_SENSOR)
+    target_link_libraries(${COMPONENT_LIB} INTERFACE "-u os04c10_detect")
 endif()
 
 if(CONFIG_CAMERA_SC101IOT_AUTO_DETECT_DVP_INTERFACE_SENSOR)

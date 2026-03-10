@@ -6,6 +6,7 @@
 - Added Mira220 MIPI driver.
 - add SP0A39 DVP & SPI camera driver.
 - Added detection for all sensors to the `test_apps\detect` test code.
+- Added OS04C10 MIPI camera sensor driver.
 
 ## 2.0.1
 
