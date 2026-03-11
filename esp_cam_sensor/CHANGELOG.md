@@ -14,6 +14,7 @@
   - Due to 16-bit swap functionality enabled on P4 V3 and later versions, the default YUV422 output order
   causes incorrect color representation. This fix adjusts the FORMAT_CTRL0 register to match the expected
   byte order, ensuring correct color display on P4 V3+. Earlier P4 versions (V1 and V2) are not affected.
+- Fixed the gain control not working in the OS02N10 driver.
 
 ## 2.0.1
 
