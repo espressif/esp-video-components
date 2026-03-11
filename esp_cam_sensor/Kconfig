@@ -24,6 +24,7 @@ menu "Espressif Camera Sensors Configurations"
             rsource "sensors/sc202cs/Kconfig.sc202cs"
             rsource "sensors/sc2336/Kconfig.sc2336"
             rsource "sensors/sp0a39/Kconfig.sp0a39"
+            rsource "sensors/sti2250/Kconfig.sti2250"
         endmenu
 
         config CAMERA_SENSOR_XCLK_INPUT_24M

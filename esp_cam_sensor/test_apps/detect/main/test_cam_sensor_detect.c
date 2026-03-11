@@ -83,6 +83,9 @@
 #elif CONFIG_CAMERA_SP0A39
 #include "sp0a39.h"
 #define SCCB0_CAM_DEVICE_ADDR SP0A39_SCCB_ADDR
+#elif CONFIG_CAMERA_STI2250
+#include "sti2250.h"
+#define SCCB0_CAM_DEVICE_ADDR STI2250_SCCB_ADDR
 #else
 #define SCCB0_CAM_DEVICE_ADDR 0x01
 #endif
@@ -147,118 +150,57 @@ TEST_CASE("Camera sensor detect test", "[video]")
         .pwdn_pin = -1,
         .xclk_pin = -1,
     };
-
+    esp_cam_sensor_device_t *cam0 = NULL;
 #if CONFIG_CAMERA_BF20A6
-    esp_cam_sensor_device_t *cam0 = bf20a6_detect(&cam0_config);
-    TEST_ASSERT_MESSAGE(cam0 != NULL, "detect fail");
-
-    TEST_ESP_OK(esp_cam_sensor_del_dev(cam0));
+    cam0 = bf20a6_detect(&cam0_config);
 #elif CONFIG_CAMERA_BF3901
-    esp_cam_sensor_device_t *cam0 = bf3901_detect(&cam0_config);
-    TEST_ASSERT_MESSAGE(cam0 != NULL, "detect fail");
-
-    TEST_ESP_OK(esp_cam_sensor_del_dev(cam0));
+    cam0 = bf3901_detect(&cam0_config);
 #elif CONFIG_CAMERA_BF3925
-    esp_cam_sensor_device_t *cam0 = bf3925_detect(&cam0_config);
-    TEST_ASSERT_MESSAGE(cam0 != NULL, "detect fail");
-
-    TEST_ESP_OK(esp_cam_sensor_del_dev(cam0));
+    cam0 = bf3925_detect(&cam0_config);
 #elif CONFIG_CAMERA_BF3A03
-    esp_cam_sensor_device_t *cam0 = bf3a03_detect(&cam0_config);
-    TEST_ASSERT_MESSAGE(cam0 != NULL, "detect fail");
-
-    TEST_ESP_OK(esp_cam_sensor_del_dev(cam0));
+    cam0 = bf3a03_detect(&cam0_config);
 #elif CONFIG_CAMERA_GC0308
-    esp_cam_sensor_device_t *cam0 = gc0308_detect(&cam0_config);
-    TEST_ASSERT_MESSAGE(cam0 != NULL, "detect fail");
-
-    TEST_ESP_OK(esp_cam_sensor_del_dev(cam0));
+    cam0 = gc0308_detect(&cam0_config);
 #elif CONFIG_CAMERA_GC2145
-    esp_cam_sensor_device_t *cam0 = gc2145_detect(&cam0_config);
-    TEST_ASSERT_MESSAGE(cam0 != NULL, "detect fail");
-
-    TEST_ESP_OK(esp_cam_sensor_del_dev(cam0));
+    cam0 = gc2145_detect(&cam0_config);
 #elif CONFIG_CAMERA_MIRA220
-    esp_cam_sensor_device_t *cam0 = mira220_detect(&cam0_config);
-    TEST_ASSERT_MESSAGE(cam0 != NULL, "detect fail");
-
-    TEST_ESP_OK(esp_cam_sensor_del_dev(cam0));
+    cam0 = mira220_detect(&cam0_config);
 #elif CONFIG_CAMERA_MT9D111
-    esp_cam_sensor_device_t *cam0 = mt9d111_detect(&cam0_config);
-    TEST_ASSERT_MESSAGE(cam0 != NULL, "detect fail");
-
-    TEST_ESP_OK(esp_cam_sensor_del_dev(cam0));
+    cam0 = mt9d111_detect(&cam0_config);
 #elif CONFIG_CAMERA_OS02N10
-    esp_cam_sensor_device_t *cam0 = os02n10_detect(&cam0_config);
-    TEST_ASSERT_MESSAGE(cam0 != NULL, "detect fail");
-
-    TEST_ESP_OK(esp_cam_sensor_del_dev(cam0));
+    cam0 = os02n10_detect(&cam0_config);
 #elif CONFIG_CAMERA_OV2640
-    esp_cam_sensor_device_t *cam0 = ov2640_detect(&cam0_config);
-    TEST_ASSERT_MESSAGE(cam0 != NULL, "detect fail");
-
-    TEST_ESP_OK(esp_cam_sensor_del_dev(cam0));
+    cam0 = ov2640_detect(&cam0_config);
 #elif CONFIG_CAMERA_OV2710
-    esp_cam_sensor_device_t *cam0 = ov2710_detect(&cam0_config);
-    TEST_ASSERT_MESSAGE(cam0 != NULL, "detect fail");
-
-    TEST_ESP_OK(esp_cam_sensor_del_dev(cam0));
+    cam0 = ov2710_detect(&cam0_config);
 #elif CONFIG_CAMERA_OV3660
-    esp_cam_sensor_device_t *cam0 = ov3660_detect(&cam0_config);
-    TEST_ASSERT_MESSAGE(cam0 != NULL, "detect fail");
-
-    TEST_ESP_OK(esp_cam_sensor_del_dev(cam0));
+    cam0 = ov3660_detect(&cam0_config);
 #elif CONFIG_CAMERA_OV5640
-    esp_cam_sensor_device_t *cam0 = ov5640_detect(&cam0_config);
-    TEST_ASSERT_MESSAGE(cam0 != NULL, "detect fail");
-
-    TEST_ESP_OK(esp_cam_sensor_del_dev(cam0));
+    cam0 = ov5640_detect(&cam0_config);
 #elif CONFIG_CAMERA_OV5645
-    esp_cam_sensor_device_t *cam0 = ov5645_detect(&cam0_config);
-    TEST_ASSERT_MESSAGE(cam0 != NULL, "detect fail");
-
-    TEST_ESP_OK(esp_cam_sensor_del_dev(cam0));
+    cam0 = ov5645_detect(&cam0_config);
 #elif CONFIG_CAMERA_OV5647
-    esp_cam_sensor_device_t *cam0 = ov5647_detect(&cam0_config);
-    TEST_ASSERT_MESSAGE(cam0 != NULL, "detect fail");
-
-    TEST_ESP_OK(esp_cam_sensor_del_dev(cam0));
+    cam0 = ov5647_detect(&cam0_config);
 #elif CONFIG_CAMERA_OV9281
-    esp_cam_sensor_device_t *cam0 = ov9281_detect(&cam0_config);
-    TEST_ASSERT_MESSAGE(cam0 != NULL, "detect fail");
-
-    TEST_ESP_OK(esp_cam_sensor_del_dev(cam0));
+    cam0 = ov9281_detect(&cam0_config);
 #elif CONFIG_CAMERA_SC030IOT
-    esp_cam_sensor_device_t *cam0 = sc030iot_detect(&cam0_config);
-    TEST_ASSERT_MESSAGE(cam0 != NULL, "detect fail");
-
-    TEST_ESP_OK(esp_cam_sensor_del_dev(cam0));
+    cam0 = sc030iot_detect(&cam0_config);
 #elif CONFIG_CAMERA_SC035HGS
-    esp_cam_sensor_device_t *cam0 = sc035hgs_detect(&cam0_config);
-    TEST_ASSERT_MESSAGE(cam0 != NULL, "detect fail");
-
-    TEST_ESP_OK(esp_cam_sensor_del_dev(cam0));
+    cam0 = sc035hgs_detect(&cam0_config);
 #elif CONFIG_CAMERA_SC101IOT
-    esp_cam_sensor_device_t *cam0 = sc101iot_detect(&cam0_config);
-    TEST_ASSERT_MESSAGE(cam0 != NULL, "detect fail");
-
-    TEST_ESP_OK(esp_cam_sensor_del_dev(cam0));
+    cam0 = sc101iot_detect(&cam0_config);
 #elif CONFIG_CAMERA_SC202CS
-    esp_cam_sensor_device_t *cam0 = sc202cs_detect(&cam0_config);
-    TEST_ASSERT_MESSAGE(cam0 != NULL, "detect fail");
-
-    TEST_ESP_OK(esp_cam_sensor_del_dev(cam0));
+    cam0 = sc202cs_detect(&cam0_config);
 #elif CONFIG_CAMERA_SC2336
-    esp_cam_sensor_device_t *cam0 = sc2336_detect(&cam0_config);
-    TEST_ASSERT_MESSAGE(cam0 != NULL, "detect fail");
-
-    TEST_ESP_OK(esp_cam_sensor_del_dev(cam0));
+    cam0 = sc2336_detect(&cam0_config);
 #elif CONFIG_CAMERA_SP0A39
-    esp_cam_sensor_device_t *cam0 = sp0a39_detect(&cam0_config);
-    TEST_ASSERT_MESSAGE(cam0 != NULL, "detect fail");
-
-    TEST_ESP_OK(esp_cam_sensor_del_dev(cam0));
+    cam0 = sp0a39_detect(&cam0_config);
+#elif CONFIG_CAMERA_STI2250
+    cam0 = sti2250_detect(&cam0_config);
 #endif
+
+    TEST_ASSERT_MESSAGE(cam0 != NULL, "detect fail");
+    TEST_ESP_OK(esp_cam_sensor_del_dev(cam0));
     TEST_ESP_OK(esp_sccb_del_i2c_io(sccb_io));
 
     TEST_ESP_OK(i2c_del_master_bus(bus_handle));
