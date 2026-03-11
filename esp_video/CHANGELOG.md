@@ -1,6 +1,8 @@
 ## Unreleased
 
 - ISP pipeline controller supports the sensor without gain control
+- Refactor `esp_video_init` and `esp_video_deinit` functions
+- Added `esp_video_init_with_flags` and `esp_video_deinit_with_flags` functions
 - Added storage support to the example_video_common component, providing the following features:
     - Mounting and unmounting FATFS on SPI Flash
     - Mounting and unmounting FATFS on SD/MMC cards

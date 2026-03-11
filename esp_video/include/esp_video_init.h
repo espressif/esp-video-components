@@ -25,6 +25,30 @@
 extern "C" {
 #endif
 
+/**
+ * @brief Video device initialization flags
+ *
+ * @note These flags are used to initialize the video hardware and software with specific flags.
+ *       They can be combined using bitwise OR operation.
+ *       For example, to initialize MIPI CSI and DVP video devices, you can use:
+ *       ```c
+ *       esp_video_init_with_flags(config, ESP_VIDEO_INIT_FLAGS_MIPI_CSI | ESP_VIDEO_INIT_FLAGS_DVP);
+ *       ```
+ *       To initialize all video devices, you can use:
+ *       ```c
+ *       esp_video_init_with_flags(config, ESP_VIDEO_INIT_FLAGS_ALL);
+ *       ```
+ */
+#define ESP_VIDEO_INIT_FLAGS_MIPI_CSI       (1 << 0)
+#define ESP_VIDEO_INIT_FLAGS_DVP            (1 << 1)
+#define ESP_VIDEO_INIT_FLAGS_SPI            (1 << 2)
+#define ESP_VIDEO_INIT_FLAGS_ISP            (1 << 3)
+#define ESP_VIDEO_INIT_FLAGS_USB_UVC        (1 << 4)
+#define ESP_VIDEO_INIT_FLAGS_H264           (1 << 5)
+#define ESP_VIDEO_INIT_FLAGS_JPEG           (1 << 6)
+#define ESP_VIDEO_INIT_FLAGS_MOTOR          (1 << 7)
+#define ESP_VIDEO_INIT_FLAGS_ALL            (ESP_VIDEO_INIT_FLAGS_MIPI_CSI | ESP_VIDEO_INIT_FLAGS_DVP | ESP_VIDEO_INIT_FLAGS_SPI | ESP_VIDEO_INIT_FLAGS_ISP | ESP_VIDEO_INIT_FLAGS_USB_UVC | ESP_VIDEO_INIT_FLAGS_H264 | ESP_VIDEO_INIT_FLAGS_JPEG | ESP_VIDEO_INIT_FLAGS_MOTOR)
+
 #if CONFIG_ESP_VIDEO_ENABLE_MIPI_CSI_VIDEO_DEVICE || \
     CONFIG_ESP_VIDEO_ENABLE_DVP_VIDEO_DEVICE || \
     CONFIG_ESP_VIDEO_ENABLE_SPI_VIDEO_DEVICE
@@ -196,6 +220,32 @@ typedef struct esp_video_init_config {
 #endif
 } esp_video_init_config_t;
 
+
+/**
+ * @brief Initialize video hardware and software, including I2C, MIPI CSI and so on with flags.
+ *
+ * @param config video hardware configuration
+ * @param flags video device flags, which can be a combination of ESP_VIDEO_INIT_FLAGS_XXX
+ *
+ * @return
+ *      - ESP_OK on success
+ *      - Others if failed
+ */
+esp_err_t esp_video_init_with_flags(const esp_video_init_config_t *config, uint32_t flags);
+
+/**
+ * @brief Deinitialize video hardware and software, including I2C, MIPI CSI and so on with flags.
+ *
+ * @param flags video device flags, which can be a combination of ESP_VIDEO_INIT_FLAGS_XXX
+ *
+ * @return
+ *      - ESP_OK on success
+ *      - Others if failed
+ *
+ * @note This function will deinitialize the video hardware and software in the order of JPEG, H.264, MIPI CSI, DVP, SPI, USB UVC, ISP.
+ */
+esp_err_t esp_video_deinit_with_flags(uint32_t flags);
+
 /**
  * @brief Initialize video hardware and software, including I2C, MIPI CSI and so on.
  *
@@ -204,17 +254,21 @@ typedef struct esp_video_init_config {
  * @return
  *      - ESP_OK on success
  *      - Others if failed
+ *
+ * @note This function will initialize the video hardware and software with all flags.
+ *       It is equivalent to calling esp_video_init_with_flags(config, ESP_VIDEO_INIT_FLAGS_ALL).
  */
 esp_err_t esp_video_init(const esp_video_init_config_t *config);
 
 /**
  * @brief Deinitialize video hardware and software, including I2C, MIPI CSI and so on.
  *
- * @param None
- *
  * @return
  *      - ESP_OK on success
  *      - Others if failed
+ *
+ * @note This function will deinitialize the video hardware and software with all flags.
+ *       It is equivalent to calling esp_video_deinit_with_flags(ESP_VIDEO_INIT_FLAGS_ALL).
  */
 esp_err_t esp_video_deinit(void);
 
