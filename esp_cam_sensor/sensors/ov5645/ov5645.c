@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2024-2025 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2024-2026 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -10,6 +10,7 @@
 #include "driver/gpio.h"
 #include "esp_err.h"
 #include "esp_log.h"
+#include "esp_chip_info.h"
 
 #include "esp_cam_sensor.h"
 #include "esp_cam_sensor_detect.h"
@@ -382,6 +383,19 @@ static esp_err_t ov5645_set_format(esp_cam_sensor_device_t *dev, const esp_cam_s
 
     ret = ov5645_write_array(dev->sccb_handle, (const ov5645_reginfo_t *)format->regs);
     ESP_RETURN_ON_FALSE(ret == ESP_OK, ESP_CAM_SENSOR_ERR_FAILED_SET_FORMAT, TAG, "write format regs failed");
+
+#if CONFIG_IDF_TARGET_ESP32P4
+    if (format->format == ESP_CAM_SENSOR_PIXFORMAT_YUV422_UYVY) {
+        esp_chip_info_t chip_info;
+        esp_chip_info(&chip_info);
+        unsigned major_rev = chip_info.revision / 100;
+        if (major_rev >= 3) {
+            ret = ov5645_write(dev->sccb_handle, FORMAT_CTRL0, OV5645_FORMAT_CTRL0_YUV422_UYVY_SWAP); // YUV Order
+            ESP_RETURN_ON_FALSE(ret == ESP_OK, ESP_CAM_SENSOR_ERR_FAILED_SET_FORMAT, TAG, "write yuv regs failed for P4 V3+");
+            ESP_LOGI(TAG, "silicon revision v%d, fix YUV order for the correct colors", major_rev);
+        }
+    }
+#endif
 
     dev->cur_format = format;
 

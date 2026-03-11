@@ -2,11 +2,17 @@
 
 ## Unreleased
 
-- Disabled manual exposure control in the ov5647_mipi_2lane_24Minput_800x1280_raw8_50fps.h.
 - Added Mira220 MIPI driver.
-- add SP0A39 DVP & SPI camera driver.
-- Added detection for all sensors to the `test_apps\detect` test code.
+- Added SP0A39 DVP & SPI camera driver.
 - Added OS04C10 MIPI camera sensor driver.
+- Added detection for all sensors to the `test_apps\detect` test code.
+
+- Disabled manual exposure control in the ov5647_mipi_2lane_24Minput_800x1280_raw8_50fps.h.
+
+- Fixed OV5645 YUV422 format output sequence for ESP32-P4 V3.0+.
+  - Due to 16-bit swap functionality enabled on P4 V3 and later versions, the default YUV422 output order
+  causes incorrect color representation. This fix adjusts the FORMAT_CTRL0 register to match the expected
+  byte order, ensuring correct color display on P4 V3+. Earlier P4 versions (V1 and V2) are not affected.
 
 ## 2.0.1
 
