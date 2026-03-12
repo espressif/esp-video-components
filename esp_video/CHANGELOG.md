@@ -20,6 +20,8 @@
   - Added `example_storage_handle_t` type for storage operations
   - See `example_video_common/README.md` for usage details
 
+- Fix an issue where the video buffer size was not aligned with the cache size
+
 ## 2.0.1
 
 - Improve ISP driver compatibility with the new peripheral drivers introduced in ESP-IDF v6.0 and later
