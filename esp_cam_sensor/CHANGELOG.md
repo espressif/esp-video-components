@@ -7,6 +7,7 @@
 - Added OS04C10 MIPI camera sensor driver.
 - Added STI2250 MIPI driver.
 - Added detection for all sensors to the `test_apps\detect` test code.
+- Added IPA configuration parameters for the OS02N10 RAW8 1080p format. 
 
 - Disabled manual exposure control in the ov5647_mipi_2lane_24Minput_800x1280_raw8_50fps.h.
 
