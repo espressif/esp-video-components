@@ -3,6 +3,10 @@
 - ISP pipeline controller supports the sensor without gain control
 - Refactor `esp_video_init` and `esp_video_deinit` functions
 - Added `esp_video_init_with_flags` and `esp_video_deinit_with_flags` functions
+- The MIPI-CSI video device supports hardware swapping of short-type data in the YUV422 format
+    - Supported only on esp-idf v6.1.0 and later
+    - Supported only on ESP32-P4 ECO5 and later
+    - This feature automatically replaces the `ESP_VIDEO_ENABLE_SWAP_SHORT` software swapping functionality
 - Added storage support to the example_video_common component, providing the following features:
     - Mounting and unmounting FATFS on SPI Flash
     - Mounting and unmounting FATFS on SD/MMC cards

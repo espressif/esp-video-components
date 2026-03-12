@@ -64,6 +64,14 @@ extern "C" {
 #define ESP_VIDEO_JPEG_DEVICE_YUV420    1   /*!< JPEG video device supports YUV420 format */
 #define ESP_VIDEO_JPEG_DEVICE_YUV444    1   /*!< JPEG video device supports YUV444 format */
 #endif /* CONFIG_SOC_JPEG_CODEC_SUPPORTED */
+
+/**
+ * @brief Enable short type data swapping for YUV422 format if ESP-IDF version is greater than or equal to v6.1.0
+ */
+#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(6, 1, 0)
+#define ESP_VIDEO_CSI_DEVICE_SWAP_SHORT 1  /*!< CSI video device supports short type data swapping for YUV422 format */
+#endif /* ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(6, 1, 0) */
+
 #endif /* CONFIG_ESP32P4_REV_MIN_FULL >= 300 */
 #endif /* CONFIG_IDF_TARGET_ESP32P4 */
 
