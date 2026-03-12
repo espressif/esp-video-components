@@ -299,6 +299,10 @@ typedef struct _cam_sensor_spi_frame_info_t {
     uint8_t line_header_size;             /*!< Length of the data in the line header(sync code + line info) */
 
     uint8_t drop_frame_count;             /*!< Drop frame count after start SPI sensor */
+
+    uint32_t high_level_active : 1;       /*!< CS/VSYNC high level active */
+    uint32_t data_order_lsb_first : 1;    /*!< Data order LSB first */
+    uint32_t reserved_bits : 30;          /*!< Reserved */
 } esp_cam_sensor_spi_frame_info;
 
 /**

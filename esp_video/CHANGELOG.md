@@ -7,6 +7,7 @@
     - Supported only on esp-idf v6.1.0 and later
     - Supported only on ESP32-P4 ECO5 and later
     - This feature automatically replaces the `ESP_VIDEO_ENABLE_SWAP_SHORT` software swapping functionality
+- Added support for 4-bit data mode in SPI video devices
 - Added storage support to the example_video_common component, providing the following features:
     - Mounting and unmounting FATFS on SPI Flash
     - Mounting and unmounting FATFS on SD/MMC cards

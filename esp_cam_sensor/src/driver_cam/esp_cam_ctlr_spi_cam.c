@@ -380,6 +380,7 @@ static esp_err_t spi_cam_init_intf_parlio(esp_cam_ctlr_spi_cam_t *ctlr, const es
 {
     esp_err_t ret;
     int data_width = 1;
+    const esp_cam_sensor_spi_frame_info *frame_info = config->frame_info;
     uint64_t pin_bit_mask = 1ULL << config->spi_sclk_pin |
                             1ULL << config->spi_cs_pin |
                             1ULL << config->spi_data0_io_pin;
@@ -388,6 +389,10 @@ static esp_err_t spi_cam_init_intf_parlio(esp_cam_ctlr_spi_cam_t *ctlr, const es
         ESP_RETURN_ON_FALSE(config->spi_data1_io_pin >= 0, ESP_ERR_INVALID_ARG, TAG, "spi_data1_io_pin is invalid for 2-bit mode");
         pin_bit_mask |= 1ULL << config->spi_data1_io_pin;
         data_width = 2;
+    } else if (config->io_mode == ESP_CAM_CTLR_SPI_CAM_IO_MODE_4BIT) {
+        ESP_RETURN_ON_FALSE((config->spi_data1_io_pin >= 0) && (config->spi_data2_io_pin >= 0) && (config->spi_data3_io_pin >= 0), ESP_ERR_INVALID_ARG, TAG, "spi_data1_io_pin, spi_data2_io_pin or spi_data3_io_pin is invalid for 4-bit mode");
+        pin_bit_mask |= 1ULL << config->spi_data1_io_pin | 1ULL << config->spi_data2_io_pin | 1ULL << config->spi_data3_io_pin;
+        data_width = 4;
     } else if (config->io_mode != ESP_CAM_CTLR_SPI_CAM_IO_MODE_1BIT) {
         ESP_RETURN_ON_FALSE(false, ESP_ERR_INVALID_ARG, TAG, "Invalid io_mode for PARLIO interface");
     }
@@ -403,10 +408,10 @@ static esp_err_t spi_cam_init_intf_parlio(esp_cam_ctlr_spi_cam_t *ctlr, const es
 
     ret = gpio_install_isr_service(0);
     ESP_RETURN_ON_FALSE(ret == ESP_OK || ret == ESP_ERR_INVALID_STATE, ESP_FAIL, TAG, "failed to install the parlio valid GPIO ISR service");
-    ESP_RETURN_ON_ERROR(gpio_set_intr_type(config->spi_cs_pin, GPIO_INTR_POSEDGE), TAG, "Failed to set the parlio valid GPIO ISR type");
+    ESP_RETURN_ON_ERROR(gpio_set_intr_type(config->spi_cs_pin, frame_info->high_level_active ? GPIO_INTR_NEGEDGE : GPIO_INTR_POSEDGE), TAG, "Failed to set the parlio valid GPIO ISR type");
     ESP_RETURN_ON_ERROR(gpio_isr_handler_add(config->spi_cs_pin, parlio_valid_gpio_isr_handler, ctlr), TAG, "Failed to add the parlio valid GPIO ISR handler");
 
-    ctlr->parlio.frame_size = config->frame_info->frame_size;
+    ctlr->parlio.frame_size = frame_info->frame_size;
 
     parlio_rx_unit_config_t parlio_rx_unit_cfg = {
         .trans_queue_depth = 1,
@@ -421,6 +426,8 @@ static esp_err_t spi_cam_init_intf_parlio(esp_cam_ctlr_spi_cam_t *ctlr, const es
         .data_gpio_nums = {
             config->spi_data0_io_pin,
             config->spi_data1_io_pin,
+            config->spi_data2_io_pin,
+            config->spi_data3_io_pin,
         },
     };
 
@@ -434,11 +441,11 @@ static esp_err_t spi_cam_init_intf_parlio(esp_cam_ctlr_spi_cam_t *ctlr, const es
     parlio_rx_level_delimiter_config_t parlio_delimiter_cfg = {
         .valid_sig_line_id = PARLIO_RX_UNIT_MAX_DATA_WIDTH - 1,
         .sample_edge = PARLIO_SAMPLE_EDGE_POS,
-        .bit_pack_order = PARLIO_BIT_PACK_ORDER_MSB,
+        .bit_pack_order = frame_info->data_order_lsb_first ? PARLIO_BIT_PACK_ORDER_LSB : PARLIO_BIT_PACK_ORDER_MSB,
         .eof_data_len = 0,
         .timeout_ticks = 0,
         .flags = {
-            .active_low_en = 1,
+            .active_low_en = frame_info->high_level_active ? 0 : 1,
         }
     };
     ESP_GOTO_ON_ERROR(parlio_new_rx_level_delimiter(&parlio_delimiter_cfg, &ctlr->parlio.rx_delimiter), fail1, TAG, "Failed to set the parlio delimiter");

@@ -126,6 +126,8 @@ typedef struct esp_video_init_spi_config {
     gpio_num_t spi_sclk_pin;                    /*!< SPI SCLK pin */
     gpio_num_t spi_data0_io_pin;                /*!< SPI data0 I/O pin */
     gpio_num_t spi_data1_io_pin;                /*!< SPI data1 I/O pin (only required when io_mode is ESP_CAM_CTLR_SPI_CAM_IO_MODE_2BIT, set to -1 if not used) */
+    gpio_num_t spi_data2_io_pin;                /*!< SPI data2 I/O pin (only required when io_mode is ESP_CAM_CTLR_SPI_CAM_IO_MODE_4BIT, set to -1 if not used) */
+    gpio_num_t spi_data3_io_pin;                /*!< SPI data3 I/O pin (only required when io_mode is ESP_CAM_CTLR_SPI_CAM_IO_MODE_4BIT, set to -1 if not used) */
 
     gpio_num_t  reset_pin;                      /*!< SPI interface camera sensor reset pin, if hardware has no reset pin, set reset_pin to be -1 */
     gpio_num_t  pwdn_pin;                       /*!< SPI interface camera sensor power down pin, if hardware has no power down pin, set pwdn_pin to be -1 */

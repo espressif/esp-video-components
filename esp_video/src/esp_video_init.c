@@ -377,6 +377,8 @@ static esp_err_t create_spi_video_device(esp_cam_sensor_device_t *cam, void *pri
         .spi_sclk_pin = spi_init_config->spi_sclk_pin,
         .spi_data0_io_pin = spi_init_config->spi_data0_io_pin,
         .spi_data1_io_pin = spi_init_config->spi_data1_io_pin,
+        .spi_data2_io_pin = spi_init_config->spi_data2_io_pin,
+        .spi_data3_io_pin = spi_init_config->spi_data3_io_pin,
     };
 
     return esp_video_create_spi_video_device(cam, &spi_dev_config, spi_config->index);
