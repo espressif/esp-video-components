@@ -42,6 +42,7 @@ It is highly recommended that users use it in the [esp-video](https://github.com
 | OV5645  | 2592 x 1944    | MIPI      | 8/10-bit Raw RGB data<br/>RGB565<br/>YUV/YCbCr422<br/>YUV420 | 1/4"     |
 | OV5647  | 2592 x 1944    | MIPI & DVP      | 8/10-bit Raw RGB data | 1/4"     |
 | OV9281  | 1280 x 720    | MIPI      | 8-bit Raw MONO data | 1/4"     |
+| PIVARIETY| 1920x1080     | MIPI     |Special module, parameters must be read from Arducam Pivariety Camera| custom|
 | SC030IOT  | 640 x 480    | DVP | YCbCr422<br/>8bit Raw RGB data | 1/6.5"     |
 | SC035HGS  | 640 x 480    | MIPI & DVP | Raw MONO<br/>Raw RGB data | 1/6"     |
 | SC101IOT  | 1280 x 720    | DVP | YCbCr422<br/>8/10-bit Raw RGB data | 1/4.2"     |
