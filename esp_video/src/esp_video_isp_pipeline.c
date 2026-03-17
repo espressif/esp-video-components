@@ -336,21 +336,39 @@ static void config_sharpen(esp_video_isp_t *isp, esp_ipa_metadata_t *metadata)
 
 static void config_gamma(esp_video_isp_t *isp, esp_ipa_metadata_t *metadata)
 {
-    struct v4l2_ext_controls controls;
-    struct v4l2_ext_control control[1];
-    esp_video_isp_gamma_t gamma;
-
     if (metadata->flags & IPA_METADATA_FLAGS_GAMMA) {
+        struct v4l2_ext_controls controls;
+        struct v4l2_ext_control control[1];
+        esp_video_isp_gamma_ext_t gamma = {0};
+        esp_ipa_gamma_t *ipa_gamma = &metadata->gamma;
+
         gamma.enable = true;
-        for (int i = 0; i < ISP_GAMMA_CURVE_POINTS_NUM; i++) {
-            gamma.points[i].x = metadata->gamma.x[i];
-            gamma.points[i].y = metadata->gamma.y[i];
+        if (ipa_gamma->flags & IPA_GAMMA_FLAGS_RED) {
+            for (int i = 0; i < ISP_GAMMA_CURVE_POINTS_NUM; i++) {
+                gamma.red_points[i].x = ipa_gamma->red.x[i];
+                gamma.red_points[i].y = ipa_gamma->red.y[i];
+            }
+            gamma.flags |= ESP_VIDEO_ISP_GAMMA_EXT_FLAG_RED;
+        }
+        if (ipa_gamma->flags & IPA_GAMMA_FLAGS_GREEN) {
+            for (int i = 0; i < ISP_GAMMA_CURVE_POINTS_NUM; i++) {
+                gamma.green_points[i].x = ipa_gamma->green.x[i];
+                gamma.green_points[i].y = ipa_gamma->green.y[i];
+            }
+            gamma.flags |= ESP_VIDEO_ISP_GAMMA_EXT_FLAG_GREEN;
+        }
+        if (ipa_gamma->flags & IPA_GAMMA_FLAGS_BLUE) {
+            for (int i = 0; i < ISP_GAMMA_CURVE_POINTS_NUM; i++) {
+                gamma.blue_points[i].x = ipa_gamma->blue.x[i];
+                gamma.blue_points[i].y = ipa_gamma->blue.y[i];
+            }
+            gamma.flags |= ESP_VIDEO_ISP_GAMMA_EXT_FLAG_BLUE;
         }
 
         controls.ctrl_class = V4L2_CID_USER_CLASS;
         controls.count      = 1;
         controls.controls   = control;
-        control[0].id       = V4L2_CID_USER_ESP_ISP_GAMMA;
+        control[0].id       = V4L2_CID_USER_ESP_ISP_GAMMA_EXT;
         control[0].p_u8     = (uint8_t *)&gamma;
         if (ioctl(isp->isp_fd, VIDIOC_S_EXT_CTRLS, &controls) != 0) {
             ESP_LOGE(TAG, "failed to set GAMMA");

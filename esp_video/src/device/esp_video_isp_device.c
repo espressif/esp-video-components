@@ -134,7 +134,7 @@ struct isp_video {
 
     /* GAMMA Configuration */
 
-    esp_video_isp_gamma_point_t gamma_points[ISP_GAMMA_CURVE_POINTS_NUM];
+    esp_video_isp_gamma_ext_t gamma;
 
     /* Demosaic Configuration */
 
@@ -170,7 +170,6 @@ struct isp_video {
     uint8_t bf_enable               : 1;
     uint8_t ccm_enable              : 1;
     uint8_t sharpen_enable          : 1;
-    uint8_t gamma_enable            : 1;
     uint8_t demosaic_enable         : 1;
 
 #if ESP_VIDEO_ISP_DEVICE_LSC
@@ -291,6 +290,17 @@ static const struct v4l2_query_ext_ctrl s_isp_qctrl[] = {
         .nr_of_dims = 1,
         .default_value = 0,
         .name = "gamma",
+    },
+    {
+        .id = V4L2_CID_USER_ESP_ISP_GAMMA_EXT,
+        .type = V4L2_CTRL_TYPE_U8,
+        .maximum = UINT8_MAX,
+        .minimum = 0,
+        .step = 1,
+        .elems = sizeof(esp_video_isp_gamma_ext_t),
+        .nr_of_dims = 1,
+        .default_value = 0,
+        .name = "gamma_ext",
     },
     {
         .id = V4L2_CID_USER_ESP_ISP_DEMOSAIC,
@@ -1019,12 +1029,15 @@ static esp_err_t isp_stop_sharpen(struct isp_video *isp_video)
     return ESP_OK;
 }
 
-static void isp_init_gamma_param(struct isp_video *isp_video, isp_gamma_curve_points_t *gamma_config)
+static void isp_init_gamma_param(struct isp_video *isp_video, isp_gamma_curve_points_t *gamma_config, int channel)
 {
+    esp_video_isp_gamma_point_t *points = channel == 0 ? isp_video->gamma.red_points :
+                                          channel == 1 ? isp_video->gamma.green_points : isp_video->gamma.blue_points;
+
     memset(gamma_config, 0, sizeof(isp_gamma_curve_points_t));
     for (int i = 0; i < ISP_GAMMA_CURVE_POINTS_NUM; i++) {
-        gamma_config->pt[i].x = isp_video->gamma_points[i].x;
-        gamma_config->pt[i].y = isp_video->gamma_points[i].y;
+        gamma_config->pt[i].x = points[i].x;
+        gamma_config->pt[i].y = points[i].y;
     }
 }
 
@@ -1036,11 +1049,21 @@ static esp_err_t isp_start_gamma(struct isp_video *isp_video)
         return ESP_OK;
     }
 
-    isp_init_gamma_param(isp_video, &gamma_config);
+    /**
+     * The first time to start GAMMA, we need to configure the GAMMA for all channels.
+     */
+
+    isp_init_gamma_param(isp_video, &gamma_config, 0);
     ESP_RETURN_ON_ERROR(esp_isp_gamma_configure(isp_video->isp_proc, COLOR_COMPONENT_R, &gamma_config), TAG, "failed to configure R GAMMA");
+
+    isp_init_gamma_param(isp_video, &gamma_config, 1);
     ESP_RETURN_ON_ERROR(esp_isp_gamma_configure(isp_video->isp_proc, COLOR_COMPONENT_G, &gamma_config), TAG, "failed to configure G GAMMA");
+
+    isp_init_gamma_param(isp_video, &gamma_config, 2);
     ESP_RETURN_ON_ERROR(esp_isp_gamma_configure(isp_video->isp_proc, COLOR_COMPONENT_B, &gamma_config), TAG, "failed to configure B GAMMA");
+
     ESP_RETURN_ON_ERROR(esp_isp_gamma_enable(isp_video->isp_proc), TAG, "failed to enable GAMMA");
+    isp_video->gamma.flags = 0; // Clear all flags
     isp_video->gamma_started = true;
 
     return ESP_OK;
@@ -1050,10 +1073,26 @@ static esp_err_t isp_reconfigure_gamma(struct isp_video *isp_video)
 {
     isp_gamma_curve_points_t gamma_config;
 
-    isp_init_gamma_param(isp_video, &gamma_config);
-    ESP_RETURN_ON_ERROR(esp_isp_gamma_configure(isp_video->isp_proc, COLOR_COMPONENT_R, &gamma_config), TAG, "failed to configure R GAMMA");
-    ESP_RETURN_ON_ERROR(esp_isp_gamma_configure(isp_video->isp_proc, COLOR_COMPONENT_G, &gamma_config), TAG, "failed to configure G GAMMA");
-    ESP_RETURN_ON_ERROR(esp_isp_gamma_configure(isp_video->isp_proc, COLOR_COMPONENT_B, &gamma_config), TAG, "failed to configure B GAMMA");
+    /**
+     * If the GAMMA extension flags are set, we need to configure the GAMMA for the corresponding channel.
+     */
+
+    if (isp_video->gamma.flags & ESP_VIDEO_ISP_GAMMA_EXT_FLAG_RED) {
+        isp_init_gamma_param(isp_video, &gamma_config, 0);
+        ESP_RETURN_ON_ERROR(esp_isp_gamma_configure(isp_video->isp_proc, COLOR_COMPONENT_R, &gamma_config), TAG, "failed to configure R GAMMA");
+        isp_video->gamma.flags &= ~ESP_VIDEO_ISP_GAMMA_EXT_FLAG_RED;
+    }
+    if (isp_video->gamma.flags & ESP_VIDEO_ISP_GAMMA_EXT_FLAG_GREEN) {
+        isp_init_gamma_param(isp_video, &gamma_config, 1);
+        ESP_RETURN_ON_ERROR(esp_isp_gamma_configure(isp_video->isp_proc, COLOR_COMPONENT_G, &gamma_config), TAG, "failed to configure G GAMMA");
+        isp_video->gamma.flags &= ~ESP_VIDEO_ISP_GAMMA_EXT_FLAG_GREEN;
+    }
+    if (isp_video->gamma.flags & ESP_VIDEO_ISP_GAMMA_EXT_FLAG_BLUE) {
+        isp_init_gamma_param(isp_video, &gamma_config, 2);
+        ESP_RETURN_ON_ERROR(esp_isp_gamma_configure(isp_video->isp_proc, COLOR_COMPONENT_B, &gamma_config), TAG, "failed to configure B GAMMA");
+        isp_video->gamma.flags &= ~ESP_VIDEO_ISP_GAMMA_EXT_FLAG_BLUE;
+    }
+
     if (!isp_video->gamma_started) {
         ESP_RETURN_ON_ERROR(esp_isp_gamma_enable(isp_video->isp_proc), TAG, "failed to enable GAMMA");
         isp_video->gamma_started = true;
@@ -1069,6 +1108,7 @@ static esp_err_t isp_stop_gamma(struct isp_video *isp_video)
     }
 
     ESP_RETURN_ON_ERROR(esp_isp_gamma_disable(isp_video->isp_proc), TAG, "failed to disable GAMMA");
+    isp_video->gamma.flags = 0; // Clear all flags
     isp_video->gamma_started = false;
 
     return ESP_OK;
@@ -1452,7 +1492,7 @@ static esp_err_t isp_start_pipeline(struct isp_video *isp_video)
         ESP_GOTO_ON_ERROR(isp_start_sharpen(isp_video), fail_4, TAG, "failed to start sharpen");
     }
 
-    if (isp_video->gamma_enable) {
+    if (isp_video->gamma.enable) {
         ESP_GOTO_ON_ERROR(isp_start_gamma(isp_video), fail_5, TAG, "failed to start GAMMA");
     }
 
@@ -1767,13 +1807,39 @@ static esp_err_t isp_video_set_ext_ctrl(struct esp_video *video, const struct v4
         case V4L2_CID_USER_ESP_ISP_GAMMA: {
             const esp_video_isp_gamma_t *gamma = (const esp_video_isp_gamma_t *)ctrl->p_u8;
 
-            isp_video->gamma_enable = gamma->enable;
-            if (gamma->enable) {
-                for (int i = 0; i < ISP_GAMMA_CURVE_POINTS_NUM; i++) {
-                    isp_video->gamma_points[i].x = gamma->points[i].x;
-                    isp_video->gamma_points[i].y = gamma->points[i].y;
+            memcpy(&isp_video->gamma.red_points, gamma->points, sizeof(esp_video_isp_gamma_point_t) * ISP_GAMMA_CURVE_POINTS_NUM);
+            memcpy(&isp_video->gamma.green_points, gamma->points, sizeof(esp_video_isp_gamma_point_t) * ISP_GAMMA_CURVE_POINTS_NUM);
+            memcpy(&isp_video->gamma.blue_points, gamma->points, sizeof(esp_video_isp_gamma_point_t) * ISP_GAMMA_CURVE_POINTS_NUM);
+            isp_video->gamma.flags = ESP_VIDEO_ISP_GAMMA_EXT_FLAG_RED | ESP_VIDEO_ISP_GAMMA_EXT_FLAG_GREEN | ESP_VIDEO_ISP_GAMMA_EXT_FLAG_BLUE;
+            isp_video->gamma.enable = gamma->enable;
+            if (isp_video->gamma.enable) {
+                if (ISP_STARTED(isp_video)) {
+                    ESP_GOTO_ON_ERROR(isp_reconfigure_gamma(isp_video), exit, TAG, "failed to reconfigure GAMMA");
                 }
+            } else {
+                if (ISP_STARTED(isp_video)) {
+                    ESP_GOTO_ON_ERROR(isp_stop_gamma(isp_video), exit, TAG, "failed to stop GAMMA");
+                }
+            }
+            break;
+        }
+        case V4L2_CID_USER_ESP_ISP_GAMMA_EXT: {
+            const esp_video_isp_gamma_ext_t *gamma_ext = (const esp_video_isp_gamma_ext_t *)ctrl->p_u8;
 
+            if (gamma_ext->flags & ESP_VIDEO_ISP_GAMMA_EXT_FLAG_RED) {
+                memcpy(&isp_video->gamma.red_points, gamma_ext->red_points, sizeof(esp_video_isp_gamma_point_t) * ISP_GAMMA_CURVE_POINTS_NUM);
+                isp_video->gamma.flags |= ESP_VIDEO_ISP_GAMMA_EXT_FLAG_RED;
+            }
+            if (gamma_ext->flags & ESP_VIDEO_ISP_GAMMA_EXT_FLAG_GREEN) {
+                memcpy(&isp_video->gamma.green_points, gamma_ext->green_points, sizeof(esp_video_isp_gamma_point_t) * ISP_GAMMA_CURVE_POINTS_NUM);
+                isp_video->gamma.flags |= ESP_VIDEO_ISP_GAMMA_EXT_FLAG_GREEN;
+            }
+            if (gamma_ext->flags & ESP_VIDEO_ISP_GAMMA_EXT_FLAG_BLUE) {
+                memcpy(&isp_video->gamma.blue_points, gamma_ext->blue_points, sizeof(esp_video_isp_gamma_point_t) * ISP_GAMMA_CURVE_POINTS_NUM);
+                isp_video->gamma.flags |= ESP_VIDEO_ISP_GAMMA_EXT_FLAG_BLUE;
+            }
+            isp_video->gamma.enable = gamma_ext->enable;
+            if (gamma_ext->enable) {
                 if (ISP_STARTED(isp_video)) {
                     ESP_GOTO_ON_ERROR(isp_reconfigure_gamma(isp_video), exit, TAG, "failed to reconfigure GAMMA");
                 }
@@ -2011,11 +2077,15 @@ static esp_err_t isp_video_get_ext_ctrl(struct esp_video *video, struct v4l2_ext
         case V4L2_CID_USER_ESP_ISP_GAMMA: {
             esp_video_isp_gamma_t *gamma = (esp_video_isp_gamma_t *)ctrl->p_u8;
 
-            gamma->enable = isp_video->gamma_enable;
-            for (int i = 0; i < ISP_GAMMA_CURVE_POINTS_NUM; i++) {
-                gamma->points[i].x = isp_video->gamma_points[i].x;
-                gamma->points[i].y = isp_video->gamma_points[i].y;
-            }
+            memcpy(gamma->points, isp_video->gamma.red_points, sizeof(esp_video_isp_gamma_point_t) * ISP_GAMMA_CURVE_POINTS_NUM);
+            gamma->enable = isp_video->gamma.enable;
+            ESP_LOGW(TAG, "Get red channel GAMMA configuration, it is suggested to use V4L2_CID_USER_ESP_ISP_GAMMA_EXT to get the GAMMA extension configuration");
+            break;
+        }
+        case V4L2_CID_USER_ESP_ISP_GAMMA_EXT: {
+            esp_video_isp_gamma_ext_t *gamma_ext = (esp_video_isp_gamma_ext_t *)ctrl->p_u8;
+
+            memcpy(gamma_ext, &isp_video->gamma, sizeof(esp_video_isp_gamma_ext_t));
             break;
         }
         case V4L2_CID_USER_ESP_ISP_DEMOSAIC: {

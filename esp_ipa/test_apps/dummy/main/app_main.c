@@ -985,14 +985,59 @@ TEST_CASE("Auto enhancement test", "[IPA]")
 
         if (test_gamma_data[i].gamma_y15) {
             TEST_ASSERT_EQUAL_HEX32(IPA_METADATA_FLAGS_GAMMA, metadata.flags & IPA_METADATA_FLAGS_GAMMA);
-            TEST_ASSERT_EQUAL_UINT8(test_gamma_data[i].gamma_y0, metadata.gamma.y[0]);
-            TEST_ASSERT_EQUAL_UINT8(test_gamma_data[i].gamma_y1, metadata.gamma.y[1]);
-            TEST_ASSERT_EQUAL_UINT8(test_gamma_data[i].gamma_y13, metadata.gamma.y[13]);
-            TEST_ASSERT_EQUAL_UINT8(test_gamma_data[i].gamma_y15, metadata.gamma.y[15]);
+            TEST_ASSERT_EQUAL_UINT8(test_gamma_data[i].gamma_y0, metadata.gamma.red.y[0]);
+            TEST_ASSERT_EQUAL_UINT8(test_gamma_data[i].gamma_y1, metadata.gamma.red.y[1]);
+            TEST_ASSERT_EQUAL_UINT8(test_gamma_data[i].gamma_y13, metadata.gamma.red.y[13]);
+            TEST_ASSERT_EQUAL_UINT8(test_gamma_data[i].gamma_y15, metadata.gamma.red.y[15]);
         } else {
             TEST_ASSERT_EQUAL_HEX32(0, metadata.flags & IPA_METADATA_FLAGS_GAMMA);
         }
     }
+
+    TEST_ESP_OK(esp_ipa_pipeline_destroy(handle));
+}
+
+TEST_CASE("Gamma 3-channel test", "[IPA]")
+{
+    /* Use test_apps_dummy_2 config; runtime selects the last gamma table entry (luma=30.1, shared x/y for R/G/B) */
+    esp_ipa_pipeline_handle_t handle = NULL;
+    esp_ipa_metadata_t metadata = {0};
+    esp_ipa_stats_t stats;
+    const esp_ipa_config_t *ipa_config = esp_ipa_pipeline_get_config(IPA_TARGET_NAME_2);
+
+    TEST_ESP_OK(esp_ipa_pipeline_create(ipa_config, &handle));
+    TEST_ESP_OK(esp_ipa_pipeline_init(handle, &s_esp_ipa_sensor, &metadata));
+
+    esp_ipa_set_float(handle->ipa_array[0], "dummy_gamma_luma", 26.0f);
+    metadata.flags = 0;
+    stats.flags = 0;
+    TEST_ESP_OK(esp_ipa_pipeline_process(handle, &stats, &s_esp_ipa_sensor, &metadata));
+
+    TEST_ASSERT_EQUAL_HEX32(IPA_METADATA_FLAGS_GAMMA, metadata.flags & IPA_METADATA_FLAGS_GAMMA);
+
+    /* Verify Red channel: values from luma=30.1 table entry (shared x/y) */
+    TEST_ASSERT_EQUAL_UINT8(0, metadata.gamma.red.x[0]);
+    TEST_ASSERT_EQUAL_UINT8(3, metadata.gamma.red.x[1]);
+    TEST_ASSERT_EQUAL_UINT8(0, metadata.gamma.red.y[0]);
+    TEST_ASSERT_EQUAL_UINT8(20, metadata.gamma.red.y[1]);
+    TEST_ASSERT_EQUAL_UINT8(240, metadata.gamma.red.y[13]);
+    TEST_ASSERT_EQUAL_UINT8(255, metadata.gamma.red.y[15]);
+
+    /* Verify Green channel: different x/y values from red */
+    TEST_ASSERT_EQUAL_UINT8(0, metadata.gamma.green.x[0]);
+    TEST_ASSERT_EQUAL_UINT8(4, metadata.gamma.green.x[1]);
+    TEST_ASSERT_EQUAL_UINT8(10, metadata.gamma.green.y[0]);
+    TEST_ASSERT_EQUAL_UINT8(30, metadata.gamma.green.y[1]);
+    TEST_ASSERT_EQUAL_UINT8(244, metadata.gamma.green.y[13]);
+    TEST_ASSERT_EQUAL_UINT8(255, metadata.gamma.green.y[15]);
+
+    /* Verify Blue channel: different x/y values from red/green */
+    TEST_ASSERT_EQUAL_UINT8(0, metadata.gamma.blue.x[0]);
+    TEST_ASSERT_EQUAL_UINT8(5, metadata.gamma.blue.x[1]);
+    TEST_ASSERT_EQUAL_UINT8(5, metadata.gamma.blue.y[0]);
+    TEST_ASSERT_EQUAL_UINT8(25, metadata.gamma.blue.y[1]);
+    TEST_ASSERT_EQUAL_UINT8(242, metadata.gamma.blue.y[13]);
+    TEST_ASSERT_EQUAL_UINT8(255, metadata.gamma.blue.y[15]);
 
     TEST_ESP_OK(esp_ipa_pipeline_destroy(handle));
 }

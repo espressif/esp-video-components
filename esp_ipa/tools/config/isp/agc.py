@@ -9,12 +9,24 @@ class ipa_unit_agc_c(ipa_unit_c):
         def light_threshold_config_code(name, obj):
             light_threshold_config_text = str()
             for i in obj.light_threshold_priority:
-                light_threshold_config_text += (f'''
-                    {{
-                        .luma_threshold = {i.luma_threshold},
-                        .weight_offset = {i.weight_offset},
-                    }},'''
-                )
+                if hasattr(obj, 'light_threshold_priority_use_env_luma') and obj.light_threshold_priority_use_env_luma:
+                    if not hasattr(i, 'env_luma_threshold'):
+                        raise fatal_error(f'env_luma_threshold is required when use_env_luma is true')
+
+                    light_threshold_config_text += (f'''
+                        {{
+                            .env_luma_threshold = {i.env_luma_threshold},
+                            .weight_offset = {i.weight_offset},
+                        }},''')
+                else:
+                    if not hasattr(i, 'luma_threshold'):
+                        raise fatal_error(f'luma_threshold is required when use_env_luma is false')
+
+                    light_threshold_config_text += (f'''
+                        {{
+                            .luma_threshold = {i.luma_threshold},
+                            .weight_offset = {i.weight_offset},
+                        }},''')
             return light_threshold_config_text
 
         def get_anti_flicker_param(obj):
@@ -95,27 +107,65 @@ class ipa_unit_agc_c(ipa_unit_c):
 
             if hasattr(obj, 'high_light_priority'):
                 hlp = obj.high_light_priority
-                light_priority_text += (f'''
-                    .high_light_prior_config = {{
-                        .luma_high_threshold = {hlp.high_threshold},
-                        .luma_low_threshold = {hlp.low_threshold},
-                        .weight_offset = {hlp.weight_offset},
-                        .luma_offset = {hlp.luma_offset}
-                    }},''')
+                if hasattr(hlp, 'use_env_luma') and hlp.use_env_luma:
+                    if not hasattr(hlp, 'env_luma_high_threshold') or not hasattr(hlp, 'env_luma_low_threshold'):
+                        raise fatal_error(f'env_luma_high_threshold and env_luma_low_threshold are required when use_env_luma is true')
+                    
+                    light_priority_text += (f'''
+                        .high_light_prior_config = {{
+                            .use_env_luma = true,
+                            .env_luma_high_threshold = {hlp.env_luma_high_threshold},
+                            .env_luma_low_threshold = {hlp.env_luma_low_threshold},
+                            .weight_offset = {hlp.weight_offset},
+                            .luma_offset = {hlp.luma_offset}
+                        }},''')
+                else:
+                    if not hasattr(hlp, 'high_threshold') or not hasattr(hlp, 'low_threshold'):
+                        raise fatal_error(f'high_threshold and low_threshold are required when use_env_luma is false')
+
+                    light_priority_text += (f'''
+                        .high_light_prior_config = {{
+                            .use_env_luma = false,
+                            .luma_high_threshold = {hlp.high_threshold},
+                            .luma_low_threshold = {hlp.low_threshold},
+                            .weight_offset = {hlp.weight_offset},
+                            .luma_offset = {hlp.luma_offset}
+                        }},''')
 
             if hasattr(obj, 'low_light_priority'):
                 llp = obj.low_light_priority
-                light_priority_text += (f'''
-                    .low_light_prior_config = {{
-                        .luma_high_threshold = {llp.high_threshold},
-                        .luma_low_threshold = {llp.low_threshold},
-                        .weight_offset = {llp.weight_offset},
-                        .luma_offset = {llp.luma_offset}
-                    }},''')
+                if hasattr(llp, 'use_env_luma') and llp.use_env_luma:
+                    if not hasattr(llp, 'env_luma_high_threshold') or not hasattr(llp, 'env_luma_low_threshold'):
+                        raise fatal_error(f'env_luma_high_threshold and env_luma_low_threshold are required when use_env_luma is true')
+                    
+                    light_priority_text += (f'''
+                        .low_light_prior_config = {{
+                            .use_env_luma = true,
+                            .env_luma_high_threshold = {llp.env_luma_high_threshold},
+                            .env_luma_low_threshold = {llp.env_luma_low_threshold},
+                            .weight_offset = {llp.weight_offset},
+                            .luma_offset = {llp.luma_offset}
+                        }},''')
+                else:
+                    if not hasattr(llp, 'high_threshold') or not hasattr(llp, 'low_threshold'):
+                        raise fatal_error(f'high_threshold and low_threshold are required when use_env_luma is false')
+
+                    light_priority_text += (f'''
+                        .low_light_prior_config = {{
+                            .use_env_luma = false,
+                            .luma_high_threshold = {llp.high_threshold},
+                            .luma_low_threshold = {llp.low_threshold},
+                            .weight_offset = {llp.weight_offset},
+                            .luma_offset = {llp.luma_offset}
+                        }},''')
             
             if hasattr(obj, 'light_threshold_priority'):
+                use_env_luma = 'false'
+                if hasattr(obj, 'light_threshold_priority_use_env_luma') and obj.light_threshold_priority_use_env_luma:
+                    use_env_luma = 'true'
                 light_threshold_priority_obj_text = (f'''
                     .light_threshold_config = {{
+                        .use_env_luma = {use_env_luma},
                         .table = s_ipa_agc_meter_light_thresholds_{name},
                         .table_size = ARRAY_SIZE(s_ipa_agc_meter_light_thresholds_{name})
                     }},''')
@@ -132,11 +182,33 @@ class ipa_unit_agc_c(ipa_unit_c):
                     {light_threshold_config_code(name, obj)}
                 }};''')
 
+        luma_pwl_fields = str()
+        if hasattr(obj, 'luma_pwl') and obj.luma_pwl:
+            pwl_cfg = obj.luma_pwl
+            pwl_enable = getattr(pwl_cfg, 'enable', True)
+            pwl_table = getattr(pwl_cfg, 'table', None)
+            if pwl_table is None:
+                raise fatal_error(f'luma_pwl requires a "table" array')
+            pwl_entries = str()
+            for entry in pwl_table:
+                if not hasattr(entry, 'env_luma') or not hasattr(entry, 'luma_shift'):
+                    raise fatal_error(f'luma_pwl table entry requires env_luma and luma_shift fields')
+                pwl_entries += (f'''
+                    {{ .env_luma = {float(entry.env_luma)}f, .luma_shift = {entry.luma_shift} }},''')
+            agc_code += cfmt_string(f'''
+                static const esp_ipa_agc_luma_pwl_t s_ipa_agc_luma_pwl_{name}[] = {{{pwl_entries}
+                }};''')
+            luma_pwl_fields = (f'''
+                .luma_pwl_enable = {"true" if pwl_enable else "false"},
+                .luma_pwl = s_ipa_agc_luma_pwl_{name},
+                .luma_pwl_size = ARRAY_SIZE(s_ipa_agc_luma_pwl_{name}),''')
+
         agc_code += cfmt_string(f'''
             static const esp_ipa_agc_config_t s_ipa_agc_{name}_config = {{
                 {exposure_code(name, obj)}
                 {luma_code(name, obj)}
                 {light_priority_code(name, obj)}
+                {luma_pwl_fields}
             }};''')
 
         return agc_code
@@ -215,6 +287,87 @@ if __name__ == '__main__':
             },
             {
                 'luma_threshold': 140,
+                'weight_offset': 25
+            }
+        ]
+    })
+
+    c_code = ipa_unit_agc_c(json_obj, 'agc', 'agc').get_text()
+    print(c_code)
+
+    json_obj = dict_object({
+        'exposure':
+        {
+            'frame_delay': 2,
+            'adjust_delay': 0
+        },
+        'gain':
+        {
+            'min_step': 0.0001,
+            'frame_delay': 2
+        },
+        'anti_flicker':
+        {
+            'mode': 'full',
+            'ac_freq': 50
+        },
+        'f_n0': 1,
+        'luma_adjust':
+        {
+            'target_low': 50,
+            'target_high': 150,
+            'target': 100,
+            'low_threshold': 30,
+            'low_regions': 10,
+            'high_threshold': 220,
+            'high_regions': 10,
+            'weight':
+            [
+                1, 1, 1, 1, 1,
+                1, 1, 1, 1, 1,
+                1, 1, 1, 1, 1,
+                1, 1, 1, 1, 1,
+                1, 1, 1, 1, 1
+            ]
+        },
+        'mode': 'high_light_priority',
+        'high_light_priority':
+        {
+            'use_env_luma': True,
+            'env_luma_high_threshold': 250,
+            'env_luma_low_threshold': 150,
+            'weight_offset': 5,
+            'luma_offset': 5
+        },
+        'low_light_priority':
+        {
+            'use_env_luma': True,
+            'env_luma_high_threshold': 150,
+            'env_luma_low_threshold': 50,
+            'weight_offset': 10,
+            'luma_offset': 10
+        },
+        'light_threshold_priority_use_env_luma': True,
+        'light_threshold_priority':
+        [
+            {
+                'env_luma_threshold': 150,
+                'weight_offset': 5
+            },
+            {
+                'env_luma_threshold': 180,
+                'weight_offset': 10
+            },
+            {
+                'env_luma_threshold': 200,
+                'weight_offset': 15
+            },
+            {
+                'env_luma_threshold': 220,
+                'weight_offset': 20
+            },
+            {
+                'env_luma_threshold': 240,
                 'weight_offset': 25
             }
         ]

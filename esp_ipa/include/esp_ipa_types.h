@@ -67,6 +67,11 @@ extern "C" {
 #define IPA_METADATA_FLAGS_FP       (1 << 18)   /*!< Meta data has focus position */
 #define IPA_METADATA_FLAGS_BLC      (1 << 19)   /*!< Meta data has BLC */
 
+
+#define IPA_GAMMA_FLAGS_RED         (1 << 0)   /*!< GAMMA red channel needs to update */
+#define IPA_GAMMA_FLAGS_GREEN       (1 << 1)   /*!< GAMMA green channel needs to update */
+#define IPA_GAMMA_FLAGS_BLUE        (1 << 2)   /*!< GAMMA blue channel needs to update */
+
 /**
  * @brief Auto gain control metering mode
  */
@@ -287,11 +292,22 @@ typedef struct esp_ipa_sharpen {
 } esp_ipa_sharpen_t;
 
 /**
+ * @brief ISP GAMMA channel meta data.
+ */
+typedef struct esp_ipa_gamma_channel {
+    uint8_t x[ISP_GAMMA_CURVE_POINTS_NUM];  /*!< GAMMA point X coordinate */
+    uint8_t y[ISP_GAMMA_CURVE_POINTS_NUM];  /*!< GAMMA point Y coordinate */
+} esp_ipa_gamma_channel_t;
+
+/**
  * @brief ISP GAMMA meta data.
  */
 typedef struct esp_ipa_gamma {
-    uint8_t x[ISP_GAMMA_CURVE_POINTS_NUM];  /*!< GAMMA point X coordinate */
-    uint8_t y[ISP_GAMMA_CURVE_POINTS_NUM];  /*!< GAMMA point Y coordinate */
+    uint32_t flags;                         /*!< GAMMA flags */
+
+    esp_ipa_gamma_channel_t red;            /*!< GAMMA parameters for red channel */
+    esp_ipa_gamma_channel_t green;          /*!< GAMMA parameters for green channel */
+    esp_ipa_gamma_channel_t blue;           /*!< GAMMA parameters for blue channel */
 } esp_ipa_gamma_t;
 
 /**
@@ -388,8 +404,16 @@ typedef struct esp_ipa_metadata {
  * @brief Auto gain control metering light luma priority config
  */
 typedef struct esp_ipa_agc_meter_light_prior_config {
-    uint8_t luma_low_threshold;                 /*!< Light luma low threshold */
-    uint8_t luma_high_threshold;                /*!< Light luma high threshold */
+    bool use_env_luma;                         /*!< true: use environment variable for light luma threshold; false: use statistics data for light luma threshold */
+
+    union {
+        uint8_t luma_low_threshold;             /*!< Light luma low threshold based on statistics data */
+        float env_luma_low_threshold;           /*!< Light luma low threshold based on environment */
+    };
+    union {
+        uint8_t luma_high_threshold;            /*!< Light luma high threshold based on statistics data */
+        float env_luma_high_threshold;          /*!< Light luma high threshold based on environment */
+    };
     uint8_t weight_offset;                      /*!< Light luma weight offset */
     int8_t luma_offset;                         /*!< Light luma offset */
 } esp_ipa_agc_meter_light_prior_config_t;
@@ -398,7 +422,10 @@ typedef struct esp_ipa_agc_meter_light_prior_config {
  * @brief Auto gain control metering light threshold unit
  */
 typedef struct esp_ipa_agc_meter_light_threshold {
-    uint32_t luma_threshold;                    /*!< Light luma threshold */
+    union {
+        uint8_t luma_threshold;                 /*!< Light luma threshold based on statistics data */
+        float env_luma_threshold;               /*!< Light luma threshold based on environment */
+    };
     uint32_t weight_offset;                     /*!< Light luma weight offset */
 } esp_ipa_agc_meter_light_threshold_t;
 
@@ -406,6 +433,7 @@ typedef struct esp_ipa_agc_meter_light_threshold {
  * @brief Auto gain control metering light threshold config
  */
 typedef struct esp_ipa_agc_meter_light_threshold_config {
+    bool use_env_luma;                          /*!< true: use environment variable for light luma threshold; false: use statistics data for light luma threshold */
     const esp_ipa_agc_meter_light_threshold_t *table;   /*!< metering light threshold table */
     uint32_t table_size;                        /*!< metering light threshold table size */
 } esp_ipa_agc_meter_light_threshold_config_t;
@@ -472,12 +500,8 @@ typedef struct esp_ipa_adn_dm {
  * @brief GAMMA value look-up table unit
  */
 typedef struct esp_ipa_aen_gamma_unit {
-    float luma;
-
-    union {
-        float gamma_param;                      /*!< Parameter to generate gamma mapping table */
-        esp_ipa_gamma_t gamma;                  /*!< Gamma mapping table */
-    };
+    float luma;                                 /*!< Luma value */
+    esp_ipa_gamma_t gamma;                      /*!< GAMMA parameter */
 } esp_ipa_aen_gamma_unit_t;
 
 /**
@@ -486,14 +510,12 @@ typedef struct esp_ipa_aen_gamma_unit {
 typedef struct esp_ipa_aen_gamma_config {
     esp_ipa_aen_gamma_model_t model;            /*!< GAMMA model */
 
-    bool use_gamma_param;                       /*!< true: use variable "gamma_param" to generate gamma mapping table; false: using variable "gamma" */
-
     const char *luma_env;                       /*!< Luma environment variable name */
 
     float luma_min_step;                        /*!< Luma minmium step value */
 
     const esp_ipa_aen_gamma_unit_t *gamma_table;    /*!< GAMMA value look-up table */
-    uint32_t gamma_table_size;                  /*!< GAMMA value look-up table size */
+    uint32_t gamma_table_size;                  /*!< GAMMA value look-up table or extension value look-up table size */
 } esp_ipa_aen_gamma_config_t;
 
 /**
@@ -705,6 +727,14 @@ typedef struct esp_ipa_aen_config {
 } esp_ipa_aen_config_t;
 
 /**
+ * @brief AGC luma PWL (piecewise linear) table entry: environment luma → target luma shift
+ */
+typedef struct esp_ipa_agc_luma_pwl {
+    float env_luma;                             /*!< Environment luma breakpoint (maps to "env.luma.avg") */
+    int8_t luma_shift;                          /*!< Target luma shift applied when env_luma matches */
+} esp_ipa_agc_luma_pwl_t;
+
+/**
  * @brief Auto gain control algorithm configuration
  */
 typedef struct esp_ipa_agc_config {
@@ -734,6 +764,10 @@ typedef struct esp_ipa_agc_config {
     esp_ipa_agc_meter_light_prior_config_t low_light_prior_config;  /*!< Low light prior config */
     esp_ipa_agc_meter_light_prior_config_t high_light_prior_config; /*!< High light prior config */
     esp_ipa_agc_meter_light_threshold_config_t light_threshold_config;  /*!< Light threshold config */
+
+    bool luma_pwl_enable;                        /*!< Enable environment luma adaptive target luma shift via PWL */
+    const esp_ipa_agc_luma_pwl_t *luma_pwl;    /*!< PWL table: environment luma → target luma shift */
+    uint32_t luma_pwl_size;                     /*!< PWL table size */
 
     bool enable_log;                            /*!< Enable auto gain control algorithm log */
 } esp_ipa_agc_config_t;

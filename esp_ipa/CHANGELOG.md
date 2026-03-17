@@ -1,10 +1,19 @@
 ## Unreleased
 
+- AGC adds environment-luma-driven target luma shift via a PWL (piecewise linear) curve
+    - New `luma_pwl` object in AGC JSON config with `enable` flag and `table` array
+    - When `enable` is `true`, the AGC reads `env.luma.avg` each frame and linearly interpolates `luma_shift` from the table, shifting `luma_target` accordingly
+    - `enable: false` disables the feature with zero overhead; other AGC logic is unaffected
 - AWB sub-window: add green-based filter and linear tent weight (dark / mid / bright)
+- AWB `update_rg_bg`: refactor to one metadata update path when red or blue step threshold is met.
 - AGC supports the sensor without gain control
 - Refactor esp_ipa_config Python code
     - Separate algorithm modules into individual files to improve code maintainability
     - Use f-strings to improve code readability
+- Add environmental luminance mode to the AGC light metering algorithm
+    - **BREAKING CHANGE:** The type of "luma_threshold" in the "esp_ipa_agc_meter_light_threshold" structure has been changed from "uint32_t" to "uint8_t". Valid range is now 0-255. If your code uses values greater than 255, you must update them accordingly.
+- Gamma controller now supports configuring each channel individually (R, G, and B)
+
 - Fix issue where color temperature could not recover from excessively low values in certain cases
 - Fix issue where RG and BG were calculated directly from statistics instead of using the current configuration's CT module
 - Fix IAN hist low_value_radio and high_value_radio: sum all segment counts in [low_index_start..low_index_end] and [high_index_start..high_index_end] instead of using only the last segment (fixes back_light and AGC highlight logic)

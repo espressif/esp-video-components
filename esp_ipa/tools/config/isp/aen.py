@@ -3,65 +3,147 @@
 
 from common import ipa_unit_c, fatal_error, cfmt_string, dict_object
 
+ISP_GAMMA_CURVE_POINTS_NUM = 16
+
+def round_half_up(x):
+    if x < 0:
+        raise fatal_error(f'x must be greater than 0, got {x}')
+    return int(x + 0.5)
+
+class gamma_c:
+    def gen_x_y_data(self, use_gamma_param, gamma_param, u):
+        if use_gamma_param == True:
+            if not hasattr(u, 'x'):
+                gamma_x_data = []
+                for i in range(0, ISP_GAMMA_CURVE_POINTS_NUM):
+                    gamma_x_data.append(min((i + 1) * ISP_GAMMA_CURVE_POINTS_NUM, 255))
+                u.x = gamma_x_data
+            else:
+                if len(u.x) != ISP_GAMMA_CURVE_POINTS_NUM:
+                    raise fatal_error(f'gamma x must have exactly {ISP_GAMMA_CURVE_POINTS_NUM} elements, got {len(u.x)}')
+
+            gamma_y_data = []
+            linear_gain = 1.0 / pow((256 - (255 / ISP_GAMMA_CURVE_POINTS_NUM)) / 255, gamma_param)
+            for i in u.x:
+                v = round_half_up(min(pow(i / 255, gamma_param) * 255 * linear_gain, 255))
+                gamma_y_data.append(v)
+            u.y = gamma_y_data
+        else:
+            if not hasattr(u, 'x'):
+                gamma_x_data = []
+                for i in range(0, ISP_GAMMA_CURVE_POINTS_NUM):
+                    gamma_x_data.append(min((i + 1) * ISP_GAMMA_CURVE_POINTS_NUM, 255))
+                u.x = gamma_x_data
+            else:
+                if len(u.x) != ISP_GAMMA_CURVE_POINTS_NUM:
+                    raise fatal_error(f'gamma x must have exactly {ISP_GAMMA_CURVE_POINTS_NUM} elements, got {len(u.x)}')
+            
+            if not hasattr(u, 'y'):
+                raise fatal_error('gamma y is required when use_gamma_param is False')
+            if len(u.y) != ISP_GAMMA_CURVE_POINTS_NUM:
+                raise fatal_error(f'gamma y must have exactly {ISP_GAMMA_CURVE_POINTS_NUM} elements, got {len(u.y)}')
+
+        return u
+
+    def gen_x_y_str(self, u):
+        x_str = str()
+        y_str = str()
+
+        for i in u.x: x_str += f'{i}, '
+        for i in u.y: y_str += f'{i}, '
+
+        return (x_str, y_str)
+
+    def gen_gamma_data_str(self):
+        for i in range(0, len(self.gamma.table)):
+            if not hasattr(self.gamma.table[i], 'red'):
+                self.gamma.table[i].red = dict_object({})
+                if hasattr(self.gamma.table[i], 'x'):
+                    self.gamma.table[i].red.x = self.gamma.table[i].x
+                if hasattr(self.gamma.table[i], 'y'):
+                    self.gamma.table[i].red.y = self.gamma.table[i].y
+            if not hasattr(self.gamma.table[i], 'green'):
+                self.gamma.table[i].green = dict_object({})
+                if hasattr(self.gamma.table[i], 'x'):
+                    self.gamma.table[i].green.x = self.gamma.table[i].x
+                if hasattr(self.gamma.table[i], 'y'):
+                    self.gamma.table[i].green.y = self.gamma.table[i].y
+            if not hasattr(self.gamma.table[i], 'blue'):
+                self.gamma.table[i].blue = dict_object({})
+                if hasattr(self.gamma.table[i], 'x'):
+                    self.gamma.table[i].blue.x = self.gamma.table[i].x
+                if hasattr(self.gamma.table[i], 'y'):
+                    self.gamma.table[i].blue.y = self.gamma.table[i].y
+
+            red_data = self.gen_x_y_data(self.gamma.use_gamma_param, self.gamma.table[i].gamma_param, self.gamma.table[i].red)
+            green_data = self.gen_x_y_data(self.gamma.use_gamma_param, self.gamma.table[i].gamma_param, self.gamma.table[i].green)
+            blue_data = self.gen_x_y_data(self.gamma.use_gamma_param, self.gamma.table[i].gamma_param, self.gamma.table[i].blue)
+
+            red_x_str, red_y_str = self.gen_x_y_str(red_data)
+            green_x_str, green_y_str = self.gen_x_y_str(green_data)
+            blue_x_str, blue_y_str = self.gen_x_y_str(blue_data)
+
+            self.gamma.table[i].red_x_str = red_x_str
+            self.gamma.table[i].red_y_str = red_y_str
+            self.gamma.table[i].green_x_str = green_x_str
+            self.gamma.table[i].green_y_str = green_y_str
+            self.gamma.table[i].blue_x_str = blue_x_str
+            self.gamma.table[i].blue_y_str = blue_y_str
+
+    def __init__(self, gamma, name):
+        self.gamma = gamma
+        self.name = name
+        
+        if not hasattr(self.gamma, 'model'):
+            self.gamma.model = 0
+        elif self.gamma.model not in (0, 1):
+            raise fatal_error(f'gamma model must be 0 or 1, got {self.gamma.model}')
+
+        self.gen_gamma_data_str()
+
+    def get_gamma_table_text(self):
+        gamma_table_str = str()
+
+        for u in self.gamma.table:
+            gamma_table_str += cfmt_string(f'''
+                {{
+                    .luma = {u.luma},
+                    .gamma = {{
+                        .red = {{
+                            .x = {{ {u.red_x_str} }},
+                            .y = {{ {u.red_y_str} }}
+                        }},
+                        .green = {{
+                            .x = {{ {u.green_x_str} }},
+                            .y = {{ {u.green_y_str} }}
+                        }},
+                        .blue = {{
+                            .x = {{ {u.blue_x_str} }},
+                            .y = {{ {u.blue_y_str} }}
+                        }}
+                    }}
+                }},
+            ''')
+
+        gamma_table_text = cfmt_string(f'''
+            static const esp_ipa_aen_gamma_unit_t s_esp_ipa_aen_gamma_{self.name}_table[] = {{
+                {gamma_table_str}
+            }};
+            ''')
+
+        return gamma_table_text
+
 class ipa_unit_aen_c(ipa_unit_c):
     @staticmethod
     def decode_aen(name, obj):
         def gamma_code(name, obj):
             gamma = obj.gamma
-            gamma_table_text = str()
-            use_gamma_param_str = str()
 
-            gamma_text = str()
-            if gamma.use_gamma_param == False:
-                gamma_table_str = str()
-                use_gamma_param_str = 'false'
-
-                for u in gamma.table:
-                    gamma_x = str()
-                    for i in range(0, 16): gamma_x += f'{min((i + 1) * 16, 255)}, '
-                    
-                    gamma_y = str()
-                    for i in u.y: gamma_y += f'{i}, '
-
-                    gamma_table_str += cfmt_string(f'''
-                        {{
-                            .luma = {u.luma},
-                            .gamma = {{
-                                .x = {{ {gamma_x} }},
-                                .y = {{ {gamma_y} }}
-                            }}
-                        }},
-                    ''')
-                
-                gamma_table_text = cfmt_string(f'''
-                    static const esp_ipa_aen_gamma_unit_t s_esp_ipa_aen_gamma_{name}_table[] = {{
-                        {gamma_table_str}
-                    }};
-                    ''')
-            else:
-                gamma_table_str = str()
-                use_gamma_param_str = 'true'
-
-                for u in gamma.table:
-                    gamma_table_str += cfmt_string(f'''
-                        {{
-                            .luma = {u.luma},
-                            .gamma_param = {u.gamma_param},
-                        }},
-                        ''')
-                
-                gamma_table_text = cfmt_string(f'''
-                    static const esp_ipa_aen_gamma_unit_t s_esp_ipa_aen_gamma_{name}_table[] = {{
-                        {gamma_table_str}
-                    }};
-                    ''')
-
-            if not hasattr(gamma, 'model'):
-                gamma.model = 0
+            gamma_generator = gamma_c(gamma, name)
+            gamma_table_text = gamma_generator.get_gamma_table_text()
 
             gamma_text = cfmt_string(f'''
                 .model = {gamma.model},
-                .use_gamma_param = {use_gamma_param_str},
                 .luma_env = \"{gamma.luma_env}\",
                 .luma_min_step = {gamma.luma_min_step},
                 .gamma_table = s_esp_ipa_aen_gamma_{name}_table,
@@ -295,5 +377,192 @@ if __name__ == '__main__':
         ]
     })
 
+    print('step 1')
+    c_code = ipa_unit_aen_c(json_obj, 'sc2336', 'aen').get_text()
+    print(c_code)
+
+    json_obj = dict_object({
+        'gamma':
+        {
+            'model': 1,
+            'use_gamma_param': False,
+            'luma_env': 'dummy_gamma_luma',
+            'luma_min_step': 3.0,
+            'table':
+            [
+                {
+                    'luma': 10.1,
+                    'gamma_param': 1.0,
+                    'x':
+                    [
+                        0, 2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 22, 24, 26, 28, 30
+                    ],
+                    'y': 
+                    [
+                        0, 16, 32, 48, 64, 80, 96, 112, 128, 144, 160, 176, 192, 208, 224, 255
+                    ]
+                },
+                {
+                    'luma': 20.1,
+                    'gamma_param': 1.3,
+                    'x':
+                    [
+                        0, 4, 8, 12, 16, 20, 24, 28, 32, 36, 40, 44, 48, 52, 56, 60
+                    ],
+                    'y':
+                    [
+                        16, 32, 48, 56, 64, 80, 96, 112, 128, 144, 160, 176, 192, 224, 240, 255
+                    ]
+                }
+            ]
+        }
+    })
+
+    print('step 2')
+    c_code = ipa_unit_aen_c(json_obj, 'sc2336', 'aen').get_text()
+    print(c_code)
+
+    json_obj = dict_object({
+        'gamma':
+        {
+            'model': 1,
+            'use_gamma_param': True,
+            'luma_env': 'dummy_gamma_luma',
+            'luma_min_step': 3.0,
+            'table':
+            [
+                {
+                    'luma': 10.1,
+                    'gamma_param': 1.2,
+                    'x':
+                    [
+                        0, 2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 22, 24, 26, 28, 30
+                    ]
+                },
+                {
+                    'luma': 20.1,
+                    'gamma_param': 1.3,
+                }
+            ]
+        }
+    })
+
+    print('step 3')
+    c_code = ipa_unit_aen_c(json_obj, 'sc2336', 'aen').get_text()
+    print(c_code)
+
+    json_obj = dict_object({
+        'gamma':
+        {
+            'model': 1,
+            'use_gamma_param': False,
+            'luma_env': 'dummy_gamma_luma',
+            'luma_min_step': 3.0,
+            'table':
+            [
+                {
+                    'luma': 10.1,
+                    'gamma_param': 1.0,
+                    'red':
+                    {
+                        'x':
+                        [
+                            0, 2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 22, 24, 26, 28, 30
+                        ],
+                        'y':
+                        [
+                            1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16
+                        ]
+                    },
+                    'green':
+                    {
+                        'x':
+                        [
+                            1, 3, 5, 7, 9, 11, 13, 15, 17, 19, 21, 23, 25, 27, 29, 31
+                        ],
+                        'y':
+                        [
+                            2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17
+                        ]
+                    },
+                    'blue':
+                    {
+                        'x':
+                        [
+                            2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 22, 24, 26, 28, 30, 32
+                        ],
+                        'y':
+                        [
+                            3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18
+                        ]
+                    }
+                },
+                {
+                    'luma': 20.1,
+                    'gamma_param': 1.3,
+                    'red':
+                    {
+                        'x':
+                        [
+                            1, 3, 5, 7, 9, 11, 13, 15, 17, 19, 21, 23, 25, 27, 29, 31
+                        ],
+                        'y':
+                        [
+                            4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19
+                        ]
+                    },
+                    'green':
+                    {
+                        'x':
+                        [
+                            2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 22, 24, 26, 28, 30, 32
+                        ],
+                        'y':
+                        [
+                            5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20
+                        ]
+                    },
+                    'blue':
+                    {
+                        'x':
+                        [
+                            3, 5, 7, 9, 11, 13, 15, 17, 19, 21, 23, 25, 27, 29, 31, 33
+                        ],
+                        'y':
+                        [
+                            6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21
+                        ]
+                    }
+                }
+            ]
+        }
+    })
+
+    print('step 4')
+    c_code = ipa_unit_aen_c(json_obj, 'sc2336', 'aen').get_text()
+    print(c_code)
+
+    json_obj = dict_object({
+        'gamma':
+        {
+            'model': 1,
+            'use_gamma_param': True,
+            'luma_env': 'dummy_gamma_luma',
+            'luma_min_step': 3.0,
+            'table':
+            [
+                {
+                    'luma': 10.1,
+                    'gamma_param': 1.1,
+                },
+                {
+                    'luma': 20.1,
+                    'gamma_param': 1.3,
+                }
+            ]
+        }
+    })
+
+    print('step 5')
     c_code = ipa_unit_aen_c(json_obj, 'sc2336', 'aen').get_text()
     print(c_code)

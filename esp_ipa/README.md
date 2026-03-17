@@ -700,6 +700,9 @@ Developers can refer to the configuration files in [esp_cam_sensor](https://gith
 {
     "high_light_priority":
     {
+        "use_env_luma": true,
+        "env_luma_low_threshold": 150.5,
+        "env_luma_high_threshold": 250.5,
         "low_threshold": 141,
         "high_threshold": 204,
         "weight_offset": 5,
@@ -711,12 +714,16 @@ Developers can refer to the configuration files in [esp_cam_sensor](https://gith
 | Parameter | Type | Range | Description | 
 |:-:|:-:|:-:|:-|
 | high_light_priority | Object | / | High light brightness priority configuration |
+| use_env_luma | Bool | true or false | If true, uses `env_luma_low_threshold` and `env_luma_high_threshold`; if false, uses `low_threshold` and `high_threshold` |
+| env_luma_high_threshold | Float | > 0 | Upper threshold for environmental brightness: if an environmental brightness value is less or equal to this threshold, its data weight and the total weight are increased by weight_offset |
+| env_luma_low_threshold | Float | > 0 | Lower threshold for environmental brightness: if an environmental brightness value is larger or equal to this threshold, its data weight and the total weight are increased by weight_offset |
 | low_threshold | Integer | <div style="white-space: nowrap;">[3,252]</div> | Image brightness sampled data low threshold: if one image brightness sampled data is higher than this value will the data's weight and total weight be increased by weight_offset |
 | high_threshold | Integer | [3,252] | Image brightness sampled data high threshold: if one image brightness sampled data is less than this value will the data's weight and total weight be increased by weight_offset |
 | weight_offset | Integer | [0,255] | Image brightness sampled data weight increasing value |
 | luma_offset | Integer | [-127,127] | Image brightness target increasing value if one sampled data value is between "low_threshold" and "high_threshold" |
 
 * Note: if "mode" is "high_light_priority" this configuration applies
+* Note: if "use_env_luma" is true, the environmental luminance is used instead of statistics data
 
 ---
 
@@ -725,6 +732,9 @@ Developers can refer to the configuration files in [esp_cam_sensor](https://gith
 {
     "low_light_priority":
     {
+        "use_env_luma": true,
+        "env_luma_high_threshold": 250.5,
+        "env_luma_low_threshold": 150.5,
         "low_threshold": 65,
         "high_threshold": 104,
         "weight_offset": 5,
@@ -735,22 +745,28 @@ Developers can refer to the configuration files in [esp_cam_sensor](https://gith
 
 | Parameter | Type | Range | Description | 
 |:-:|:-:|:-:|:-|
-| high_light_priority | Object | / | Low light brightness priority configuration |
+| low_light_priority | Object | / | Low light brightness priority configuration |
+| use_env_luma | Bool | true or false | If true, uses `env_luma_low_threshold` and `env_luma_high_threshold`; if false, uses `low_threshold` and `high_threshold` |
+| env_luma_high_threshold | Float | > 0 | Upper threshold for environmental brightness: if an environmental brightness value is less or equal to this threshold, its data weight and the total weight are increased by weight_offset |
+| env_luma_low_threshold | Float | > 0 | Lower threshold for environmental brightness: if an environmental brightness value is larger or equal to this threshold, its data weight and the total weight are increased by weight_offset |
 | low_threshold | Integer | <div style="white-space: nowrap;">[3,252]</div> | Image brightness sampled data low threshold: if one image brightness sampled data is higher than this value will the data's weight and total weight be increased by weight_offset |
 | high_threshold | Integer | [3,252] | Image brightness sampled data high threshold: if one image brightness sampled data is less than this value will the data's weight and total weight be increased by weight_offset |
 | weight_offset | Integer | [0,255] | Image brightness sampled data weight increasing value |
 | luma_offset | Integer | [-127,127] | Image brightness target increasing value if one sampled data value is between "low_threshold" and "high_threshold" |
 
 * Note: if "mode" is "low_light_priority" this configuration applies
+* Note: if "use_env_luma" is true, using the environmental luminance instead of statistics data
 
 ---
 
 ```json
 "agc":
 {
+    "light_threshold_priority_use_env_luma": true,
     "light_threshold_priority":
     [
         {
+            "env_luma_threshold": 30.5,
             "luma_threshold": 20,
             "weight_offset": 1
         },
@@ -761,11 +777,46 @@ Developers can refer to the configuration files in [esp_cam_sensor](https://gith
 
 | Parameter | Type | Range | Description | 
 |:-:|:-:|:-:|:-|
-| high_light_priority | Object | / |  Light brightness threshold priority configuration |
+| light_threshold_priority_use_env_luma | Bool | true or false | If true, uses the `env_luma_threshold`; if false: uses the `luma_threshold` |
+| light_threshold_priority | Object | / |  Light brightness threshold priority configuration |
+| env_luma_threshold | Float | > 0 | Environmental brightness threshold. If an environmental brightness value is less than this threshold, the data's weight and the total weight will be increased by weight_offset |
 | luma_threshold | Integer | <div style="white-space: nowrap;">[0,255]</div> | Light brightness threshold, if one sampled data is larger than this value and less than the next the data's weight and the total weight will be increased by weight_offset |
 | weight_offset | Integer | [0,255] | Image brightness sampled data weight increasing value |
 
 * Note: if "mode" is "light_threshold_priority" this configuration applies
+* Note: if "use_env_luma" is true, using the environmental luminance instead of statistics data
+
+---
+
+---
+
+```json
+"agc":
+{
+    "luma_pwl":
+    {
+        "enable": true,
+        "table":
+        [
+            { "env_luma": 500,   "luma_shift": -15  },
+            { "env_luma": 2000,  "luma_shift": -5   },
+            { "env_luma": 5000,  "luma_shift": 0   },
+            { "env_luma": 12000, "luma_shift": -10 }
+        ]
+    }
+}
+```
+
+| Parameter | Type | Range | Description |
+|:-:|:-:|:-:|:-|
+| luma_pwl | Object | / | Environment luma → target luma shift PWL (piecewise linear) configuration |
+| enable | Bool | true or false | `true`: read `env.luma.avg` each frame and interpolate `luma_shift` from the table; `false`: feature disabled, `luma_target` is unchanged |
+| table | Array | ≥2 entries | Sorted breakpoint list mapping `env_luma` to `luma_shift`; intermediate values are linearly interpolated, out-of-range values are clamped to the first or last entry |
+| env_luma | Float | >0 | Environment luma breakpoint, corresponding to pipeline variable `env.luma.avg` |
+| luma_shift | Integer | [-128, 127] | Target luma offset applied when the environment luma matches this breakpoint; positive values brighten the target, negative values darken it |
+
+* Note: `luma_pwl` must be sorted in ascending order of `env_luma`
+* Note: the effective `luma_target` = configured `target` + interpolated `luma_shift`
 
 ---
 
