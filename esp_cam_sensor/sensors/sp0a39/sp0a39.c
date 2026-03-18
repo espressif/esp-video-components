@@ -60,6 +60,8 @@ static const esp_cam_sensor_spi_frame_info sp0a39_frame_info_spi[] = {
         .frame_header_check_size = 4,
         .line_header_check_size = 4,
         .drop_frame_count = 1, // The 1st SPI packet is not the image data, so we need to drop it
+        .high_level_active = 1,
+        .data_order_lsb_first = 1,
     },
     {
         .frame_size = (640 * 2 + SP0A39_LINE_HEADER_SIZE) * 480 + SP0A39_FRAME_HEADER_SIZE + SP0A39_FRAME_END_SIZE,
@@ -71,6 +73,8 @@ static const esp_cam_sensor_spi_frame_info sp0a39_frame_info_spi[] = {
         .frame_header_check_size = 4,
         .line_header_check_size = 4,
         .drop_frame_count = 1,
+        .high_level_active = 1,
+        .data_order_lsb_first = 1,
     }
 };
 
@@ -116,7 +120,7 @@ static const esp_cam_sensor_format_t sp0a39_format_info_spi[] = {
 #if CONFIG_CAMERA_SP0A39_SPI_4BIT_YUV422_640X480_15FPS
     {
         .name = "SPI_4bit_24Minput_YUV422_640x480_15fps",
-        .format = ESP_CAM_SENSOR_PIXFORMAT_YUV422,
+        .format = ESP_CAM_SENSOR_PIXFORMAT_YUV422_UYVY,
         .port = ESP_CAM_SENSOR_SPI,
         .xclk = 24000000,
         .width = 640,

@@ -29,11 +29,12 @@ typedef enum esp_cam_ctlr_spi_cam_intf {
  * @brief SPI CAM data I/O mode
  *
  * @note When using ESP_CAM_CTLR_SPI_CAM_INTF_SPI interface, only 1-bit mode is supported.
- *       2-bit mode is only available with ESP_CAM_CTLR_SPI_CAM_INTF_PARLIO interface.
+ *       2-bit and 4-bit modes are only available with ESP_CAM_CTLR_SPI_CAM_INTF_PARLIO interface.
  */
 typedef enum esp_cam_ctlr_spi_cam_io_mode {
     ESP_CAM_CTLR_SPI_CAM_IO_MODE_1BIT = 0,
-    ESP_CAM_CTLR_SPI_CAM_IO_MODE_2BIT
+    ESP_CAM_CTLR_SPI_CAM_IO_MODE_2BIT,
+    ESP_CAM_CTLR_SPI_CAM_IO_MODE_4BIT
 } esp_cam_ctlr_spi_cam_io_mode_t;
 
 /**
@@ -48,7 +49,9 @@ typedef struct esp_cam_ctlr_spi_config {
     gpio_num_t spi_cs_pin;                              /*!< SPI CS pin or parlio valid signal pin */
     gpio_num_t spi_sclk_pin;                            /*!< SPI SCLK pin or parlio clock signal pin */
     gpio_num_t spi_data0_io_pin;                        /*!< SPI data0 I/O pin or parlio data0 signal pin */
-    gpio_num_t spi_data1_io_pin;                        /*!< SPI data1 I/O pin or parlio data1 signal pin. Only required when io_mode is ESP_CAM_CTLR_SPI_CAM_IO_MODE_2BIT. Set to GPIO_NUM_NC for 1-bit mode. */
+    gpio_num_t spi_data1_io_pin;                        /*!< SPI data1 I/O pin or parlio data1 signal pin. Only required when io_mode is ESP_CAM_CTLR_SPI_CAM_IO_MODE_2BIT or ESP_CAM_CTLR_SPI_CAM_IO_MODE_4BIT. Set to GPIO_NUM_NC for 1-bit mode. */
+    gpio_num_t spi_data2_io_pin;                        /*!< SPI data2 I/O pin or parlio data2 signal pin. Only required when io_mode is ESP_CAM_CTLR_SPI_CAM_IO_MODE_4BIT. Set to GPIO_NUM_NC for 1-bit or 2-bit mode. */
+    gpio_num_t spi_data3_io_pin;                        /*!< SPI data3 I/O pin or parlio data3 signal pin. Only required when io_mode is ESP_CAM_CTLR_SPI_CAM_IO_MODE_4BIT. Set to GPIO_NUM_NC for 1-bit or 2-bit mode. */
 
     gpio_num_t reset_pin;                               /*!< Reset pin */
     gpio_num_t pwdn_pin;                                /*!< Power down pin */

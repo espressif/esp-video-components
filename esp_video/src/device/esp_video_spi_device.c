@@ -210,6 +210,8 @@ static esp_err_t spi_video_start(struct esp_video *video, uint32_t type)
         .spi_sclk_pin = spi_video->spi_config.spi_sclk_pin,
         .spi_data0_io_pin = spi_video->spi_config.spi_data0_io_pin,
         .spi_data1_io_pin = spi_video->spi_config.spi_data1_io_pin,
+        .spi_data2_io_pin = spi_video->spi_config.spi_data2_io_pin,
+        .spi_data3_io_pin = spi_video->spi_config.spi_data3_io_pin,
         .input_data_color_type = spi_video->in_color,
         .h_res = CAPTURE_VIDEO_GET_FORMAT_WIDTH(video),
         .v_res = CAPTURE_VIDEO_GET_FORMAT_HEIGHT(video),

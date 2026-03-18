@@ -17,7 +17,7 @@ if CAMERA_SP0A39
 
         config CAMERA_SP0A39_AUTO_DETECT_SPI_INTERFACE_SENSOR
             bool "Detect for SPI interface sensor"
-            default n
+            default y
             help
                 When enabled, the SP0A39 sensor will be automatically detected
                 and initialized on the SPI interface at startup without requiring

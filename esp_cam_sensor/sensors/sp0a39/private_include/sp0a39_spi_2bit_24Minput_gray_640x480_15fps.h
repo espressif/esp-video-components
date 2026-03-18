@@ -379,3 +379,4 @@ static const sp0a39_reginfo_t SPI_2bit_24Minput_Gray_640x480_15fps[] = {
     {0xda, 0x40},
     {0x2e, 0xf1},
     {0xfd, 0x00},
+};

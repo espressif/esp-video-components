@@ -104,7 +104,13 @@ static const esp_video_init_spi_config_t s_spi_config[] = {
         .spi_cs_pin = EXAMPLE_SPI_CAM_0_CS_PIN,
         .spi_sclk_pin = EXAMPLE_SPI_CAM_0_SCLK_PIN,
         .spi_data0_io_pin = EXAMPLE_SPI_CAM_0_DATA0_IO_PIN,
+#if CONFIG_EXAMPLE_SPI_CAM_0_IO_MODE_2BIT || CONFIG_EXAMPLE_SPI_CAM_0_IO_MODE_4BIT
         .spi_data1_io_pin = EXAMPLE_SPI_CAM_0_DATA1_IO_PIN,
+#endif /* EXAMPLE_SPI_CAM_0_IO_MODE == ESP_CAM_CTLR_SPI_CAM_IO_MODE_2BIT || EXAMPLE_SPI_CAM_0_IO_MODE == ESP_CAM_CTLR_SPI_CAM_IO_MODE_4BIT */
+#if CONFIG_EXAMPLE_SPI_CAM_0_IO_MODE_4BIT
+        .spi_data2_io_pin = EXAMPLE_SPI_CAM_0_DATA2_IO_PIN,
+        .spi_data3_io_pin = EXAMPLE_SPI_CAM_0_DATA3_IO_PIN,
+#endif /* EXAMPLE_SPI_CAM_0_IO_MODE == ESP_CAM_CTLR_SPI_CAM_IO_MODE_4BIT */
 
         .xclk_source = EXAMPLE_SPI_CAM_0_XCLK_RESOURCE,
         .xclk_pin = EXAMPLE_SPI_CAM_0_XCLK_PIN,

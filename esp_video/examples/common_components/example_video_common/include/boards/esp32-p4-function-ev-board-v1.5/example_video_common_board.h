@@ -99,15 +99,42 @@ extern "C" {
 
 /**
  * @brief SPI camera sensor configuration
+ *
+ * @note The GPIO pin order for the SP0A39 camera sensor module is different from the BF3901.
  */
 #define EXAMPLE_SPI_CAM_0_CS_PIN                        37
 #define EXAMPLE_SPI_CAM_0_SCLK_PIN                      4
+#if CONFIG_CAMERA_SP0A39
+#define EXAMPLE_SPI_CAM_0_DATA0_IO_PIN                  2
+#if CONFIG_EXAMPLE_SPI_CAM_0_IO_MODE_2BIT
+#define EXAMPLE_SPI_CAM_0_DATA1_IO_PIN                  32
+#define EXAMPLE_SPI_CAM_0_DATA2_IO_PIN                  -1
+#define EXAMPLE_SPI_CAM_0_DATA3_IO_PIN                  -1
+#elif CONFIG_EXAMPLE_SPI_CAM_0_IO_MODE_4BIT
+#define EXAMPLE_SPI_CAM_0_DATA1_IO_PIN                  32
+#define EXAMPLE_SPI_CAM_0_DATA2_IO_PIN                  33
+#define EXAMPLE_SPI_CAM_0_DATA3_IO_PIN                  23
+#else /* CONFIG_EXAMPLE_SPI_CAM_0_IO_MODE_2BIT */
+#define EXAMPLE_SPI_CAM_0_DATA1_IO_PIN                  -1
+#define EXAMPLE_SPI_CAM_0_DATA2_IO_PIN                  -1
+#define EXAMPLE_SPI_CAM_0_DATA3_IO_PIN                  -1
+#endif /* CONFIG_EXAMPLE_SPI_CAM_0_IO_MODE_2BIT */
+#else /* CONFIG_CAMERA_SP0A39 */
 #define EXAMPLE_SPI_CAM_0_DATA0_IO_PIN                  21
 #if CONFIG_EXAMPLE_SPI_CAM_0_IO_MODE_2BIT
 #define EXAMPLE_SPI_CAM_0_DATA1_IO_PIN                  5
+#define EXAMPLE_SPI_CAM_0_DATA2_IO_PIN                  -1
+#define EXAMPLE_SPI_CAM_0_DATA3_IO_PIN                  -1
+#elif CONFIG_EXAMPLE_SPI_CAM_0_IO_MODE_4BIT
+#define EXAMPLE_SPI_CAM_0_DATA1_IO_PIN                  5
+#define EXAMPLE_SPI_CAM_0_DATA2_IO_PIN                  6
+#define EXAMPLE_SPI_CAM_0_DATA3_IO_PIN                  3
 #else /* CONFIG_EXAMPLE_SPI_CAM_0_IO_MODE_2BIT */
 #define EXAMPLE_SPI_CAM_0_DATA1_IO_PIN                  -1
+#define EXAMPLE_SPI_CAM_0_DATA2_IO_PIN                  -1
+#define EXAMPLE_SPI_CAM_0_DATA3_IO_PIN                  -1
 #endif /* CONFIG_EXAMPLE_SPI_CAM_0_IO_MODE_2BIT */
+#endif /* CONFIG_CAMERA_SP0A39 */
 
 /**
  * @brief SPI camera sensor clock resource configuration

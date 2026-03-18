@@ -73,6 +73,8 @@ typedef struct esp_video_spi_device_config {
     gpio_num_t spi_sclk_pin;                /*!< SPI SCLK pin */
     gpio_num_t spi_data0_io_pin;            /*!< SPI data0 I/O pin */
     gpio_num_t spi_data1_io_pin;            /*!< SPI data1 I/O pin */
+    gpio_num_t spi_data2_io_pin;            /*!< SPI data2 I/O pin */
+    gpio_num_t spi_data3_io_pin;            /*!< SPI data3 I/O pin */
 } esp_video_spi_device_config_t;
 #endif
 

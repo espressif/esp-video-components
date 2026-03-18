@@ -51,6 +51,15 @@ This component provides board-level initialization for esp_video, including MIPI
 
 **Note 2:** Only the parlio mode supports more than 1-bit to transform data, so only the parlio mode supports "SPI Data1 I/O Pin".
 
+**Note 3:** The GPIO pin order for the SP0A39 camera sensor module is different from the BF3901. Additionally, the SP0A39 can only be driven by Parallel IO and not by an SPI slave interface, so only ESP32-P4 and ESP32-C5 support this sensor. The GPIO pin assignments for the `ESP32-P4-Function-EV-Board V1.5` are as follows:
+
+| Camera Sensor | BF3901 | SP0A39 |
+|---------------|--------|--------|
+| Data0 I/O Pin |   21   |    2   |
+| Data1 I/O Pin |    5   |   32   |
+| Data2 I/O Pin |   NA   |   33   |
+| Data3 I/O Pin |   NA   |   23   |
+
 ### Customized Development Board Default Configuration
 
 When using "ESP32-XX-DevKitC" development boards, you can try the default GPIO pin configuration for "Customized Development Board" as shown in the following table:
@@ -89,6 +98,8 @@ When using "ESP32-XX-DevKitC" development boards, you can try the default GPIO p
 | SPI CAM0 SCLK Pin                |  4 | 13 |  6 |  6 |  6 |  6 |
 | SPI CAM0 Data0 I/O Pin           | 21 | 16 |  7 |  7 |  7 |  7 |
 | SPI CAM0 Data1 I/O Pin           |  5 | NA | NA | NA |  9 |  9 |
+| SPI CAM0 Data2 I/O Pin           | 33 | NA | NA | NA | NA |  8 |
+| SPI CAM0 Data3 I/O Pin           | 23 | NA | NA | NA | NA | 26 |
 |   |   |   |   |
 | SPI CAM1 I2C SCL Pin             |  5 |  1 | NA | NA | NA | NA |
 | SPI CAM1 I2C SDA Pin             |  6 |  2 | NA | NA | NA | NA |
@@ -103,7 +114,7 @@ When using "ESP32-XX-DevKitC" development boards, you can try the default GPIO p
 
 **Note 2**: If the SPI CAM0 and SPI CAM1 use the same camera sensor and it only owns one I2C slave address, the SPI CAM0 and SPI CAM1 should use different I2C ports to communicate with their target camera sensor.
 
-**Note 3:** Only the parlio mode supports more than 1-bit to transform data, so only the parlio mode supports "SPI CAM0 Data1 I/O Pin".
+**Note 3:** Only the Parallel IO mode supports more than 1-bit to transform data (up to 4-bit mode with Data0-Data3), so only the Parallel IO mode supports "SPI CAM0 Data1/Data2/Data3 I/O Pin".
 
 ## Usage Instructions
 
