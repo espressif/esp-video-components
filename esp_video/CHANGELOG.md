@@ -13,6 +13,9 @@
     - Mounting and unmounting FATFS on SD/MMC cards
     - Mounting and unmounting USB MSC on SPI Flash
     - Mounting and unmounting USB MSC on SD/MMC cards
+- Added frame size enumeration functionality for CSI, DVP, and SPI video devices
+- Added command query functionality for JPEG and H.264 video devices
+- Added descriptive name strings for supported V4L2 commands
 
   Note:
   - USB MSC support requires `espressif/esp_tinyusb` version 2.1.x

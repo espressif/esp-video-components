@@ -889,6 +889,24 @@ static esp_err_t csi_set_selection(struct esp_video *video, struct v4l2_selectio
 }
 #endif
 
+static esp_err_t csi_video_enum_framesizes(struct esp_video *video, struct v4l2_frmsizeenum *frmsize, struct esp_video_stream *stream)
+{
+    cam_ctlr_color_t out_color;
+    uint8_t out_bpp;
+
+    if (frmsize->index != 0) {
+        return ESP_ERR_INVALID_ARG;
+    }
+
+    ESP_RETURN_ON_ERROR(csi_get_output_frame_type_from_v4l2(frmsize->pixel_format, &out_color, &out_bpp), TAG, "Input format %" PRIx32 " is not supported", frmsize->pixel_format);
+
+    frmsize->type = V4L2_FRMSIZE_TYPE_DISCRETE;
+    frmsize->discrete.width = CAPTURE_VIDEO_GET_FORMAT_WIDTH(video);
+    frmsize->discrete.height = CAPTURE_VIDEO_GET_FORMAT_HEIGHT(video);
+
+    return ESP_OK;
+}
+
 static const struct esp_video_ops s_csi_video_ops = {
     .init          = csi_video_init,
     .deinit        = csi_video_deinit,
@@ -910,6 +928,7 @@ static const struct esp_video_ops s_csi_video_ops = {
 #if ESP_VIDEO_ISP_DEVICE_CROP
     .set_selection = csi_set_selection,
 #endif
+    .enum_framesizes = csi_video_enum_framesizes,
 };
 
 /**

@@ -15,6 +15,7 @@
 struct control_map {
     uint32_t esp_cam_priv_id;
     uint32_t v4l2_id;
+    const char *name;
 };
 
 typedef enum cam_dev_type {
@@ -38,46 +39,57 @@ static const struct control_map s_sensor_control_map_table[] = {
     {
         .esp_cam_priv_id = ESP_CAM_SENSOR_GAIN,
         .v4l2_id = V4L2_CID_GAIN,
+        .name = "Gain",
     },
     {
         .esp_cam_priv_id = ESP_CAM_SENSOR_EXPOSURE_VAL,
         .v4l2_id = V4L2_CID_EXPOSURE,
+        .name = "Exposure",
     },
     {
         .esp_cam_priv_id = ESP_CAM_SENSOR_STATS,
-        .v4l2_id = V4L2_CID_CAMERA_STATS
+        .v4l2_id = V4L2_CID_CAMERA_STATS,
+        .name = "Sensor Statistics",
     },
     {
         .esp_cam_priv_id = ESP_CAM_SENSOR_AE_LEVEL,
-        .v4l2_id = V4L2_CID_CAMERA_AE_LEVEL
+        .v4l2_id = V4L2_CID_CAMERA_AE_LEVEL,
+        .name = "AE Target Level",
     },
     {
         .esp_cam_priv_id = ESP_CAM_SENSOR_GROUP_EXP_GAIN,
-        .v4l2_id = V4L2_CID_CAMERA_GROUP
+        .v4l2_id = V4L2_CID_CAMERA_GROUP,
+        .name = "Group Operation",
     },
     {
         .esp_cam_priv_id = ESP_CAM_SENSOR_EXPOSURE_US,
         .v4l2_id = V4L2_CID_EXPOSURE_ABSOLUTE,
+        .name = "Exposure Time, Absolute",
     },
     {
         .esp_cam_priv_id = ESP_CAM_SENSOR_JPEG_QUALITY,
         .v4l2_id = V4L2_CID_JPEG_COMPRESSION_QUALITY,
+        .name = "Compression Quality",
     },
     {
         .esp_cam_priv_id = ESP_CAM_SENSOR_3A_LOCK,
         .v4l2_id = V4L2_CID_3A_LOCK,
+        .name = "3A Lock"
     },
     {
         .esp_cam_priv_id = ESP_CAM_SENSOR_FLASH_LED,
         .v4l2_id = V4L2_CID_FLASH_LED_MODE,
+        .name = "LED Mode",
     },
     {
         .esp_cam_priv_id = ESP_CAM_SENSOR_VFLIP,
         .v4l2_id = V4L2_CID_VFLIP,
+        .name = "Vertical Flip",
     },
     {
         .esp_cam_priv_id = ESP_CAM_SENSOR_HMIRROR,
         .v4l2_id = V4L2_CID_HFLIP,
+        .name = "Horizontal Flip",
     },
 };
 
@@ -85,6 +97,7 @@ static const struct control_map s_sensor_control_ioctl_table[] = {
     {
         .esp_cam_priv_id = ESP_CAM_SENSOR_IOC_S_TEST_PATTERN,
         .v4l2_id = V4L2_CID_TEST_PATTERN,
+        .name = "Test Pattern",
     },
 };
 
@@ -93,10 +106,12 @@ static const struct control_map s_motor_control_map_table[] = {
     {
         .esp_cam_priv_id = ESP_CAM_MOTOR_POSITION_CODE,
         .v4l2_id = V4L2_CID_FOCUS_ABSOLUTE,
+        .name = "Focus, Absolute",
     },
     {
         .esp_cam_priv_id = ESP_CAM_MOTOR_MOVING_START_TIME,
         .v4l2_id = V4L2_CID_MOTOR_START_TIME,
+        .name = "Motor Start Time",
     }
 };
 #endif
@@ -425,8 +440,43 @@ esp_err_t esp_video_cam_query_ext_ctrls(esp_video_cam_t *cam, struct v4l2_query_
     bool ioctl;
     esp_err_t ret;
     cam_dev_type_t dev_type;
-    const struct control_map *control_map;
+    const struct control_map *control_map = NULL;
     esp_cam_sensor_param_desc_t qdesc;
+
+    if (qctrl->id & V4L2_CTRL_FLAG_NEXT_CTRL) {
+        bool matched = false;
+        bool found = false;
+        int map_size = ARRAY_SIZE(s_sensor_control_map_table);
+
+        /* Remove next flag */
+        qctrl->id &= ~V4L2_CTRL_FLAG_NEXT_CTRL;
+
+        /* If this is the first time, using the first ID V4L2_CID_GAIN */
+        if (!qctrl->id) {
+            matched = true;
+        }
+
+        for (int i = 0; i < map_size; i++) {
+            if (matched) {
+                qctrl->id = s_sensor_control_map_table[i].v4l2_id;
+
+                qdesc.id = s_sensor_control_map_table[i].esp_cam_priv_id;
+                ret = esp_cam_sensor_query_para_desc(cam->sensor, &qdesc);
+                if (!ret) {
+                    found = true;
+                    break;
+                }
+            } else {
+                if (s_sensor_control_map_table[i].v4l2_id == qctrl->id) {
+                    matched = true;
+                }
+            }
+        }
+
+        if (!found) {
+            return ESP_ERR_INVALID_ARG;
+        }
+    }
 
     control_map = get_v4l2_ext_control_map(qctrl->id, &ioctl, &dev_type);
     if (!control_map) {
@@ -450,6 +500,15 @@ esp_err_t esp_video_cam_query_ext_ctrls(esp_video_cam_t *cam, struct v4l2_query_
     if (ret != ESP_OK) {
         ESP_LOGD(TAG, "failed to query sensor id=%" PRIx32, qdesc.id);
         return ret;
+    }
+
+    int name_len = snprintf(qctrl->name, sizeof(qctrl->name), "%s", control_map->name);
+    if (name_len < 0) {
+        ESP_LOGE(TAG, "failed to fill name of cmd id=%" PRIx32, qctrl->id);
+        return ESP_FAIL;
+    } else if (name_len >= sizeof(qctrl->name)) {
+        ESP_LOGE(TAG, "name of cmd id=%" PRIx32 " is too long", qctrl->id);
+        return ESP_ERR_INVALID_ARG;
     }
 
     /**

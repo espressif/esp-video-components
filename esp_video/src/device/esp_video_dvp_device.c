@@ -485,6 +485,19 @@ static esp_err_t dvp_video_get_parm(struct esp_video *video, struct v4l2_streamp
     return ESP_OK;
 }
 
+static esp_err_t dvp_video_enum_framesizes(struct esp_video *video, struct v4l2_frmsizeenum *frmsize, struct esp_video_stream *stream)
+{
+    if ((frmsize->index != 0) || (frmsize->pixel_format != CAPTURE_VIDEO_GET_FORMAT_PIXEL_FORMAT(video))) {
+        return ESP_ERR_INVALID_ARG;
+    }
+
+    frmsize->type = V4L2_FRMSIZE_TYPE_DISCRETE;
+    frmsize->discrete.width = CAPTURE_VIDEO_GET_FORMAT_WIDTH(video);
+    frmsize->discrete.height = CAPTURE_VIDEO_GET_FORMAT_HEIGHT(video);
+
+    return ESP_OK;
+}
+
 static const struct esp_video_ops s_dvp_video_ops = {
     .init          = dvp_video_init,
     .deinit        = dvp_video_deinit,
@@ -500,6 +513,7 @@ static const struct esp_video_ops s_dvp_video_ops = {
     .get_sensor_format = dvp_video_get_sensor_format,
     .query_menu    = dvp_video_query_menu,
     .get_parm      = dvp_video_get_parm,
+    .enum_framesizes = dvp_video_enum_framesizes,
 };
 
 /**
