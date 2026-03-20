@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2025 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2026 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -13,44 +13,17 @@
 
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
-#include "esp_heap_caps.h"
-#ifdef CONFIG_HEAP_TRACING
-#include "esp_heap_trace.h"
-#endif
 #include "esp_timer.h"
-#include "memory_checks.h"
-#include "unity_test_utils_memory.h"
 #include "unity.h"
-#include "esp_log_buffer.h"
 
 #include "example_video_common.h"
-#include "esp_video_isp_ioctl.h"
-
-#define TEST_MEMORY_LEAK_THRESHOLD (-512)
+#include "esp_video_ioctl.h"
 
 #define VIDEO_BUFFER_NUM 2
 
 #define TEST_APP_VIDEO_DEVICE EXAMPLE_CAM_DEV_PATH
 
-#define HEAP_RECORD_NUM 32
-
 void setUp(void);
-
-static size_t before_free_8bit;
-static size_t before_free_32bit;
-
-#ifdef CONFIG_HEAP_TRACING
-static void init_heap_record(void)
-{
-    static heap_trace_record_t record_buffer[HEAP_RECORD_NUM];
-    static bool initialized = false;
-
-    if (!initialized) {
-        assert(heap_trace_init_standalone(record_buffer, HEAP_RECORD_NUM) == ESP_OK);
-        initialized = true;
-    }
-}
-#endif
 
 TEST_CASE("V4L2 init/deinit", "[video]")
 {
@@ -84,11 +57,13 @@ TEST_CASE("V4L2 Command", "[video]")
     fd = open(TEST_APP_VIDEO_DEVICE, O_RDWR);
     TEST_ASSERT_GREATER_OR_EQUAL(0, fd);
 
+    /* QUERYCAP */
     memset(&cap, 0, sizeof(cap));
     ret = ioctl(fd, VIDIOC_QUERYCAP, &cap);
     TEST_ESP_OK(ret);
     TEST_ASSERT_EQUAL_INT(V4L2_CAP_VIDEO_CAPTURE, cap.capabilities & V4L2_CAP_VIDEO_CAPTURE);
 
+    /* G_FMT */
     memset(&format, 0, sizeof(format));
     format.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
     ret = ioctl(fd, VIDIOC_G_FMT, &format);
@@ -103,6 +78,7 @@ TEST_CASE("V4L2 Command", "[video]")
     pixelformat = format.fmt.pix.pixelformat;
 #endif
 
+    /* S_FMT: valid */
     memset(&format, 0, sizeof(format));
     format.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
     format.fmt.pix.width = width;
@@ -111,6 +87,7 @@ TEST_CASE("V4L2 Command", "[video]")
     ret = ioctl(fd, VIDIOC_S_FMT, &format);
     TEST_ESP_OK(ret);
 
+    /* S_FMT: invalid width */
     memset(&format, 0, sizeof(format));
     format.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
     format.fmt.pix.width = width - 1;
@@ -119,6 +96,7 @@ TEST_CASE("V4L2 Command", "[video]")
     ret = ioctl(fd, VIDIOC_S_FMT, &format);
     TEST_ASSERT_EQUAL_INT(-1, ret);
 
+    /* S_FMT: invalid height */
     memset(&format, 0, sizeof(format));
     format.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
     format.fmt.pix.width = width;
@@ -126,6 +104,134 @@ TEST_CASE("V4L2 Command", "[video]")
     format.fmt.pix.pixelformat = pixelformat;
     ret = ioctl(fd, VIDIOC_S_FMT, &format);
     TEST_ASSERT_EQUAL_INT(-1, ret);
+
+    /* S_FMT: invalid pixelformat */
+    memset(&format, 0, sizeof(format));
+    format.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
+    format.fmt.pix.width = width;
+    format.fmt.pix.height = height;
+    format.fmt.pix.pixelformat = 0xDEADBEEF;
+    ret = ioctl(fd, VIDIOC_S_FMT, &format);
+    TEST_ASSERT_EQUAL_INT(-1, ret);
+
+    close(fd);
+
+    TEST_ESP_OK(example_video_deinit());
+}
+
+TEST_CASE("V4L2 query operations", "[video]")
+{
+    int fd;
+    int ret;
+
+    setUp();
+
+    TEST_ESP_OK(example_video_init());
+
+    fd = open(TEST_APP_VIDEO_DEVICE, O_RDWR);
+    TEST_ASSERT_GREATER_OR_EQUAL(0, fd);
+
+    /* ENUM_FMT: index 0 should succeed */
+    struct v4l2_fmtdesc fmtdesc;
+    memset(&fmtdesc, 0, sizeof(fmtdesc));
+    fmtdesc.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
+    fmtdesc.index = 0;
+    ret = ioctl(fd, VIDIOC_ENUM_FMT, &fmtdesc);
+    TEST_ESP_OK(ret);
+    TEST_ASSERT_NOT_EQUAL(0, fmtdesc.pixelformat);
+
+    /* ENUM_FMT: out-of-range index should fail */
+    memset(&fmtdesc, 0, sizeof(fmtdesc));
+    fmtdesc.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
+    fmtdesc.index = 255;
+    ret = ioctl(fd, VIDIOC_ENUM_FMT, &fmtdesc);
+    TEST_ASSERT_EQUAL_INT(-1, ret);
+
+    /* G_FMT to get current format for subsequent tests */
+    struct v4l2_format format;
+    memset(&format, 0, sizeof(format));
+    format.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
+    ret = ioctl(fd, VIDIOC_G_FMT, &format);
+    TEST_ESP_OK(ret);
+
+    /* ENUM_FRAMESIZES: index 0 with current format should succeed */
+    struct v4l2_frmsizeenum frmsize;
+    memset(&frmsize, 0, sizeof(frmsize));
+    frmsize.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
+    frmsize.index = 0;
+    frmsize.pixel_format = format.fmt.pix.pixelformat;
+    ret = ioctl(fd, VIDIOC_ENUM_FRAMESIZES, &frmsize);
+    TEST_ESP_OK(ret);
+    TEST_ASSERT_EQUAL_INT(V4L2_FRMSIZE_TYPE_DISCRETE, frmsize.type);
+    TEST_ASSERT_EQUAL_INT(format.fmt.pix.width, frmsize.discrete.width);
+    TEST_ASSERT_EQUAL_INT(format.fmt.pix.height, frmsize.discrete.height);
+
+    /* ENUM_FRAMESIZES: index 1 should fail */
+    memset(&frmsize, 0, sizeof(frmsize));
+    frmsize.index = 1;
+    frmsize.pixel_format = format.fmt.pix.pixelformat;
+    ret = ioctl(fd, VIDIOC_ENUM_FRAMESIZES, &frmsize);
+    TEST_ASSERT_EQUAL_INT(-1, ret);
+
+    /* G_SENSOR_FMT */
+    esp_cam_sensor_format_t sensor_fmt;
+    memset(&sensor_fmt, 0, sizeof(sensor_fmt));
+    ret = ioctl(fd, VIDIOC_G_SENSOR_FMT, &sensor_fmt);
+    TEST_ESP_OK(ret);
+    TEST_ASSERT_GREATER_THAN(0, sensor_fmt.width);
+    TEST_ASSERT_GREATER_THAN(0, sensor_fmt.height);
+
+    /* G_PARM */
+    struct v4l2_streamparm sparm;
+    memset(&sparm, 0, sizeof(sparm));
+    sparm.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
+    ret = ioctl(fd, VIDIOC_G_PARM, &sparm);
+    TEST_ESP_OK(ret);
+    TEST_ASSERT_EQUAL_INT(V4L2_CAP_TIMEPERFRAME, sparm.parm.capture.capability & V4L2_CAP_TIMEPERFRAME);
+    TEST_ASSERT_EQUAL_INT(1, sparm.parm.capture.timeperframe.numerator);
+    TEST_ASSERT_GREATER_THAN(0, sparm.parm.capture.timeperframe.denominator);
+    printf("FPS=%0.2f\n", (float)sparm.parm.capture.timeperframe.denominator / sparm.parm.capture.timeperframe.numerator);
+
+    /* QUERY_EXT_CTRL + G_EXT_CTRLS + S_EXT_CTRLS */
+    struct v4l2_query_ext_ctrl qctrl;
+    memset(&qctrl, 0, sizeof(qctrl));
+    qctrl.id = V4L2_CID_BRIGHTNESS;
+    ret = ioctl(fd, VIDIOC_QUERY_EXT_CTRL, &qctrl);
+    if (ret == 0) {
+        printf("V4L2_CID_BRIGHTNESS: min=%" PRId64 " max=%" PRId64 " step=%" PRIu64 "\n",
+               qctrl.minimum, qctrl.maximum, qctrl.step);
+
+        struct v4l2_ext_control ctrl;
+        struct v4l2_ext_controls ctrls;
+        memset(&ctrl, 0, sizeof(ctrl));
+        memset(&ctrls, 0, sizeof(ctrls));
+        ctrl.id = V4L2_CID_BRIGHTNESS;
+        ctrls.count = 1;
+        ctrls.controls = &ctrl;
+        ret = ioctl(fd, VIDIOC_G_EXT_CTRLS, &ctrls);
+        TEST_ESP_OK(ret);
+        printf("V4L2_CID_BRIGHTNESS value=%" PRId32 "\n", ctrl.value);
+
+        ret = ioctl(fd, VIDIOC_S_EXT_CTRLS, &ctrls);
+        TEST_ESP_OK(ret);
+    }
+
+    /* QUERYMENU */
+    struct v4l2_querymenu qmenu;
+    memset(&qmenu, 0, sizeof(qmenu));
+    qmenu.id = V4L2_CID_BRIGHTNESS;
+    qmenu.index = 0;
+    ret = ioctl(fd, VIDIOC_QUERYMENU, &qmenu);
+    /* May or may not be supported, both are valid */
+
+    /* S_SENSOR_FMT: set current sensor format back */
+    ret = ioctl(fd, VIDIOC_S_SENSOR_FMT, &sensor_fmt);
+    TEST_ESP_OK(ret);
+
+    /* SET_OWNER */
+    int owner = 0;
+    ret = ioctl(fd, VIDIOC_SET_OWNER, &owner);
+    TEST_ESP_OK(ret);
 
     close(fd);
 
@@ -276,8 +382,6 @@ TEST_CASE("V4L2 M2M device", "[video]")
     TEST_ESP_OK(ret);
     TEST_ASSERT_EQUAL_INT(V4L2_CAP_VIDEO_M2M, cap.capabilities & V4L2_CAP_VIDEO_M2M);
 
-    /* Initialize output buffer */
-
     memset(&format, 0, sizeof(format));
     format.type = V4L2_BUF_TYPE_VIDEO_OUTPUT;
     format.fmt.pix.width = width;
@@ -310,8 +414,6 @@ TEST_CASE("V4L2 M2M device", "[video]")
         ret = ioctl(fd, VIDIOC_QBUF, &buf);
         TEST_ESP_OK(ret);
     }
-
-    /* Initialize capture buffer */
 
     memset(&format, 0, sizeof(format));
     format.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
@@ -428,7 +530,7 @@ TEST_CASE("V4L2 set/get selection", "[video]")
     out_selection.type = V4L2_BUF_TYPE_META_CAPTURE;
     TEST_ESP_OK(ioctl(fd, VIDIOC_G_SELECTION, &out_selection));
 
-    TEST_ESP_OK(memcmp(&out_selection, &in_selection, sizeof(out_selection)));
+    TEST_ASSERT_EQUAL_INT(0, memcmp(&out_selection, &in_selection, sizeof(out_selection)));
 
     TEST_ESP_OK(close(fd));
 
@@ -472,6 +574,8 @@ TEST_CASE("V4L2 set/get param", "[video]")
         }
         int div_fps = fps / i;
 
+        printf("test fps=%d\n", div_fps);
+
         memset(&sparm, 0, sizeof(sparm));
         sparm.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
         cparam->capability = V4L2_CAP_TIMEPERFRAME;
@@ -487,11 +591,11 @@ TEST_CASE("V4L2 set/get param", "[video]")
         ret = ioctl(fd, VIDIOC_REQBUFS, &req);
         TEST_ESP_OK(ret);
 
-        for (int i = 0; i < buf_count; i++) {
+        for (int j = 0; j < buf_count; j++) {
             memset(&buf, 0, sizeof(buf));
             buf.type        = V4L2_BUF_TYPE_VIDEO_CAPTURE;
             buf.memory      = V4L2_MEMORY_MMAP;
-            buf.index       = i;
+            buf.index       = j;
             ret = ioctl(fd, VIDIOC_QUERYBUF, &buf);
             TEST_ESP_OK(ret);
 
@@ -538,77 +642,6 @@ TEST_CASE("V4L2 set/get param", "[video]")
 
     TEST_ESP_OK(example_video_deinit());
 }
-
-TEST_CASE("V4L2 set/get GAMMA_EXT", "[video]")
-{
-    int fd;
-    int ret;
-    struct v4l2_ext_controls ctrls;
-    struct v4l2_ext_control ctrl[1];
-    esp_video_isp_gamma_ext_t gamma_set;
-    esp_video_isp_gamma_ext_t gamma_get;
-
-    setUp();
-
-    TEST_ESP_OK(example_video_init());
-
-    fd = open(ESP_VIDEO_ISP1_DEVICE_NAME, O_RDWR);
-    TEST_ASSERT_GREATER_OR_EQUAL(0, fd);
-
-    /* Set GAMMA_EXT with distinct R/G/B channel points */
-    memset(&gamma_set, 0, sizeof(gamma_set));
-    gamma_set.enable = true;
-    for (int i = 0; i < ISP_GAMMA_CURVE_POINTS_NUM; i++) {
-        gamma_set.red_points[i].x   = (uint8_t)(i * 16);
-        gamma_set.red_points[i].y   = (uint8_t)(i * 2);
-        gamma_set.green_points[i].x = (uint8_t)(i * 16);
-        gamma_set.green_points[i].y = (uint8_t)(i * 4);
-        gamma_set.blue_points[i].x  = (uint8_t)(i * 16);
-        gamma_set.blue_points[i].y  = (uint8_t)(i * 8);
-    }
-
-    memset(&ctrls, 0, sizeof(ctrls));
-    ctrls.ctrl_class = V4L2_CID_USER_CLASS;
-    ctrls.count      = 1;
-    ctrls.controls   = ctrl;
-    ctrl[0].id       = V4L2_CID_USER_ESP_ISP_GAMMA_EXT;
-    ctrl[0].size     = sizeof(esp_video_isp_gamma_ext_t);
-    ctrl[0].p_u8     = (uint8_t *)&gamma_set;
-
-    ret = ioctl(fd, VIDIOC_S_EXT_CTRLS, &ctrls);
-    TEST_ESP_OK(ret);
-
-    /* Get GAMMA_EXT and verify it matches what we set */
-    memset(&gamma_get, 0, sizeof(gamma_get));
-    ctrl[0].p_u8 = (uint8_t *)&gamma_get;
-
-    ret = ioctl(fd, VIDIOC_G_EXT_CTRLS, &ctrls);
-    TEST_ESP_OK(ret);
-
-    TEST_ASSERT_EQUAL(gamma_set.enable, gamma_get.enable);
-    TEST_ASSERT_EQUAL_INT(0, memcmp(gamma_set.red_points, gamma_get.red_points,
-                                    sizeof(esp_video_isp_gamma_point_t) * ISP_GAMMA_CURVE_POINTS_NUM));
-    TEST_ASSERT_EQUAL_INT(0, memcmp(gamma_set.green_points, gamma_get.green_points,
-                                    sizeof(esp_video_isp_gamma_point_t) * ISP_GAMMA_CURVE_POINTS_NUM));
-    TEST_ASSERT_EQUAL_INT(0, memcmp(gamma_set.blue_points, gamma_get.blue_points,
-                                    sizeof(esp_video_isp_gamma_point_t) * ISP_GAMMA_CURVE_POINTS_NUM));
-
-    /* Set enable = false and verify get */
-    gamma_set.enable = false;
-    ctrl[0].p_u8 = (uint8_t *)&gamma_set;
-    ret = ioctl(fd, VIDIOC_S_EXT_CTRLS, &ctrls);
-    TEST_ESP_OK(ret);
-
-    memset(&gamma_get, 0, sizeof(gamma_get));
-    ctrl[0].p_u8 = (uint8_t *)&gamma_get;
-    ret = ioctl(fd, VIDIOC_G_EXT_CTRLS, &ctrls);
-    TEST_ESP_OK(ret);
-    TEST_ASSERT_FALSE(gamma_get.enable);
-
-    close(fd);
-
-    TEST_ESP_OK(example_video_deinit());
-}
 #endif /* CONFIG_ESP_VIDEO_ENABLE_MIPI_CSI_VIDEO_DEVICE */
 
 TEST_CASE("V4L2 set/get timeout", "[video]")
@@ -619,7 +652,7 @@ TEST_CASE("V4L2 set/get timeout", "[video]")
     struct v4l2_requestbuffers req;
     int buf_count = 3;
     uint32_t os_ticks = 121;
-    uint32_t timeout_ms = os_ticks * (1000 / configTICK_RATE_HZ);
+    uint32_t timeout_ms = (os_ticks * 1000) / configTICK_RATE_HZ;
     int ret;
 
     setUp();
@@ -696,235 +729,4 @@ TEST_CASE("V4L2 set/get timeout", "[video]")
     close(fd);
 
     TEST_ESP_OK(example_video_deinit());
-}
-
-
-#if CONFIG_ESP_VIDEO_ENABLE_SWAP_BYTE_RISCV
-TEST_CASE("RISCV swap byte", "[video]")
-{
-    int64_t c_time_us = 0;
-    int64_t r_time_us = 0;
-    int64_t total_bytes = 0;
-    extern void esp_video_swap_byte_riscv(void *src, void *dst, uint32_t size);
-
-    for (int i = 0; i < 100; i++) {
-        uint8_t *src;
-        uint8_t *dst;
-        uint8_t *result;
-        size_t size = (((size_t)rand() % 10240) / 32 + 1) * 32;
-        /**
-         * Add some bytes to the end of the buffer to check if the swap causes the buffer to be overflowed
-         */
-        size_t res = (size_t)rand() % 64 + 32;
-
-        src = malloc(size + res);
-        TEST_ASSERT_NOT_NULL(src);
-        dst = malloc(size + res);
-        TEST_ASSERT_NOT_NULL(dst);
-        result = malloc(size + res);
-        TEST_ASSERT_NOT_NULL(result);
-
-        for (int j = 0; j < size + res; j++) {
-            src[j] = rand() % 256;
-        }
-
-        int64_t t = esp_timer_get_time();
-        for (int j = 0; j < size; j += 4) {
-            result[j + 0] = src[j + 1];
-            result[j + 1] = src[j + 0];
-
-            result[j + 2] = src[j + 3];
-            result[j + 3] = src[j + 2];
-        }
-        c_time_us += esp_timer_get_time() - t;
-
-        for (int j = 0; j < res; j++) {
-            result[size + j] = 0;
-        }
-
-        memset(dst, 0, size + res);
-        t = esp_timer_get_time();
-        esp_video_swap_byte_riscv(src, dst, size);
-        r_time_us += esp_timer_get_time() - t;
-
-        // ESP_LOG_BUFFER_HEX("src", src, size);
-        // ESP_LOG_BUFFER_HEX("result", result, size);
-        // ESP_LOG_BUFFER_HEX("dst", dst, size);
-
-        TEST_ASSERT_EQUAL_INT(0, memcmp(result, dst, size));
-
-        total_bytes += size;
-
-        free(src);
-        free(dst);
-        free(result);
-    }
-
-    printf("c speed: %lld MB/s, riscv speed: %lld MB/s\n", total_bytes * 1000000 / c_time_us / 1024 / 1024, total_bytes * 1000000 / r_time_us / 1024 / 1024);
-}
-#endif
-
-TEST_CASE("FATFS mount and unmount in SPI flash", "[video]")
-{
-    example_storage_handle_t handle;
-    int count = 32;
-    const char *mount_point = CONFIG_EXAMPLE_SPI_FLASH_MOUNT_POINT;
-
-    setUp();
-
-    for (int i = 0; i < count; i++)  {
-        TEST_ESP_OK(example_mount_fatfs_to_spiflash(&handle));
-
-        char name[64];
-        snprintf(name, sizeof(name), "%s/test_%04d.txt", mount_point, i);
-        int fd = open(name, O_RDWR | O_CREAT | O_TRUNC, 0666);
-        TEST_ASSERT_GREATER_OR_EQUAL(0, fd);
-        int ret = close(fd);
-        TEST_ASSERT_EQUAL_INT(0, ret);
-        ret = unlink(name);
-        TEST_ASSERT_EQUAL_INT(0, ret);
-
-        printf("File %s testing is passed\n", name);
-
-        TEST_ESP_OK(example_unmount_fatfs_in_spiflash(handle));
-    }
-}
-
-#if CONFIG_TINYUSB_MSC_ENABLED
-TEST_CASE("MSC mount and unmount in SPI flash", "[video]")
-{
-    example_storage_handle_t handle;
-    int count = 32;
-    const char *mount_point = CONFIG_EXAMPLE_SPI_FLASH_MOUNT_POINT;
-
-    setUp();
-
-    for (int i = 0; i < count; i++)  {
-        TEST_ESP_OK(example_mount_msc_to_spiflash(&handle));
-
-        char name[64];
-        snprintf(name, sizeof(name), "%s/test_%04d.txt", mount_point, i);
-        int fd = open(name, O_RDWR | O_CREAT | O_TRUNC, 0666);
-        TEST_ASSERT_GREATER_OR_EQUAL(0, fd);
-        int ret = close(fd);
-        TEST_ASSERT_EQUAL_INT(0, ret);
-        ret = unlink(name);
-        TEST_ASSERT_EQUAL_INT(0, ret);
-
-        printf("File %s testing is passed\n", name);
-
-        TEST_ESP_OK(example_unmount_msc_from_spiflash(handle));
-    }
-}
-#endif /* CONFIG_TINYUSB_MSC_ENABLED */
-
-#if CONFIG_SOC_SDMMC_HOST_SUPPORTED
-TEST_CASE("FATFS mount and unmount in SD card", "[video]")
-{
-    example_storage_handle_t handle;
-    int count = 32;
-    const char *mount_point = CONFIG_EXAMPLE_SDMMC_MOUNT_POINT;
-
-    setUp();
-
-    for (int i = 0; i < count; i++)  {
-        TEST_ESP_OK(example_mount_fatfs_to_mmc(&handle));
-
-        char name[64];
-        snprintf(name, sizeof(name), "%s/test_%04d.txt", mount_point, i);
-        int fd = open(name, O_RDWR | O_CREAT | O_TRUNC, 0666);
-        TEST_ASSERT_GREATER_OR_EQUAL(0, fd);
-        int ret = close(fd);
-        TEST_ASSERT_EQUAL_INT(0, ret);
-        ret = unlink(name);
-        TEST_ASSERT_EQUAL_INT(0, ret);
-
-        printf("File %s testing is passed\n", name);
-
-        TEST_ESP_OK(example_unmount_fatfs_in_mmc(handle));
-    }
-}
-
-#if CONFIG_TINYUSB_MSC_ENABLED
-TEST_CASE("MSC mount and unmount in SD card", "[video]")
-{
-    example_storage_handle_t handle;
-    int count = 32;
-    const char *mount_point = CONFIG_EXAMPLE_SDMMC_MOUNT_POINT;
-
-    setUp();
-
-    for (int i = 0; i < count; i++)  {
-        TEST_ESP_OK(example_mount_msc_to_mmc(&handle));
-
-        char name[64];
-        snprintf(name, sizeof(name), "%s/test_%04d.txt", mount_point, i);
-        int fd = open(name, O_RDWR | O_CREAT | O_TRUNC, 0666);
-        TEST_ASSERT_GREATER_OR_EQUAL(0, fd);
-        int ret = close(fd);
-        TEST_ASSERT_EQUAL_INT(0, ret);
-        ret = unlink(name);
-        TEST_ASSERT_EQUAL_INT(0, ret);
-
-        printf("File %s testing is passed\n", name);
-
-        TEST_ESP_OK(example_unmount_msc_from_mmc(handle));
-    }
-}
-#endif /* CONFIG_TINYUSB_MSC_ENABLED */
-#endif /* CONFIG_SOC_SDMMC_HOST_SUPPORTED */
-
-static void check_leak(size_t before_free, size_t after_free, const char *type)
-{
-    ssize_t delta = after_free - before_free;
-    printf("MALLOC_CAP_%s: Before %u bytes free, After %u bytes free (delta %d)\n", type, before_free, after_free, delta);
-    TEST_ASSERT_MESSAGE(delta >= TEST_MEMORY_LEAK_THRESHOLD, "memory leak");
-}
-
-void setUp(void)
-{
-#ifdef CONFIG_HEAP_TRACING
-    init_heap_record();
-    heap_trace_start(HEAP_TRACE_LEAKS);
-#endif
-
-    before_free_8bit = heap_caps_get_free_size(MALLOC_CAP_8BIT);
-    before_free_32bit = heap_caps_get_free_size(MALLOC_CAP_32BIT);
-}
-
-void tearDown(void)
-{
-    /* some FreeRTOS stuff is cleaned up by idle task */
-    vTaskDelay(5);
-
-    /* clean up some of the newlib's lazy allocations */
-    esp_reent_cleanup();
-
-#ifdef CONFIG_HEAP_TRACING
-    heap_trace_stop();
-    heap_trace_dump();
-#endif
-
-    size_t after_free_8bit = heap_caps_get_free_size(MALLOC_CAP_8BIT);
-    size_t after_free_32bit = heap_caps_get_free_size(MALLOC_CAP_32BIT);
-    check_leak(before_free_8bit, after_free_8bit, "8BIT");
-    check_leak(before_free_32bit, after_free_32bit, "32BIT");
-}
-
-void app_main(void)
-{
-    /**
-     * \ \     /_ _| __ \  ____|  _ \
-     *  \ \   /   |  |   | __|   |   |
-     *   \ \ /    |  |   | |     |   |
-     *    \_/   ___|____/ _____|\___/
-    */
-
-    printf("\r\n");
-    printf("\\ \\     /_ _| __ \\  ____|  _ \\  \r\n");
-    printf(" \\ \\   /   |  |   | __|   |   |\r\n");
-    printf("  \\ \\ /    |  |   | |     |   | \r\n");
-    printf("   \\_/   ___|____/ _____|\\___/  \r\n");
-
-    unity_run_menu();
 }

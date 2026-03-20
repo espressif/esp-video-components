@@ -4,7 +4,8 @@ set(srcs "src/esp_video_buffer.c"
          "src/esp_video_mman.c"
          "src/esp_video_vfs.c"
          "src/esp_video.c"
-         "src/esp_video_cam.c")
+         "src/esp_video_cam.c"
+         "src/device/esp_video_device_common.c")
 
 set(include_dirs "include")
 set(priv_include_dirs "private_include")
@@ -24,7 +25,7 @@ if(CONFIG_IDF_TARGET_ESP32P4)
 endif()
 
 if(CONFIG_ESP_VIDEO_ENABLE_MIPI_CSI_VIDEO_DEVICE)
-    list(APPEND srcs "src/device/esp_video_csi_device.c")
+    list(APPEND srcs "src/device/esp_video_csi_device.c" "src/device/esp_video_csi_format.c")
 endif()
 
 if(CONFIG_ESP_VIDEO_ENABLE_DVP_VIDEO_DEVICE)

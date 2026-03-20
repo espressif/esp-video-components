@@ -17,6 +17,7 @@
 
 #include "esp_video.h"
 #include "esp_video_device_internal.h"
+#include "esp_video_device_common.h"
 
 #define H264_NAME                   "H.264"
 
@@ -412,48 +413,7 @@ static esp_err_t h264_video_get_ext_ctrl(struct esp_video *video, struct v4l2_ex
 
 static esp_err_t h264_video_query_ext_ctrl(struct esp_video *video, struct v4l2_query_ext_ctrl *qctrl)
 {
-    int num = -1;
-    uint32_t id = qctrl->id;
-    int h264_qctrl_cnt = ARRAY_SIZE(s_h264_qctrl);
-    esp_err_t ret = ESP_ERR_NOT_SUPPORTED;
-
-    if (id & V4L2_CTRL_FLAG_NEXT_CTRL) {
-        uint32_t new_id = UINT32_MAX; // UINT32_MAX is out of range of V4L2_CTRL_ID_MASK, so used to indicate that the new ID is not found
-
-        id &= ~V4L2_CTRL_FLAG_NEXT_CTRL;
-        if (id == 0) {
-            new_id = s_h264_qctrl[0].id;
-            num = 0;
-        } else {
-            for (int i = 0; i < h264_qctrl_cnt; i++) {
-                if (id == s_h264_qctrl[i].id) {
-                    if (i < (h264_qctrl_cnt - 1)) {
-                        new_id = s_h264_qctrl[i + 1].id;
-                        num = i + 1;
-                        break;
-                    }
-                }
-            }
-        }
-
-        if (new_id == UINT32_MAX) {
-            return ESP_ERR_INVALID_ARG;
-        }
-    } else {
-        for (int i = 0; i < h264_qctrl_cnt; i++) {
-            if (id == s_h264_qctrl[i].id) {
-                num = i;
-                break;
-            }
-        }
-    }
-
-    if (num >= 0) {
-        memcpy(qctrl, &s_h264_qctrl[num], sizeof(struct v4l2_query_ext_ctrl));
-        ret = ESP_OK;
-    }
-
-    return ret;
+    return esp_video_device_common_query_ext_ctrl(s_h264_qctrl, ARRAY_SIZE(s_h264_qctrl), qctrl);
 }
 
 static const struct esp_video_ops s_h264_video_ops = {

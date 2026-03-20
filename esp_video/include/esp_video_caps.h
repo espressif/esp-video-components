@@ -73,6 +73,10 @@ extern "C" {
 #endif /* ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(6, 1, 0) */
 
 #endif /* CONFIG_ESP32P4_REV_MIN_FULL >= 300 */
+
+#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 5, 0)
+#define ESP_VIDEO_ISP_DRIVER_HAS_BYPASS 1  /*!< ISP driver supports bypass mode */
+#endif /* ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 5, 0) */
 #endif /* CONFIG_IDF_TARGET_ESP32P4 */
 
 /**

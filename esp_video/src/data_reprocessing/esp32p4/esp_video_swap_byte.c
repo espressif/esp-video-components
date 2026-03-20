@@ -130,7 +130,7 @@ esp_err_t esp_video_swap_byte_process(esp_video_swap_byte_t *swap_byte,  void *s
                                       void *dst, size_t dst_size, size_t *ret_size)
 {
 #if CONFIG_ESP_VIDEO_ENABLE_SWAP_BYTE_RISCV
-    esp_video_swap_byte_riscv(src, dst, src_size);
+    esp_video_swap_byte_riscv(src, dst, (uint32_t)src_size);
 #endif
     *ret_size = src_size;
     return ESP_OK;

@@ -12,9 +12,13 @@
 #if CONFIG_ESP_VIDEO_ENABLE_HW_JPEG_VIDEO_DEVICE
 #include "driver/jpeg_encode.h"
 #endif
-#include "esp_video_device.h"
+#if CONFIG_ESP_VIDEO_ENABLE_ISP
+#include "driver/isp.h"
+#endif
 #include "hal/cam_ctlr_types.h"
 #include "esp_cam_ctlr_spi.h"
+#include "esp_video_csi_format.h"
+#include "esp_video_device.h"
 #include "esp_video_caps.h"
 #include "linux/videodev2.h"
 
@@ -23,43 +27,11 @@ extern "C" {
 #endif
 
 /**
- * @brief On IDF versions prior to 6.0.0, CAM_CTLR_COLOR_YUV422_UYVY and CAM_CTLR_COLOR_YUV422_YUYV
- * are not defined in the HAL; both are aliased here to CAM_CTLR_COLOR_YUV422. Therefore
- * UYVY vs YUYV byte-order cannot be distinguished at compile- or run-time on IDF < 6.0.0.
- *
- * WARNING: Downstream code that relies on these two macros to differentiate YUV422
- * arrangements (UYVY vs YUYV) will not work correctly on IDF < 6.0.0. Callers should
- * either check ESP_IDF_VERSION and branch accordingly, or use an alternate mechanism
- * (e.g. format hints, runtime config) to handle byte ordering when supporting older IDF.
+ * @brief Device name for common video device
  */
-#if (ESP_IDF_VERSION < ESP_IDF_VERSION_VAL(6, 0, 0))
-#define CAM_CTLR_COLOR_YUV422_UYVY CAM_CTLR_COLOR_YUV422  /* alias: cannot distinguish UYVY on IDF < 6.0.0 */
-#define CAM_CTLR_COLOR_YUV422_YUYV CAM_CTLR_COLOR_YUV422  /* alias: cannot distinguish YUYV on IDF < 6.0.0 */
-#endif
-
-/**
- * @brief MIPI-CSI state
- */
-typedef struct esp_video_csi_state {
-    uint32_t lane_bitrate_mbps;             /*!< MIPI-CSI data lane bitrate in Mbps */
-    uint8_t lane_num;                       /*!< MIPI-CSI data lane number */
-    cam_ctlr_color_t in_color;              /*!< MIPI-CSI input(from camera sensor) data color format */
-    cam_ctlr_color_t out_color;             /*!< MIPI-CSI output(based on ISP output) data color format */
-    uint8_t out_bpp;                        /*!< MIPI-CSI output data color format bit per pixel */
-    uint32_t in_fmt;                        /*!< MIPI-CSI input V4L2 format from sensor */
-    bool line_sync;                         /*!< true: line has start and end packet; false. line has no start and end packet */
-    bool bypass_isp;                        /*!< true: ISP directly output data from input port with processing. false: ISP output processed data by pipeline  */
-    color_raw_element_order_t bayer_order;  /*!< Bayer order of raw data */
-
-#if ESP_VIDEO_ISP_DEVICE_CROP
-    struct v4l2_rect *crop;                 /*!< ISP video device crop rectangle pointer */
-
-    uint32_t raw_width;                     /*!< MIPI-CSI raw data width */
-    uint32_t raw_height;                    /*!< MIPI-CSI raw data height */
-
-    uint32_t out_fmt;                       /*!< MIPI-CSI output V4L2 format from ISP */
-#endif
-} esp_video_csi_state_t;
+#define CSI_NAME                    "MIPI-CSI"
+#define DVP_NAME                    "DVP"
+#define SPI_NAME                    "SPI"
 
 #ifdef CONFIG_ESP_VIDEO_ENABLE_SPI_VIDEO_DEVICE
 /**
@@ -122,17 +94,6 @@ esp_err_t esp_video_create_csi_video_device(esp_cam_sensor_device_t *cam_dev, co
 esp_err_t esp_video_destroy_csi_video_device(void);
 
 /**
- * @brief Get the sensor connected to MIPI-CSI video device
- *
- * @param None
- *
- * @return
- *      - Sensor pointer on success
- *      - NULL if failed
- */
-esp_cam_sensor_device_t *esp_video_get_csi_video_device_sensor(void);
-
-/**
  * @brief Add camera motor device to MIPI-CSI video device
  *
  * @param motor_dev camera motor device
@@ -142,17 +103,6 @@ esp_cam_sensor_device_t *esp_video_get_csi_video_device_sensor(void);
  *      - Others if failed
  */
 esp_err_t esp_video_csi_video_device_add_motor(esp_cam_motor_device_t *motor_dev);
-
-/**
- * @brief Get the motor connected to MIPI-CSI video device
- *
- * @param None
- *
- * @return
- *      - Motor pointer on success
- *      - NULL if failed
- */
-esp_cam_motor_device_t *esp_video_get_csi_video_device_motor(void);
 #endif
 
 #if CONFIG_ESP_VIDEO_ENABLE_DVP_VIDEO_DEVICE
@@ -177,17 +127,6 @@ esp_err_t esp_video_create_dvp_video_device(esp_cam_sensor_device_t *cam_dev);
  *      - Others if failed
  */
 esp_err_t esp_video_destroy_dvp_video_device(void);
-
-/**
- * @brief Get the sensor connected to DVP video device
- *
- * @param None
- *
- * @return
- *      - Sensor pointer on success
- *      - NULL if failed
- */
-esp_cam_sensor_device_t *esp_video_get_dvp_video_device_sensor(void);
 #endif
 
 #ifdef CONFIG_ESP_VIDEO_ENABLE_H264_VIDEO_DEVICE
@@ -241,57 +180,36 @@ esp_err_t esp_video_create_jpeg_video_device(jpeg_encoder_handle_t enc_handle);
 esp_err_t esp_video_destroy_jpeg_video_device(void);
 #endif
 
-#if CONFIG_ESP_VIDEO_ENABLE_ISP
-/**
- * @brief Start ISP process based on MIPI-CSI state
- *
- * @param state MIPI-CSI state object
- * @param state MIPI-CSI V4L2 capture format
- *
- * @return
- *      - ESP_OK on success
- *      - Others if failed
- */
-esp_err_t esp_video_isp_start_by_csi(const esp_video_csi_state_t *state, const struct v4l2_format *format);
-
-/**
- * @brief Stop ISP process
- *
- * @param state MIPI-CSI state object
- *
- * @return
- *      - ESP_OK on success
- *      - Others if failed
- */
-esp_err_t esp_video_isp_stop(const esp_video_csi_state_t *state);
-
-/**
- * @brief Enumerate ISP supported output pixel format
- *
- * @param state        MIPI-CSI state object
- * @param index        Enumerated number index
- * @param pixel_format Supported output pixel format
- * @param isp_format_nums ISP supported output pixel format number pointer
- *
- * @return
- *      - ESP_OK on success
- *      - Others if failed
- */
-esp_err_t esp_video_isp_enum_format(esp_video_csi_state_t *state, uint32_t index, uint32_t *pixel_format, uint32_t *isp_format_nums);
-
-/**
- * @brief Check if input format is valid
- *
- * @param state  MIPI-CSI state object
- * @param format V4L2 format object
- *
- * @return
- *      - ESP_OK on success
- *      - Others if failed
- */
-esp_err_t esp_video_isp_check_format(esp_video_csi_state_t *state, const struct v4l2_format *format);
-
 #if CONFIG_ESP_VIDEO_ENABLE_ISP_VIDEO_DEVICE
+
+/**
+ * @brief Add ISP processor to video device
+ *
+ * @param isp_proc       ISP processor handle
+ * @param width          Image width
+ * @param height         Image height
+ * @param crop_required  Whether cropping is required
+ * @param crop_rect      Crop rectangle (can be NULL if crop_required is false)
+ * @param in_out_format  ISP input/output format configuration
+ *
+ * @return
+ *      - ESP_OK on success
+ *      - Others if failed
+ */
+esp_err_t esp_video_isp_video_device_add_isp_proc(isp_proc_handle_t isp_proc, uint32_t width, uint32_t height,
+        bool crop_required, const struct v4l2_rect *crop_rect, const esp_video_csi_isp_in_out_format_t *in_out_format);
+
+/**
+ * @brief Remove ISP processor from video device
+ *
+ * @param isp_proc       ISP processor handle to remove
+ *
+ * @return
+ *      - ESP_OK on success
+ *      - Others if failed
+ */
+esp_err_t esp_video_isp_video_device_remove_isp_proc(isp_proc_handle_t isp_proc);
+
 /**
  * @brief Create ISP video device
  *
@@ -313,7 +231,6 @@ esp_err_t esp_video_create_isp_video_device(void);
  *      - Others if failed
  */
 esp_err_t esp_video_destroy_isp_video_device(void);
-#endif
 #endif
 
 #ifdef CONFIG_ESP_VIDEO_ENABLE_SPI_VIDEO_DEVICE
@@ -340,17 +257,6 @@ esp_err_t esp_video_create_spi_video_device(esp_cam_sensor_device_t *cam_dev, co
  *      - Others if failed
  */
 esp_err_t esp_video_destroy_spi_video_device(uint8_t index);
-
-/**
- * @brief Get the sensor connected to SPI video device
- *
- * @param index         SPI video device index
- *
- * @return
- *      - Sensor pointer on success
- *      - NULL if failed
- */
-esp_cam_sensor_device_t *esp_video_get_spi_video_device_sensor(uint8_t index);
 #endif
 
 #if CONFIG_ESP_VIDEO_ENABLE_USB_UVC_VIDEO_DEVICE

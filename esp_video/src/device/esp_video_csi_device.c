@@ -11,7 +11,7 @@
 #include "esp_log.h"
 #include "esp_attr.h"
 #include "esp_check.h"
-#include "esp_private/esp_cache_private.h"
+#include "hal/isp_ll.h"
 #include "esp_ldo_regulator.h"
 #include "esp_cam_ctlr.h"
 #include "esp_cam_ctlr_csi.h"
@@ -20,13 +20,13 @@
 #include "esp_video_cam.h"
 #include "esp_video_ioctl.h"
 #include "esp_video_device_internal.h"
+#include "esp_video_device_common.h"
+#include "esp_video_csi_format.h"
 #if CONFIG_ESP_VIDEO_ENABLE_SWAP_SHORT && !ESP_VIDEO_CSI_DEVICE_SWAP_SHORT
 #include "esp_video_swap_short.h"
 
 #define ESP_VIDEO_CSI_DEVICE_SW_SWAP_SHORT 1 /* Software swap short */
 #endif
-
-#define CSI_NAME                    "MIPI-CSI"
 
 #define CSI_LDO_UNIT_ID             3
 #define CSI_LDO_CFG_VOL_MV          2500
@@ -37,32 +37,31 @@
 #define CSI_MEM_CAPS                (MALLOC_CAP_8BIT | MALLOC_CAP_DMA)
 #endif
 
-#define CSI_CTRL_ID                 0
-#define CSI_CLK_SRC                 MIPI_CSI_PHY_CLK_SRC_DEFAULT
-#define CSI_QUEUE_ITEMS             1
+#define CSI_CTRL_ID                 0 // ESP32-P4 only supports one CSI controller, so the controller ID is fixed to 0
+#define CSI_QUEUE_ITEMS             1 // CSI queue items is fixed to 1 to avoid buffer allocation and deallocation in the video device
 
-/* AEG-1488 */
-#define CSI_BYTE_SWAP_EN            false
+#define ISP_CLK_FREQ_HZ             (80 * 1000 * 1000) // ISP clock frequency is fixed to 80MHz for ESP32-P4
 
-#define CSI_DEFAULT_OUT_COLOR       CAM_CTLR_COLOR_RGB565
-#define CSI_DEFAULT_OUT_BPP         16
-#define V4L2_DEFAULT_OUT_COLOR      V4L2_PIX_FMT_RGB565
+#define V4L2_DEFAULT_OUT_COLOR      V4L2_PIX_FMT_RGB565 // Default output color is RGB565 for ESP32-P4 when input is RAW8
+
+#define ISP_CROP_MIN_WIDTH          32
+#define ISP_CROP_MIN_HEIGHT         32
 
 struct csi_video {
-    esp_video_csi_state_t state;
+    esp_video_device_common_t *common; /* Must be first for esp_video_device_common access */
 
-    esp_cam_ctlr_handle_t cam_ctrl_handle;
+    esp_video_csi_isp_in_out_format_t in_out_format;
+    color_raw_element_order_t bayer_order;
+    isp_color_range_t yuv_range;
+    isp_yuv_conv_std_t yuv_std;
+
     esp_ldo_channel_handle_t ldo_handle;
 
-#if CONFIG_ESP_VIDEO_DISABLE_MIPI_CSI_DRIVER_BACKUP_BUFFER
-    struct esp_video_buffer_element *element;
-#endif
+    isp_proc_handle_t isp_proc;
 
 #if ESP_VIDEO_CSI_DEVICE_SW_SWAP_SHORT
     esp_video_swap_short_t *swap_short;
 #endif
-
-    esp_video_cam_t cam;
 
     uint32_t dont_init_ldo      : 1;
 
@@ -72,200 +71,6 @@ struct csi_video {
 };
 
 static const char *TAG = "csi_video";
-
-#if ESP_VIDEO_CSI_DEVICE_CONV_FORMAT
-static bool csi_need_convert_format(cam_ctlr_color_t out_color)
-{
-    return out_color == CAM_CTLR_COLOR_YUV422_YVYU ||
-           out_color == CAM_CTLR_COLOR_YUV422_YUYV ||
-           out_color == CAM_CTLR_COLOR_YUV422_VYUY;
-}
-#endif
-
-#if ESP_VIDEO_CSI_DEVICE_SWAP_SHORT
-static bool sensor_format_is_yuv422(esp_cam_sensor_output_format_t format)
-{
-    return format == ESP_CAM_SENSOR_PIXFORMAT_YUV422_YUYV ||
-           format == ESP_CAM_SENSOR_PIXFORMAT_YUV422_UYVY;
-}
-#endif
-
-static esp_err_t csi_get_input_frame_type(uint32_t sensor_fmt, cam_ctlr_color_t *csi_color, uint8_t *csi_in_bpp, uint32_t *in_fmt)
-{
-    esp_err_t ret = ESP_OK;
-
-    switch (sensor_fmt) {
-    case ESP_CAM_SENSOR_PIXFORMAT_RAW8:
-        *csi_color = CAM_CTLR_COLOR_RAW8;
-        *in_fmt = V4L2_PIX_FMT_SBGGR8;
-        *csi_in_bpp = 8;
-        break;
-    case ESP_CAM_SENSOR_PIXFORMAT_RAW10:
-        *csi_color = CAM_CTLR_COLOR_RAW10;
-        *in_fmt = V4L2_PIX_FMT_SBGGR10;
-        *csi_in_bpp = 10;
-        break;
-    case ESP_CAM_SENSOR_PIXFORMAT_RAW12:
-        *csi_color = CAM_CTLR_COLOR_RAW12;
-        *in_fmt = V4L2_PIX_FMT_SBGGR12;
-        *csi_in_bpp = 12;
-        break;
-    case ESP_CAM_SENSOR_PIXFORMAT_RGB565_LE:
-        *csi_color = CAM_CTLR_COLOR_RGB565;
-        *in_fmt = V4L2_PIX_FMT_RGB565;
-        *csi_in_bpp = 16;
-        break;
-    case ESP_CAM_SENSOR_PIXFORMAT_RGB565_BE:
-        *csi_color = CAM_CTLR_COLOR_RGB565;
-        *in_fmt = V4L2_PIX_FMT_RGB565X;
-        *csi_in_bpp = 16;
-        break;
-    case ESP_CAM_SENSOR_PIXFORMAT_RGB888:
-        *csi_color = CAM_CTLR_COLOR_RGB888;
-        *in_fmt = V4L2_PIX_FMT_RGB24;
-        *csi_in_bpp = 24;
-        break;
-    case ESP_CAM_SENSOR_PIXFORMAT_YUV420:
-        *csi_color = CAM_CTLR_COLOR_YUV420;
-        *in_fmt = V4L2_PIX_FMT_YUV420;
-        *csi_in_bpp = 12;
-        break;
-    case ESP_CAM_SENSOR_PIXFORMAT_YUV422_UYVY:
-        *csi_color = CAM_CTLR_COLOR_YUV422_UYVY;
-        *in_fmt = V4L2_PIX_FMT_UYVY;
-        *csi_in_bpp = 16;
-        break;
-    case ESP_CAM_SENSOR_PIXFORMAT_YUV422_YUYV:
-        *csi_color = CAM_CTLR_COLOR_YUV422_YUYV;
-        *in_fmt = V4L2_PIX_FMT_YUYV;
-        *csi_in_bpp = 16;
-        break;
-    default:
-        ret = ESP_ERR_NOT_SUPPORTED;
-        break;
-    }
-
-    return ret;
-}
-
-static esp_err_t csi_get_output_frame_type_from_v4l2(uint32_t output_fmt, cam_ctlr_color_t *csi_color, uint8_t *out_bpp)
-{
-    esp_err_t ret = ESP_OK;
-
-    switch (output_fmt) {
-    case V4L2_PIX_FMT_SBGGR8:
-        *csi_color = CAM_CTLR_COLOR_RAW8;
-        *out_bpp = 8;
-        break;
-    case V4L2_PIX_FMT_SBGGR10:
-        *csi_color = CAM_CTLR_COLOR_RAW10;
-        *out_bpp = 10;
-        break;
-    case V4L2_PIX_FMT_SBGGR12:
-        *csi_color = CAM_CTLR_COLOR_RAW12;
-        *out_bpp = 12;
-        break;
-    case V4L2_PIX_FMT_RGB565:
-        *csi_color = CAM_CTLR_COLOR_RGB565;
-        *out_bpp = 16;
-        break;
-    case V4L2_PIX_FMT_RGB565X:
-        *csi_color = CAM_CTLR_COLOR_RGB565;
-        *out_bpp = 16;
-        break;
-    case V4L2_PIX_FMT_RGB24:
-        *csi_color = CAM_CTLR_COLOR_RGB888;
-        *out_bpp = 24;
-        break;
-    case V4L2_PIX_FMT_YUV420:
-        *csi_color = CAM_CTLR_COLOR_YUV420;
-        *out_bpp = 12;
-        break;
-    case V4L2_PIX_FMT_UYVY:
-        *csi_color = CAM_CTLR_COLOR_YUV422_UYVY;
-        *out_bpp = 16;
-        break;
-    case V4L2_PIX_FMT_YUYV:
-        *csi_color = CAM_CTLR_COLOR_YUV422_YUYV;
-        *out_bpp = 16;
-        break;
-#if ESP_VIDEO_CSI_DEVICE_CONV_FORMAT
-    case V4L2_PIX_FMT_YVYU:
-        *csi_color = CAM_CTLR_COLOR_YUV422_YVYU;
-        *out_bpp = 16;
-        break;
-    case V4L2_PIX_FMT_VYUY:
-        *csi_color = CAM_CTLR_COLOR_YUV422_VYUY;
-        *out_bpp = 16;
-        break;
-#endif
-    default:
-        ret = ESP_ERR_NOT_SUPPORTED;
-        *out_bpp = 0;
-        break;
-    }
-
-    return ret;
-}
-
-static esp_err_t csi_get_data_lane(uint32_t port, uint8_t *data_lane_num)
-{
-    esp_err_t ret = ESP_OK;
-
-    switch (port) {
-    case 1:
-        *data_lane_num = 1;
-        break;
-    case 2:
-        *data_lane_num = 2;
-        break;
-    default:
-        ret = ESP_ERR_NOT_SUPPORTED;
-        break;
-    }
-
-    return ret;
-}
-
-static esp_err_t v4l2_get_input_frame_type_from_sensor(uint32_t sensor_fmt, uint32_t *v4l2_format)
-{
-    esp_err_t ret = ESP_OK;
-
-    switch (sensor_fmt) {
-    case ESP_CAM_SENSOR_PIXFORMAT_RAW8:
-        *v4l2_format = V4L2_PIX_FMT_SBGGR8;
-        break;
-    case ESP_CAM_SENSOR_PIXFORMAT_RAW10:
-        *v4l2_format = V4L2_PIX_FMT_SBGGR10;
-        break;
-    case ESP_CAM_SENSOR_PIXFORMAT_RAW12:
-        *v4l2_format = V4L2_PIX_FMT_SBGGR12;
-        break;
-    case ESP_CAM_SENSOR_PIXFORMAT_RGB565_LE:
-        *v4l2_format = V4L2_PIX_FMT_RGB565;
-        break;
-    case ESP_CAM_SENSOR_PIXFORMAT_RGB565_BE:
-        *v4l2_format = V4L2_PIX_FMT_RGB565X;
-        break;
-    case ESP_CAM_SENSOR_PIXFORMAT_RGB888:
-        *v4l2_format = V4L2_PIX_FMT_RGB24;
-        break;
-    case ESP_CAM_SENSOR_PIXFORMAT_YUV420:
-        *v4l2_format = V4L2_PIX_FMT_YUV420;
-        break;
-    case ESP_CAM_SENSOR_PIXFORMAT_YUV422_UYVY:
-        *v4l2_format = V4L2_PIX_FMT_UYVY;
-        break;
-    case ESP_CAM_SENSOR_PIXFORMAT_YUV422_YUYV:
-        *v4l2_format = V4L2_PIX_FMT_YUYV;
-        break;
-    default:
-        ret = ESP_ERR_NOT_SUPPORTED;
-        break;
-    }
-
-    return ret;
-}
 
 static esp_err_t csi_get_input_bayer_order(const esp_cam_sensor_isp_info_t *isp_info, color_raw_element_order_t *bayer_order)
 {
@@ -296,175 +101,63 @@ static esp_err_t csi_get_input_bayer_order(const esp_cam_sensor_isp_info_t *isp_
     return ret;
 }
 
-static bool IRAM_ATTR csi_video_on_trans_finished(esp_cam_ctlr_handle_t handle, esp_cam_ctlr_trans_t *trans, void *user_data)
+static esp_err_t csi_start_init_config(esp_video_device_common_t *common, esp_video_device_common_init_data_t *config)
 {
-    struct esp_video *video = (struct esp_video *)user_data;
-    struct esp_video_param *param = CAPTURE_VIDEO_PARAM(video);
+    const esp_cam_sensor_format_t *sensor_fmt = common->sensor_format;
+    struct csi_video *csi_video = (struct csi_video *)common->priv;
+    uint32_t csi_output_v4l2_fmt = 0;
 
-    ESP_EARLY_LOGD(TAG, "size=%zu", trans->received_size);
-
-#if CONFIG_ESP_VIDEO_DISABLE_MIPI_CSI_DRIVER_BACKUP_BUFFER
-    struct csi_video *csi_video = VIDEO_PRIV_DATA(struct csi_video *, video);
-    if (trans->buffer != csi_video->element->buffer) {
-        if (!param->skip_count) {
-            CAPTURE_VIDEO_DONE_BUF(video, trans->buffer, trans->received_size);
-        } else {
-            CAPTURE_VIDEO_SKIP_BUF(video, trans->buffer);
-        }
-
-        if (param->skip_frames) {
-            param->skip_count = (param->skip_count + 1) % param->skip_frames;
-        }
-    }
-#else
-    if (!param->skip_count) {
-        CAPTURE_VIDEO_DONE_BUF(video, trans->buffer, trans->received_size);
-    } else {
-        CAPTURE_VIDEO_SKIP_BUF(video, trans->buffer);
+    if (sensor_fmt->isp_info) {
+        csi_output_v4l2_fmt = V4L2_DEFAULT_OUT_COLOR;
     }
 
-    if (param->skip_frames) {
-        param->skip_count = (param->skip_count + 1) % param->skip_frames;
-    }
-#endif
+    ESP_RETURN_ON_ERROR(esp_video_csi_check_format(sensor_fmt->format, csi_output_v4l2_fmt, &csi_video->in_out_format), TAG, "failed to check CSI format");
+    ESP_RETURN_ON_ERROR(csi_get_input_bayer_order(sensor_fmt->isp_info, &csi_video->bayer_order), TAG, "failed to get bayer order");
 
-    return true;
-}
-
-static bool IRAM_ATTR csi_video_on_get_new_trans(esp_cam_ctlr_handle_t handle, esp_cam_ctlr_trans_t *trans, void *user_data)
-{
-    struct esp_video_buffer_element *element;
-    struct esp_video *video = (struct esp_video *)user_data;
-
-    element = CAPTURE_VIDEO_GET_QUEUED_ELEMENT(video);
-#if CONFIG_ESP_VIDEO_DISABLE_MIPI_CSI_DRIVER_BACKUP_BUFFER
-    struct csi_video *csi_video = VIDEO_PRIV_DATA(struct csi_video *, video);
-
-    if (!element) {
-        element = csi_video->element;
-    } else {
-        csi_video->element = element;
-    }
-#else
-    if (!element) {
-        return false;
-    }
-#endif
-
-    trans->buffer = element->buffer;
-    trans->buflen = ELEMENT_SIZE(element);
-
-    return true;
-}
-
-static esp_err_t init_config(struct esp_video *video)
-{
-    uint8_t csi_in_bpp;
-    uint32_t v4l2_format;
-    esp_cam_sensor_format_t sensor_format;
-    struct csi_video *csi_video = VIDEO_PRIV_DATA(struct csi_video *, video);
-    esp_cam_sensor_device_t *sensor = csi_video->cam.sensor;
-
-    ESP_RETURN_ON_ERROR(esp_cam_sensor_get_format(sensor, &sensor_format), TAG, "failed to get sensor format");
-    ESP_RETURN_ON_FALSE(sensor_format.mipi_info.mipi_clk, ESP_ERR_NOT_SUPPORTED, TAG, "camera sensor mipi_clk is 0");
-    ESP_RETURN_ON_ERROR(csi_get_data_lane(sensor_format.mipi_info.lane_num, &csi_video->state.lane_num), TAG, "failed to get CSI data lane number");
-    ESP_RETURN_ON_ERROR(csi_get_input_frame_type(sensor_format.format, &csi_video->state.in_color, &csi_in_bpp, &csi_video->state.in_fmt), TAG, "failed to get CSI input frame format");
-    ESP_RETURN_ON_ERROR(csi_get_input_bayer_order(sensor_format.isp_info, &csi_video->state.bayer_order), TAG, "failed to get bayer order");
-
-    csi_video->state.lane_bitrate_mbps = sensor_format.mipi_info.mipi_clk / (1000 * 1000);
-
-    if (sensor_format.isp_info) {
-        csi_video->state.bypass_isp = false;
-
-        csi_video->state.out_color = CSI_DEFAULT_OUT_COLOR;
-        csi_video->state.out_bpp = CSI_DEFAULT_OUT_BPP;
-
-        v4l2_format = V4L2_DEFAULT_OUT_COLOR;
-    } else {
-        ESP_RETURN_ON_ERROR(v4l2_get_input_frame_type_from_sensor(sensor_format.format, &v4l2_format),
-                            TAG, "failed to get V4L2 input frame type");
-
-        csi_video->state.bypass_isp = true;
-
-        csi_video->state.out_color = csi_video->state.in_color;
-        csi_video->state.out_bpp = csi_in_bpp;
-    }
-
-    csi_video->state.line_sync = sensor_format.mipi_info.line_sync_en;
+    csi_video->yuv_range = ISP_COLOR_RANGE_FULL;
+    csi_video->yuv_std = ISP_YUV_CONV_STD_BT601;
 #if ESP_VIDEO_ISP_DEVICE_CROP
     csi_video->set_crop = false;
-    csi_video->state.raw_width = sensor_format.width;
-    csi_video->state.raw_height = sensor_format.height;
-    csi_video->state.out_fmt = v4l2_format;
 #endif
 
-    struct v4l2_format format = {
-        .type = V4L2_BUF_TYPE_VIDEO_CAPTURE,
-        .fmt.pix = {
-            .width = sensor_format.width,
-            .height = sensor_format.height,
-            .pixelformat = v4l2_format,
-        },
-    };
-    ESP_RETURN_ON_ERROR(esp_video_config_buffer(video, &format, CSI_MEM_CAPS), TAG, "failed to configure stream buffer");
-
+    config->v4l2_format = csi_output_v4l2_fmt;
     return ESP_OK;
 }
 
-static esp_err_t csi_video_init(struct esp_video *video)
+static esp_err_t csi_video_init(esp_video_device_common_t *common)
 {
-    esp_err_t ret;
     esp_ldo_channel_config_t ldo_cfg = {
         .chan_id = CSI_LDO_UNIT_ID,
         .voltage_mv = CSI_LDO_CFG_VOL_MV,
     };
-    struct csi_video *csi_video = VIDEO_PRIV_DATA(struct csi_video *, video);
+    struct csi_video *csi_video = (struct csi_video *)common->priv;
 
     if (!csi_video->dont_init_ldo) {
         ESP_RETURN_ON_ERROR(esp_ldo_acquire_channel(&ldo_cfg, &csi_video->ldo_handle), TAG, "failed to init LDO");
     }
 
-    ESP_GOTO_ON_ERROR(esp_cam_sensor_set_format(csi_video->cam.sensor, NULL), fail_0, TAG, "failed to set basic format");
-    ESP_GOTO_ON_ERROR(init_config(video), fail_0, TAG, "failed to initialize config");
-
     return ESP_OK;
-
-fail_0:
-    if (!csi_video->dont_init_ldo) {
-        esp_ldo_release_channel(csi_video->ldo_handle);
-        csi_video->ldo_handle = NULL;
-    }
-    return ret;
 }
 
-static esp_err_t csi_video_start(struct esp_video *video, uint32_t type)
+static esp_err_t start_csi_ctlr(esp_video_device_common_t *common, esp_cam_ctlr_handle_t *cam_ctrl_handle_ret)
 {
-    esp_err_t ret;
-    struct csi_video *csi_video = VIDEO_PRIV_DATA(struct csi_video *, video);
-
-#if ESP_VIDEO_CSI_DEVICE_SW_SWAP_SHORT
-    uint32_t data_seq;
-
-    ret = esp_cam_sensor_get_para_value(csi_video->cam.sensor, ESP_CAM_SENSOR_DATA_SEQ, &data_seq, sizeof(data_seq));
-    if (ret == ESP_OK && (data_seq == ESP_CAM_SENSOR_DATA_SEQ_SHORT_SWAPPED)) {
-        csi_video->swap_short = esp_video_swap_short_create(CAPTURE_VIDEO_BUF_SIZE(video));
-        if (!csi_video->swap_short) {
-            return ESP_ERR_NO_MEM;
-        }
-    }
-#endif
+    struct csi_video *csi_video = (struct csi_video *)common->priv;
+    const esp_cam_sensor_format_t *sensor_format = common->sensor_format;
+    esp_video_csi_isp_in_out_format_t *in_out_format = &csi_video->in_out_format;
+    const esp_cam_sensor_mipi_info_t *mipi_info = &sensor_format->mipi_info;
+    esp_cam_ctlr_handle_t cam_ctrl_handle;
 
     esp_cam_ctlr_csi_config_t csi_config = {
         .ctlr_id = CSI_CTRL_ID,
-        .clk_src = CSI_CLK_SRC,
-        .byte_swap_en = CSI_BYTE_SWAP_EN,
+        .clk_src = MIPI_CSI_PHY_CLK_SRC_DEFAULT,
+        .byte_swap_en = false, // no byte swap for CSI
         .queue_items = CSI_QUEUE_ITEMS,
-        .h_res = CAPTURE_VIDEO_GET_FORMAT_WIDTH(video),
-        .v_res = CAPTURE_VIDEO_GET_FORMAT_HEIGHT(video),
-        .data_lane_num = csi_video->state.lane_num,
-        .input_data_color_type = csi_video->state.in_color,
-        .output_data_color_type = csi_video->state.out_color,
-        .lane_bit_rate_mbps = csi_video->state.lane_bitrate_mbps,
+        .data_lane_num = mipi_info->lane_num,
+        .h_res = CAPTURE_VIDEO_GET_FORMAT_WIDTH(common->video),
+        .v_res = CAPTURE_VIDEO_GET_FORMAT_HEIGHT(common->video),
+        .input_data_color_type = in_out_format->csi_input_fmt,
+        .output_data_color_type = in_out_format->csi_output_fmt,
+        .lane_bit_rate_mbps = mipi_info->mipi_clk / (1000 * 1000),
 #if CONFIG_ESP_VIDEO_DISABLE_MIPI_CSI_DRIVER_BACKUP_BUFFER
         .bk_buffer_dis = true,
 #endif
@@ -474,119 +167,198 @@ static esp_err_t csi_video_start(struct esp_video *video, uint32_t type)
     /**
      * If the sensor output format is YUV422, enable 16-bit swap for input data
      */
-    esp_cam_sensor_format_t sensor_format;
-
-    ESP_RETURN_ON_ERROR(esp_cam_sensor_get_format(csi_video->cam.sensor, &sensor_format), TAG, "failed to get sensor format");
-    if (sensor_format_is_yuv422(sensor_format.format)) {
+    if (sensor_format->format == ESP_CAM_SENSOR_PIXFORMAT_YUV422_YUYV ||
+            sensor_format->format == ESP_CAM_SENSOR_PIXFORMAT_YUV422_UYVY) {
         csi_config.input_16bit_swap_en = true;
-    }
-#endif
 
-#if ESP_VIDEO_CSI_DEVICE_CONV_FORMAT
-    if (csi_video->state.bypass_isp) {
-        csi_config.input_data_color_type = csi_video->state.in_color;
-        csi_config.output_data_color_type = csi_video->state.out_color;
+        ESP_LOGI(TAG, "16-bit HW swap enabled");
     } else {
-        if (csi_need_convert_format(csi_video->state.out_color)) {
-            /**
-             * Convert YUV422 UYVY to other YUV422 series format
-             */
-            csi_config.input_data_color_type = CAM_CTLR_COLOR_YUV422_UYVY;
-            csi_config.output_data_color_type = csi_video->state.out_color;
-        } else {
-            /**
-             * Bypass CSI convert function
-             */
-            csi_config.input_data_color_type = csi_video->state.out_color;
-            csi_config.output_data_color_type = csi_video->state.out_color;
-        }
-    }
-#else
-#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(6, 0, 0)
-    csi_config.input_data_color_type = csi_video->state.out_color;
-    csi_config.output_data_color_type = csi_video->state.out_color;
-#else
-    csi_config.input_data_color_type = csi_video->state.in_color;
-    csi_config.output_data_color_type = csi_video->state.out_color;
-#endif
-#endif
-
-    ESP_GOTO_ON_ERROR(esp_cam_new_csi_ctlr(&csi_config, &csi_video->cam_ctrl_handle), exit_0, TAG, "failed to new CSI");
-
-    esp_cam_ctlr_evt_cbs_t cam_ctrl_cbs = {
-        .on_get_new_trans = csi_video_on_get_new_trans,
-        .on_trans_finished = csi_video_on_trans_finished
-    };
-    ESP_GOTO_ON_ERROR(esp_cam_ctlr_register_event_callbacks(csi_video->cam_ctrl_handle, &cam_ctrl_cbs, video),
-                      exit_1, TAG, "failed to register CAM ctlr event callback");
-
-    ESP_GOTO_ON_ERROR(esp_cam_ctlr_enable(csi_video->cam_ctrl_handle), exit_1, TAG, "failed to enable CAM ctlr");
-    ESP_GOTO_ON_ERROR(esp_cam_ctlr_start(csi_video->cam_ctrl_handle), exit_2, TAG, "failed to start CAM ctlr");
-
-#if ESP_VIDEO_ISP_DEVICE_CROP
-    if (csi_video->set_crop) {
-        csi_video->state.crop = &video->stream[0].rect;
-    } else {
-        csi_video->state.crop = NULL;
+        ESP_LOGD(TAG, "16-bit HW not enabled");
     }
 #endif
-    ESP_GOTO_ON_ERROR(esp_video_isp_start_by_csi(&csi_video->state, STREAM_FORMAT(CAPTURE_VIDEO_STREAM(video))),
-                      exit_3, TAG, "failed to start ISP");
 
-    int flags = 1;
-    ESP_GOTO_ON_ERROR(esp_cam_sensor_ioctl(csi_video->cam.sensor, ESP_CAM_SENSOR_IOC_S_STREAM, &flags),
-                      exit_4, TAG, "failed to start sensor stream");
+    ESP_RETURN_ON_ERROR(esp_cam_new_csi_ctlr(&csi_config, &cam_ctrl_handle), TAG, "failed to new CSI");
+
+    *cam_ctrl_handle_ret = cam_ctrl_handle;
 
     return ESP_OK;
+}
 
-exit_4:
-    esp_video_isp_stop(&csi_video->state);
-exit_3:
-    esp_cam_ctlr_stop(csi_video->cam_ctrl_handle);
-exit_2:
-    esp_cam_ctlr_disable(csi_video->cam_ctrl_handle);
-exit_1:
-    esp_cam_ctlr_del(csi_video->cam_ctrl_handle);
-    csi_video->cam_ctrl_handle = NULL;
-exit_0:
+static esp_err_t start_csi_swap_short(esp_video_device_common_t *common)
+{
 #if ESP_VIDEO_CSI_DEVICE_SW_SWAP_SHORT
+    const esp_cam_sensor_format_t *sensor_format = common->sensor_format;
+    struct csi_video *csi_video = (struct csi_video *)common->priv;
+    struct esp_video *video = common->video;
+
+    if (sensor_format->format == ESP_CAM_SENSOR_PIXFORMAT_YUV422_YUYV ||
+            sensor_format->format == ESP_CAM_SENSOR_PIXFORMAT_YUV422_UYVY) {
+        csi_video->swap_short = esp_video_swap_short_create(CAPTURE_VIDEO_BUF_SIZE(video));
+        if (!csi_video->swap_short) {
+            return ESP_ERR_NO_MEM;
+        }
+
+        ESP_LOGI(TAG, "16-bit SW swap enabled");
+    } else {
+        ESP_LOGD(TAG, "16-bit SW swap not enabled");
+    }
+#endif
+    return ESP_OK;
+}
+
+static void stop_csi_swap_short(esp_video_device_common_t *common)
+{
+#if ESP_VIDEO_CSI_DEVICE_SW_SWAP_SHORT
+    struct csi_video *csi_video = (struct csi_video *)common->priv;
     if (csi_video->swap_short) {
         esp_video_swap_short_free(csi_video->swap_short);
         csi_video->swap_short = NULL;
     }
 #endif
+}
+
+static esp_err_t add_isp_proc(isp_proc_handle_t isp_proc, uint32_t width, uint32_t height,
+                              bool crop_required, const struct v4l2_rect *crop_rect,
+                              const esp_video_csi_isp_in_out_format_t *in_out_format)
+{
+    esp_err_t ret = ESP_OK;
+
+#if CONFIG_ESP_VIDEO_ENABLE_ISP_VIDEO_DEVICE
+    ret = esp_video_isp_video_device_add_isp_proc(isp_proc, width, height, crop_required, crop_rect, in_out_format);
+#endif
+
     return ret;
 }
 
-static esp_err_t csi_video_stop(struct esp_video *video, uint32_t type)
+static esp_err_t remove_isp_proc(isp_proc_handle_t isp_proc)
 {
-    struct csi_video *csi_video = VIDEO_PRIV_DATA(struct csi_video *, video);
+    esp_err_t ret = ESP_OK;
 
-    int flags = 0;
-    ESP_RETURN_ON_ERROR(esp_cam_sensor_ioctl(csi_video->cam.sensor, ESP_CAM_SENSOR_IOC_S_STREAM, &flags),
-                        TAG, "failed to stop sensor stream");
-
-    ESP_RETURN_ON_ERROR(esp_video_isp_stop(&csi_video->state), TAG, "failed to stop ISP");
-
-    ESP_RETURN_ON_ERROR(esp_cam_ctlr_stop(csi_video->cam_ctrl_handle), TAG, "failed to stop CAM ctlr");
-    ESP_RETURN_ON_ERROR(esp_cam_ctlr_disable(csi_video->cam_ctrl_handle), TAG, "failed to disable CAM ctlr");
-
-    ESP_RETURN_ON_ERROR(esp_cam_ctlr_del(csi_video->cam_ctrl_handle), TAG, "failed to delete CAM ctlr");
-    csi_video->cam_ctrl_handle = NULL;
-
-#if ESP_VIDEO_CSI_DEVICE_SW_SWAP_SHORT
-    if (csi_video->swap_short) {
-        esp_video_swap_short_free(csi_video->swap_short);
-        csi_video->swap_short = NULL;
-    }
+#if CONFIG_ESP_VIDEO_ENABLE_ISP_VIDEO_DEVICE
+    ret = esp_video_isp_video_device_remove_isp_proc(isp_proc);
 #endif
+
+    return ret;
+}
+
+/**
+ * @brief Start ISP process based on MIPI-CSI state
+ *
+ * @param state MIPI-CSI state object
+ * @param state MIPI-CSI V4L2 capture format
+ *
+ * @return
+ *      - ESP_OK on success
+ *      - Others if failed
+ */
+static esp_err_t start_isp(esp_video_device_common_t *common)
+{
+    esp_err_t ret;
+    isp_proc_handle_t isp_proc;
+    struct csi_video *csi_video = (struct csi_video *)common->priv;
+    struct esp_video *video = common->video;
+    const esp_cam_sensor_format_t *sensor_format = common->sensor_format;
+    const esp_cam_sensor_mipi_info_t *mipi_info = &sensor_format->mipi_info;
+    esp_video_csi_isp_in_out_format_t *in_out_format = &csi_video->in_out_format;
+    uint32_t width = sensor_format->width;
+    uint32_t height = sensor_format->height;
+
+    esp_isp_processor_cfg_t isp_config = {
+        .clk_src = ISP_CLK_SRC_DEFAULT,
+        .clk_hz = ISP_CLK_FREQ_HZ,
+        .input_data_source = ISP_INPUT_DATA_SOURCE_CSI, // Force input data source to CSI
+        .has_line_start_packet = mipi_info->line_sync_en,
+        .has_line_end_packet = mipi_info->line_sync_en,
+        .h_res = width,
+        .v_res = height,
+        .yuv_range = csi_video->yuv_range,
+        .yuv_std = csi_video->yuv_std,
+        .input_data_color_type = in_out_format->isp_input_fmt,
+        .output_data_color_type = in_out_format->isp_output_fmt,
+        .bayer_order = csi_video->bayer_order,
+#if ESP_VIDEO_ISP_DRIVER_HAS_BYPASS
+        .flags = {
+            .bypass_isp = in_out_format->isp_bypass_required
+        }
+#endif
+    };
+
+    ESP_RETURN_ON_ERROR(esp_isp_new_processor(&isp_config, &isp_proc), TAG, "failed to new ISP");
+
+    bool crop_required = false;
+#if ESP_VIDEO_ISP_DEVICE_CROP
+    crop_required = csi_video->set_crop;
+#endif
+    ESP_GOTO_ON_ERROR(add_isp_proc(isp_proc, width, height, crop_required, CAPTURE_VIDEO_GET_RECT(video), in_out_format), fail_0, TAG, "failed to add ISP");
+
+    if (in_out_format->isp_bypass_required) {
+#ifndef ESP_VIDEO_ISP_DRIVER_HAS_BYPASS
+        ISP.frame_cfg.hadr_num = ceil((float)(width * in_out_format->isp_bpp) / 32.0) - 1;
+        ISP.frame_cfg.vadr_num = height - 1;
+        ISP.cntl.isp_en = 0;
+#endif
+    } else {
+        ESP_GOTO_ON_ERROR(esp_isp_enable(isp_proc), fail_1, TAG, "failed to enable ISP");
+    }
+
+    csi_video->isp_proc = isp_proc;
+    return ESP_OK;
+
+fail_1:
+    remove_isp_proc(isp_proc);
+fail_0:
+    esp_isp_del_processor(isp_proc);
+    csi_video->isp_proc = NULL;
+    return ret;
+}
+
+static esp_err_t stop_isp(esp_video_device_common_t *common)
+{
+    struct csi_video *csi_video = (struct csi_video *)common->priv;
+    isp_proc_handle_t isp_proc = csi_video->isp_proc;
+    esp_video_csi_isp_in_out_format_t *in_out_format = &csi_video->in_out_format;
+
+    if (!in_out_format->isp_bypass_required) {
+        ESP_RETURN_ON_ERROR(esp_isp_disable(isp_proc), TAG, "failed to disable ISP");
+    }
+
+    ESP_RETURN_ON_ERROR(remove_isp_proc(isp_proc), TAG, "failed to remove ISP");
+
+    ESP_RETURN_ON_ERROR(esp_isp_del_processor(isp_proc), TAG, "failed to delete ISP");
+    csi_video->isp_proc = NULL;
 
     return ESP_OK;
 }
 
-static esp_err_t csi_video_deinit(struct esp_video *video)
+static esp_err_t csi_video_start(esp_video_device_common_t *common, esp_cam_ctlr_handle_t *cam_ctrl_handle_ret)
 {
-    struct csi_video *csi_video = VIDEO_PRIV_DATA(struct csi_video *, video);
+    esp_err_t ret = ESP_OK;
+
+    ESP_RETURN_ON_ERROR(start_csi_swap_short(common), TAG, "failed to start CSI swap short");
+    ESP_GOTO_ON_ERROR(start_csi_ctlr(common, cam_ctrl_handle_ret), fail_0, TAG, "failed to start CSI ctlr");
+    ESP_GOTO_ON_ERROR(start_isp(common), fail_1, TAG, "failed to start ISP");
+
+    return ESP_OK;
+
+fail_1:
+    esp_cam_ctlr_del(*cam_ctrl_handle_ret);
+    *cam_ctrl_handle_ret = NULL;
+fail_0:
+    stop_csi_swap_short(common);
+    return ret;
+}
+
+static esp_err_t csi_video_stop(esp_video_device_common_t *common)
+{
+    ESP_RETURN_ON_ERROR(stop_isp(common), TAG, "failed to stop ISP");
+    stop_csi_swap_short(common);
+
+    return ESP_OK;
+}
+
+static esp_err_t csi_video_deinit(esp_video_device_common_t *common)
+{
+    struct csi_video *csi_video = (struct csi_video *)common->priv;
 
     if (!csi_video->dont_init_ldo) {
         ESP_RETURN_ON_ERROR(esp_ldo_release_channel(csi_video->ldo_handle), TAG, "failed to release LDO");
@@ -596,291 +368,88 @@ static esp_err_t csi_video_deinit(struct esp_video *video)
     return ESP_OK;
 }
 
-static esp_err_t csi_video_enum_format(struct esp_video *video, uint32_t type, uint32_t index, uint32_t *pixel_format)
+static esp_err_t csi_video_enum_format(esp_video_device_common_t *common, uint32_t index, uint32_t *pixel_format)
 {
-    esp_err_t ret = ESP_OK;
-    struct csi_video *csi_video = VIDEO_PRIV_DATA(struct csi_video *, video);
-    uint32_t isp_format_nums = 0;
-
-    ret = esp_video_isp_enum_format(&csi_video->state, index, pixel_format, &isp_format_nums);
-
-#if ESP_VIDEO_CSI_DEVICE_CONV_FORMAT
-    if (ret != ESP_OK) {
-        if (csi_video->state.bypass_isp) {
-            static const uint32_t s_csi_conv_format[] = {
-                // V4L2_PIX_FMT_RGB24,// Not supported really by CSI driver
-                V4L2_PIX_FMT_RGB565,
-                V4L2_PIX_FMT_YUV420,
-                V4L2_PIX_FMT_YUYV,
-                V4L2_PIX_FMT_VYUY,
-                V4L2_PIX_FMT_YVYU,
-                V4L2_PIX_FMT_UYVY,
-            };
-            uint32_t s_csi_conv_format_nums = sizeof(s_csi_conv_format) / sizeof(s_csi_conv_format[0]);
-
-            if (index < (isp_format_nums + s_csi_conv_format_nums) && index >= isp_format_nums) {
-                index -= isp_format_nums;
-
-                int input_format_index = -1;
-                for (int i = 0; i < s_csi_conv_format_nums; i++) {
-                    if (s_csi_conv_format[i] == csi_video->state.in_fmt) {
-                        input_format_index = i;
-                        break;
-                    }
-                }
-                if (input_format_index == -1) {
-                    return ESP_ERR_NOT_SUPPORTED;
-                }
-
-                if (index >= input_format_index) {
-                    index++;
-                    if (index >= s_csi_conv_format_nums) {
-                        return ESP_ERR_NOT_SUPPORTED;
-                    }
-                }
-
-                *pixel_format = s_csi_conv_format[index];
-                ret = ESP_OK;
-            }
-        } else {
-            static const uint32_t s_csi_conv_format[] = {
-                V4L2_PIX_FMT_YUYV,
-                V4L2_PIX_FMT_VYUY,
-                V4L2_PIX_FMT_YVYU,
-            };
-            uint32_t s_csi_conv_format_nums = sizeof(s_csi_conv_format) / sizeof(s_csi_conv_format[0]);
-
-            if (index < (isp_format_nums + s_csi_conv_format_nums) && index >= isp_format_nums) {
-                index -= isp_format_nums;
-
-                *pixel_format = s_csi_conv_format[index];
-                ret = ESP_OK;
-            }
-        }
-    }
-#endif
-
-    return ret;
+    return esp_video_csi_enum_format(common->sensor_format->format, index, pixel_format);
 }
 
-static esp_err_t csi_video_set_format(struct esp_video *video, const struct v4l2_format *format)
+static esp_err_t csi_check_set_format(esp_video_device_common_t *common, const struct v4l2_format *format)
 {
-    uint8_t out_bpp;
-    cam_ctlr_color_t out_color;
-    const struct v4l2_pix_format *pix = &format->fmt.pix;
-    struct csi_video *csi_video = VIDEO_PRIV_DATA(struct csi_video *, video);
+    struct csi_video *csi_video = (struct csi_video *)common->priv;
 
-    if ((CAPTURE_VIDEO_GET_FORMAT_WIDTH(video) != pix->width) ||
-            (CAPTURE_VIDEO_GET_FORMAT_HEIGHT(video) != pix->height)) {
-        ESP_LOGE(TAG, "format width or height is invalid");
-        return ESP_ERR_INVALID_ARG;
-    }
-
-    ESP_RETURN_ON_ERROR(csi_get_output_frame_type_from_v4l2(pix->pixelformat, &out_color, &out_bpp),
-                        TAG, "CSI can't support format=" V4L2_FMT_STR, V4L2_FMT_STR_ARG(pix->pixelformat));
-
-    if (esp_video_isp_check_format(&csi_video->state, format) == ESP_OK) {
-        csi_video->state.bypass_isp = false;
+    if ((format->fmt.pix.quantization == V4L2_QUANTIZATION_DEFAULT) ||
+            (format->fmt.pix.quantization == V4L2_QUANTIZATION_FULL_RANGE)) {
+        csi_video->yuv_range = ISP_COLOR_RANGE_FULL;
+    } else if (format->fmt.pix.quantization == V4L2_QUANTIZATION_LIM_RANGE) {
+        csi_video->yuv_range = ISP_COLOR_RANGE_LIMIT;
     } else {
-#ifndef ESP_VIDEO_CSI_DEVICE_CONV_FORMAT
-        ESP_RETURN_ON_FALSE(csi_video->state.in_color == out_color, ESP_ERR_NOT_SUPPORTED,
-                            TAG, "ISP does not support format=" V4L2_FMT_STR, V4L2_FMT_STR_ARG(pix->pixelformat));
-#endif
-        csi_video->state.bypass_isp = true;
+        return ESP_ERR_NOT_SUPPORTED;
     }
 
-    csi_video->state.out_color = out_color;
-    csi_video->state.out_bpp = out_bpp;
-#if ESP_VIDEO_ISP_DEVICE_CROP
-    csi_video->state.out_fmt = pix->pixelformat;
-#endif
+    if ((format->fmt.pix.ycbcr_enc == V4L2_YCBCR_ENC_DEFAULT) ||
+            (format->fmt.pix.ycbcr_enc == V4L2_YCBCR_ENC_601)) {
+        csi_video->yuv_std = ISP_YUV_CONV_STD_BT601;
+    } else if (format->fmt.pix.ycbcr_enc == V4L2_YCBCR_ENC_709) {
+        csi_video->yuv_std = ISP_YUV_CONV_STD_BT709;
+    } else {
+        return ESP_ERR_NOT_SUPPORTED;
+    }
 
-    ESP_RETURN_ON_ERROR(esp_video_config_buffer(video, format, CSI_MEM_CAPS), TAG, "failed to configure stream buffer");
+    ESP_RETURN_ON_ERROR(esp_video_csi_check_format(common->sensor_format->format, format->fmt.pix.pixelformat, &csi_video->in_out_format), TAG, "failed to check CSI format");
+    ESP_RETURN_ON_ERROR(esp_video_config_buffer(common->video, format, common->mem_caps), TAG, "failed to configure stream buffer");
 
     return ESP_OK;
 }
 
-static esp_err_t csi_video_notify(struct esp_video *video, enum esp_video_event event, void *arg)
+static esp_err_t csi_video_reprocess(esp_video_device_common_t *common, uint8_t *src, size_t src_size, uint8_t *dst, size_t dst_size, size_t *dst_out_size)
 {
     esp_err_t ret = ESP_OK;
+
+    *dst_out_size = src_size;
 
 #if ESP_VIDEO_CSI_DEVICE_SW_SWAP_SHORT
-    struct csi_video *csi_video = VIDEO_PRIV_DATA(struct csi_video *, video);
+    struct csi_video *csi_video = (struct csi_video *)common->priv;
 
-    if (event == ESP_VIDEO_DATA_PREPROCESSING && csi_video->swap_short) {
-        struct esp_video_buffer_element *element = CAPTURE_VIDEO_GET_FIRST_DONE_ELEMENT_PTR(video);
-
-        if (element) {
-            size_t ret_size;
-
-            ret = esp_video_swap_short_process(csi_video->swap_short, element->buffer, element->valid_size,
-                                               element->buffer, CAPTURE_VIDEO_BUF_SIZE(video), &ret_size);
-            if (ret == ESP_OK) {
-                element->valid_size = ret_size;
-            }
-        }
+    if (csi_video->swap_short) {
+        ret = esp_video_swap_short_process(csi_video->swap_short, src, src_size, dst, dst_size, dst_out_size);
     }
 #endif
 
     return ret;
 }
 
-static esp_err_t csi_video_set_ext_ctrl(struct esp_video *video, const struct v4l2_ext_controls *ctrls)
-{
-    struct csi_video *csi_video = VIDEO_PRIV_DATA(struct csi_video *, video);
-
-    return esp_video_cam_set_ext_ctrls(&csi_video->cam, ctrls);
-}
-
-static esp_err_t csi_video_get_ext_ctrl(struct esp_video *video, struct v4l2_ext_controls *ctrls)
-{
-    struct csi_video *csi_video = VIDEO_PRIV_DATA(struct csi_video *, video);
-
-    return esp_video_cam_get_ext_ctrls(&csi_video->cam, ctrls);
-}
-
-static esp_err_t csi_video_query_ext_ctrl(struct esp_video *video, struct v4l2_query_ext_ctrl *qctrl)
-{
-    struct csi_video *csi_video = VIDEO_PRIV_DATA(struct csi_video *, video);
-
-    return esp_video_cam_query_ext_ctrls(&csi_video->cam, qctrl);
-}
-
-static esp_err_t csi_video_set_sensor_format(struct esp_video *video, const esp_cam_sensor_format_t *format)
-{
-    struct csi_video *csi_video = VIDEO_PRIV_DATA(struct csi_video *, video);
-
-    ESP_RETURN_ON_ERROR(esp_cam_sensor_set_format(csi_video->cam.sensor, format), TAG, "failed to set customer format");
-    ESP_RETURN_ON_ERROR(init_config(video), TAG, "failed to initialize config");
-
-    return ESP_OK;
-}
-
-static esp_err_t csi_video_get_sensor_format(struct esp_video *video, esp_cam_sensor_format_t *format)
-{
-    struct csi_video *csi_video = VIDEO_PRIV_DATA(struct csi_video *, video);
-
-    return esp_cam_sensor_get_format(csi_video->cam.sensor, format);
-}
-
-static esp_err_t csi_video_query_menu(struct esp_video *video, struct v4l2_querymenu *qmenu)
-{
-    struct csi_video *csi_video = VIDEO_PRIV_DATA(struct csi_video *, video);
-
-    return esp_video_cam_query_menu(&csi_video->cam, qmenu);
-}
-
-static esp_err_t csi_video_set_motor_format(struct esp_video *video, const esp_cam_motor_format_t *format)
-{
-    struct csi_video *csi_video = VIDEO_PRIV_DATA(struct csi_video *, video);
-
-    if (!csi_video->cam.motor) {
-        return ESP_ERR_NOT_SUPPORTED;
-    }
-
-    return esp_cam_motor_set_format(csi_video->cam.motor, format);
-}
-
-static esp_err_t csi_video_get_motor_format(struct esp_video *video, esp_cam_motor_format_t *format)
-{
-    struct csi_video *csi_video = VIDEO_PRIV_DATA(struct csi_video *, video);
-
-    if (!csi_video->cam.motor) {
-        return ESP_ERR_NOT_SUPPORTED;
-    }
-
-    return esp_cam_motor_get_format(csi_video->cam.motor, format);
-}
-
-static esp_err_t csi_video_get_parm(struct esp_video *video, struct v4l2_streamparm *stream_parm, struct esp_video_stream *stream)
-{
-    struct csi_video *csi_video = VIDEO_PRIV_DATA(struct csi_video *, video);
-    struct v4l2_captureparm *cp = &stream_parm->parm.capture;
-    esp_cam_sensor_format_t sensor_format;
-    struct esp_video_param *param = &stream->param;
-
-    ESP_RETURN_ON_ERROR(esp_cam_sensor_get_format(csi_video->cam.sensor, &sensor_format), TAG, "failed to get sensor format");
-    cp->capability |= V4L2_CAP_TIMEPERFRAME;
-    cp->timeperframe.numerator = 1;
-    cp->timeperframe.denominator = sensor_format.fps;
-    if (param->skip_frames > 0) {
-        cp->timeperframe.denominator /= param->skip_frames;
-    }
-
-    return ESP_OK;
-}
-
-static esp_err_t csi_video_set_parm(struct esp_video *video, struct v4l2_streamparm *stream_parm, struct esp_video_stream *stream)
-{
-    esp_err_t ret = ESP_ERR_INVALID_ARG;
-    struct csi_video *csi_video = VIDEO_PRIV_DATA(struct csi_video *, video);
-    struct v4l2_captureparm *cp = &stream_parm->parm.capture;
-    esp_cam_sensor_format_t sensor_format;
-    struct esp_video_param *param = &stream->param;
-
-    if (cp->capability & V4L2_CAP_TIMEPERFRAME) {
-        if (cp->timeperframe.numerator != 1) {
-            ESP_LOGE(TAG, "numerator=%" PRIu32 " is invalid", cp->timeperframe.numerator);
-            return ESP_ERR_INVALID_ARG;
-        }
-
-        ESP_RETURN_ON_ERROR(esp_cam_sensor_get_format(csi_video->cam.sensor, &sensor_format), TAG, "failed to get sensor format");
-
-        if ((cp->timeperframe.denominator > sensor_format.fps) ||
-                (sensor_format.fps % cp->timeperframe.denominator != 0)) {
-            ESP_LOGE(TAG, "denominator=%" PRIu32 " is invalid", cp->timeperframe.denominator);
-            return ESP_ERR_INVALID_ARG;
-        }
-
-        param->skip_frames = sensor_format.fps / cp->timeperframe.denominator;
-        ESP_LOGD(TAG, "skip_frames=%d", param->skip_frames);
-        ret = ESP_OK;
-    }
-
-    return ret;
-}
-
-#if ESP_VIDEO_ISP_DEVICE_CROP
-static esp_err_t csi_set_selection(struct esp_video *video, struct v4l2_selection *selection)
+#if CONFIG_ESP_VIDEO_ENABLE_ISP_VIDEO_DEVICE && ESP_VIDEO_ISP_DEVICE_CROP
+static esp_err_t csi_set_selection(esp_video_device_common_t *common, struct v4l2_selection *selection)
 {
     esp_err_t ret = ESP_OK;
-    struct csi_video *csi_video = VIDEO_PRIV_DATA(struct csi_video *, video);
-    esp_cam_sensor_format_t sensor_format;
+    struct csi_video *csi_video = (struct csi_video *)common->priv;
+    const esp_cam_sensor_format_t *sensor_format = common->sensor_format;
 
-    if (csi_video->cam_ctrl_handle) {
+    if (common->cam_ctrl_handle) {
         ESP_LOGE(TAG, "MIPI-CSI should be stream off");
         return ESP_ERR_INVALID_STATE;
     }
 
     if (selection->target == V4L2_SEL_TGT_CROP) {
-        csi_video->set_crop = true;
+        struct v4l2_rect *r = &selection->r;
 
-        ESP_RETURN_ON_ERROR(esp_cam_sensor_get_format(csi_video->cam.sensor, &sensor_format), TAG, "failed to get sensor format");
-
-        if (selection->r.left >= sensor_format.width || (selection->r.width + selection->r.left) >= sensor_format.width ||
-                selection->r.top >= sensor_format.height || (selection->r.height + selection->r.top) >= sensor_format.height) {
+        if (r->left >= sensor_format->width || (r->width + r->left) > sensor_format->width || (r->width < ISP_CROP_MIN_WIDTH) || r->left < 0 ||
+                r->top >= sensor_format->height || (r->height + r->top) > sensor_format->height || (r->height < ISP_CROP_MIN_HEIGHT) || r->top < 0) {
             ESP_LOGE(TAG, "crop width or height is invalid");
             return ESP_ERR_INVALID_ARG;
         }
 
-        CAPTURE_VIDEO_SET_FORMAT(video,
-                                 selection->r.width,
-                                 selection->r.height,
-                                 csi_video->state.out_fmt);
+        struct v4l2_format format = {
+            .type = V4L2_BUF_TYPE_VIDEO_CAPTURE,
+            .fmt.pix = {
+                .width = r->width,
+                .height = r->height,
+                .pixelformat = CAPTURE_VIDEO_GET_FORMAT_PIXEL_FORMAT(common->video),
+            },
+        };
 
-        uint32_t buf_size = selection->r.width * selection->r.height * csi_video->state.out_bpp / 8;
-
-        ESP_LOGD(TAG, "buffer size=%" PRIu32, buf_size);
-
-        size_t alignments = 0;
-#if CONFIG_SPIRAM
-        ESP_RETURN_ON_ERROR(esp_cache_get_alignment(CSI_MEM_CAPS, &alignments), TAG, "failed to get cache alignment");
-#else
-        alignments = 4;
-#endif
-        ESP_LOGD(TAG, "alignments=%zu", alignments);
-
-        CAPTURE_VIDEO_SET_BUF_INFO(video, buf_size, alignments, CSI_MEM_CAPS);
+        ESP_RETURN_ON_ERROR(esp_video_config_buffer(common->video, &format, CSI_MEM_CAPS), TAG, "failed to configure stream buffer");
+        csi_video->set_crop = true;
     } else {
         ret = ESP_ERR_INVALID_ARG;
     }
@@ -889,46 +458,29 @@ static esp_err_t csi_set_selection(struct esp_video *video, struct v4l2_selectio
 }
 #endif
 
-static esp_err_t csi_video_enum_framesizes(struct esp_video *video, struct v4l2_frmsizeenum *frmsize, struct esp_video_stream *stream)
+static esp_err_t csi_check_enum_framesizes(esp_video_device_common_t *common, struct v4l2_frmsizeenum *frmsize)
 {
-    cam_ctlr_color_t out_color;
-    uint8_t out_bpp;
-
-    if (frmsize->index != 0) {
+    esp_video_csi_isp_in_out_format_t in_out_format;
+    if (esp_video_csi_check_format(common->sensor_format->format, frmsize->pixel_format, &in_out_format) != ESP_OK) {
         return ESP_ERR_INVALID_ARG;
     }
-
-    ESP_RETURN_ON_ERROR(csi_get_output_frame_type_from_v4l2(frmsize->pixel_format, &out_color, &out_bpp), TAG, "Input format %" PRIx32 " is not supported", frmsize->pixel_format);
-
-    frmsize->type = V4L2_FRMSIZE_TYPE_DISCRETE;
-    frmsize->discrete.width = CAPTURE_VIDEO_GET_FORMAT_WIDTH(video);
-    frmsize->discrete.height = CAPTURE_VIDEO_GET_FORMAT_HEIGHT(video);
 
     return ESP_OK;
 }
 
-static const struct esp_video_ops s_csi_video_ops = {
-    .init          = csi_video_init,
-    .deinit        = csi_video_deinit,
-    .start         = csi_video_start,
-    .stop          = csi_video_stop,
-    .enum_format   = csi_video_enum_format,
-    .set_format    = csi_video_set_format,
-    .notify        = csi_video_notify,
-    .set_ext_ctrl  = csi_video_set_ext_ctrl,
-    .get_ext_ctrl  = csi_video_get_ext_ctrl,
-    .query_ext_ctrl = csi_video_query_ext_ctrl,
-    .set_sensor_format = csi_video_set_sensor_format,
-    .get_sensor_format = csi_video_get_sensor_format,
-    .query_menu    = csi_video_query_menu,
-    .set_motor_format = csi_video_set_motor_format,
-    .get_motor_format = csi_video_get_motor_format,
-    .set_parm      = csi_video_set_parm,
-    .get_parm      = csi_video_get_parm,
-#if ESP_VIDEO_ISP_DEVICE_CROP
-    .set_selection = csi_set_selection,
+static const esp_video_device_intf_t s_csi_device_intf = {
+    .init              = csi_video_init,
+    .start_init_config = csi_start_init_config,
+    .deinit            = csi_video_deinit,
+    .start             = csi_video_start,
+    .stop              = csi_video_stop,
+    .enum_format       = csi_video_enum_format,
+    .check_set_format  = csi_check_set_format,
+    .reprocess         = csi_video_reprocess,
+    .check_enum_framesizes = csi_check_enum_framesizes,
+#if CONFIG_ESP_VIDEO_ENABLE_ISP_VIDEO_DEVICE && ESP_VIDEO_ISP_DEVICE_CROP
+    .set_selection     = csi_set_selection,
 #endif
-    .enum_framesizes = csi_video_enum_framesizes,
 };
 
 /**
@@ -942,23 +494,34 @@ static const struct esp_video_ops s_csi_video_ops = {
  */
 esp_err_t esp_video_create_csi_video_device(esp_cam_sensor_device_t *sensor, const esp_video_csi_device_config_t *config)
 {
-    struct esp_video *video;
+    esp_err_t ret;
     struct csi_video *csi_video;
-    uint32_t device_caps = V4L2_CAP_VIDEO_CAPTURE | V4L2_CAP_EXT_PIX_FORMAT | V4L2_CAP_STREAMING;
-    uint32_t caps = device_caps | V4L2_CAP_DEVICE_CAPS;
 
     csi_video = heap_caps_calloc(1, sizeof(struct csi_video), MALLOC_CAP_8BIT | MALLOC_CAP_INTERNAL);
     if (!csi_video) {
         return ESP_ERR_NO_MEM;
     }
-
-    csi_video->cam.sensor = sensor;
     csi_video->dont_init_ldo = config->dont_init_ldo;
 
-    video = esp_video_create(CSI_NAME, ESP_VIDEO_MIPI_CSI_DEVICE_ID, &s_csi_video_ops, csi_video, caps, device_caps);
-    if (!video) {
+    esp_video_device_common_config_t common_config = {
+        .name = CSI_NAME,
+        .id = ESP_VIDEO_MIPI_CSI_DEVICE_ID,
+        .priv = csi_video,
+        .intf = &s_csi_device_intf,
+        .cam = {
+            .sensor = sensor,
+        },
+        .mem_caps = CSI_MEM_CAPS,
+#if CONFIG_ESP_VIDEO_DISABLE_MIPI_CSI_DRIVER_BACKUP_BUFFER
+        .use_backup_element = true,
+#else
+        .use_backup_element = false,
+#endif
+    };
+    ret = esp_video_device_common_create(&common_config, &csi_video->common);
+    if (ret != ESP_OK) {
         heap_caps_free(csi_video);
-        return ESP_FAIL;
+        return ret;
     }
 
     return ESP_OK;
@@ -976,20 +539,20 @@ esp_err_t esp_video_create_csi_video_device(esp_cam_sensor_device_t *sensor, con
 esp_err_t esp_video_csi_video_device_add_motor(esp_cam_motor_device_t *motor_dev)
 {
     struct esp_video *video;
-    struct csi_video *csi_video;
+    esp_video_device_common_t *common;
 
     video = esp_video_device_get_object(CSI_NAME);
     if (!video) {
         return ESP_ERR_NOT_FOUND;
     }
 
-    csi_video = VIDEO_PRIV_DATA(struct csi_video *, video);
+    common = VIDEO_PRIV_DATA(esp_video_device_common_t *, video);
 
-    if (csi_video->cam.motor) {
+    if (common->cam.motor) {
         return ESP_ERR_INVALID_STATE;
     }
 
-    csi_video->cam.motor = motor_dev;
+    common->cam.motor = motor_dev;
 
     return ESP_OK;
 }
@@ -1005,71 +568,11 @@ esp_err_t esp_video_csi_video_device_add_motor(esp_cam_motor_device_t *motor_dev
  */
 esp_err_t esp_video_destroy_csi_video_device(void)
 {
-    esp_err_t ret;
-    struct esp_video *video;
     struct csi_video *csi_video;
 
-    video = esp_video_device_get_object(CSI_NAME);
-    if (!video) {
-        return ESP_ERR_NOT_FOUND;
-    }
-
-    csi_video = VIDEO_PRIV_DATA(struct csi_video *, video);
-
-    ret = esp_video_destroy(video);
-    if (ret != ESP_OK) {
-        return ret;
-    }
-
+    ESP_RETURN_ON_ERROR(esp_video_device_common_get_priv(CSI_NAME, (void **)&csi_video), TAG, "failed to get private data");
+    ESP_RETURN_ON_ERROR(esp_video_device_common_free(csi_video->common), TAG, "failed to free common video device");
     heap_caps_free(csi_video);
 
     return ESP_OK;
-}
-
-/**
- * @brief Get the sensor connected to MIPI-CSI video device
- *
- * @param None
- *
- * @return
- *      - Sensor pointer on success
- *      - NULL if failed
- */
-esp_cam_sensor_device_t *esp_video_get_csi_video_device_sensor(void)
-{
-    struct esp_video *video;
-    struct csi_video *csi_video;
-
-    video = esp_video_device_get_object(CSI_NAME);
-    if (!video) {
-        return NULL;
-    }
-
-    csi_video = VIDEO_PRIV_DATA(struct csi_video *, video);
-
-    return csi_video->cam.sensor;
-}
-
-/**
- * @brief Get the motor connected to MIPI-CSI video device
- *
- * @param None
- *
- * @return
- *      - Motor pointer on success
- *      - NULL if failed
- */
-esp_cam_motor_device_t *esp_video_get_csi_video_device_motor(void)
-{
-    struct esp_video *video;
-    struct csi_video *csi_video;
-
-    video = esp_video_device_get_object(CSI_NAME);
-    if (!video) {
-        return NULL;
-    }
-
-    csi_video = VIDEO_PRIV_DATA(struct csi_video *, video);
-
-    return csi_video->cam.motor;
 }

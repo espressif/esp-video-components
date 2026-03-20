@@ -15,6 +15,7 @@
 
 #include "esp_video.h"
 #include "esp_video_device_internal.h"
+#include "esp_video_device_common.h"
 
 #define JPEG_NAME                       "JPEG"
 
@@ -368,47 +369,7 @@ static esp_err_t jpeg_video_get_ext_ctrl(struct esp_video *video, struct v4l2_ex
 
 static esp_err_t jpeg_video_query_ext_ctrl(struct esp_video *video, struct v4l2_query_ext_ctrl *qctrl)
 {
-    int num = -1;
-    uint32_t id = qctrl->id;
-    int jpeg_qctrl_cnt = ARRAY_SIZE(s_jpeg_qctrl);
-    esp_err_t ret = ESP_ERR_NOT_SUPPORTED;
-    if (id & V4L2_CTRL_FLAG_NEXT_CTRL) {
-        int new_id = UINT32_MAX; // UINT32_MAX is out of range of V4L2_CTRL_ID_MASK, so used to indicate that the new ID is not found
-
-        id &= ~V4L2_CTRL_FLAG_NEXT_CTRL;
-        if (id == 0) {
-            new_id = s_jpeg_qctrl[0].id;
-            num = 0;
-        } else {
-            for (int i = 0; i < jpeg_qctrl_cnt; i++) {
-                if (id == s_jpeg_qctrl[i].id) {
-                    if (i < (jpeg_qctrl_cnt - 1)) {
-                        new_id = s_jpeg_qctrl[i + 1].id;
-                        num = i + 1;
-                        break;
-                    }
-                }
-            }
-        }
-
-        if (new_id == UINT32_MAX) {
-            return ESP_ERR_INVALID_ARG;
-        }
-    } else {
-        for (int i = 0; i < jpeg_qctrl_cnt; i++) {
-            if (id == s_jpeg_qctrl[i].id) {
-                num = i;
-                break;
-            }
-        }
-    }
-
-    if (num >= 0) {
-        memcpy(qctrl, &s_jpeg_qctrl[num], sizeof(struct v4l2_query_ext_ctrl));
-        ret = ESP_OK;
-    }
-
-    return ret;
+    return esp_video_device_common_query_ext_ctrl(s_jpeg_qctrl, ARRAY_SIZE(s_jpeg_qctrl), qctrl);
 }
 
 static const struct esp_video_ops s_jpeg_video_ops = {
