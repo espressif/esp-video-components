@@ -8,14 +8,14 @@ It is highly recommended that users use it in the [esp-video](https://github.com
 
 ## Supported SoCs and Interfaces
 
-| SoC | MIPI-CSI | LCD_CAM DVP | SPI |
-|:-:|:-:|:-:|:-:|
-| ESP32-P4 | Y   | Y   | Y |
-| ESP32-S3 | N/A | Y   | Y |
-| ESP32-C3 | N/A | N/A | Y |
-| ESP32-C5 | N/A | N/A | Y |
-| ESP32-C6 | N/A | N/A | Y |
-| ESP32-C61 | N/A | N/A | Y |
+| SoC | MIPI-CSI | LCD_CAM DVP | SPI | RESOLUTION LIMIT |
+|:-:|:-:|:-:|:-:|:-:|
+| ESP32-P4 | Y   | Y   | Y | 2MP resolution limit introduced by the ISP processor speed, regardless of sensor resolution|
+| ESP32-S3 | N/A | Y   | Y | 5MP only possible for still images with ov5640 outputting jpg format |
+| ESP32-C3 | N/A | N/A | Y | |
+| ESP32-C5 | N/A | N/A | Y | |
+| ESP32-C6 | N/A | N/A | Y | |
+| ESP32-C61 | N/A | N/A | Y | |
 
 ## Supported Camera Sensors
 
