@@ -8,14 +8,17 @@ It is highly recommended that users use it in the [esp-video](https://github.com
 
 ## Supported SoCs and Interfaces
 
-| SoC | MIPI-CSI | LCD_CAM DVP | SPI |
-|:-:|:-:|:-:|:-:|
-| ESP32-P4 | Y   | Y   | Y |
-| ESP32-S3 | N/A | Y   | Y |
-| ESP32-C3 | N/A | N/A | Y |
-| ESP32-C5 | N/A | N/A | Y |
-| ESP32-C6 | N/A | N/A | Y |
-| ESP32-C61 | N/A | N/A | Y |
+| SoC | MIPI-CSI | LCD_CAM DVP | USB | SPI |
+|:-:|:-:|:-:|:-:|:-:|
+| ESP32-P4 | Y   | Y   | Y | Y |
+| ESP32-S3 | N/A | Y   | Y | Y |
+| ESP32-C3 | N/A | N/A | N/A | Y |
+| ESP32-C5 | N/A | N/A | N/A | Y |
+| ESP32-C6 | N/A | N/A | N/A | Y |
+| ESP32-C61 | N/A | N/A | N/A | Y |
+
+- **Note 1**：For the ESP32-P4, the maximum input size allowed by the ISP is 1920x1080. Therefore, when using the ISP, the maximum output size of the camera system is 1920x1080; when bypassing the ISP, the maximum output size of the camera system can be greater than 1920x1080. The maximum bit rate supported by the MIPI-CSI peripheral is 1.5Gbps/lane. This rate allows for the reception of 2592x1944 size output data from the OV5645.
+- **Note 2**：For the ESP32-S3, 2MP only possible for still images with ov2640\ov3660\ov5640 outputting jpg format.
 
 ## Supported Camera Sensors
 
@@ -45,6 +48,8 @@ It is highly recommended that users use it in the [esp-video](https://github.com
 | SC2336  | 1920 x 1080    | MIPI & DVP      | 8/10-bit Raw RGB data | 1/3"     |
 | SP0A39  | 640 x 480    | SPI & DVP      | YCbCr422<br/>Grayscale | 1/10"     |
 | STI2250 | 800 x 600    | MIPI | 8/10-bit Raw Mono data | 1/5"     |
+
+- **Note 1**：The effective pixel count of a camera does not represent the final output pixel size. Some camera sensors must operate in binning mode to output image data with a higher signal-to-noise ratio. For example, the OS04C10 has an effective pixel size of 2688x1520, and when operating in 2x2 binning mode, its output size is 1280x720.
 
 ## Steps to add a new camera sensor driver
 
