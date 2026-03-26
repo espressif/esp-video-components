@@ -35,6 +35,9 @@
 #elif CONFIG_CAMERA_GC2145
 #include "gc2145.h"
 #define SCCB0_CAM_DEVICE_ADDR GC2145_SCCB_ADDR
+#elif CONFIG_CAMERA_LT6911
+#include "lt6911.h"
+#define SCCB0_CAM_DEVICE_ADDR LT6911_SCCB_ADDR
 #elif CONFIG_CAMERA_MIRA220
 #include "mira220.h"
 #define SCCB0_CAM_DEVICE_ADDR MIRA220_SCCB_ADDR
@@ -166,6 +169,8 @@ TEST_CASE("Camera sensor detect test", "[video]")
     cam0 = gc0308_detect(&cam0_config);
 #elif CONFIG_CAMERA_GC2145
     cam0 = gc2145_detect(&cam0_config);
+#elif CONFIG_CAMERA_LT6911
+    cam0 = lt6911_detect(&cam0_config);
 #elif CONFIG_CAMERA_MIRA220
     cam0 = mira220_detect(&cam0_config);
 #elif CONFIG_CAMERA_MT9D111

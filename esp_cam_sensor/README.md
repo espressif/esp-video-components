@@ -53,6 +53,13 @@ It is highly recommended that users use it in the [esp-video](https://github.com
 
 - **Note 1**：The effective pixel count of a camera does not represent the final output pixel size. Some camera sensors must operate in binning mode to output image data with a higher signal-to-noise ratio. For example, the OS04C10 has an effective pixel size of 2688x1520, and when operating in 2x2 binning mode, its output size is 1280x720.
 
+## Supported HDMI to MIPI-CSI Bridge Sensors
+| model   | max resolution | input interface | output interface | output format                                                |
+| ------- | -------------- | ---------- | ---------- | ------------------------------------------------------------ |
+| LT6911  | 1920 x 1080    | HDMI-1.4 | MIPI | YCbCr422 |
+
+- **Note 1**：Before using the LT6911, please burn the firmware from directory `esp_cam_sensor/sensors/lt6911/fw/LT6911D_v1_default.hex` to the LT6911 device.
+
 ## Add new camera sensor drivers
 
 If you need our official assistance in developing a new camera sensor driver, please refer to [the support policy](SUPPORT_POLICY.md) . If you plan to develop your own camera sensor driver, please refer to `Guides to add a new camera sensor driver`.
