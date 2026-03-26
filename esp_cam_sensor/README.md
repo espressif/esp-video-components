@@ -51,9 +51,13 @@ It is highly recommended that users use it in the [esp-video](https://github.com
 
 - **Note 1**：The effective pixel count of a camera does not represent the final output pixel size. Some camera sensors must operate in binning mode to output image data with a higher signal-to-noise ratio. For example, the OS04C10 has an effective pixel size of 2688x1520, and when operating in 2x2 binning mode, its output size is 1280x720.
 
-## Steps to add a new camera sensor driver
+## Add new camera sensor drivers
 
-### Add a directory to store sensor driver code
+If you need our official assistance in developing a new camera sensor driver, please refer to [the support policy](SUPPORT_POLICY.md) . If you plan to develop your own camera sensor driver, please refer to `Guides to add a new camera sensor driver`.
+
+### Guides to add a new camera sensor driver
+
+#### Add a directory to store sensor driver code
 
 The best way to add a camera driver is to copy an existing sensor driver directory and rename its file names and function names. 
 
@@ -89,7 +93,7 @@ For RAW format sensors, image quality tuning is typically required, as described
 
 Therefore, for RAW sensor, it requires a lot of tuning. Please understand this before adding drivers. It is recommended to use the camera sensor that has been adapted.
 
-### Get the sensor initialize settings
+#### Get the sensor initialize settings
 
 Request initial configuration from the FAE of the company selling the sensor. Then, write the initialization data into the `sensor_settings.h` file.
 
@@ -129,7 +133,7 @@ static const esp_cam_sensor_format_t sc2336_format_info[] = {
 };
 ```
 
-### Implement key functions
+#### Implement key functions
 
 Some functions are called automatically, so they must be implemented.
 
@@ -187,7 +191,7 @@ ESP_CAM_SENSOR_DETECT_FN(sc2336_detect, ESP_CAM_SENSOR_DVP, SC2336_SCCB_ADDR)
 }
 ```
 
-### Update compilation files and documentation
+#### Update compilation files and documentation
 
 Taking SC2336 as an example, the updates of each file are as follows:
 
@@ -244,7 +248,7 @@ Taking SC2336 as an example, the updates of each file are as follows:
   | SC2336  | 1920 x 1080    | MIPI & DVP      | 8/10-bit Raw RGB data | 1/3"     |
   ```
 
-### Add an option for this sensor in the testing program
+#### Add an option for this sensor in the testing program
 
 Add the option to enable this sensor in `esp_cam_sensor/test_apps/detect/sdkconfig.ci.all_cameras`.
 

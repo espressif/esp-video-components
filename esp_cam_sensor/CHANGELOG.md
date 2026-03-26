@@ -12,6 +12,7 @@
   - Added configuration for active signal level.
   - Added configuration for MSB/LSB selection.
 - Added the maximum output size notes in README.md.
+- Added SUPPORT_POLICY.md.
 
 - Disabled manual exposure control in the ov5647_mipi_2lane_24Minput_800x1280_raw8_50fps.h.
 
