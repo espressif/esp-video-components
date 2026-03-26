@@ -539,9 +539,9 @@ static esp_err_t init_web_cam_video(web_cam_video_t *video, const web_cam_video_
     memset(&selection, 0, sizeof(selection));
     selection.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
     selection.target = V4L2_SEL_TGT_CROP;
-    selection.r.left = CONFIG_EXAMPLE_MIPI_CSI_CROP_LEFT;
+    selection.r.left = CONFIG_EXAMPLE_MIPI_CSI_CROP_TOP_LEFT_H;
     selection.r.width = CONFIG_EXAMPLE_MIPI_CSI_CROP_WIDTH;
-    selection.r.top = CONFIG_EXAMPLE_MIPI_CSI_CROP_TOP;
+    selection.r.top = CONFIG_EXAMPLE_MIPI_CSI_CROP_TOP_LEFT_V;
     selection.r.height = CONFIG_EXAMPLE_MIPI_CSI_CROP_HEIGHT;
     if (ioctl(fd, VIDIOC_S_SELECTION, &selection) != 0) {
         ESP_LOGE(TAG, "failed to set selection");

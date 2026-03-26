@@ -25,6 +25,7 @@
   - See `example_video_common/README.md` for usage details
 
 - Fix an issue where the video buffer size was not aligned with the cache size
+- Fix an issue where the simple_video_server example used the incorrect configuration macro.
 
 ## 2.0.1
 
