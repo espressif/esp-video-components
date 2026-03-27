@@ -125,7 +125,7 @@ static const uint8_t bf3901_format_index[] = {
 static const esp_cam_sensor_format_t bf3901_format_info_spi[] = {
 #if CONFIG_CAMERA_BF3901_SPI_RGB565_240X320_15FPS
     {
-        .name = "SPI_1bit_24Minput_RGB565_LE_240x320_15fps",
+        .name = "SPI_1bit_24Minput_RGB565_LE_240x320_15fps_48M_pclk",
         .format = ESP_CAM_SENSOR_PIXFORMAT_RGB565_LE,
         .port = ESP_CAM_SENSOR_SPI,
         .xclk = 24000000,
@@ -145,7 +145,7 @@ static const esp_cam_sensor_format_t bf3901_format_info_spi[] = {
 #endif
 #if CONFIG_CAMERA_BF3901_SPI_YUV422_240X320_15FPS
     {
-        .name = "SPI_1bit_24Minput_YUV422_UYVY_240x320_15fps",
+        .name = "SPI_1bit_24Minput_YUV422_UYVY_240x320_15fps_48M_pclk",
         .format = ESP_CAM_SENSOR_PIXFORMAT_YUV422_UYVY,
         .port = ESP_CAM_SENSOR_SPI,
         .xclk = 24000000,
@@ -165,7 +165,7 @@ static const esp_cam_sensor_format_t bf3901_format_info_spi[] = {
 #endif
 #if CONFIG_CAMERA_BF3901_SPI_YUV422_240X320_12FPS
     {
-        .name = "SPI_1bit_20Minput_YUV422_UYVY_240x320_12fps",
+        .name = "SPI_1bit_20Minput_YUV422_UYVY_240x320_12fps_40M_pclk",
         .format = ESP_CAM_SENSOR_PIXFORMAT_YUV422_UYVY,
         .port = ESP_CAM_SENSOR_SPI,
         .xclk = 20000000,
@@ -185,7 +185,7 @@ static const esp_cam_sensor_format_t bf3901_format_info_spi[] = {
 #endif
 #if CONFIG_CAMERA_BF3901_SPI_YUV422_240X240_10FPS
     {
-        .name = "SPI_1bit_24Minput_YUV422_UYVY_240x240_10fps",
+        .name = "SPI_1bit_24Minput_YUV422_UYVY_240x240_10fps_48M_pclk",
         .format = ESP_CAM_SENSOR_PIXFORMAT_YUV422_UYVY,
         .port = ESP_CAM_SENSOR_SPI,
         .xclk = 24000000,
@@ -205,7 +205,7 @@ static const esp_cam_sensor_format_t bf3901_format_info_spi[] = {
 #endif
 #if CONFIG_CAMERA_BF3901_SPI_YUV422_120X160_10FPS
     {
-        .name = "SPI_1bit_24Minput_YUV422_UYVY_120x160_10fps",
+        .name = "SPI_1bit_24Minput_YUV422_UYVY_120x160_10fps_48M_pclk",
         .format = ESP_CAM_SENSOR_PIXFORMAT_YUV422_UYVY,
         .port = ESP_CAM_SENSOR_SPI,
         .xclk = 24000000,
@@ -225,7 +225,7 @@ static const esp_cam_sensor_format_t bf3901_format_info_spi[] = {
 #endif
 #if CONFIG_CAMERA_BF3901_SPI_YUV422_120X160_5FPS
     {
-        .name = "SPI_1bit_20Minput_YUV422_UYVY_120x160_5fps",
+        .name = "SPI_1bit_20Minput_YUV422_UYVY_120x160_5fps_20M_pclk",
         .format = ESP_CAM_SENSOR_PIXFORMAT_YUV422_UYVY,
         .port = ESP_CAM_SENSOR_SPI,
         .xclk = 20000000,
@@ -245,7 +245,7 @@ static const esp_cam_sensor_format_t bf3901_format_info_spi[] = {
 #endif
 #if CONFIG_CAMERA_BF3901_SPI2_YUV422_240X320_20FPS
     {
-        .name = "SPI_2bit_24Minput_YUV422_UYVY_240x320_20fps",
+        .name = "SPI_2bit_24Minput_YUV422_UYVY_240x320_20fps_48M_pclk",
         .format = ESP_CAM_SENSOR_PIXFORMAT_YUV422_UYVY,
         .port = ESP_CAM_SENSOR_SPI,
         .xclk = 24000000,
@@ -265,7 +265,7 @@ static const esp_cam_sensor_format_t bf3901_format_info_spi[] = {
 #endif
 #if CONFIG_CAMERA_BF3901_SPI_YUV422_YUYV_240X320_15FPS
     {
-        .name = "SPI_1bit_24Minput_YUV422_YUYV_240x320_15fps",
+        .name = "SPI_1bit_24Minput_YUV422_YUYV_240x320_15fps_48M_pclk",
         .format = ESP_CAM_SENSOR_PIXFORMAT_YUV422_YUYV,
         .port = ESP_CAM_SENSOR_SPI,
         .xclk = 24000000,
@@ -285,7 +285,7 @@ static const esp_cam_sensor_format_t bf3901_format_info_spi[] = {
 #endif
 #if CONFIG_CAMERA_BF3901_SPI_YUV422_YUYV_240X320_12FPS
     {
-        .name = "SPI_1bit_20Minput_YUV422_YUYV_240x320_12fps",
+        .name = "SPI_1bit_20Minput_YUV422_YUYV_240x320_12fps_40M_pclk",
         .format = ESP_CAM_SENSOR_PIXFORMAT_YUV422_YUYV,
         .port = ESP_CAM_SENSOR_SPI,
         .xclk = 20000000,
@@ -305,7 +305,7 @@ static const esp_cam_sensor_format_t bf3901_format_info_spi[] = {
 #endif
 #if CONFIG_CAMERA_BF3901_SPI_YUV422_YUYV_240X240_10FPS
     {
-        .name = "SPI_1bit_24Minput_YUV422_YUYV_240x240_10fps",
+        .name = "SPI_1bit_24Minput_YUV422_YUYV_240x240_10fps_48M_pclk",
         .format = ESP_CAM_SENSOR_PIXFORMAT_YUV422_YUYV,
         .port = ESP_CAM_SENSOR_SPI,
         .xclk = 24000000,
@@ -325,7 +325,7 @@ static const esp_cam_sensor_format_t bf3901_format_info_spi[] = {
 #endif
 #if CONFIG_CAMERA_BF3901_SPI_YUV422_YUYV_120X160_10FPS
     {
-        .name = "SPI_1bit_24Minput_YUV422_YUYV_120x160_10fps",
+        .name = "SPI_1bit_24Minput_YUV422_YUYV_120x160_10fps_48M_pclk",
         .format = ESP_CAM_SENSOR_PIXFORMAT_YUV422_YUYV,
         .port = ESP_CAM_SENSOR_SPI,
         .xclk = 24000000,
@@ -345,7 +345,7 @@ static const esp_cam_sensor_format_t bf3901_format_info_spi[] = {
 #endif
 #if CONFIG_CAMERA_BF3901_SPI_YUV422_YUYV_120X160_5FPS
     {
-        .name = "SPI_1bit_20Minput_YUV422_YUYV_120x160_5fps",
+        .name = "SPI_1bit_20Minput_YUV422_YUYV_120x160_5fps_20M_pclk",
         .format = ESP_CAM_SENSOR_PIXFORMAT_YUV422_YUYV,
         .port = ESP_CAM_SENSOR_SPI,
         .xclk = 20000000,
@@ -365,7 +365,7 @@ static const esp_cam_sensor_format_t bf3901_format_info_spi[] = {
 #endif
 #if CONFIG_CAMERA_BF3901_SPI2_YUV422_YUYV_240X320_20FPS
     {
-        .name = "SPI_2bit_24Minput_YUV422_YUYV_240x320_20fps",
+        .name = "SPI_2bit_24Minput_YUV422_YUYV_240x320_20fps_48M_pclk",
         .format = ESP_CAM_SENSOR_PIXFORMAT_YUV422_YUYV,
         .port = ESP_CAM_SENSOR_SPI,
         .xclk = 24000000,
@@ -385,7 +385,7 @@ static const esp_cam_sensor_format_t bf3901_format_info_spi[] = {
 #endif
 #if CONFIG_CAMERA_BF3901_SPI2_YUV422_240X320_18FPS
     {
-        .name = "SPI_2bit_24Minput_YUV422_UYVY_240x320_18fps",
+        .name = "SPI_2bit_24Minput_YUV422_UYVY_240x320_18fps_24M_pclk",
         .format = ESP_CAM_SENSOR_PIXFORMAT_YUV422_UYVY,
         .port = ESP_CAM_SENSOR_SPI,
         .xclk = 24000000,
@@ -405,7 +405,7 @@ static const esp_cam_sensor_format_t bf3901_format_info_spi[] = {
 #endif
 #if CONFIG_CAMERA_BF3901_SPI2_YUV422_YUYV_240X320_18FPS
     {
-        .name = "SPI_2bit_24Minput_YUV422_YUYV_240x320_18fps",
+        .name = "SPI_2bit_24Minput_YUV422_YUYV_240x320_18fps_24M_pclk",
         .format = ESP_CAM_SENSOR_PIXFORMAT_YUV422_YUYV,
         .port = ESP_CAM_SENSOR_SPI,
         .xclk = 24000000,
