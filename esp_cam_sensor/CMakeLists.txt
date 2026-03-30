@@ -52,6 +52,12 @@ if(CONFIG_CAMERA_SC2336)
     list(APPEND priv_include_dirs "sensors/sc2336/private_include")
 endif()
 
+if(CONFIG_CAMERA_SC1346)
+    list(APPEND srcs "sensors/sc1346/sc1346.c")
+    list(APPEND include_dirs "sensors/sc1346/include")
+    list(APPEND priv_include_dirs "sensors/sc1346/private_include")
+endif()
+
 if(CONFIG_CAMERA_STI2250)
     list(APPEND srcs "sensors/sti2250/sti2250.c")
     list(APPEND include_dirs "sensors/sti2250/include")
@@ -309,6 +315,10 @@ endif()
 
 if(CONFIG_CAMERA_BF3045_AUTO_DETECT_DVP_INTERFACE_SENSOR)
     target_link_libraries(${COMPONENT_LIB} INTERFACE "-u bf3045_detect")
+endif()
+
+if(CONFIG_CAMERA_SC1346_AUTO_DETECT_MIPI_INTERFACE_SENSOR)
+    target_link_libraries(${COMPONENT_LIB} INTERFACE "-u sc1346_detect")
 endif()
 
 if(CONFIG_CAM_MOTOR_DW9714_AUTO_DETECT)
