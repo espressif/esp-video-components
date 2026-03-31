@@ -160,6 +160,12 @@ if(CONFIG_CAMERA_SP0A39)
     list(APPEND priv_include_dirs "sensors/sp0a39/private_include")
 endif()
 
+if(CONFIG_CAMERA_BF3045)
+    list(APPEND srcs "sensors/bf3045/bf3045.c")
+    list(APPEND include_dirs "sensors/bf3045/include")
+    list(APPEND priv_include_dirs "sensors/bf3045/private_include")
+endif()
+
 if(CONFIG_CAM_MOTOR_DW9714)
     list(APPEND srcs "motors/dw9714/dw9714.c")
     list(APPEND include_dirs "motors/dw9714/include")
@@ -267,6 +273,10 @@ endif()
 
 if(CONFIG_CAMERA_SP0A39_AUTO_DETECT_DVP_INTERFACE_SENSOR OR CONFIG_CAMERA_SP0A39_AUTO_DETECT_SPI_INTERFACE_SENSOR)
     target_link_libraries(${COMPONENT_LIB} INTERFACE "-u sp0a39_detect")
+endif()
+
+if(CONFIG_CAMERA_BF3045_AUTO_DETECT_DVP_INTERFACE_SENSOR)
+    target_link_libraries(${COMPONENT_LIB} INTERFACE "-u bf3045_detect")
 endif()
 
 if(CONFIG_CAM_MOTOR_DW9714_AUTO_DETECT)
