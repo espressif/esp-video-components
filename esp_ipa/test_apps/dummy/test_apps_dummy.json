@@ -195,7 +195,24 @@
             },
             "green_luma_env": "dummy_awb_luma",
             "green_luma_init": 200,
-            "green_luma_step_ratio": 0.3
+            "green_luma_step_ratio": 0.3,
+            "enable_sub_win": true,
+            "sub_win": {
+                "min_counted": 100,
+                "min_participated": 3,
+                "weight": [
+                    1.0, 1.0, 1.0, 1.0, 1.0,
+                    1.0, 1.0, 1.0, 1.0, 1.0,
+                    1.0, 1.0, 1.0, 1.0, 1.0,
+                    1.0, 1.0, 1.0, 1.0, 1.0,
+                    1.0, 1.0, 1.0, 1.0, 1.0
+                ],
+                "green": {
+                    "dark": 40,
+                    "mid": 100,
+                    "bright": 200
+                }
+            }
         },
         "acc":
         {

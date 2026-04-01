@@ -1,6 +1,13 @@
 ## Unreleased
 
+- AWB sub-window: add green-based filter and linear tent weight (dark / mid / bright)
 - AGC supports the sensor without gain control
+- Refactor esp_ipa_config Python code
+    - Separate algorithm modules into individual files to improve code maintainability
+    - Use f-strings to improve code readability
+- Fix issue where color temperature could not recover from excessively low values in certain cases
+- Fix issue where RG and BG were calculated directly from statistics instead of using the current configuration's CT module
+- Fix IAN hist low_value_radio and high_value_radio: sum all segment counts in [low_index_start..low_index_end] and [high_index_start..high_index_end] instead of using only the last segment (fixes back_light and AGC highlight logic)
 
 ## 1.3.1
 

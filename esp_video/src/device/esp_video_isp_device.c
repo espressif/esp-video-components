@@ -548,6 +548,9 @@ static esp_err_t isp_stats_done(struct isp_video *isp_video, const void *buffer,
         esp_isp_awb_evt_data_t *awb_stats = &isp_video->stats_buffer->awb;
 
         *awb_stats = *edata;
+#if ESP_VIDEO_ISP_DEVICE_AWB_SUBWIN
+        isp_video->stats_buffer->flags |= ESP_VIDEO_ISP_STATS_FLAG_AWB_SUBWIN;
+#endif
         break;
     }
     case ISP_STATS_AE_FLAG: {
