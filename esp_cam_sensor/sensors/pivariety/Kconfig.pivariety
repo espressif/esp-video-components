@@ -1,0 +1,140 @@
+menuconfig CAMERA_PIVARIETY
+    bool "PIVARIETY"
+    default n
+    depends on SOC_MIPI_CSI_SUPPORTED
+    help
+        Enable support for the PIVARIETY CMOS image sensor.
+
+if CAMERA_PIVARIETY
+    menu "Auto detect PIVARIETY"
+        config CAMERA_PIVARIETY_AUTO_DETECT_MIPI_INTERFACE_SENSOR
+            bool "Detect for MIPI CSI interface sensor"
+            default y
+            help
+                When enabled, the PIVARIETY sensor will be automatically detected
+                and initialized on the MIPI CSI interface at startup without requiring
+                manual detection call(pivariety_detect) in your application.
+    endmenu
+
+    menu "Choose supported formats for MIPI CSI interface"
+
+         config CAMERA_PIVARIETY_MIPI_RAW10_1920X1080_30FPS
+            bool "MIPI 2-lane, 24M input, 1920x1080  30fps, RAW10"
+            default y
+            help
+                RAW10 color format at 1920x1080 resolution with 30fps framerate.
+                Requires MIPI CSI-2 2-lane interface with 24MHz input clock.
+
+        config CAMERA_PIVARIETY_MIPI_RAW10_1600X1200_30FPS
+            bool "MIPI 2-lane, 24M input, 1600x1200  30fps, RAW10"
+            default n
+            help
+                RAW10 color format at 1600x1200 resolution with 30fps framerate.
+                Requires MIPI CSI-2 2-lane interface with 24MHz input clock.
+
+        config CAMERA_PIVARIETY_MIPI_RAW10_1280X720_30FPS
+            bool "MIPI 2-lane, 24M input, 1280x720  30fps, RAW10"
+            default n
+            help
+                RAW10 color format at 1280x720 resolution with 30fps framerate.
+                Requires MIPI CSI-2 2-lane interface with 24MHz input clock.
+
+        config CAMERA_PIVARIETY_MIPI_RAW10_1024X600_30FPS
+            bool "MIPI 2-lane, 24M input, 1024x600  30fps, RAW10"
+            default n
+            help
+                RAW10 color format at 1024x600 resolution with 30fps framerate.
+                Requires MIPI CSI-2 2-lane interface with 24MHz input clock.
+        
+        config CAMERA_PIVARIETY_MIPI_RAW10_640X480_30FPS
+            bool "MIPI 2-lane, 24M input, 640x480  30fps, RAW10"
+            default n
+            help
+                RAW10 color format at 640x480 resolution with 30fps framerate.
+                Requires MIPI CSI-2 2-lane interface with 24MHz input clock.
+    endmenu
+
+    choice CAMERA_PIVARIETY_MIPI_DEFAULT_FMT
+        prompt "Select default output format for MIPI CSI interface"
+        default CAMERA_PIVARIETY_MIPI_DEFAULT_FMT_RAW10_1920X1080_30FPS
+        help
+            Select the default video output format for the Pivariety camera sensor over MIPI CSI.
+            The actual supported resolutions and frame rates must be enumerated from the sensor
+            firmware during driver initialization. The selected default format will be applied
+            only if it is supported by the sensor; otherwise, the first enumerated valid format
+            will be used automatically.
+        
+
+        config CAMERA_PIVARIETY_MIPI_DEFAULT_FMT_RAW10_1920X1080_30FPS
+            bool "MIPI 2-lane, 24M input, 1920x1080  30fps, RAW10"
+            depends on CAMERA_PIVARIETY_MIPI_RAW10_1920X1080_30FPS
+
+        config CAMERA_PIVARIETY_MIPI_DEFAULT_FMT_RAW10_1600X1200_30FPS
+            bool "MIPI 2-lane, 24M input, 1600x1200  30fps, RAW10"
+            depends on CAMERA_PIVARIETY_MIPI_RAW10_1600X1200_30FPS
+        
+        config CAMERA_PIVARIETY_MIPI_DEFAULT_FMT_RAW10_1280X720_30FPS
+            bool "MIPI 2-lane, 24M input, 1280x720  30fps, RAW10"
+            depends on CAMERA_PIVARIETY_MIPI_RAW10_1280X720_30FPS
+
+        config CAMERA_PIVARIETY_MIPI_DEFAULT_FMT_RAW10_1024X600_30FPS
+            bool "MIPI 2-lane, 24M input, 1024x600  30fps, RAW10"
+            depends on CAMERA_PIVARIETY_MIPI_RAW10_1024X600_30FPS
+        
+        config CAMERA_PIVARIETY_MIPI_DEFAULT_FMT_RAW10_640X480_30FPS
+            bool "MIPI 2-lane, 24M input, 640x480  30fps, RAW10"
+            depends on CAMERA_PIVARIETY_MIPI_RAW10_640X480_30FPS
+
+    endchoice # CAMERA_PIVARIETY_MIPI_DEFAULT_FMT
+
+    config CAMERA_PIVARIETY_MIPI_IF_FORMAT_INDEX_DEFAULT
+        int
+        default 0 if CAMERA_PIVARIETY_MIPI_DEFAULT_FMT_RAW10_1920X1080_30FPS
+        default 1 if CAMERA_PIVARIETY_MIPI_DEFAULT_FMT_RAW10_1600X1200_30FPS
+        default 2 if CAMERA_PIVARIETY_MIPI_DEFAULT_FMT_RAW10_1280X720_30FPS
+        default 3 if CAMERA_PIVARIETY_MIPI_DEFAULT_FMT_RAW10_1024X600_30FPS
+        default 4 if CAMERA_PIVARIETY_MIPI_DEFAULT_FMT_RAW10_640X480_30FPS
+        help
+            Sets the default configuration for the MIPI CSI interface.
+            Use query_support_formats() API to get more format options.
+
+    choice CAMERA_PIVARIETY_IPA_JSON_CONFIGURATION_FILE
+        prompt "IPA Configuration File"
+        default CAMERA_PIVARIETY_DEFAULT_IPA_JSON_CONFIGURATION_FILE
+        help
+            Select the Image Processing Algorithm (IPA) JSON configuration file
+            for the PIVARIETY sensor.
+
+        config CAMERA_PIVARIETY_DEFAULT_IPA_JSON_CONFIGURATION_FILE
+            bool "Use default configuration"
+            help
+                Use the built-in default IPA configuration file:
+                "esp_cam_sensor/sensors/pivariety/cfg/pivariety_default.json"
+
+                This configuration provides optimized settings for general use cases
+                and is recommended for most applications.
+
+        config CAMERA_PIVARIETY_CUSTOMIZED_IPA_JSON_CONFIGURATION_FILE
+            bool "Use custom configuration"
+            help
+                Use a custom IPA configuration file with your own optimized settings.
+
+                This option allows you to fine-tune sensor parameters for specific
+                lighting conditions, color requirements, or application needs.
+
+                You must specify the custom file path in the configuration below.
+    endchoice
+
+    config CAMERA_PIVARIETY_CUSTOMIZED_IPA_JSON_CONFIGURATION_FILE_PATH
+        string "Custom IPA configuration file path"
+        depends on CAMERA_PIVARIETY_CUSTOMIZED_IPA_JSON_CONFIGURATION_FILE
+        help
+            Specify the path to your custom PIVARIETY IPA JSON configuration file.
+
+            The path is relative to your project root directory.
+
+            Example: "components/my_camera_config/pivariety_custom.json"
+
+            Ensure the file exists and contains valid JSON configuration
+            parameters compatible with the PIVARIETY sensor.
+endif

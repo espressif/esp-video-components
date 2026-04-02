@@ -86,6 +86,9 @@
 #elif CONFIG_CAMERA_STI2250
 #include "sti2250.h"
 #define SCCB0_CAM_DEVICE_ADDR STI2250_SCCB_ADDR
+#elif CONFIG_CAMERA_PIVARIETY
+#include "pivariety.h"
+#define SCCB0_CAM_DEVICE_ADDR PIVARIETY_SCCB_ADDR
 #else
 #define SCCB0_CAM_DEVICE_ADDR 0x01
 #endif
@@ -197,6 +200,8 @@ TEST_CASE("Camera sensor detect test", "[video]")
     cam0 = sp0a39_detect(&cam0_config);
 #elif CONFIG_CAMERA_STI2250
     cam0 = sti2250_detect(&cam0_config);
+#elif CONFIG_CAMERA_PIVARIETY
+    cam0 = pivariety_detect(&cam0_config);
 #endif
 
     TEST_ASSERT_MESSAGE(cam0 != NULL, "detect fail");
