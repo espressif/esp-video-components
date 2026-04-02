@@ -1,0 +1,59 @@
+menuconfig CAMERA_LT6911
+    bool "LT6911"
+    default n
+    depends on SOC_LCDCAM_CAM_SUPPORTED
+    help
+        Enable support for the LT6911 HDMI To MIPI-CSI bridge sensor.
+
+if CAMERA_LT6911
+    menu "Auto detect LT6911"
+        config CAMERA_LT6911_AUTO_DETECT_MIPI_INTERFACE_SENSOR
+            bool "Detect for MIPI interface sensor"
+            default y
+            help
+                When enabled, the LT6911 sensor will be automatically detected
+                and initialized on the MIPI interface at startup without requiring
+                manual detection call(lt6911_detect) in your application.
+    endmenu
+    
+    menu "Choose supported formats for MIPI interface"
+        config CAMERA_LT6911_MIPI_YUV422_1280X720_60FPS
+            bool "MIPI 2-lane, 24M input, 1280x720 60fps, YUV422"
+            default y if IDF_TARGET_ESP32P4
+            default n
+            help
+                Standard color format using YUV422(UYVY) at 1280x720 resolution (720p)
+                with 60fps framerate. Requires MIPI CSI-2 2-lane interface with 24MHz input clock..
+
+        config CAMERA_LT6911_MIPI_YUV422_1920X1080_48FPS
+            bool "MIPI 2-lane, 24M input, 1920x1080 48fps, YUV422"
+            default n
+            help
+                YUV422(YUYV) at 1920x1080 resolution (1080p) with 48fps framerate.
+                Requires MIPI CSI-2 2-lane interface with 24MHz input clock.
+    endmenu
+
+    choice CAMERA_LT6911_MIPI_DEFAULT_FMT
+        prompt "Select default output format for MIPI interface"
+        default CAMERA_LT6911_MIPI_DEFAULT_FMT_YUV422_1280X720_60FPS
+        help
+            This is an internal choice that ensures only one format can be selected as default.
+            It is automatically controlled by the "Set as default format" options above.
+
+        config CAMERA_LT6911_MIPI_DEFAULT_FMT_YUV422_1280X720_60FPS
+            bool "MIPI 8-bit, 20M input, 1280X720 60fps, YUV422(UYVY)"
+            depends on CAMERA_LT6911_MIPI_YUV422_1280X720_60FPS
+
+        config CAMERA_LT6911_MIPI_DEFAULT_FMT_YUV422_1920X1080_48FPS
+            bool "MIPI 2-lane, 24M input, 1920x1080 48fps, YUV422(YUYV)"
+            depends on CAMERA_LT6911_MIPI_YUV422_1920X1080_48FPS
+    endchoice # CAMERA_LT6911_MIPI_DEFAULT_FMT
+
+    config CAMERA_LT6911_MIPI_IF_FORMAT_INDEX_DEFAULT
+        int
+        default 0 if CAMERA_LT6911_MIPI_DEFAULT_FMT_YUV422_1280X720_60FPS
+        default 1 if CAMERA_LT6911_MIPI_DEFAULT_FMT_YUV422_1920X1080_48FPS
+        help
+            Sets the default configuration for the MIPI interface.
+            Use query_support_formats() API to get more format options.
+endif
