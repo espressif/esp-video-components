@@ -1056,6 +1056,55 @@ TEST_CASE("Auto white balance test", "[IPA]")
     TEST_ESP_OK(esp_ipa_pipeline_destroy(handle));
 }
 
+
+TEST_CASE("AWB sub-window config and subwin stats path", "[IPA]")
+{
+    esp_ipa_pipeline_handle_t handle = NULL;
+    esp_ipa_metadata_t metadata = {0};
+    esp_ipa_stats_t stats = {0};
+    const esp_ipa_config_t *ipa_config = esp_ipa_pipeline_get_config(IPA_TARGET_NAME);
+    const esp_ipa_awb_config_t *awb = ipa_config->awb;
+
+    TEST_ASSERT_NOT_NULL(awb);
+    TEST_ASSERT_TRUE(awb->enable_sub_win);
+    TEST_ASSERT_EQUAL_UINT32(100, awb->min_subwin_wp_counted);
+    TEST_ASSERT_EQUAL_UINT32(3, awb->min_subwin_participated);
+    TEST_ASSERT_EQUAL_UINT16(40, awb->subwin_green_dark);
+    TEST_ASSERT_EQUAL_UINT16(100, awb->subwin_green_mid);
+    TEST_ASSERT_EQUAL_UINT16(200, awb->subwin_green_bright);
+    TEST_ASSERT_EQUAL_FLOAT(1.0f, awb->subwin_weight[2][2]);
+
+    TEST_ESP_OK(esp_ipa_pipeline_create(ipa_config, &handle));
+    TEST_ESP_OK(esp_ipa_pipeline_init(handle, &s_esp_ipa_sensor, &metadata));
+
+    const uint32_t g_cnt = awb->min_counted;
+    stats.flags = IPA_STATS_FLAGS_AWB | IPA_STATS_FLAGS_AWB_SUBWIN;
+    stats.awb_stats[0].counted = g_cnt;
+    stats.awb_stats[0].sum_r = g_cnt * 100;
+    stats.awb_stats[0].sum_g = g_cnt * 100;
+    stats.awb_stats[0].sum_b = g_cnt * 100;
+
+    const uint32_t cell_cnt = awb->min_subwin_wp_counted + 800;
+    const uint32_t cell_sum = cell_cnt * 100;
+    for (int xi = 0; xi < ISP_AWB_SUBWIN_X_NUM; xi++) {
+        for (int yj = 0; yj < ISP_AWB_SUBWIN_Y_NUM; yj++) {
+            stats.awb_subwin[xi][yj].counted = cell_cnt;
+            stats.awb_subwin[xi][yj].sum_r = cell_sum;
+            stats.awb_subwin[xi][yj].sum_g = cell_sum;
+            stats.awb_subwin[xi][yj].sum_b = cell_sum;
+        }
+    }
+
+    metadata.flags = 0;
+    TEST_ESP_OK(esp_ipa_pipeline_process(handle, &stats, &s_esp_ipa_sensor, &metadata));
+    TEST_ASSERT_NOT_EQUAL_HEX32(0, metadata.flags & (IPA_METADATA_FLAGS_RG | IPA_METADATA_FLAGS_BG));
+
+    metadata.flags = 0;
+    TEST_ESP_OK(esp_ipa_pipeline_process(handle, &stats, &s_esp_ipa_sensor, &metadata));
+
+    TEST_ESP_OK(esp_ipa_pipeline_destroy(handle));
+}
+
 TEST_CASE("Auto gain control test", "[IPA]")
 {
     int seq = 0;

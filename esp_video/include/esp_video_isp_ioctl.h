@@ -53,6 +53,7 @@ extern "C" {
 #define ESP_VIDEO_ISP_STATS_FLAG_HIST       (1 << 2)    /*!< ISP statistics has histogram */
 #define ESP_VIDEO_ISP_STATS_FLAG_SHARPEN    (1 << 3)    /*!< ISP statistics has sharpen */
 #define ESP_VIDEO_ISP_STATS_FLAG_AF         (1 << 4)    /*!< ISP statistics has AF */
+#define ESP_VIDEO_ISP_STATS_FLAG_AWB_SUBWIN (1 << 5)    /*!< AWB sub-window grid valid (ISP path, not sensor WB) */
 
 /**
  * @brief GAMMA point coordinate.

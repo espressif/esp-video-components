@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2024-2025 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2024-2026 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: ESPRESSIF MIT
  */
@@ -19,7 +19,18 @@ extern "C" {
 #define ARRAY_SIZE(a)               (sizeof(a) / sizeof((a)[0]))
 #endif
 
-#define ISP_AWB_REGIONS             1   /*!< Auto white balance regions */
+#define ISP_AWB_REGIONS             1   /*!< Auto white balance regions (global bucket) */
+#ifdef ISP_AWB_WINDOW_X_NUM
+#define ISP_AWB_SUBWIN_X_NUM        ISP_AWB_WINDOW_X_NUM   /*!< AWB sub-windows X number */
+#else
+#define ISP_AWB_SUBWIN_X_NUM        0
+#endif
+#ifdef ISP_AWB_WINDOW_Y_NUM
+#define ISP_AWB_SUBWIN_Y_NUM        ISP_AWB_WINDOW_Y_NUM   /*!< AWB sub-windows Y number */
+#else
+#define ISP_AWB_SUBWIN_Y_NUM        0
+#endif
+#define ISP_AWB_SUBWIN_NUM          (ISP_AWB_SUBWIN_X_NUM * ISP_AWB_SUBWIN_Y_NUM)   /*!< AWB sub-windows; grid matches AE block count on current SoC */
 #define ISP_AE_REGIONS              (ISP_AE_BLOCK_X_NUM * ISP_AE_BLOCK_Y_NUM)   /*!< Auto exposure regions */
 
 /**
@@ -30,6 +41,7 @@ extern "C" {
 #define IPA_STATS_FLAGS_HIST        (1 << 2)    /*!< ISP statistics has histogram */
 #define IPA_STATS_FLAGS_SHARPEN     (1 << 3)    /*!< ISP statistics has sharpen */
 #define IPA_STATS_FLAGS_AF          (1 << 4)    /*!< ISP statistics has auto focus */
+#define IPA_STATS_FLAGS_AWB_SUBWIN  (1 << 5)    /*!< ISP statistics has per-subwindow AWB (valid with ISP AWB path) */
 
 /**
  * @brief IPA meta data flags.
@@ -222,6 +234,10 @@ typedef struct esp_ipa_stats {
     /*!< ISP auto white balance statistics */
 
     esp_ipa_stats_awb_t awb_stats[ISP_AWB_REGIONS];
+
+    /*!< Per-subwindow AWB statistics, one element per grid cell [x][y] */
+
+    esp_ipa_stats_awb_t awb_subwin[ISP_AWB_SUBWIN_X_NUM][ISP_AWB_SUBWIN_Y_NUM];
 
     /*!< ISP auto exposure statistics */
 
@@ -553,7 +569,7 @@ typedef struct esp_ipa_ian_env_luma_config {
     uint8_t speed_param_size;                   /*!< Environment light luma speed parameter array size */
 
     const uint8_t weight[ISP_AE_REGIONS];       /*!< Environment light luma weight table */
-} esp_ipa_ian_luma_env_config;
+} esp_ipa_ian_luma_env_config_t;
 
 /**
  * @brief Light luma and scene analyze configuration
@@ -561,7 +577,7 @@ typedef struct esp_ipa_ian_env_luma_config {
 typedef struct esp_ipa_ian_luma_config {
     const esp_ipa_ian_luma_hist_config_t *hist; /*!< Light luma and scene histogram analyze configuration */
     const esp_ipa_ian_luma_ae_config_t *ae;     /*!< Light luma and scene AE analyze configuration */
-    const esp_ipa_ian_luma_env_config *env;   /*!< Environment light luma and scene analyze configuration */
+    const esp_ipa_ian_luma_env_config_t *env;   /*!< Environment light luma and scene analyze configuration */
 } esp_ipa_ian_luma_config_t;
 
 /**
@@ -605,6 +621,15 @@ typedef struct esp_ipa_awb_config {
     const char *green_luma_env;                 /*!< Green luma environment variable name */
     float green_luma_init;                      /*!< Green luma initialization value */
     float green_luma_step_ratio;                /*!< Green luma step ratio, when changing ratio is larger then this value, update AWB statistics range */
+
+    bool enable_sub_win;                        /*!< If true (model 0 only): aggregate from AWB sub-windows; requires IPA_STATS_FLAGS_AWB_SUBWIN */
+    uint32_t min_subwin_wp_counted;             /*!< Per-subwindow white patch min count; 0 means use min_counted; subwin counted must be >= this */
+    uint32_t min_subwin_participated;           /*!< Min number of cells that must participate (after cnt/weight/green filter); 0 = no limit; only use subwin result when participated >= this */
+    float subwin_weight[ISP_AWB_SUBWIN_X_NUM][ISP_AWB_SUBWIN_Y_NUM];   /*!< 5×5 2D, direct float; <=0 skips cell; unset→1.0 */
+
+    uint16_t subwin_green_dark;                 /*!< Reject if cell mean green < this (too dark: noise, R/G/B distortion) */
+    uint16_t subwin_green_mid;                  /*!< Peak weight at this green (medium: best SNR, most accurate CT) */
+    uint16_t subwin_green_bright;               /*!< Reject if cell mean green > this (too bright: clip, color cast) */
 } esp_ipa_awb_config_t;
 
 /**

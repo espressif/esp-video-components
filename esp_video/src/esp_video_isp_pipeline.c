@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2024 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2024-2026 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: ESPRESSIF MIT
  */
@@ -879,6 +879,21 @@ static void isp_stats_to_ipa_stats(esp_video_isp_stats_t *isp_stat, esp_ipa_stat
         ipa_awb->sum_g = isp_awb->sum_g;
         ipa_awb->sum_b = isp_awb->sum_b;
         ipa_stats->flags |= IPA_STATS_FLAGS_AWB;
+#if ESP_VIDEO_ISP_DEVICE_AWB_SUBWIN
+        if (isp_stat->flags & ESP_VIDEO_ISP_STATS_FLAG_AWB_SUBWIN) {
+            const isp_awb_subwin_stat_result_t *sw = &isp_awb->subwin_result;
+            for (int xi = 0; xi < ISP_AWB_SUBWIN_X_NUM; xi++) {
+                for (int yj = 0; yj < ISP_AWB_SUBWIN_Y_NUM; yj++) {
+                    esp_ipa_stats_awb_t *cell = &ipa_stats->awb_subwin[xi][yj];
+                    cell->counted = sw->white_patch_num[xi][yj];
+                    cell->sum_r   = sw->sum_r[xi][yj];
+                    cell->sum_g   = sw->sum_g[xi][yj];
+                    cell->sum_b   = sw->sum_b[xi][yj];
+                }
+            }
+            ipa_stats->flags |= IPA_STATS_FLAGS_AWB_SUBWIN;
+        }
+#endif
     }
 
     if (isp_stat->flags & ESP_VIDEO_ISP_STATS_FLAG_HIST) {
@@ -918,6 +933,9 @@ static void get_sensor_state(esp_video_isp_t *isp, int index)
 
     if (isp->sensor_attr.awb) {
         isp->isp_stats[index]->flags &= ~ESP_VIDEO_ISP_STATS_FLAG_AWB;
+#if ESP_VIDEO_ISP_DEVICE_AWB_SUBWIN
+        isp->isp_stats[index]->flags &= ~ESP_VIDEO_ISP_STATS_FLAG_AWB_SUBWIN;
+#endif
     }
 
     memset(&format, 0, sizeof(struct v4l2_format));
@@ -954,6 +972,9 @@ static void get_sensor_state(esp_video_isp_t *isp, int index)
                     isp_awb_stat_result_t *awb = &isp->isp_stats[index]->awb.awb_result;
 
                     isp->isp_stats[index]->flags |= ESP_VIDEO_ISP_STATS_FLAG_AWB;
+#if ESP_VIDEO_ISP_DEVICE_AWB_SUBWIN
+                    isp->isp_stats[index]->flags &= ~ESP_VIDEO_ISP_STATS_FLAG_AWB_SUBWIN;
+#endif
                     awb->white_patch_num = 1;
                     awb->sum_r = sensor_stats.wb_avg.red_avg;
                     awb->sum_g = sensor_stats.wb_avg.green_avg;
