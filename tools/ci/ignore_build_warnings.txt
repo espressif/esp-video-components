@@ -1,3 +1,5 @@
 DeprecationWarning: 'MultiCommand' is deprecated and will be removed in Click*
 /opt/esp/idf/components/mbedtls/esp_crt_bundle/gen_crt_bundle.py*
 The following Kconfig variables were used in "if" clauses*
+warning: 'ISP_AWB_SAMPLE_POINT_BEFORE_CCM' is deprecated: Use ISP_AWB_SAMPLE_POINT_0 instead
+warning: 'ISP_AE_SAMPLE_POINT_AFTER_DEMOSAIC' is deprecated: Use ISP_AE_SAMPLE_POINT_0 instead
