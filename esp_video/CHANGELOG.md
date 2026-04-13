@@ -16,6 +16,11 @@
 - Added frame size enumeration functionality for CSI, DVP, and SPI video devices
 - Added command query functionality for JPEG and H.264 video devices
 - Added descriptive name strings for supported V4L2 commands
+- Added an example for V4L2 commands with partial functionality, supporting the following commands:
+    - **v4l2-ctl**: Main command for controlling V4L2 video devices (listing devices, querying information, setting controls, capturing frames, and performing format conversion)
+    - **v4l2-bf**: Controls the Bayer filter (BF) on ISP devices
+    - **v4l2-ccm**: Controls the color correction matrix (CCM) on ISP devices
+    - **v4l2-gamma**: Controls gamma correction on ISP devices
 
   Note:
   - USB MSC support requires `espressif/esp_tinyusb` version 2.1.x

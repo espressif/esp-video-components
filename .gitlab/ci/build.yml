@@ -34,7 +34,9 @@
   script:
     - echo "MODIFIED_FILES $MODIFIED_FILES"
     - pip install idf_build_apps==$IDF_BUILD_APPS_VERSION
-    - export PEDANTIC_FLAGS="-DIDF_CI_BUILD -Werror -Werror=deprecated-declarations -Werror=unused-variable -Werror=unused-but-set-variable -Werror=unused-function"
+    # Remove -Werror=deprecated-declarations to avoid build failure in CI, the release/v5.5 esp-idf adds ISP_AWB_SAMPLE_POINT_0 instead of ISP_AWB_SAMPLE_POINT_BEFORE_CCM
+    # But we can't use this macro currently, because the older esp-idf doesn't have this macro.
+    - export PEDANTIC_FLAGS="-DIDF_CI_BUILD -Werror -Werror=unused-variable -Werror=unused-but-set-variable -Werror=unused-function"
     - export EXTRA_CFLAGS="${PEDANTIC_FLAGS} -Wstrict-prototypes"
     - export EXTRA_CXXFLAGS="${PEDANTIC_FLAGS}"
     - python tools/ci/build_apps.py --targets $IDF_TARGETS
