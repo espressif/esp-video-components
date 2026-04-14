@@ -95,6 +95,7 @@ Please note that this class only supports "p_u8" and "size" fields of v4l2_ext_c
 | V4L2_CID_USER_ESP_ISP_CCM | V4L2_CID_USER_CLASS | Array of uint8_t | Read/Write | ISP color correction matrix parameters. |
 | V4L2_CID_USER_ESP_ISP_SHARPEN | V4L2_CID_USER_CLASS | Array of uint8_t | Read/Write | ISP sharpen parameters. |
 | V4L2_CID_USER_ESP_ISP_GAMMA | V4L2_CID_USER_CLASS | Array of uint8_t | Read/Write | ISP GAMMA parameters. |
+| V4L2_CID_USER_ESP_ISP_GAMMA_EXT | V4L2_CID_USER_CLASS | Array of uint8_t | Read/Write | ISP GAMMA parameters for each channel. |
 | V4L2_CID_USER_ESP_ISP_DEMOSAIC | V4L2_CID_USER_CLASS | Array of uint8_t | Read/Write | ISP demosaic parameters. |
 | V4L2_CID_BRIGHTNESS | V4L2_CID_USER_CLASS | Array of uint8_t | Read/Write | Picture brightness. |
 | V4L2_CID_CONTRAST | V4L2_CID_USER_CLASS | Array of uint8_t | Read/Write | Picture contrast. |

@@ -22,7 +22,15 @@ extern "C" {
 #define V4L2_CID_USER_ESP_ISP_BASE          (V4L2_CID_USER_BASE + 0x10e0)
 
 #define V4L2_CID_USER_ESP_ISP_CCM           (V4L2_CID_USER_ESP_ISP_BASE + 0x0000)   /*!< CCM V4L2 controller ID */
-#define V4L2_CID_USER_ESP_ISP_GAMMA         (V4L2_CID_USER_ESP_ISP_BASE + 0x0001)   /*!< GAMMA V4L2 controller ID */
+
+/**
+ * @brief ISP GAMMA V4L2 controller ID.
+ *
+ * @note This V4L2_CID_USER_ESP_ISP_GAMMA is only used to set all channels with the same configuration or get
+ *       red channel configuration, if the blue and green channel configuration is the same as the red channel configuration,
+ *       this command also works well.
+ */
+#define V4L2_CID_USER_ESP_ISP_GAMMA         (V4L2_CID_USER_ESP_ISP_BASE + 0x0001)
 #define V4L2_CID_USER_ESP_ISP_BF            (V4L2_CID_USER_ESP_ISP_BASE + 0x0002)   /*!< BF V4L2 controller ID */
 #define V4L2_CID_USER_ESP_ISP_SHARPEN       (V4L2_CID_USER_ESP_ISP_BASE + 0x0003)   /*!< Sharpen V4L2 controller ID */
 #define V4L2_CID_USER_ESP_ISP_DEMOSAIC      (V4L2_CID_USER_ESP_ISP_BASE + 0x0004)   /*!< Demosaic V4L2 controller ID */
@@ -31,6 +39,7 @@ extern "C" {
 #define V4L2_CID_USER_ESP_ISP_AF            (V4L2_CID_USER_ESP_ISP_BASE + 0x0007)   /*!< Auto focus V4L2 controller ID */
 #define V4L2_CID_USER_ESP_ISP_AWB           (V4L2_CID_USER_ESP_ISP_BASE + 0x0008)   /*!< Auto white balance statistics V4L2 controller ID */
 #define V4L2_CID_USER_ESP_ISP_BLC           (V4L2_CID_USER_ESP_ISP_BASE + 0x0009)   /*!< Black level correction V4L2 controller ID */
+#define V4L2_CID_USER_ESP_ISP_GAMMA_EXT     (V4L2_CID_USER_ESP_ISP_BASE + 0x000a)   /*!< GAMMA extension V4L2 controller ID */
 
 /**
  * @brief ESP32XXX ISP image statistics output, data type is "esp_ipa_stats_t"
@@ -54,6 +63,15 @@ extern "C" {
 #define ESP_VIDEO_ISP_STATS_FLAG_SHARPEN    (1 << 3)    /*!< ISP statistics has sharpen */
 #define ESP_VIDEO_ISP_STATS_FLAG_AF         (1 << 4)    /*!< ISP statistics has AF */
 #define ESP_VIDEO_ISP_STATS_FLAG_AWB_SUBWIN (1 << 5)    /*!< AWB sub-window grid valid (ISP path, not sensor WB) */
+
+/**
+ * GAMMA extension flags.
+ *
+ * The flags are used to indicate the type of GAMMA extension.
+ */
+#define ESP_VIDEO_ISP_GAMMA_EXT_FLAG_RED      (1 << 0) /*!< Red channel needs to update */
+#define ESP_VIDEO_ISP_GAMMA_EXT_FLAG_GREEN    (1 << 1) /*!< Green channel needs to update */
+#define ESP_VIDEO_ISP_GAMMA_EXT_FLAG_BLUE     (1 << 2) /*!< Blue channel needs to update */
 
 /**
  * @brief GAMMA point coordinate.
@@ -94,6 +112,19 @@ typedef struct esp_video_isp_gamma {
      */
     esp_video_isp_gamma_point_t points[ISP_GAMMA_CURVE_POINTS_NUM];
 } esp_video_isp_gamma_t;
+
+/**
+ * @brief ISP GAMMA extension configuration.
+ */
+typedef struct esp_video_isp_gamma_ext {
+    bool enable;        /*!< true: enable GAMMA extension, false: disable GAMMA extension */
+
+    uint32_t flags;     /*!< GAMMA extension flags */
+
+    esp_video_isp_gamma_point_t red_points[ISP_GAMMA_CURVE_POINTS_NUM]; /*!< GAMMA extension for red channel */
+    esp_video_isp_gamma_point_t green_points[ISP_GAMMA_CURVE_POINTS_NUM]; /*!< GAMMA extension for green channel */
+    esp_video_isp_gamma_point_t blue_points[ISP_GAMMA_CURVE_POINTS_NUM]; /*!< GAMMA extension for blue channel */
+} esp_video_isp_gamma_ext_t;
 
 /**
  * @brief ISP BF(bayer filter) configuration.

@@ -3,6 +3,7 @@
 - ISP pipeline controller supports the sensor without gain control
 - Refactor `esp_video_init` and `esp_video_deinit` functions
 - Added `esp_video_init_with_flags` and `esp_video_deinit_with_flags` functions
+- Added the `V4L2_CID_USER_ESP_ISP_GAMMA_EXT` command to allow separate configuration of each gamma channel
 - The MIPI-CSI video device supports hardware swapping of short-type data in the YUV422 format
     - Supported only on esp-idf v6.1.0 and later
     - Supported only on ESP32-P4 ECO5 and later

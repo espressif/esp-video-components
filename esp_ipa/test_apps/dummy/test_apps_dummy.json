@@ -524,6 +524,7 @@
         {
             "gamma":
             {
+                "model": 1,
                 "use_gamma_param": false,
                 "luma_env": "dummy_gamma_luma",
                 "luma_min_step": 3.0,
@@ -730,7 +731,30 @@
                     "luma_threshold": 140,
                     "weight_offset": 25
                 }
-            ]
+            ],
+            "luma_pwl":
+            {
+                "enable": true,
+                "table":
+                [
+                    {
+                        "env_luma": 500,
+                        "luma_shift": -15
+                    },
+                    {
+                        "env_luma": 2000,
+                        "luma_shift": 0
+                    },
+                    {
+                        "env_luma": 5000,
+                        "luma_shift": 0
+                    },
+                    {
+                        "env_luma": 12000,
+                        "luma_shift": -10
+                    }
+                ]
+            }
         },
         "af":
         {
