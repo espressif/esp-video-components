@@ -25,7 +25,7 @@ if CAMERA_OS02N10
             the sensor ID will be configured as 0x3d, otherwise, the sensor ID will be configured as 0x3c.
 
     menu "Choose supported formats for MIPI CSI interface"
-        config CAMERA_OS02N10_MIPI_RAW8_960x540_25FPS
+        config CAMERA_OS02N10_MIPI_RAW8_960X540_25FPS
             bool "MIPI 2-lane, 24M input,  960x540  25fps, RAW8"
             default n
             help
@@ -70,9 +70,9 @@ if CAMERA_OS02N10
             when the sensor is detected and initialized, and can be changed later when the
             sensor is in stream off state.
 
-        config CAMERA_OS02N10_MIPI_DEFAULT_FMT_RAW8_960x540_25FPS
+        config CAMERA_OS02N10_MIPI_DEFAULT_FMT_RAW8_960X540_25FPS
             bool "MIPI 2-lane, 24M input,  960x540  25fps, RAW8"
-            depends on CAMERA_OS02N10_MIPI_RAW8_960x540_25FPS
+            depends on CAMERA_OS02N10_MIPI_RAW8_960X540_25FPS
 
         config CAMERA_OS02N10_MIPI_DEFAULT_FMT_RAW8_1280X720_50FPS
             bool "MIPI 2-lane, 24M input, 1280x720  50fps, RAW8"
@@ -97,7 +97,7 @@ if CAMERA_OS02N10
         default 1 if CAMERA_OS02N10_MIPI_DEFAULT_FMT_RAW10_1280X720_50FPS
         default 2 if CAMERA_OS02N10_MIPI_DEFAULT_FMT_RAW8_1920X1080_25FPS
         default 3 if CAMERA_OS02N10_MIPI_DEFAULT_FMT_RAW8_1280X720_50FPS
-        default 4 if CAMERA_OS02N10_MIPI_DEFAULT_FMT_RAW8_960x540_25FPS
+        default 4 if CAMERA_OS02N10_MIPI_DEFAULT_FMT_RAW8_960X540_25FPS
         help
             Sets the default configuration for the MIPI CSI interface.
             Use query_support_formats() API to get more format options.

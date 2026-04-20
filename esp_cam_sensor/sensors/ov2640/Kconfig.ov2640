@@ -108,7 +108,7 @@ if CAMERA_OV2640
                 YUV422(UYVY) color format at 240x240 resolution with 25fps framerate.
                 Requires 8-bit DVP interface and 20MHz input clock.
 
-        config CAMERA_OV2640_DVP_YUV422_320x240_25FPS
+        config CAMERA_OV2640_DVP_YUV422_320X240_25FPS
             bool "DVP 8-bit, 20M input,  320x240  25fps, YUV422(UYVY)"
             default n
             help
@@ -130,7 +130,7 @@ if CAMERA_OV2640
                 YUV422(YUYV) color format at 240x240 resolution with 25fps framerate.
                 Requires 8-bit DVP interface and 20MHz input clock.
 
-        config CAMERA_OV2640_DVP_YUV422_YUYV_320x240_25FPS
+        config CAMERA_OV2640_DVP_YUV422_YUYV_320X240_25FPS
             bool "DVP 8-bit, 20M input,  320x240  25fps, YUV422(YUYV)"
             default n
             help
@@ -205,9 +205,9 @@ if CAMERA_OV2640
             bool "DVP 8-bit, 20M input,  240x240  25fps, YUV422(UYVY)"
             depends on CAMERA_OV2640_DVP_YUV422_240X240_25FPS
 
-        config CAMERA_OV2640_DVP_DEFAULT_FMT_YUV422_320x240_25FPS
+        config CAMERA_OV2640_DVP_DEFAULT_FMT_YUV422_320X240_25FPS
             bool "DVP 8-bit, 20M input,  320x240  25fps, YUV422(UYVY)"
-            depends on CAMERA_OV2640_DVP_YUV422_320x240_25FPS
+            depends on CAMERA_OV2640_DVP_YUV422_320X240_25FPS
 
         config CAMERA_OV2640_DVP_DEFAULT_FMT_YUV422_640X480_6FPS
             bool "DVP 8-bit, 20M input,  640x480   6fps, YUV422(UVYV)"
@@ -217,9 +217,9 @@ if CAMERA_OV2640
             bool "DVP 8-bit, 20M input,  240x240  25fps, YUV422(YUYV)"
             depends on CAMERA_OV2640_DVP_YUV422_YUYV_240X240_25FPS
 
-        config CAMERA_OV2640_DVP_DEFAULT_FMT_YUV422_YUYV_320x240_25FPS
+        config CAMERA_OV2640_DVP_DEFAULT_FMT_YUV422_YUYV_320X240_25FPS
             bool "DVP 8-bit, 20M input,  320x240  25fps, YUV422(YUYV)"
-            depends on CAMERA_OV2640_DVP_YUV422_YUYV_320x240_25FPS
+            depends on CAMERA_OV2640_DVP_YUV422_YUYV_320X240_25FPS
 
         config CAMERA_OV2640_DVP_DEFAULT_FMT_YUV422_YUYV_640X480_6FPS
             bool "DVP 8-bit, 20M input,  640x480   6fps, YUV422(YUYV)"
@@ -244,8 +244,8 @@ if CAMERA_OV2640
         default 13 if CAMERA_OV2640_DVP_DEFAULT_FMT_YUV422_YUYV_640X480_6FPS
         default 14 if CAMERA_OV2640_DVP_DEFAULT_FMT_RGB565_BE_240X240_25FPS
         default 15 if CAMERA_OV2640_DVP_DEFAULT_FMT_YUV422_YUYV_240X240_25FPS
-        default 16 if CAMERA_OV2640_DVP_DEFAULT_FMT_YUV422_320x240_25FPS
-        default 17 if CAMERA_OV2640_DVP_DEFAULT_FMT_YUV422_YUYV_320x240_25FPS
+        default 16 if CAMERA_OV2640_DVP_DEFAULT_FMT_YUV422_320X240_25FPS
+        default 17 if CAMERA_OV2640_DVP_DEFAULT_FMT_YUV422_YUYV_320X240_25FPS
         help
             Sets the default configuration for the DVP interface.
             Use query_support_formats() API to get more format options.

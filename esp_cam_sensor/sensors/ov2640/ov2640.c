@@ -108,10 +108,10 @@ static const uint8_t ov2640_format_index[] = {
 #if CONFIG_CAMERA_OV2640_DVP_YUV422_YUYV_240X240_25FPS
     15,
 #endif
-#if CONFIG_CAMERA_OV2640_DVP_YUV422_320x240_25FPS
+#if CONFIG_CAMERA_OV2640_DVP_YUV422_320X240_25FPS
     16,
 #endif
-#if CONFIG_CAMERA_OV2640_DVP_YUV422_YUYV_320x240_25FPS
+#if CONFIG_CAMERA_OV2640_DVP_YUV422_YUYV_320X240_25FPS
     17,
 #endif
 };
@@ -374,7 +374,7 @@ static const esp_cam_sensor_format_t ov2640_format_info[] = {
         .reserved = NULL,
     },
 #endif
-#if CONFIG_CAMERA_OV2640_DVP_YUV422_320x240_25FPS
+#if CONFIG_CAMERA_OV2640_DVP_YUV422_320X240_25FPS
     {
         .name = "DVP_8bit_20Minput_YUV422_UYVY_320x240_25fps",
         .format = ESP_CAM_SENSOR_PIXFORMAT_YUV422_UYVY,
@@ -390,7 +390,7 @@ static const esp_cam_sensor_format_t ov2640_format_info[] = {
         .reserved = NULL,
     },
 #endif
-#if CONFIG_CAMERA_OV2640_DVP_YUV422_YUYV_320x240_25FPS
+#if CONFIG_CAMERA_OV2640_DVP_YUV422_YUYV_320X240_25FPS
     {
         .name = "DVP_8bit_20Minput_YUV422_YUYV_320x240_25fps",
         .format = ESP_CAM_SENSOR_PIXFORMAT_YUV422_YUYV,
