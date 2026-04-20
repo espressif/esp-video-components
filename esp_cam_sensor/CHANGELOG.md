@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 2.1.0
 
 - Added Mira220 MIPI driver.
 - Added SP0A39 DVP & SPI camera driver.

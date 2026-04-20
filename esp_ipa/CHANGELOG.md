@@ -1,4 +1,4 @@
-## Unreleased
+## 2.0.0
 
 - AGC adds environment-luma-driven target luma shift via a PWL (piecewise linear) curve
     - New `luma_pwl` object in AGC JSON config with `enable` flag and `table` array

@@ -1,4 +1,4 @@
-## Unreleased
+## 2.1.0
 
 - ISP pipeline controller supports the sensor without gain control
 - Refactor `esp_video_init` and `esp_video_deinit` functions
