@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- Fixed the spelling error in the camera driver header file.
+
 ## 2.1.0
 
 - Added Mira220 MIPI driver.

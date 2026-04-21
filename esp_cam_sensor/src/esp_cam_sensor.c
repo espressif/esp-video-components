@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2023-2024 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2023-2026 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -40,12 +40,12 @@ esp_err_t esp_cam_sensor_get_capability(esp_cam_sensor_device_t *dev, esp_cam_se
     return dev->ops->query_support_capability(dev, caps);
 }
 
-esp_err_t esp_cam_sensor_query_format(esp_cam_sensor_device_t *dev, esp_cam_sensor_format_array_t *format_arry)
+esp_err_t esp_cam_sensor_query_format(esp_cam_sensor_device_t *dev, esp_cam_sensor_format_array_t *format_array)
 {
-    ESP_RETURN_ON_FALSE(dev && format_arry, ESP_ERR_INVALID_ARG, TAG, "invalid argument");
+    ESP_RETURN_ON_FALSE(dev && format_array, ESP_ERR_INVALID_ARG, TAG, "invalid argument");
     ESP_RETURN_ON_FALSE(dev->ops->query_support_formats, ESP_ERR_NOT_SUPPORTED, TAG, "unsupported operation");
 
-    return dev->ops->query_support_formats(dev, format_arry);
+    return dev->ops->query_support_formats(dev, format_array);
 }
 
 esp_err_t esp_cam_sensor_set_format(esp_cam_sensor_device_t *dev, const esp_cam_sensor_format_t *format)
