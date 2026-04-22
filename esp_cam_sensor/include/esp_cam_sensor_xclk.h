@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2025 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2025-2026 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -61,46 +61,53 @@ typedef struct esp_cam_sensor_xclk_config {
 } esp_cam_sensor_xclk_config_t;
 
 /**
- * @brief Allocate the xclk context
+ * @brief Allocate an XCLK generator context for the given source.
  *
- * @param[in]   source Peripheral sources that can generate XCLK
- * @param[out]  ret_handle XCLK control handle
+ * @param[in] source Peripheral source used to generate XCLK.
+ * @param[out] ret_handle Pointer to receive the allocated XCLK control handle.
  *
  * @return
- *      - ESP_OK on success
- *      - ESP_ERR_NO_MEM not enough memory for sleep retention
- *      - ESP_ERR_INVALID_ARG if either of the arguments is out of range
+ *      - ESP_OK: Success
+ *      - ESP_ERR_NO_MEM: Not enough memory to allocate the XCLK context
+ *      - ESP_ERR_INVALID_ARG: ret_handle is NULL or source is not supported
  */
 esp_err_t esp_cam_sensor_xclk_allocate(esp_cam_sensor_xclk_source_t source, esp_cam_sensor_xclk_handle_t *ret_handle);
 
 /**
- * @brief Configure clock signal source for generating XCLK
+ * @brief Configure the clock source and start XCLK output.
  *
- * @param[in]   XCLK control handle
- * @param[in]   config Configuration data for generating XCLK
+ * @param[in] xclk_handle XCLK control handle returned by esp_cam_sensor_xclk_allocate().
+ * @param[in] config Configuration for the backend selected at allocate time (LEDC or clock router).
+ *
  * @return
- *      - ESP_OK: Output specified clock signal to specified GPIO successfully
- *      - ESP_ERR_INVALID_ARG: Specified GPIO not supported to output internal clock
- *                             or specified GPIO is already mapped to other internal clock source.
- *      - ESP_FAIL: There are no clock out signals that can be allocated.
+ *      - ESP_OK: Success
+ *      - ESP_ERR_INVALID_ARG: Invalid handle, NULL config, or invalid fields in config
+ *      - ESP_ERR_NOT_SUPPORTED: The backend does not implement start
+ *      - ESP_FAIL or other codes: Returned by LEDC or esp_clock_output, depending on the XCLK source
  */
 esp_err_t esp_cam_sensor_xclk_start(esp_cam_sensor_xclk_handle_t xclk_handle, const esp_cam_sensor_xclk_config_t *config);
 
 /**
- * @brief Stop xclk output
+ * @brief Stop XCLK output.
  *
- * @param[in] handle xclk generator handle
+ * @param[in] xclk_handle XCLK control handle returned by esp_cam_sensor_xclk_allocate().
+ *
  * @return
- *        - ESP_OK: Success.
+ *      - ESP_OK: Success
+ *      - ESP_ERR_INVALID_ARG: Invalid handle
+ *      - ESP_ERR_NOT_SUPPORTED: The backend does not implement stop
  */
 esp_err_t esp_cam_sensor_xclk_stop(esp_cam_sensor_xclk_handle_t xclk_handle);
 
 /**
- * @brief Free the xclk context
+ * @brief Free the XCLK generator context.
  *
- * @param[in] handle xclk generator handle
+ * @param[in] xclk_handle XCLK control handle returned by esp_cam_sensor_xclk_allocate().
+ *
  * @return
- *        - ESP_OK: Success.
+ *      - ESP_OK: Success
+ *      - ESP_ERR_INVALID_ARG: Invalid handle
+ *      - ESP_ERR_NOT_SUPPORTED: The backend does not implement free
  */
 esp_err_t esp_cam_sensor_xclk_free(esp_cam_sensor_xclk_handle_t xclk_handle);
 
