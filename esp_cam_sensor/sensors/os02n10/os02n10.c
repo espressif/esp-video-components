@@ -237,7 +237,7 @@ static const uint8_t os02n10_format_index[] = {
 #if CONFIG_CAMERA_OS02N10_MIPI_RAW8_1280X720_50FPS
     3,
 #endif
-#if CONFIG_CAMERA_OS02N10_MIPI_RAW8_960x540_25FPS
+#if CONFIG_CAMERA_OS02N10_MIPI_RAW8_960X540_25FPS
     4,
 #endif
 };
@@ -320,7 +320,7 @@ static const esp_cam_sensor_format_t os02n10_format_info_mipi[] = {
         },
     },
 #endif
-#if CONFIG_CAMERA_OS02N10_MIPI_RAW8_960x540_25FPS
+#if CONFIG_CAMERA_OS02N10_MIPI_RAW8_960X540_25FPS
     {
         .name = "MIPI_2lane_24Minput_RAW8_960x540_25fps",
         .format = ESP_CAM_SENSOR_PIXFORMAT_RAW8,
