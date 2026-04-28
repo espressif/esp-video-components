@@ -32,6 +32,11 @@ The chips supported by ESP-Video-Components vary by camera sensor interface:
     - supported
     - supported
     - supported
+  * - ESP32-S31
+    -
+    - supported
+    - supported
+    - supported
   * - ESP32-S3
     -
     - supported
@@ -85,6 +90,8 @@ The following development boards feature camera interfaces and can be used for t
 
     - `ESP32-P4X-Function-EV-Board <https://docs.espressif.com/projects/esp-dev-kits/en/latest/esp32p4/esp32-p4x-function-ev-board/index.html>`_
     - `ESP32-P4X-EYE <https://docs.espressif.com/projects/esp-dev-kits/en/latest/esp32p4/esp32-p4x-eye/index.html>`_
+
+ESP32-S31 can be evaluated with the ESP32-S31-Korvo board for DVP/SPI cameras and JPEG hardware encode/decode. This SoC does not support MIPI-CSI, ISP, or H.264 hardware encoding.
 
 Build Your First Project
 ------------------------

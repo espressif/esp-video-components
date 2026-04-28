@@ -41,6 +41,7 @@ GPATH
 # Doc build artifacts
 docs/_build/
 docs/doxygen_sqlite3.db
+docs/html/
 
 # gcov coverage reports
 *.gcda

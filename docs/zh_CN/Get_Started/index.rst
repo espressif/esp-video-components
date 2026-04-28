@@ -32,6 +32,11 @@ ESP-Video-Components 是乐鑫官方的相机系统开发与应用框架。它�
     - 支持
     - 支持
     - 支持
+  * - ESP32-S31
+    -
+    - 支持
+    - 支持
+    - 支持
   * - ESP32-S3
     -
     - 支持
@@ -85,6 +90,8 @@ ESP-Video-Components 是乐鑫官方的相机系统开发与应用框架。它�
 
     - `ESP32-P4X-Function-EV-Board <https://docs.espressif.com/projects/esp-dev-kits/zh_CN/latest/esp32p4/esp32-p4x-function-ev-board/index.html>`_
     - `ESP32-P4X-EYE <https://docs.espressif.com/projects/esp-dev-kits/zh_CN/latest/esp32p4/esp32-p4x-eye/index.html>`_
+
+ESP32-S31 可使用 `ESP32-S31-Korvo-1 <https://docs.espressif.com/projects/esp-dev-kits/zh_CN/latest/esp32s31/esp32-s31-korvo-1/index.html>`__  开发板进行 DVP/SPI 相机与 JPEG 硬件编解码验证。该芯片不支持 MIPI-CSI、ISP 与 H.264 硬件编码。
 
 构建首个项目
 ------------
