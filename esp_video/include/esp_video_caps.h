@@ -75,6 +75,15 @@ extern "C" {
 #endif /* CONFIG_ESP32P4_REV_MIN_FULL >= 300 */
 #endif /* CONFIG_IDF_TARGET_ESP32P4 */
 
+/**
+ * @brief Enable output color type for DVP video device if ESP-IDF version is greater than or equal to v6.0.0
+ *
+ * @note This is a breaking change for DVP video device API.
+ */
+#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(6, 0, 0)
+#define ESP_VIDEO_DVP_DEVICE_OUTPUT_COLOR 1 /*!< DVP video device supports output color type */
+#endif /* ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(6, 0, 0) */
+
 #ifdef __cplusplus
 }
 #endif

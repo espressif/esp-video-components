@@ -2,6 +2,9 @@
 
 - The ISP video device now utilizes the sensor's full resolution for statistical analysis
 - Fix AWB subwindow validation failure on ESP32-P4 chip revision >= 3.0 (ECO4)
+- Added support for the ESP32-S31 Korvo board
+- Fixed a compatibility issue with the DVP driver for ESP-IDF v6.0 and later versions
+- Fixed a compilation issue with the ESP-IDF master branch
 
 ## 2.1.0
 

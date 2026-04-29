@@ -21,7 +21,7 @@ dependencies:
   usb_host_uvc:
     version: "2.4.*"
     rules:
-      - if: "target in [esp32p4, esp32s3]"
+      - if: "target in [esp32p4, esp32s3, esp32s31]"
   esp_cam_sensor:
     version: "2.1.*"
     override_path: ../esp_cam_sensor
