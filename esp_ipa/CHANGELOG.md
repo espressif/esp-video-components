@@ -1,3 +1,8 @@
+## Unreleased
+
+- Fix a compilation issue that occurred when no input configuration file was provided
+- Fix issues in Model 1: did not check for the minimum required number of white points, and incorrectly cached previous RG and BG values.
+
 ## 2.0.0
 
 - AGC adds environment-luma-driven target luma shift via a PWL (piecewise linear) curve
