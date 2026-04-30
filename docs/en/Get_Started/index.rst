@@ -64,7 +64,7 @@ System architecture
    :alt: auth_pages
    :figclass: align-center
 
-   ESP-Video System Framework
+   esp_video System Framework
 
 From an organizational structure perspective, it is divided into five layers: PC-side tuning and analysis tools, application layer, application framework layer, device layer, and kernel layer.
 
@@ -95,7 +95,7 @@ Please configure your computer according to the "Getting Started" section of the
 Running Examples
 ^^^^^^^^^^^^^^^^^^^^^^^^
 
-The esp-video-components repository contains commonly used `examples <https://github.com/espressif/esp-video-components/tree/master/esp_video/examples>`_. Users can run the command ``git clone --recursive https://github.com/espressif/esp-video-components.git`` to obtain the source code of this repository. Then refer to the README file in the **capture_stream** example to compile and run the example.
+The esp-video-components repository contains commonly used `examples <https://github.com/espressif/esp-video-components/tree/master/esp_video/examples>`_. Users can run the command ``git clone --recursive https://github.com/espressif/esp-video-components.git`` to obtain the source code of this repository. Then refer to the `README <https://github.com/espressif/esp-video-components/tree/master/esp_video/examples/capture_stream#readme>`_ in the **capture_stream** example to compile and run the example.
 
 Adding Components to a Custom Project
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

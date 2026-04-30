@@ -3,7 +3,7 @@ Disclaimer
 
 :link_to_translation:`zh_CN:[中文]`
 
-Thank you for choosing to use [ESP-Video]. To ensure the safe, legal, and effective use of this solution, please carefully read the following Disclaimer. This Disclaimer aims to clarify the terms and precautions that users must follow when using this solution. By continuing to use this solution, you indicate your acceptance and agreement to comply with these terms.
+Thank you for choosing to use [esp_video]. To ensure the safe, legal, and effective use of this solution, please carefully read the following Disclaimer. This Disclaimer aims to clarify the terms and precautions that users must follow when using this solution. By continuing to use this solution, you indicate your acceptance and agreement to comply with these terms.
 
 Application Scenario Verification
 ---------------------------------

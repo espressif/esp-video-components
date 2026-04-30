@@ -1,5 +1,5 @@
 ********************************************************
-ESP Camera Sensor Development and Testing Guide
+ESP Camera Peripheral Development and Testing Guide
 ********************************************************
 
 :link_to_translation:`zh_CN:[中文]`

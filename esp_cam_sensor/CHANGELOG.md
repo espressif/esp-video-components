@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- Added information about the document system to README.md.
+
 ## 2.2.0
 
 - Improve camera sensor json configuration files.
