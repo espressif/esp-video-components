@@ -5,8 +5,8 @@
         "awb":
         {
             "model": 0,
-            "min_red_gain_step": 0.34,
-            "min_blue_gain_step": 0.40,
+            "min_red_gain_step": 0.0033,
+            "min_blue_gain_step": 0.0033,
             "min_counted": 2000,
             "range":
             {

@@ -90,15 +90,15 @@
                         7573.280879560915
                     ]
                 },
-                "f_n0": 0.58,
-                "min_step": 110   
+                "f_n0": 0.0033,
+                "min_step": 1
             }
         },
         "awb":
         {
             "model": 1,
-            "min_red_gain_step": 0.24,
-            "min_blue_gain_step": 0.20,
+            "min_red_gain_step": 0.0033,
+            "min_blue_gain_step": 0.0033,
             "min_counted": 1200,
             "range":
             {
