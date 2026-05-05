@@ -7,6 +7,7 @@
 
 - Fixed the spelling error in the camera driver header file.
 - Fixed os02n10 & ov2640 incorrect format name in Kconfig.
+- Added sc121at mipi yuv sensor driver
 
 ## 2.1.0
 

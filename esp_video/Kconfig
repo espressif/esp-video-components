@@ -11,7 +11,16 @@ menu "Espressif Video Configuration"
     config ESP_VIDEO_ENABLE_ISP
         bool
         default n
+    
+    config ESP_VIDEO_ENABLE_ISP_BYTE_SWAP
+        bool "enable isp byte swap"
+        default n
+        select ESP_VIDEO_ENABLE_ISP
+        help
+            Enable ISP BYTE SWAP support
 
+            when UYVY camere from mipi cis output,We will get YVYU byte order at next module such as jpeg, so we must change 32bit byte swap at isp.detail information can find at esp32-p4_technical_reference_manual_cn.pdf 36.5.4 
+         
     config ESP_VIDEO_ENABLE_BITSCRAMBLER
         bool
         default n

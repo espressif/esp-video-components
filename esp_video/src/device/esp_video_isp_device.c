@@ -2384,7 +2384,13 @@ esp_err_t esp_video_isp_start_by_csi(const esp_video_csi_state_t *state, const s
         .clk_hz = ISP_CLK_FREQ_HZ,
         .input_data_color_type = isp_in_color,
         .output_data_color_type = isp_out_color,
-        .bayer_order = state->bayer_order
+        .bayer_order = state->bayer_order,
+#if CONFIG_ESP_VIDEO_ENABLE_ISP_BYTE_SWAP
+        .flags = 
+        {
+            .byte_swap_en = 1,
+        },
+#endif
     };
 
     ISP_LOCK(isp_video);
