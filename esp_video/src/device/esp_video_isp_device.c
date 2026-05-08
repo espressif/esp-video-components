@@ -719,7 +719,11 @@ static void isp_init_awb_param(struct isp_video *isp_video, esp_isp_awb_config_t
 static esp_err_t isp_start_awb(struct isp_video *isp_video)
 {
     esp_err_t ret;
-    esp_isp_awb_config_t awb_config;
+    /* Zero-init so subwindow stays all-zero (= disabled) when
+     * isp_init_awb_param() does not populate it. Otherwise random stack
+     * data in subwindow trips the rev>=3.0 "subwindow exceeds window range"
+     * validation in s_esp_isp_awb_config_hardware. */
+    esp_isp_awb_config_t awb_config = {0};
     esp_isp_awb_cbs_t awb_cb = {
         .on_statistics_done = isp_awb_stats_done,
     };
@@ -751,7 +755,8 @@ fail_0:
 static esp_err_t isp_reconfigure_awb(struct isp_video *isp_video)
 {
     if (isp_video->awb_started) {
-        esp_isp_awb_config_t awb_config;
+        /* Zero-init: see comment in isp_start_awb() above. */
+        esp_isp_awb_config_t awb_config = {0};
 
         isp_init_awb_param(isp_video, &awb_config);
 

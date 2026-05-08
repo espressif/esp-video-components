@@ -1,6 +1,7 @@
 ## Unreleased
 
 - The ISP video device now utilizes the sensor's full resolution for statistical analysis
+- Fix AWB subwindow validation failure on ESP32-P4 chip revision >= 3.0 (ECO4)
 
 ## 2.1.0
 
