@@ -181,6 +181,8 @@ def ipa_config(version, input, output):
             fp.write(ipas.get_text() + input_info)
     else:
         text = common.cfmt_string(f'''
+            #include <string.h>
+
             const void *esp_ipa_pipeline_get_config(const char *name)
             {{
                 return NULL;

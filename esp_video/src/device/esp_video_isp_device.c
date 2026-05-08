@@ -60,8 +60,11 @@
 #define ARRAY_SIZE(x)               sizeof(x) / sizeof((x)[0])
 #endif
 
-#define ISP_REGION_START            (0.2)
-#define ISP_REGION_END              (0.8)
+/**
+ * Use the full resolution of the sensor for statistics.
+ */
+#define ISP_REGION_START            (0)
+#define ISP_REGION_END              (1)
 
 #define ISP_STARTED(iv)             ((iv)->isp_proc != NULL)
 

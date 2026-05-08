@@ -1,3 +1,7 @@
+## Unreleased
+
+- The ISP video device now utilizes the sensor's full resolution for statistical analysis
+
 ## 2.1.0
 
 - ISP pipeline controller supports the sensor without gain control
