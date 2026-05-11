@@ -153,6 +153,26 @@ static esp_err_t camera_capture_stream_by_format(int fd, int type, uint32_t v4l2
     return ESP_OK;
 }
 
+static bool camera_frame_size_is_discrete(const struct v4l2_frmsizeenum *frmsize)
+{
+    if (frmsize->type != V4L2_FRMSIZE_TYPE_DISCRETE) {
+        ESP_LOGW(TAG, "unsupported frame size enum type=%" PRIu32, frmsize->type);
+        return false;
+    }
+
+    return true;
+}
+
+static bool camera_frame_interval_is_discrete(const struct v4l2_frmivalenum *frmival)
+{
+    if (frmival->type != V4L2_FRMIVAL_TYPE_DISCRETE) {
+        ESP_LOGW(TAG, "unsupported frame interval enum type=%" PRIu32, frmival->type);
+        return false;
+    }
+
+    return true;
+}
+
 static esp_err_t camera_capture_stream(void)
 {
     int fd;
@@ -269,26 +289,36 @@ static esp_err_t camera_capture_stream(void)
         struct v4l2_frmsizeenum frmsize = {
             .index = 0,
             .pixel_format = fmtdesc.pixelformat,
-            .type = type,
         };
         if (ioctl(fd, VIDIOC_ENUM_FRAMESIZES, &frmsize) == 0) {
             for (int fmt_frmsize_index = 0; ; fmt_frmsize_index++) {
+                memset(&frmsize, 0, sizeof(frmsize));
                 frmsize.index = fmt_frmsize_index;
+                frmsize.pixel_format = fmtdesc.pixelformat;
                 if (ioctl(fd, VIDIOC_ENUM_FRAMESIZES, &frmsize) != 0) {
+                    break;
+                }
+                if (!camera_frame_size_is_discrete(&frmsize)) {
                     break;
                 }
 
                 struct v4l2_frmivalenum frmival = {
                     .index = 0,
                     .pixel_format = fmtdesc.pixelformat,
-                    .type = type,
                     .width = frmsize.discrete.width,
                     .height = frmsize.discrete.height,
                 };
                 if (ioctl(fd, VIDIOC_ENUM_FRAMEINTERVALS, &frmival) == 0) {
                     for (int fmt_frmival_index = 0; ; fmt_frmival_index++) {
+                        memset(&frmival, 0, sizeof(frmival));
                         frmival.index = fmt_frmival_index;
+                        frmival.pixel_format = fmtdesc.pixelformat;
+                        frmival.width = frmsize.discrete.width;
+                        frmival.height = frmsize.discrete.height;
                         if (ioctl(fd, VIDIOC_ENUM_FRAMEINTERVALS, &frmival) != 0) {
+                            break;
+                        }
+                        if (!camera_frame_interval_is_discrete(&frmival)) {
                             break;
                         }
 

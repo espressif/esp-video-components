@@ -1995,6 +1995,23 @@ void IRAM_ATTR esp_video_skip_buffer(struct esp_video *video, uint32_t type, uin
     portEXIT_CRITICAL_SAFE(&video->stream_lock);
 }
 
+static enum v4l2_buf_type esp_video_default_buf_type(struct esp_video *video)
+{
+    if (video->caps & V4L2_CAP_VIDEO_CAPTURE) {
+        return V4L2_BUF_TYPE_VIDEO_CAPTURE;
+    }
+    if (video->caps & V4L2_CAP_VIDEO_OUTPUT) {
+        return V4L2_BUF_TYPE_VIDEO_OUTPUT;
+    }
+    if (video->caps & V4L2_CAP_VIDEO_M2M) {
+        return V4L2_BUF_TYPE_VIDEO_CAPTURE;
+    }
+    if (video->caps & V4L2_CAP_META_CAPTURE) {
+        return V4L2_BUF_TYPE_META_CAPTURE;
+    }
+    return (enum v4l2_buf_type)0;
+}
+
 /**
  * @brief Enumerate video frame sizes
  *
@@ -2011,7 +2028,7 @@ esp_err_t esp_video_enum_framesizes(struct esp_video *video, struct v4l2_frmsize
 
     CHECK_VIDEO_OBJ(video);
 
-    stream = esp_video_get_stream(video, frmsize->type);
+    stream = esp_video_get_stream(video, esp_video_default_buf_type(video));
     if (!stream) {
         return ESP_ERR_INVALID_ARG;
     }
@@ -2046,7 +2063,7 @@ esp_err_t esp_video_enum_frameintervals(struct esp_video *video, struct v4l2_frm
 
     CHECK_VIDEO_OBJ(video);
 
-    stream = esp_video_get_stream(video, frmival->type);
+    stream = esp_video_get_stream(video, esp_video_default_buf_type(video));
     if (!stream) {
         return ESP_ERR_INVALID_ARG;
     }
@@ -2136,6 +2153,7 @@ esp_err_t esp_video_config_buffer(struct esp_video *video, const struct v4l2_for
     SET_STREAM_FORMAT_WIDTH(stream, pix->width);
     SET_STREAM_FORMAT_HEIGHT(stream, pix->height);
     SET_STREAM_FORMAT_PIXEL_FORMAT(stream, pix->pixelformat);
+    stream->format.type = format->type;
     SET_STREAM_BUF_INFO(stream, buf_size, alignments, frame_caps);
 
     return ESP_OK;
