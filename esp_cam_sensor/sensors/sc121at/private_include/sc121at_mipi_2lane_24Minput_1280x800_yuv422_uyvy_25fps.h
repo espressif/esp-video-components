@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2025 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2026 Shenzhen ALG-TECH Co., Ltd.,
  *
  * SPDX-License-Identifier: Apache-2.0
  */

@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2024-2026 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2026 Shenzhen ALG-TECH Co., Ltd.,
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -261,18 +261,6 @@ static esp_err_t sc121at_set_format(esp_cam_sensor_device_t *dev, const esp_cam_
     ret = sc121at_write_array(dev->sccb_handle, (const sc121at_reginfo_t *)format->regs);
     ESP_RETURN_ON_FALSE(ret == ESP_OK, ESP_CAM_SENSOR_ERR_FAILED_SET_FORMAT, TAG, "write format regs failed");
 
-#if CONFIG_IDF_TARGET_ESP32P4
-    if (format->format == ESP_CAM_SENSOR_PIXFORMAT_YUV422_UYVY) {
-        esp_chip_info_t chip_info;
-        esp_chip_info(&chip_info);
-        unsigned major_rev = chip_info.revision / 100;
-        if (major_rev >= 3) {
-            // ret = sc121at_write(dev->sccb_handle, FORMAT_CTRL0, SC121AT_FORMAT_CTRL0_YUV422_UYVY_SWAP); // YUV Order
-            // ESP_RETURN_ON_FALSE(ret == ESP_OK, ESP_CAM_SENSOR_ERR_FAILED_SET_FORMAT, TAG, "write yuv regs failed for P4 V3+");
-            ESP_LOGI(TAG, "silicon revision v%d, fix YUV order for the correct colors", major_rev);
-        }
-    }
-#endif
 
     dev->cur_format = format;
 

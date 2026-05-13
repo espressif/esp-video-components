@@ -18,26 +18,26 @@ if CAMERA_SC121AT
 
     menu "Choose supported formats for MIPI CSI interface"
         config CAMERA_SC121AT_MIPI_YUV422_1280X800_25FPS
-            bool "MIPI 2-lane, 24M input, 1280x800  25fps, yuv422-8bit uyvy"
+            bool "MIPI 2-lane, 24M input, 1280x800  25fps, YUV422(UYVY)"
             default n
             help
-                yuv422-8bit uyvy color format at 1280x800 resolution with 25fps framerate.
+                YUV422(UYVY) color format at 1280x800 resolution with 25fps framerate.
     endmenu
 
     choice CAMERA_SC121AT_MIPI_DEFAULT_FMT
         prompt "Select default output format for MIPI CSI interface"
         default CAMERA_SC121AT_MIPI_DEFAULT_FMT_YUV422_1280X800_25FPS
         help
-            This option allows you to select the default video format for the OV5645 sensor
+            This option allows you to select the default video format for the SC121AT sensor
             when it is initialized on the MIPI CSI interface. The selected format will be used
             when the sensor is detected and initialized, and can be changed later when the
             sensor is in stream off state.
 
         config CAMERA_SC121AT_MIPI_DEFAULT_FMT_YUV422_1280X800_25FPS
-            bool "MIPI 2-lane, 24M input, 1280x800  25fps, yuv422-8bit uyvy"
+            bool "MIPI 2-lane, 24M input, 1280x800  25fps, YUV422(UYVY)"
             depends on CAMERA_SC121AT_AUTO_DETECT_MIPI_INTERFACE_SENSOR
 
-    endchoice # CAMERA_OV5645_MIPI_DEFAULT_FMT
+    endchoice # CAMERA_SC121AT_MIPI_DEFAULT_FMT
 
     config CAMERA_SC121AT_MIPI_IF_FORMAT_INDEX_DEFAULT
         int
