@@ -15,7 +15,7 @@ if idf_build_apps_version == '1.1.4':
 
 DEFAULT_CONFIG_RULES_STR = ['sdkconfig.ci=default', 'sdkconfig.ci.*=', '=default']
 DEFAULT_IGNORE_WARNING_FILEPATH = [os.path.join('tools', 'ci', 'ignore_build_warnings.txt')]
-PREVIEW_TARGETS = []
+PREVIEW_TARGETS = ['esp32s31']
 
 CI_BUILD_ALL_FILES = ['esp_cam_sensor/CMakeLists.txt', 'esp_ipa/CMakeLists.txt', 'esp_video/CMakeLists.txt', 'esp_sccb_intf/CMakeLists.txt']
 

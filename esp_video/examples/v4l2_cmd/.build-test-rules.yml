@@ -1,7 +1,7 @@
 esp_video/examples/v4l2_cmd:
   enable:
-    - if: IDF_TARGET in ["esp32p4", "esp32s3"]
-      reason: only support on esp32p4 and esp32s3
+    - if: IDF_TARGET in ["esp32p4", "esp32s3", "esp32s31"]
+      reason: only support on esp32p4, esp32s3 and esp32s31
   depends_components:
     - esp_video
     - esp_cam_sensor
