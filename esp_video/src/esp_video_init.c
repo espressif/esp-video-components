@@ -115,7 +115,17 @@ static i2c_dev_t s_i2c_dev[I2C_NUM_MAX];
 #if CONFIG_ESP_VIDEO_ENABLE_USB_UVC_VIDEO_DEVICE
 static SemaphoreHandle_t s_usb_uvc_sem;
 #endif /* CONFIG_ESP_VIDEO_ENABLE_USB_UVC_VIDEO_DEVICE */
+
+#if CONFIG_ESP_VIDEO_ENABLE_DVP_VIDEO_DEVICE || \
+    CONFIG_ESP_VIDEO_ENABLE_HW_H264_VIDEO_DEVICE || \
+    CONFIG_ESP_VIDEO_ENABLE_HW_JPEG_VIDEO_DEVICE || \
+    CONFIG_ESP_VIDEO_ENABLE_ISP_VIDEO_DEVICE || \
+    CONFIG_ESP_VIDEO_ENABLE_MIPI_CSI_VIDEO_DEVICE || \
+    CONFIG_ESP_VIDEO_ENABLE_SPI_VIDEO_DEVICE || \
+    CONFIG_ESP_VIDEO_ENABLE_USB_UVC_VIDEO_DEVICE
 static uint32_t s_video_device_inited_flags = 0;
+#endif
+
 static _lock_t s_init_lock;
 static const char *TAG = "esp_video_init";
 
@@ -292,12 +302,27 @@ fail_2:
     if (config->deinit_clk_func) {
         config->deinit_clk_func(config->clk_priv);
     }
-fail_1:
-    esp_sccb_del_i2c_io(sccb_io);
+fail_1: {
+        esp_err_t sccb_ret = esp_sccb_del_i2c_io(sccb_io);
+        if (sccb_ret != ESP_OK) {
+            ESP_LOGE(TAG, "Failed to delete SCCB device: %s", esp_err_to_name(sccb_ret));
+            if (ret == ESP_OK) {
+                ret = sccb_ret;
+            }
+        }
+    }
 fail_0:
     if (i2c_initialized) {
-        i2c_del_master_bus(i2c_handle);
-        s_i2c_dev[sccb_config->i2c_config.port].i2c_handle = NULL;
+        esp_err_t i2c_ret = i2c_del_master_bus(i2c_handle);
+        if (i2c_ret == ESP_OK) {
+            s_i2c_dev[sccb_config->i2c_config.port].i2c_handle = NULL;
+        } else {
+            ESP_LOGE(TAG, "Failed to delete I2C master bus port %d: %s",
+                     sccb_config->i2c_config.port, esp_err_to_name(i2c_ret));
+            if (ret == ESP_OK) {
+                ret = i2c_ret;
+            }
+        }
     }
     return ret;
 }
@@ -466,8 +491,18 @@ static esp_err_t create_csi_video_device(esp_cam_sensor_device_t *cam, void *pri
 #if CONFIG_ESP_VIDEO_ENABLE_CAMERA_MOTOR_CONTROLLER
                 if (motor_inited) {
                     esp_cam_motor_device_t *motor_dev = esp_video_get_csi_video_device_motor();
-                    esp_sccb_del_i2c_io(motor_dev->sccb_handle);
-                    esp_cam_motor_del_dev(motor_dev);
+                    esp_sccb_io_handle_t sccb_handle = motor_dev->sccb_handle;
+                    esp_err_t motor_ret = esp_cam_motor_del_dev(motor_dev);
+                    if (motor_ret != ESP_OK) {
+                        ESP_LOGE(TAG, "Failed to delete CSI motor after ISP pipeline failure: %s",
+                                 esp_err_to_name(motor_ret));
+                    }
+                    if (sccb_handle) {
+                        esp_err_t sccb_ret = esp_sccb_del_i2c_io(sccb_handle);
+                        if (sccb_ret != ESP_OK) {
+                            ESP_LOGE(TAG, "Failed to delete SCCB device: %s", esp_err_to_name(sccb_ret));
+                        }
+                    }
                     s_video_device_inited_flags &= ~ESP_VIDEO_INIT_FLAGS_MOTOR;
                 }
 #endif
@@ -755,7 +790,15 @@ esp_err_t esp_video_deinit_with_flags(uint32_t flags)
     }
 #endif
 
+#if CONFIG_ESP_VIDEO_ENABLE_HW_JPEG_VIDEO_DEVICE || \
+    CONFIG_ESP_VIDEO_ENABLE_HW_H264_VIDEO_DEVICE || \
+    CONFIG_ESP_VIDEO_ENABLE_MIPI_CSI_VIDEO_DEVICE || \
+    CONFIG_ESP_VIDEO_ENABLE_DVP_VIDEO_DEVICE || \
+    CONFIG_ESP_VIDEO_ENABLE_SPI_VIDEO_DEVICE || \
+    CONFIG_ESP_VIDEO_ENABLE_USB_UVC_VIDEO_DEVICE || \
+    CONFIG_ESP_VIDEO_ENABLE_ISP_VIDEO_DEVICE
 fail0:
+#endif
 #if ESP_VIDEO_ENABLE_SCCB_DEVICE
     /**
      * Deinitialize I2C device internal object
@@ -966,8 +1009,15 @@ esp_err_t esp_video_init_with_flags(const esp_video_init_config_t *config, uint3
     _lock_release_recursive(&s_init_lock);
     return ESP_OK;
 
+#if CONFIG_ESP_VIDEO_ENABLE_USB_UVC_VIDEO_DEVICE || \
+    CONFIG_ESP_VIDEO_ENABLE_MIPI_CSI_VIDEO_DEVICE || \
+    CONFIG_ESP_VIDEO_ENABLE_DVP_VIDEO_DEVICE || \
+    CONFIG_ESP_VIDEO_ENABLE_SPI_VIDEO_DEVICE || \
+    CONFIG_ESP_VIDEO_ENABLE_HW_H264_VIDEO_DEVICE || \
+    CONFIG_ESP_VIDEO_ENABLE_HW_JPEG_VIDEO_DEVICE
 fail1:
     esp_video_deinit_with_flags(s_video_device_inited_flags);
+#endif
 #if CONFIG_ESP_VIDEO_ENABLE_ISP_VIDEO_DEVICE
 fail0:
 #endif

@@ -5,6 +5,7 @@
 - Added support for the ESP32-S31 Korvo board
 - Fixed a compatibility issue with the DVP driver for ESP-IDF v6.0 and later versions
 - Fixed a compilation issue with the ESP-IDF master branch
+- Fixed an issue in esp_video_init where the motor SCCB was not released during de-initialization
 
 ## 2.1.0
 
