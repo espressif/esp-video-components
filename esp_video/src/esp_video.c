@@ -104,6 +104,30 @@ const char *esp_video_usb_uvc_device_name[] = {
     ESP_VIDEO_USB_UVC_NAME(9),
 };
 
+static void esp_video_release_stream_buffer(struct esp_video_stream *stream)
+{
+    if (!stream) {
+        return;
+    }
+
+    /* Reset queue state before destroying buffer storage. */
+    TAILQ_INIT(&stream->queued_list);
+    TAILQ_INIT(&stream->done_list);
+
+    if (stream->ready_sem) {
+        vSemaphoreDelete(stream->ready_sem);
+        stream->ready_sem = NULL;
+    }
+
+    if (stream->buffer) {
+        esp_video_buffer_destroy(stream->buffer);
+        stream->buffer = NULL;
+    }
+
+    stream->started = false;
+    stream->buf_info.count = 0;
+}
+
 /**
  * @brief Get pixel format description string
  *
@@ -580,17 +604,7 @@ esp_err_t esp_video_close(struct esp_video *video)
                 int stream_count = video->caps & V4L2_CAP_VIDEO_M2M ? 2 : 1;
 
                 for (int i = 0; i < stream_count; i++) {
-                    struct esp_video_stream *stream = &video->stream[i];
-
-                    if (stream->ready_sem) {
-                        vSemaphoreDelete(stream->ready_sem);
-                        stream->ready_sem = NULL;
-                    }
-
-                    if (stream->buffer) {
-                        esp_video_buffer_destroy(stream->buffer);
-                        stream->buffer = NULL;
-                    }
+                    esp_video_release_stream_buffer(&video->stream[i]);
                 }
 
                 video->inited = 0;
@@ -840,6 +854,10 @@ esp_err_t esp_video_setup_buffer(struct esp_video *video, uint32_t type, uint32_
     if (!stream) {
         return ESP_ERR_INVALID_ARG;
     }
+    if (stream->started) {
+        ESP_LOGW(TAG, "Cannot setup buffers while stream is started");
+        return ESP_ERR_INVALID_STATE;
+    }
 
     /* buffer_size is configured when setting format */
 
@@ -850,18 +868,10 @@ esp_err_t esp_video_setup_buffer(struct esp_video *video, uint32_t type, uint32_
         return ESP_ERR_INVALID_STATE;
     }
 
+    esp_video_release_stream_buffer(stream);
+
     info->count = count;
     info->memory_type = memory_type;
-
-    if (stream->ready_sem) {
-        vSemaphoreDelete(stream->ready_sem);
-        stream->ready_sem = NULL;
-    }
-
-    if (stream->buffer) {
-        esp_video_buffer_destroy(stream->buffer);
-        stream->buffer = NULL;
-    }
 
     stream->ready_sem = xSemaphoreCreateCounting(info->count, 0);
     if (!stream->ready_sem) {
@@ -877,6 +887,35 @@ esp_err_t esp_video_setup_buffer(struct esp_video *video, uint32_t type, uint32_
         return ESP_ERR_NO_MEM;
     }
 
+    return ESP_OK;
+}
+
+/**
+ * @brief Release video buffer.
+ *
+ * @param video Video object
+ * @param type  Video stream type
+ *
+ * @return
+ *      - ESP_OK on success
+ *      - Others if failed
+ */
+esp_err_t esp_video_release_buffer(struct esp_video *video, uint32_t type)
+{
+    struct esp_video_stream *stream;
+
+    CHECK_VIDEO_OBJ(video);
+
+    stream = esp_video_get_stream(video, type);
+    if (!stream) {
+        return ESP_ERR_INVALID_ARG;
+    }
+    if (stream->started) {
+        ESP_LOGW(TAG, "Cannot release buffers while stream is started");
+        return ESP_ERR_INVALID_STATE;
+    }
+
+    esp_video_release_stream_buffer(stream);
     return ESP_OK;
 }
 

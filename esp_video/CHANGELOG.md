@@ -8,6 +8,8 @@
 - Fixed a compatibility issue with the DVP driver for ESP-IDF v6.0 and later versions
 - Fixed a compilation issue with the ESP-IDF master branch
 - Fixed an issue in esp_video_init where the motor SCCB was not released during de-initialization
+- Fixed frame size and frame interval enumeration when callers leave the V4L2 enum type response field unset
+- Fixed VIDIOC_REQBUFS count=0 handling to release video buffers
 
 ## 2.1.0
 

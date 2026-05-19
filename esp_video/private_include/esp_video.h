@@ -207,6 +207,22 @@ esp_err_t esp_video_set_format(struct esp_video *video, const struct v4l2_format
 esp_err_t esp_video_setup_buffer(struct esp_video *video, uint32_t type, uint32_t memory_type, uint32_t count);
 
 /**
+ * @brief Release video buffers for one stream.
+ *
+ * Mirrors the standard V4L2 VIDIOC_REQBUFS count=0 behavior. The stream must
+ * be stopped before buffers can be released.
+ *
+ * @param video Video object
+ * @param type  Video stream type
+ *
+ * @return
+ *      - ESP_OK on success
+ *      - ESP_ERR_INVALID_STATE when stream is still started
+ *      - Others if failed
+ */
+esp_err_t esp_video_release_buffer(struct esp_video *video, uint32_t type);
+
+/**
  * @brief Get video buffer count.
  *
  * @param video Video object
