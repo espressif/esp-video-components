@@ -105,7 +105,7 @@ menu "Espressif Video Configuration"
         select ESP_VIDEO_ENABLE_DATA_PREPROCESSING
         select CAM_CTLR_SPI_DISABLE_BACKUP_BUFFER
         select CAM_CTLR_SPI_DISABLE_AUTO_DECODE
-        default n if IDF_TARGET_ESP32P4 || IDF_TARGET_ESP32S3
+        default n if IDF_TARGET_ESP32P4 || IDF_TARGET_ESP32S3 || IDF_TARGET_ESP32S31
         default y
         help
             Enable Serial Peripheral Interface (SPI) video device support.
@@ -129,7 +129,7 @@ menu "Espressif Video Configuration"
         config ESP_VIDEO_ENABLE_THE_SECOND_SPI_VIDEO_DEVICE
             bool "Enable The Second SPI Video Device"
             default n
-            depends on IDF_TARGET_ESP32P4 || IDF_TARGET_ESP32S3
+            depends on IDF_TARGET_ESP32P4 || IDF_TARGET_ESP32S3 || IDF_TARGET_ESP32S31
             help
                 Enable the second Serial Peripheral Interface (SPI) video device support.
 

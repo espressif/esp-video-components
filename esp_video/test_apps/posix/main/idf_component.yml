@@ -6,6 +6,6 @@ dependencies:
   example_video_common:
     override_path: "../../../examples/common_components/example_video_common"
   espressif/esp_tinyusb:
-    version: "~2.1.*"
+    version: "~2.2.*"
     rules:
-      - if: "target in [esp32p4, esp32s3]"
+      - if: "target in [esp32p4, esp32s3, esp32s31]"

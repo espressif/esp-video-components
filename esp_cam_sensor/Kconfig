@@ -32,7 +32,7 @@ menu "Espressif Camera Sensors Configurations"
 
         config CAMERA_SENSOR_XCLK_INPUT_24M
             bool
-            default y if IDF_TARGET_ESP32P4 || IDF_TARGET_ESP32S3 || IDF_TARGET_ESP32C5
+            default y if IDF_TARGET_ESP32P4 || IDF_TARGET_ESP32S3 || IDF_TARGET_ESP32C5 || IDF_TARGET_ESP32S31
             default n
             depends on CAMERA_BF3901
             help

@@ -246,6 +246,9 @@ static esp_err_t dvp_video_start(struct esp_video *video, uint32_t type)
         .v_res = CAPTURE_VIDEO_GET_FORMAT_HEIGHT(video),
         .dma_burst_size = alignments,
         .input_data_color_type = dvp_video->in_color,
+#if ESP_VIDEO_DVP_DEVICE_OUTPUT_COLOR
+        .output_data_color_type = dvp_video->in_color,
+#endif
         .pin_dont_init = true,
         .pic_format_jpeg = CAPTURE_VIDEO_GET_FORMAT_PIXEL_FORMAT(video) == V4L2_PIX_FMT_JPEG,
 #if DVP_DRIVER_HAS_EXTERNAL_XTAL

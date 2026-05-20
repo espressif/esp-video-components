@@ -142,3 +142,14 @@ build_test_c5_c61_idf_latest:
   parallel:
     matrix:
       - IMAGE: [espressif/idf:latest]
+
+build_test_esp32s31_idf_latest:
+  extends:
+    - .build_examples_template
+    - .rules:build:test_apps
+  variables:
+    IDF_TARGETS: "esp32s31"
+    IDF_BUILD_APPS_VERSION: "2.13.3"
+  parallel:
+    matrix:
+      - IMAGE: [espressif/idf:latest]

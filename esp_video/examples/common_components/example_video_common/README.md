@@ -4,48 +4,48 @@ This component provides board-level initialization for esp_video, including MIPI
 
 ## Supported Boards and GPIO Pins
 
-| Hardware | ESP32-P4-Function-EV-Board V1.4 | ESP32-P4-Function-EV-Board V1.5 | ESP32-P4-EYE | ESP32-S3-EYE |
-|:-:|:-:|:-:|:-:|:-:|
-| MIPI-CSI I2C SCL Pin        |  8 |  8 | 13 | NA |
-| MIPI-CSI I2C SDA Pin        |  7 |  7 | 14 | NA |
-| MIPI-CSI I2C Reset Pin      | NA | NA | 26 | NA |
-| MIPI-CSI I2C Power-down Pin | NA | NA | 12 | NA |
-| MIPI-CSI I2C XCLK           | NA | NA | 11 | NA |
+| Hardware | ESP32-P4-Function-EV-Board V1.4 | ESP32-P4-Function-EV-Board V1.5 | ESP32-P4-EYE | ESP32-S3-EYE | ESP32-S31-Korvo |
+|:-:|:-:|:-:|:-:|:-:|:-:|
+| MIPI-CSI I2C SCL Pin        |  8 |  8 | 13 | NA | NA |
+| MIPI-CSI I2C SDA Pin        |  7 |  7 | 14 | NA | NA |
+| MIPI-CSI I2C Reset Pin      | NA | NA | 26 | NA | NA |
+| MIPI-CSI I2C Power-down Pin | NA | NA | 12 | NA | NA |
+| MIPI-CSI I2C XCLK           | NA | NA | 11 | NA | NA |
 |   |   |   |   |
-| DVP I2C SCL Pin             | NA |  8 | NA |  5 |
-| DVP I2C SDA Pin             | NA |  7 | NA |  4 |
-| DVP I2C Reset Pin           | NA | 36 | NA | NA |
-| DVP I2C Power-down Pin      | NA | 38 | NA | NA |
-| DVP XCLK Pin                | NA | 20 | NA | 15 |
-| DVP PCLK Pin                | NA |  4 | NA | 13 |
-| DVP V-SYNC Pin              | NA | 37 | NA |  6 |
-| DVP DE Pin                  | NA | 22 | NA |  7 |
-| DVP D0 Pin                  | NA |  2 | NA | 11 |
-| DVP D1 Pin                  | NA | 32 | NA |  9 |
-| DVP D2 Pin                  | NA | 33 | NA |  8 |
-| DVP D3 Pin                  | NA | 23 | NA | 10 |
-| DVP D4 Pin                  | NA |  3 | NA | 12 |
-| DVP D5 Pin                  | NA |  6 | NA | 18 |
-| DVP D6 Pin                  | NA |  5 | NA | 17 |
-| DVP D7 Pin                  | NA | 21 | NA | 16 |
+| DVP I2C SCL Pin             | NA |  8 | NA |  5 |  1 |
+| DVP I2C SDA Pin             | NA |  7 | NA |  4 |  0 |
+| DVP I2C Reset Pin           | NA | 36 | NA | NA | NA |
+| DVP I2C Power-down Pin      | NA | 38 | NA | NA | NA |
+| DVP XCLK Pin                | NA | 20 | NA | 15 | 55 |
+| DVP PCLK Pin                | NA |  4 | NA | 13 | 54 |
+| DVP V-SYNC Pin              | NA | 37 | NA |  6 | 56 |
+| DVP DE Pin                  | NA | 22 | NA |  7 | 57 |
+| DVP D0 Pin                  | NA |  2 | NA | 11 | 46 |
+| DVP D1 Pin                  | NA | 32 | NA |  9 | 47 |
+| DVP D2 Pin                  | NA | 33 | NA |  8 | 48 |
+| DVP D3 Pin                  | NA | 23 | NA | 10 | 49 |
+| DVP D4 Pin                  | NA |  3 | NA | 12 | 50 |
+| DVP D5 Pin                  | NA |  6 | NA | 18 | 51 |
+| DVP D6 Pin                  | NA |  5 | NA | 17 | 52 |
+| DVP D7 Pin                  | NA | 21 | NA | 16 | 53 |
 |   |   |   |   |
-| SPI I2C SCL Pin             | NA |  8 | NA |  5 |
-| SPI I2C SDA Pin             | NA |  7 | NA |  4 |
-| SPI I2C Reset Pin           | NA | NA | NA | NA |
-| SPI I2C Power-down Pin      | NA | NA | NA | NA |
-| SPI XCLK Pin                | NA | 20 | NA | 15 |
-| SPI CS Pin                  | NA | 37 | NA |  6 |
-| SPI SCLK Pin                | NA |  4 | NA | 13 |
-| SPI Data0 I/O Pin           | NA | 21 | NA | 16 |
-| SPI Data1 I/O Pin           | NA |  5 | NA | NA |
+| SPI I2C SCL Pin             | NA |  8 | NA |  5 |  1 |
+| SPI I2C SDA Pin             | NA |  7 | NA |  4 |  0 |
+| SPI I2C Reset Pin           | NA | NA | NA | NA | NA |
+| SPI I2C Power-down Pin      | NA | NA | NA | NA | NA |
+| SPI XCLK Pin                | NA | 20 | NA | 15 | 55 |
+| SPI CS Pin                  | NA | 37 | NA |  6 | 56 |
+| SPI SCLK Pin                | NA |  4 | NA | 13 | 54 |
+| SPI Data0 I/O Pin           | NA | 21 | NA | 16 | 53 |
+| SPI Data1 I/O Pin           | NA |  5 | NA | NA | NA |
 |   |   |   |   |
-| SDMMC Data Bus Width        |  4 |  4 |  4 | 1  |
-| SDMMC CMD Pin               | 44 | 44 | 44 | 38 |
-| SDMMC CLK Pin               | 43 | 43 | 43 | 39 |
-| SDMMC D0 Pin                | 39 | 39 | 39 | 40 |
-| SDMMC D1 Pin                | 40 | 40 | 40 | NA |
-| SDMMC D2 Pin                | 41 | 41 | 41 | NA |
-| SDMMC D3 Pin                | 42 | 42 | 42 | NA |
+| SDMMC Data Bus Width        |  4 |  4 |  4 |  1 |  4 |
+| SDMMC CMD Pin               | 44 | 44 | 44 | 38 | 25 |
+| SDMMC CLK Pin               | 43 | 43 | 43 | 39 | 24 |
+| SDMMC D0 Pin                | 39 | 39 | 39 | 40 | 20 |
+| SDMMC D1 Pin                | 40 | 40 | 40 | NA | 21 |
+| SDMMC D2 Pin                | 41 | 41 | 41 | NA | 22 |
+| SDMMC D3 Pin                | 42 | 42 | 42 | NA | 23 |
 
 **Note 1:** The ESP32-P4-Function-EV v1.4 board and ESP32-P4-EYE do not support DVP interface camera sensors by default. If you need to connect a DVP interface camera sensor to these boards, please select "Customized Development Board" in the menu and configure the GPIO pins and clock according to your specific hardware setup.
 
@@ -64,51 +64,51 @@ This component provides board-level initialization for esp_video, including MIPI
 
 When using "ESP32-XX-DevKitC" development boards, you can try the default GPIO pin configuration for "Customized Development Board" as shown in the following table:
 
-| Hardware | ESP32-P4 | ESP32-S3 | ESP32-C3 | ESP32-C6 | ESP32-C61 | ESP32-C5 |
-|:-:|:-:|:-:|:-:|:-:|:-:|:-:|
-| MIPI-CSI CAM I2C SCL Pin        |  8 | NA | NA | NA | NA | NA |
-| MIPI-CSI CAM I2C SDA Pin        |  7 | NA | NA | NA | NA | NA |
-| MIPI-CSI CAM I2C Reset Pin      | NA | NA | NA | NA | NA | NA |
-| MIPI-CSI CAM I2C Power-down Pin | NA | NA | NA | NA | NA | NA |
-| MIPI-CSI CAM I2C XCLK           | NA | NA | NA | NA | NA | NA |
+| Hardware | ESP32-P4 | ESP32-S3 | ESP32-C3 | ESP32-C6 | ESP32-C61 | ESP32-C5 | ESP32-S31 |
+|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|
+| MIPI-CSI CAM I2C SCL Pin        |  8 | NA | NA | NA | NA | NA | NA |
+| MIPI-CSI CAM I2C SDA Pin        |  7 | NA | NA | NA | NA | NA | NA |
+| MIPI-CSI CAM I2C Reset Pin      | NA | NA | NA | NA | NA | NA | NA |
+| MIPI-CSI CAM I2C Power-down Pin | NA | NA | NA | NA | NA | NA | NA |
+| MIPI-CSI CAM I2C XCLK           | NA | NA | NA | NA | NA | NA | NA |
 |   |   |   |   |
-| DVP CAM I2C SCL Pin             |  8 |  5 | NA | NA | NA | NA |
-| DVP CAM I2C SDA Pin             |  7 |  4 | NA | NA | NA | NA |
-| DVP CAM I2C Reset Pin           | NA | NA | NA | NA | NA | NA |
-| DVP CAM I2C Power-down Pin      | NA | NA | NA | NA | NA | NA |
-| DVP CAM XCLK Pin                | 20 | 15 | NA | NA | NA | NA |
-| DVP CAM PCLK Pin                |  4 | 13 | NA | NA | NA | NA |
-| DVP CAM V-SYNC Pin              | 37 |  6 | NA | NA | NA | NA |
-| DVP CAM DE Pin                  | 22 |  7 | NA | NA | NA | NA |
-| DVP CAM D0 Pin                  |  2 | 11 | NA | NA | NA | NA |
-| DVP CAM D1 Pin                  | 32 |  9 | NA | NA | NA | NA |
-| DVP CAM D2 Pin                  | 33 |  8 | NA | NA | NA | NA |
-| DVP CAM D3 Pin                  | 23 | 10 | NA | NA | NA | NA |
-| DVP CAM D4 Pin                  |  3 | 12 | NA | NA | NA | NA |
-| DVP CAM D5 Pin                  |  6 | 18 | NA | NA | NA | NA |
-| DVP CAM D6 Pin                  |  5 | 17 | NA | NA | NA | NA |
-| DVP CAM D7 Pin                  | 21 | 16 | NA | NA | NA | NA |
+| DVP CAM I2C SCL Pin             |  8 |  5 | NA | NA | NA | NA |  1 |
+| DVP CAM I2C SDA Pin             |  7 |  4 | NA | NA | NA | NA |  0 |
+| DVP CAM I2C Reset Pin           | NA | NA | NA | NA | NA | NA | NA |
+| DVP CAM I2C Power-down Pin      | NA | NA | NA | NA | NA | NA | NA |
+| DVP CAM XCLK Pin                | 20 | 15 | NA | NA | NA | NA | 55 |
+| DVP CAM PCLK Pin                |  4 | 13 | NA | NA | NA | NA | 54 |
+| DVP CAM V-SYNC Pin              | 37 |  6 | NA | NA | NA | NA | 56 |
+| DVP CAM DE Pin                  | 22 |  7 | NA | NA | NA | NA | 57 |
+| DVP CAM D0 Pin                  |  2 | 11 | NA | NA | NA | NA | 46 |
+| DVP CAM D1 Pin                  | 32 |  9 | NA | NA | NA | NA | 47 |
+| DVP CAM D2 Pin                  | 33 |  8 | NA | NA | NA | NA | 48 |
+| DVP CAM D3 Pin                  | 23 | 10 | NA | NA | NA | NA | 49 |
+| DVP CAM D4 Pin                  |  3 | 12 | NA | NA | NA | NA | 50 |
+| DVP CAM D5 Pin                  |  6 | 18 | NA | NA | NA | NA | 51 |
+| DVP CAM D6 Pin                  |  5 | 17 | NA | NA | NA | NA | 52 |
+| DVP CAM D7 Pin                  | 21 | 16 | NA | NA | NA | NA | 53 |
 |   |   |   |   |
-| SPI CAM0 I2C SCL Pin             |  8 |  5 |  5 |  5 |  5 |  5 |
-| SPI CAM0 I2C SDA Pin             |  7 |  4 |  4 |  4 |  4 |  4 |
-| SPI CAM0 I2C Reset Pin           | NA | NA | NA | NA | NA | NA |
-| SPI CAM0 I2C Power-down Pin      | NA | NA | NA | NA | NA | NA |
-| SPI CAM0 XCLK Pin                | 20 | 15 |  8 |  0 |  0 |  0 |
-| SPI CAM0 CS Pin                  | 37 |  6 | 10 |  1 |  8 | 10 |
-| SPI CAM0 SCLK Pin                |  4 | 13 |  6 |  6 |  6 |  6 |
-| SPI CAM0 Data0 I/O Pin           | 21 | 16 |  7 |  7 |  7 |  7 |
-| SPI CAM0 Data1 I/O Pin           |  5 | NA | NA | NA |  9 |  9 |
-| SPI CAM0 Data2 I/O Pin           | 33 | NA | NA | NA | NA |  8 |
-| SPI CAM0 Data3 I/O Pin           | 23 | NA | NA | NA | NA | 26 |
+| SPI CAM0 I2C SCL Pin             |  8 |  5 |  5 |  5 |  5 |  5 |  1 |
+| SPI CAM0 I2C SDA Pin             |  7 |  4 |  4 |  4 |  4 |  4 |  0 |
+| SPI CAM0 I2C Reset Pin           | NA | NA | NA | NA | NA | NA | NA |
+| SPI CAM0 I2C Power-down Pin      | NA | NA | NA | NA | NA | NA | NA |
+| SPI CAM0 XCLK Pin                | 20 | 15 |  8 |  0 |  0 |  0 | 55 |
+| SPI CAM0 CS Pin                  | 37 |  6 | 10 |  1 |  8 | 10 | 56 |
+| SPI CAM0 SCLK Pin                |  4 | 13 |  6 |  6 |  6 |  6 | 54 |
+| SPI CAM0 Data0 I/O Pin           | 21 | 16 |  7 |  7 |  7 |  7 | 53 |
+| SPI CAM0 Data1 I/O Pin           |  5 | NA | NA | NA |  9 |  9 | NA |
+| SPI CAM0 Data2 I/O Pin           | 33 | NA | NA | NA | NA |  8 | NA |
+| SPI CAM0 Data3 I/O Pin           | 23 | NA | NA | NA | NA | 26 | NA |
 |   |   |   |   |
-| SPI CAM1 I2C SCL Pin             |  5 |  1 | NA | NA | NA | NA |
-| SPI CAM1 I2C SDA Pin             |  6 |  2 | NA | NA | NA | NA |
-| SPI CAM1 I2C Reset Pin           | NA | NA | NA | NA | NA | NA |
-| SPI CAM1 I2C Power-down Pin      | NA | NA | NA | NA | NA | NA |
-| SPI CAM1 XCLK Pin                | 23 | 39 | NA | NA | NA | NA |
-| SPI CAM1 CS Pin                  | 38 | 42 | NA | NA | NA | NA |
-| SPI CAM1 SCLK Pin                | 22 | 41 | NA | NA | NA | NA |
-| SPI CAM1 Data0 I/O Pin           |  3 | 40 | NA | NA | NA | NA |
+| SPI CAM1 I2C SCL Pin             |  5 |  1 | NA | NA | NA | NA | NA |
+| SPI CAM1 I2C SDA Pin             |  6 |  2 | NA | NA | NA | NA | NA |
+| SPI CAM1 I2C Reset Pin           | NA | NA | NA | NA | NA | NA | NA |
+| SPI CAM1 I2C Power-down Pin      | NA | NA | NA | NA | NA | NA | NA |
+| SPI CAM1 XCLK Pin                | 23 | 39 | NA | NA | NA | NA | NA |
+| SPI CAM1 CS Pin                  | 38 | 42 | NA | NA | NA | NA | NA |
+| SPI CAM1 SCLK Pin                | 22 | 41 | NA | NA | NA | NA | NA |
+| SPI CAM1 Data0 I/O Pin           |  3 | 40 | NA | NA | NA | NA | NA |
 
 **Note 1**: Only SoCs that have more than one SPI port, except for SPI flash and SPI RAM ports, can use the SPI CAM0 and SPI CAM1 simultaneously.
 
