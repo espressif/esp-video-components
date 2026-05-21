@@ -42,7 +42,6 @@ It is highly recommended that users use it in the [esp-video](https://github.com
 | OV5645  | 2592 x 1944    | MIPI      | 8/10-bit Raw RGB data<br/>RGB565<br/>YUV/YCbCr422<br/>YUV420 | 1/4"     |
 | OV5647  | 2592 x 1944    | MIPI & DVP      | 8/10-bit Raw RGB data | 1/4"     |
 | OV9281  | 1280 x 720    | MIPI      | 8-bit Raw MONO data | 1/4"     |
-| PIVARIETY| 1920x1080     | MIPI     |Special module, parameters must be read from Arducam Pivariety Camera| custom|
 | SC030IOT  | 640 x 480    | DVP | YCbCr422<br/>8bit Raw RGB data | 1/6.5"     |
 | SC035HGS  | 640 x 480    | MIPI & DVP | Raw MONO<br/>Raw RGB data | 1/6"     |
 | SC101IOT  | 1280 x 720    | DVP | YCbCr422<br/>8/10-bit Raw RGB data | 1/4.2"     |
@@ -50,8 +49,11 @@ It is highly recommended that users use it in the [esp-video](https://github.com
 | SC2336  | 1920 x 1080    | MIPI & DVP      | 8/10-bit Raw RGB data | 1/3"     |
 | SP0A39  | 640 x 480    | SPI & DVP      | YCbCr422<br/>Grayscale | 1/10"     |
 | STI2250 | 800 x 600    | MIPI | 8/10-bit Raw Mono data | 1/5"     |
+| Arducam IMX500 | 1920 x 1080 | MIPI | Special module, parameters must be read from Arducam IMX500 Camera | custom |
+| Arducam PIVARIETY | 1920x1080 | MIPI |Special module, parameters must be read from Arducam Pivariety Camera| custom|
 
 - **Note 1**：The effective pixel count of a camera does not represent the final output pixel size. Some camera sensors must operate in binning mode to output image data with a higher signal-to-noise ratio. For example, the OS04C10 has an effective pixel size of 2688x1520, and when operating in 2x2 binning mode, its output size is 1280x720.
+- **Note 2**: The camera sensor drivers located in the `sensors/arducam` directory are intended exclusively for Arducam-branded camera sensor modules and cannot be used with generic camera sensor modules.
 
 ## Supported HDMI to MIPI-CSI Bridge Sensors
 | model   | max resolution | input interface | output interface | output format                                                |
