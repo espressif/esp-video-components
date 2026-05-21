@@ -6,6 +6,7 @@
   - Decreased the color temperature speed, step, and AWB gain adjustment step to solve the problem of image flicker caused by sudden changes in color temperature.
 - Added Arducam IMX500 MIPI driver.
   - The Arducam IMX500 MIPI driver is only compatible with the Arducam IMX500 camera module.
+- The SPI interface now supports high-active level and LSB data modes for SPI camera sensors.
 
 - Fixed the spelling error in the camera driver header file.
 - Fixed os02n10 & ov2640 incorrect format name in Kconfig.

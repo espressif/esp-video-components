@@ -64,7 +64,11 @@ extern "C" {
  */
 #define EXAMPLE_SPI_CAM_0_CS_PIN                        6
 #define EXAMPLE_SPI_CAM_0_SCLK_PIN                      13
+#ifdef CONFIG_CAMERA_BF3901
 #define EXAMPLE_SPI_CAM_0_DATA0_IO_PIN                  16
+#else
+#define EXAMPLE_SPI_CAM_0_DATA0_IO_PIN                  11
+#endif
 #define EXAMPLE_SPI_CAM_0_DATA1_IO_PIN                  -1
 
 /**
