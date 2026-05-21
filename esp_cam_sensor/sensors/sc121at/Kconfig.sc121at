@@ -1,0 +1,48 @@
+menuconfig CAMERA_SC121AT
+    bool "SC121AT"
+    default n
+    depends on SOC_MIPI_CSI_SUPPORTED
+    help
+        Enable support for the SC121AT CMOS image sensor. 
+
+if CAMERA_SC121AT
+    menu "Auto detect SC121AT"
+        config CAMERA_SC121AT_AUTO_DETECT_MIPI_INTERFACE_SENSOR
+            bool "Detect for MIPI CSI interface sensor"
+            default y
+            help
+                When enabled, the SC121AT sensor will be automatically detected
+                and initialized on the MIPI CSI interface at startup without requiring
+                manual detection call(sc121at_detect) in your application.
+    endmenu
+
+    menu "Choose supported formats for MIPI CSI interface"
+        config CAMERA_SC121AT_MIPI_YUV422_1280X800_25FPS
+            bool "MIPI 2-lane, 24M input, 1280x800  25fps, YUV422(UYVY)"
+            default n
+            help
+                YUV422(UYVY) color format at 1280x800 resolution with 25fps framerate.
+    endmenu
+
+    choice CAMERA_SC121AT_MIPI_DEFAULT_FMT
+        prompt "Select default output format for MIPI CSI interface"
+        default CAMERA_SC121AT_MIPI_DEFAULT_FMT_YUV422_1280X800_25FPS
+        help
+            This option allows you to select the default video format for the SC121AT sensor
+            when it is initialized on the MIPI CSI interface. The selected format will be used
+            when the sensor is detected and initialized, and can be changed later when the
+            sensor is in stream off state.
+
+        config CAMERA_SC121AT_MIPI_DEFAULT_FMT_YUV422_1280X800_25FPS
+            bool "MIPI 2-lane, 24M input, 1280x800  25fps, YUV422(UYVY)"
+            depends on CAMERA_SC121AT_AUTO_DETECT_MIPI_INTERFACE_SENSOR
+
+    endchoice # CAMERA_SC121AT_MIPI_DEFAULT_FMT
+
+    config CAMERA_SC121AT_MIPI_IF_FORMAT_INDEX_DEFAULT
+        int
+        default 0 if CAMERA_SC121AT_MIPI_DEFAULT_FMT_YUV422_1280X800_25FPS
+        help
+            Sets the default configuration for the MIPI CSI interface.
+            Use query_support_formats() API to get more format options.
+endif

@@ -9,6 +9,7 @@
 
 - Fixed the spelling error in the camera driver header file.
 - Fixed os02n10 & ov2640 incorrect format name in Kconfig.
+- Added sc121at mipi yuv sensor driver
 
 - Moved the Arducam Pivariety driver to the "sensors/pivariety" directory.
 
