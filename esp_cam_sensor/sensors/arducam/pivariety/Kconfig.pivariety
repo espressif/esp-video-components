@@ -109,7 +109,7 @@ if CAMERA_PIVARIETY
             bool "Use default configuration"
             help
                 Use the built-in default IPA configuration file:
-                "esp_cam_sensor/sensors/pivariety/cfg/pivariety_default.json"
+                "esp_cam_sensor/sensors/arducam/pivariety/cfg/pivariety_default.json"
 
                 This configuration provides optimized settings for general use cases
                 and is recommended for most applications.

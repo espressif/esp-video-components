@@ -20,7 +20,6 @@ menu "Espressif Camera Sensors Configurations"
             rsource "sensors/ov5645/Kconfig.ov5645"
             rsource "sensors/ov5647/Kconfig.ov5647"
             rsource "sensors/ov9281/Kconfig.ov9281"
-            rsource "sensors/pivariety/Kconfig.pivariety"
             rsource "sensors/sc030iot/Kconfig.sc030iot"
             rsource "sensors/sc035hgs/Kconfig.sc035hgs"
             rsource "sensors/sc101iot/Kconfig.sc101iot"
@@ -28,6 +27,8 @@ menu "Espressif Camera Sensors Configurations"
             rsource "sensors/sc2336/Kconfig.sc2336"
             rsource "sensors/sp0a39/Kconfig.sp0a39"
             rsource "sensors/sti2250/Kconfig.sti2250"
+            rsource "sensors/arducam/pivariety/Kconfig.pivariety"
+            rsource "sensors/arducam/imx500/Kconfig.arducam_imx500"
         endmenu
 
         config CAMERA_SENSOR_XCLK_INPUT_24M
