@@ -9,6 +9,7 @@
 
 - Fixed the spelling error in the camera driver header file.
 - Fixed os02n10 & ov2640 incorrect format name in Kconfig.
+- Removed sc101iot incorrect warning logs in the power on function
 
 - Moved the Arducam Pivariety driver to the "sensors/pivariety" directory.
 
