@@ -642,6 +642,7 @@ static esp_err_t ov3660_power_on(esp_cam_sensor_device_t *dev)
 
     if (dev->xclk_pin >= 0) {
         OV3660_ENABLE_OUT_XCLK(dev->xclk_pin, dev->xclk_freq_hz);
+        delay_ms(20);
     }
 
     if (dev->pwdn_pin >= 0) {
