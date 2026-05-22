@@ -28,16 +28,36 @@
   - ".gitlab/ci/deploy.yml"
   - ".gitlab/ci/post_deploy.yml"
 
+.patterns-c-files: &patterns-c-files
+  - "**/*.{c,C,cpp}"
+  - "**/*.{h,H,hpp}"
+  - "**/Kconfig"
+  - "**/Kconfig.*"
+  - "**/CMakeLists.txt"
+  - "**/sdkconfig.rename"
+  - "**/sdkconfig.ci.*"
+  - "**/sdkconfig.ci.*.*"
+  - "esp_cam_sensor/sensors/**/*.json"
+  - "esp_ipa/tools/config/*.py"
+  - "**/idf_component.yml"
+  - "**/*.cmake"
+  - ".gitlab/ci/build.yml"
+  - ".gitlab/ci/deploy.yml"
+  - ".gitlab/ci/post_deploy.yml"
+  - ".gitlab/ci/rules.yml"
+
 # rules for examples
 .rules:build:examples:
   rules:
     - <<: *if-protected
     - <<: *if-dev-push
+      changes: *patterns-c-files
 
 .rules:build:test_apps:
   rules:
     - <<: *if-protected
     - <<: *if-dev-push
+      changes: *patterns-c-files
 
 # For others
 .rules:build:build_doc:
