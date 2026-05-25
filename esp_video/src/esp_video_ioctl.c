@@ -82,12 +82,12 @@ static esp_err_t esp_video_ioctl_reqbufs(struct esp_video *video, struct v4l2_re
 {
     esp_err_t ret;
 
-    if ((req_bufs->memory != V4L2_MEMORY_MMAP) &&
-            (req_bufs->memory != V4L2_MEMORY_USERPTR) ) {
-        return ESP_ERR_INVALID_ARG;
+    if (req_bufs->count == 0) {
+        return esp_video_release_buffer(video, req_bufs->type);
     }
 
-    if (req_bufs->count == 0) {
+    if ((req_bufs->memory != V4L2_MEMORY_MMAP) &&
+            (req_bufs->memory != V4L2_MEMORY_USERPTR) ) {
         return ESP_ERR_INVALID_ARG;
     }
 

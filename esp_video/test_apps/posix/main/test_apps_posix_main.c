@@ -132,6 +132,60 @@ TEST_CASE("V4L2 Command", "[video]")
     TEST_ESP_OK(example_video_deinit());
 }
 
+TEST_CASE("V4L2 enum frame size and interval type", "[video]")
+{
+    int fd;
+    int ret;
+    struct v4l2_fmtdesc fmtdesc;
+    struct v4l2_frmsizeenum frmsize;
+    struct v4l2_frmivalenum frmival;
+
+    setUp();
+
+    TEST_ESP_OK(example_video_init());
+
+    fd = open(TEST_APP_VIDEO_DEVICE, O_RDWR);
+    TEST_ASSERT_GREATER_OR_EQUAL(0, fd);
+
+    memset(&fmtdesc, 0, sizeof(fmtdesc));
+    fmtdesc.index = 0;
+    fmtdesc.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
+    ret = ioctl(fd, VIDIOC_ENUM_FMT, &fmtdesc);
+    TEST_ESP_OK(ret);
+
+    /* frmsize.type is an output field and must not be used as a V4L2 buffer type. */
+    memset(&frmsize, 0, sizeof(frmsize));
+    frmsize.index = 0;
+    frmsize.pixel_format = fmtdesc.pixelformat;
+    ret = ioctl(fd, VIDIOC_ENUM_FRAMESIZES, &frmsize);
+    TEST_ESP_OK(ret);
+    TEST_ASSERT_EQUAL_INT(V4L2_FRMSIZE_TYPE_DISCRETE, frmsize.type);
+    TEST_ASSERT_GREATER_THAN_UINT32(0, frmsize.discrete.width);
+    TEST_ASSERT_GREATER_THAN_UINT32(0, frmsize.discrete.height);
+
+    /* frmival.type is also an output field; devices without frame interval enumeration may reject this ioctl. */
+    memset(&frmival, 0, sizeof(frmival));
+    frmival.index = 0;
+    frmival.pixel_format = fmtdesc.pixelformat;
+    frmival.width = frmsize.discrete.width;
+    frmival.height = frmsize.discrete.height;
+    ret = ioctl(fd, VIDIOC_ENUM_FRAMEINTERVALS, &frmival);
+    if (ret == 0) {
+        switch (frmival.type) {
+        case V4L2_FRMIVAL_TYPE_DISCRETE:
+        case V4L2_FRMIVAL_TYPE_STEPWISE:
+        case V4L2_FRMIVAL_TYPE_CONTINUOUS:
+            break;
+        default:
+            TEST_FAIL_MESSAGE("invalid frame interval enum type");
+        }
+    }
+
+    close(fd);
+
+    TEST_ESP_OK(example_video_deinit());
+}
+
 TEST_CASE("V4L2 Video Buffer Sequence", "[video]")
 {
     int fd;
