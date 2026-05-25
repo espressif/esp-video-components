@@ -15,9 +15,11 @@
 #include "hal/color_hal.h"
 #include "driver/gpio.h"
 #include "soc/gpio_struct.h"
+#include "soc/spi_periph.h"
 #include "esp_memory_utils.h"
 #include "esp_private/esp_cache_private.h"
 #include "esp_private/spi_slave_internal.h"
+#include "esp_private/gpio.h"
 #include "esp_cache.h"
 #include "esp_cam_ctlr_types.h"
 #include "esp_idf_version.h"
@@ -275,7 +277,28 @@ static esp_err_t spi_cam_init_intf_spi(esp_cam_ctlr_spi_cam_t *ctlr, const esp_c
         .flags = SPI_SLAVE_NO_RETURN_RESULT
     };
 
+    if (config->frame_info->data_order_lsb_first) {
+        slvcfg.flags |= SPI_SLAVE_RXBIT_LSBFIRST;
+    }
+
+    if (config->frame_info->high_level_active) {
+        slvcfg.mode = 0; // 0: CPOL=0, CPHA=0; CLK idle high, data capture on falling edge
+    }
+
     ESP_RETURN_ON_ERROR(esp_cam_spi_slave_initialize(ctlr->spi.port, &buscfg, &slvcfg, SPI_DMA_CH_AUTO), TAG, "failed to initialize SPI slave");
+
+    if (config->frame_info->high_level_active) {
+        /**
+         * Because the CS pin is active low by default,
+         * we need to set it to active high to match the high level active requirement.
+         */
+#if (ESP_IDF_VERSION < ESP_IDF_VERSION_VAL(6, 0, 0))
+        esp_rom_gpio_connect_in_signal(slvcfg.spics_io_num, spi_periph_signal[ctlr->spi.port].spics_in, true);
+#else
+        ESP_GOTO_ON_ERROR(gpio_matrix_input(slvcfg.spics_io_num, spi_periph_signal[ctlr->spi.port].spics_in, true), fail0, TAG, "failed to set CS pin as input");
+#endif
+    }
+
     ESP_GOTO_ON_ERROR(esp_cam_spi_slave_disable(ctlr->spi.port), fail0, TAG, "failed to disable SPI slave");
 
     return ESP_OK;

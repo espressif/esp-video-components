@@ -1,8 +1,10 @@
 ## Unreleased
 
 - The ISP video device now utilizes the sensor's full resolution for statistical analysis
-- Fix AWB subwindow validation failure on ESP32-P4 chip revision >= 3.0 (ECO4)
 - Added support for the ESP32-S31 Korvo board
+- The Data0 pin assignment for the SPI camera sensor varies depending on the selected sensor.
+
+- Fixed AWB subwindow validation failure on ESP32-P4 chip revision >= 3.0 (ECO4)
 - Fixed a compatibility issue with the DVP driver for ESP-IDF v6.0 and later versions
 - Fixed a compilation issue with the ESP-IDF master branch
 - Fixed an issue in esp_video_init where the motor SCCB was not released during de-initialization
