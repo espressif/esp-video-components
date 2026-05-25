@@ -12,6 +12,7 @@ It is highly recommended that users use it in the [esp-video](https://github.com
 |:-:|:-:|:-:|:-:|:-:|
 | ESP32-P4 | Y   | Y   | Y | Y |
 | ESP32-S3 | N/A | Y   | Y | Y |
+| ESP32-S31 | N/A | Y   | Y | Y |
 | ESP32-C3 | N/A | N/A | N/A | Y |
 | ESP32-C5 | N/A | N/A | N/A | Y |
 | ESP32-C6 | N/A | N/A | N/A | Y |
