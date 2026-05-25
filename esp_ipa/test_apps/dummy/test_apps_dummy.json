@@ -212,7 +212,31 @@
                     "mid": 100,
                     "bright": 200
                 }
-            }
+            },
+            "new_w": 1.0,
+            "prev_w": 0.0,
+            "export_ct": false,
+            "zone_switch_count": 1,
+            "type_counter_max": 500,
+            "outlier_rg": 0.0,
+            "outlier_bg": 0.0,
+            "zone_hysteresis_ratio": 0.0,
+            "zones": [
+                {
+                    "type": "mct",
+                    "rg": { "min": 0.45, "max": 0.70 },
+                    "bg": { "min": 0.45, "max": 0.70 },
+                    "enabled": true
+                }
+            ],
+            "ref_points": [
+                {
+                    "ct": 5200,
+                    "rg": 0.55,
+                    "bg": 0.55,
+                    "radius": 0.35
+                }
+            ]
         },
         "acc":
         {

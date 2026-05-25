@@ -111,7 +111,7 @@ Developers can refer to the configuration files in [esp_cam_sensor](https://gith
 | Parameter | Type | Range | Description |
 |:-:|:-:|:-:|:-|
 | awb | Object | / | Auto white balance configuration parameters |
-| model | Integer | {0,1} | AWB data process model |
+| model | Integer or String | `0` / `1` / `2` or aliases | **`0`**: gray world (default). **`1`**: color-temperature index. **`2`**: zone classifier (chromaticity zones + optional ref-point scan). String aliases: `gray_world`, `model_0`, `gw` → 0; `ct_index`, `model_1` → 1; `zone`, `model_2`, `hybrid`, `ct2` → 2 |
 |  min_counted | Integer | >0 | Minimum white points: Only when the white points number is larger than or equal to this does the auto white balance algorithm run |
 | min_red_gain_step | Float | >0 | Minimum red channel gain step: Only when the red channel gain step is larger than or equal to this is the gain set into the ISP |
 | min_blue_gain_step | Float | >0 | Minimum blue channel gain step: Only when the blue channel gain step is larger than or equal to this is the gain set into the ISP |
@@ -128,6 +128,52 @@ Developers can refer to the configuration files in [esp_cam_sensor](https://gith
 | green_luma_env | String | / | AWB green channel lumina variable name |
 | green_luma_init | Integer | <div style="white-space: nowrap;">(0,255)</div> | AWB green channel initialization lumina |
 | green_luma_step_ratio | Float | >0 | AWB green channel minimum lumina step ratio |
+
+**AWB model 2 (zone)** — set `model` to `2` or `"zone"`. Requires **`zones`** (at least one neutral box). **`ref_points`** lists calibrated chroma `(rg, bg)` per color temperature; the algorithm rotates the active ref point, accumulates global AWB statistics, classifies the estimate into a **neutral** zone (`uhct`, `hct`, `mct`, `lct`, `ulct`). **`green`** / **`skin`** boxes are used for classification only and **do not** vote as illuminant. Optional **`export_ct`**: when `true`, writes estimated CT (Kelvin) to the pipeline variable **`ct`** (consumed by ACC). Use **`new_w`** / **`prev_w`** for temporal smoothing of chroma and exported CT.
+
+```json
+"awb":
+{
+    "model": "zone",
+    "min_counted": 1000,
+    "min_red_gain_step": 0.5,
+    "min_blue_gain_step": 0.5,
+    "new_w": 1.0,
+    "prev_w": 0.0,
+    "export_ct": false,
+    "zone_switch_count": 1,
+    "type_counter_max": 500,
+    "outlier_rg": 0.0,
+    "outlier_bg": 0.0,
+    "zone_hysteresis_ratio": 0.0,
+    "zones":
+    [
+        {
+            "type": "mct",
+            "rg": { "min": 0.45, "max": 0.70 },
+            "bg": { "min": 0.45, "max": 0.70 },
+            "enabled": true
+        }
+    ],
+    "ref_points":
+    [
+        { "ct": 5200, "rg": 0.55, "bg": 0.55, "radius": 0.35 }
+    ]
+}
+```
+
+| Parameter | Type | Range | Description |
+|:-:|:-:|:-:|:-|
+| zones | Array | non-empty for model 2 | Each entry: **`type`** (`uhct`, `hct`, `mct`, `lct`, `ulct`, `green`, `skin`), **`rg`**.min/max, **`bg`**.min/max (chromaticity bounds on **R/G** and **B/G**), **`enabled`** (optional, default true). First matching enabled neutral zone wins. |
+| ref_points | Array | ≥1 for model 2 | Each entry: **`ct`** (Kelvin), **`rg`**, **`bg`**, **`radius`** (attraction in chroma space; `0` disables snapping for that point). |
+| new_w | Float | ≥ 0 | IIR weight for the new frame when smoothing chroma / CT. |
+| prev_w | Float | ≥ 0 | IIR weight for the previous frame; with **`new_w`**, both `0` disables smoothing on that path. |
+| export_ct | Boolean | true or false | If **true**, publish estimated CT to **`ct`**. |
+| zone_switch_count | Integer | ≥ 1 | Frames per ref-point slot before advancing the scan index (use `1` for fastest wrap). |
+| type_counter_max | Integer | >0 | Ceiling for per-zone hit counters before decay (generator default 20000 if omitted). |
+| outlier_rg | Float | ≥ 0 | Reject sub-window when \|R/G − prev\| exceeds this; `0` disables. |
+| outlier_bg | Float | ≥ 0 | Same for B/G. |
+| zone_hysteresis_ratio | Float | ≥ 0 | Zone-switch stickiness; `0` disables. |
 
 ---
 
@@ -597,7 +643,8 @@ Developers can refer to the configuration files in [esp_cam_sensor](https://gith
     "gain":
     {
         "min_step": 0.0001,
-        "frame_delay": 2
+        "frame_delay": 2,
+        "max": 8.0
     }
 }
 ```
@@ -607,6 +654,7 @@ Developers can refer to the configuration files in [esp_cam_sensor](https://gith
 | gain | Object | / | Gain control configuration parameters object |
 | frame_delay | Integer | >0 | The delayed frames number of setting gain parameter taking effect, this value is from sensor hardware information |
 | min_step | Float | >0 | Minimum gain step: Only when the gain step is larger than or equal to this value is the gain set into the sensor |
+| max | Float | ≥ 0 | Optional. When **> 0**, caps the analogue gain requested by AGC at this value (applied after the sensor’s own `min_gain` / `max_gain`). **0** or omitted: no extra limit beyond the sensor capability |
 
 ---
 
@@ -785,8 +833,6 @@ Developers can refer to the configuration files in [esp_cam_sensor](https://gith
 
 * Note: if "mode" is "light_threshold_priority" this configuration applies
 * Note: if "use_env_luma" is true, using the environmental luminance instead of statistics data
-
----
 
 ---
 
