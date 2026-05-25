@@ -617,8 +617,56 @@ typedef struct esp_ipa_ian_config {
  */
 typedef enum esp_ipa_awb_model {
     ESP_IPA_AWB_MODEL_0 = 0,                    /*!< Use gray world*/
-    ESP_IPA_AWB_MODEL_1                         /*!< Use color temperature indexing */
+    ESP_IPA_AWB_MODEL_1,                        /*!< Use color temperature indexing */
+    ESP_IPA_AWB_MODEL_2                         /*!< Zone classifier: per-subwindow CT-zone classification + temporal smoothing, with optional ref_point attraction / CT export */
 } esp_ipa_awb_model_t;
+
+/**
+ * @brief AWB CT zone type (chromaticity bucket keyed by color temperature).
+ *
+ * Only neutral zones (UHCT..ULCT) participate in illuminant selection.
+ * GREEN / SKIN are content-zones used during classification so those
+ * sub-windows do not poison the illuminant estimate.
+ */
+typedef enum esp_ipa_awb_zone_type {
+    ESP_IPA_AWB_ZONE_UHCT = 0,                  /*!< Ultra-high CT (e.g. > 7500K, sky/bluish) */
+    ESP_IPA_AWB_ZONE_HCT,                       /*!< High CT (~6000..7500K, overcast/daylight) */
+    ESP_IPA_AWB_ZONE_MCT,                       /*!< Mid CT (~4500..6000K, daylight/fluorescent) */
+    ESP_IPA_AWB_ZONE_LCT,                       /*!< Low CT (~3500..4500K, warm fluorescent/halogen) */
+    ESP_IPA_AWB_ZONE_ULCT,                      /*!< Ultra-low CT (< 3500K, incandescent) */
+    ESP_IPA_AWB_ZONE_GREEN,                     /*!< Greenish chromaticity bucket (excluded from illuminant vote) */
+    ESP_IPA_AWB_ZONE_SKIN,                      /*!< Skin-tone bucket (excluded from illuminant vote) */
+    ESP_IPA_AWB_ZONE_MAX                        /*!< Sentinel / upper bound for accumulators */
+} esp_ipa_awb_zone_type_t;
+
+/**
+ * @brief Chromaticity bounding box describing one AWB zone (model 2).
+ *
+ * A sub-window whose (R/G, B/G) falls inside the box is counted into this zone.
+ * Zones are checked in array order; first match wins.
+ */
+typedef struct esp_ipa_awb_zone {
+    esp_ipa_awb_zone_type_t type;               /*!< Zone category (used to exclude SKIN/GREEN from vote) */
+    float rg_min;                               /*!< Inclusive lower bound on R/G */
+    float rg_max;                               /*!< Inclusive upper bound on R/G */
+    float bg_min;                               /*!< Inclusive lower bound on B/G */
+    float bg_max;                               /*!< Inclusive upper bound on B/G */
+    bool  enabled;                              /*!< If false this zone is skipped entirely */
+} esp_ipa_awb_zone_t;
+
+/**
+ * @brief Calibrated AWB reference point at a known color temperature (model 2).
+ *
+ * After zone voting produces a (rg, bg), the result can be "snapped" to the
+ * nearest ref_point if it lies within that point's ::radius, and the two
+ * closest points are used to interpolate an estimated CT.
+ */
+typedef struct esp_ipa_awb_ct_point {
+    uint32_t ct;                                /*!< Color temperature of this reference (Kelvin) */
+    float rg;                                   /*!< Measured/calibrated R/G at this CT */
+    float bg;                                   /*!< Measured/calibrated B/G at this CT */
+    float radius;                               /*!< Chroma-distance attraction radius; <=0 disables snapping */
+} esp_ipa_awb_ct_point_t;
 
 /**
  * @brief Auto white balance algorithm configuration
@@ -630,6 +678,8 @@ typedef struct esp_ipa_awb_config {
 
     float min_red_gain_step;                    /*!< Minimum red channel gain step, less value will not be set into hardware */
     float min_blue_gain_step;                   /*!< Minimum blue channel gain step, less value will not be set into hardware */
+    float red_gain_scale;                       /*!< Red channel gain scale, 1.0 means no compensation */
+    float blue_gain_scale;                      /*!< Blue channel gain scale, 1.0 means no compensation */
 
     bool enable_log;                            /*!< Enable auto white balance algorithm log */
 
@@ -652,6 +702,23 @@ typedef struct esp_ipa_awb_config {
     uint16_t subwin_green_dark;                 /*!< Reject if cell mean green < this (too dark: noise, R/G/B distortion) */
     uint16_t subwin_green_mid;                  /*!< Peak weight at this green (medium: best SNR, most accurate CT) */
     uint16_t subwin_green_bright;               /*!< Reject if cell mean green > this (too bright: clip, color cast) */
+
+    /* Configuration parameters used in model_2 (zone classifier) */
+
+    const esp_ipa_awb_zone_t *zones;            /*!< Zone table (chromaticity bounding boxes); required for model 2 */
+    uint32_t zones_count;                       /*!< Number of entries in ::zones */
+    const esp_ipa_awb_ct_point_t *ref_points;   /*!< Optional CT reference points for attraction/CT estimate */
+    uint32_t ref_points_count;                  /*!< Number of entries in ::ref_points */
+    float new_w;                                /*!< Temporal IIR: weight of the new frame (>= 0) */
+    float prev_w;                               /*!< Temporal IIR: weight of the previous frame (>= 0); new+prev > 0 to smooth, else pass-through */
+    bool  export_ct;                            /*!< If true, publish the estimated CT to KV key "ct" (consumed by ACC for CCM/SAT/LSC) */
+
+    /* Model_2 temporal stabilization (zone classifier) */
+    float outlier_rg;                           /*!< Per-cell outlier gate: reject sub-window when |rg_c - prev_rg| > this; <=0 disables */
+    float outlier_bg;                           /*!< Per-cell outlier gate: reject sub-window when |bg_c - prev_bg| > this; <=0 disables */
+    float zone_hysteresis_ratio;                /*!< Zone-switch hysteresis: new winning zone accepted only when its IIR weight >= prev_zone_iir * this ratio; <=0 disables, 1.0 = equal, >1 = sticky */
+    uint32_t zone_switch_count;                 /*!< Zone-switch debounce: candidate zone must repeat this many frames before replacing previous zone; <=1 disables */
+    uint32_t type_counter_max;                  /*!< Type-switch counter ceiling; reaching it clears other type counters and keeps this type at half ceiling */
 } esp_ipa_awb_config_t;
 
 /**
@@ -743,6 +810,7 @@ typedef struct esp_ipa_agc_config {
 
     uint16_t exposure_adjust_delay;             /*!< Exposure adjustment delay time in milliseconds */
     float min_gain_step;                        /*!< Minmium gain step */
+    float max_gain;                             /*!< Maximum sensor gain applied by AGC, 0 means no extra limit beyond sensor capability */
     float inc_gain_ratio;                       /*!< Luma gain increasing ratio */
     float dec_gain_ratio;                       /*!< Luma gain decreasing ratio */
 

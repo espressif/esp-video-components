@@ -33,12 +33,134 @@ def awb_init_default(name, obj):
         obj.min_red_gain_step = 0.5
     if not hasattr(obj, 'min_blue_gain_step'):
         obj.min_blue_gain_step = 0.5
+    if not hasattr(obj, 'red_gain_scale'):
+        obj.red_gain_scale = 1.0
+    if not hasattr(obj, 'blue_gain_scale'):
+        obj.blue_gain_scale = 1.0
     if not hasattr(obj, 'enable_sub_win'):
         obj.enable_sub_win = False
     if not hasattr(obj, 'min_subwin_wp_counted'):
         obj.min_subwin_wp_counted = 0
     if not hasattr(obj, 'min_subwin_participated'):
         obj.min_subwin_participated = 0
+    if not hasattr(obj, 'new_w'):
+        obj.new_w = 0.3
+    if not hasattr(obj, 'prev_w'):
+        obj.prev_w = 0.7
+    if not hasattr(obj, 'export_ct'):
+        obj.export_ct = False
+    # Model_2 temporal stabilization knobs (0.0 disables each feature)
+    if not hasattr(obj, 'outlier_rg'):
+        obj.outlier_rg = 0.0
+    if not hasattr(obj, 'outlier_bg'):
+        obj.outlier_bg = 0.0
+    if not hasattr(obj, 'zone_hysteresis_ratio'):
+        obj.zone_hysteresis_ratio = 0.0
+    if not hasattr(obj, 'zone_switch_count'):
+        obj.zone_switch_count = 0
+    if not hasattr(obj, 'type_counter_max'):
+        obj.type_counter_max = 20000
+
+# Map enum-name strings (e.g. "uhct") to C enum identifiers. Accepts int too.
+_ZONE_TYPE_C = {
+    'uhct':  'ESP_IPA_AWB_ZONE_UHCT',
+    'hct':   'ESP_IPA_AWB_ZONE_HCT',
+    'mct':   'ESP_IPA_AWB_ZONE_MCT',
+    'lct':   'ESP_IPA_AWB_ZONE_LCT',
+    'ulct':  'ESP_IPA_AWB_ZONE_ULCT',
+    'green': 'ESP_IPA_AWB_ZONE_GREEN',
+    'skin':  'ESP_IPA_AWB_ZONE_SKIN',
+}
+
+def _awb_zone_type_to_c(val):
+    if isinstance(val, str):
+        key = val.strip().lower()
+        if key in _ZONE_TYPE_C:
+            return _ZONE_TYPE_C[key]
+        raise fatal_error(f'AWB zone type "{val}" is not recognised; expected one of {list(_ZONE_TYPE_C.keys())}')
+    if isinstance(val, int):
+        return f'(esp_ipa_awb_zone_type_t){int(val)}'
+    raise fatal_error(f'AWB zone type must be string or int, got {type(val).__name__}')
+
+def _awb_collect_zones(obj):
+    """Return list of zones. Prefer awb.zones; fall back to awb.hybrid.ct2.zones for backward compat."""
+    if hasattr(obj, 'zones') and obj.zones is not None:
+        return list(obj.zones)
+    if hasattr(obj, 'hybrid') and obj.hybrid is not None:
+        h = obj.hybrid
+        if hasattr(h, 'ct2') and h.ct2 is not None and hasattr(h.ct2, 'zones') and h.ct2.zones is not None:
+            return list(h.ct2.zones)
+    return []
+
+def _awb_collect_ref_points(obj):
+    """Return list of ref_points. Prefer awb.ref_points; fall back to awb.hybrid.ref_points."""
+    if hasattr(obj, 'ref_points') and obj.ref_points is not None:
+        return list(obj.ref_points)
+    if hasattr(obj, 'hybrid') and obj.hybrid is not None:
+        h = obj.hybrid
+        if hasattr(h, 'ref_points') and h.ref_points is not None:
+            return list(h.ref_points)
+    return []
+
+def _awb_collect_smooth_weights(obj):
+    """Return (new_w, prev_w). Prefer awb.new_w/prev_w; fall back to awb.hybrid.ct2.new_w/prev_w."""
+    new_w, prev_w = obj.new_w, obj.prev_w
+    if hasattr(obj, 'hybrid') and obj.hybrid is not None:
+        h = obj.hybrid
+        if hasattr(h, 'ct2') and h.ct2 is not None:
+            c = h.ct2
+            if hasattr(c, 'new_w'):
+                new_w = c.new_w
+            if hasattr(c, 'prev_w'):
+                prev_w = c.prev_w
+    return float(new_w), float(prev_w)
+
+def _awb_render_zones(name, zones):
+    """Render the zones C array literal + table variable. Returns (decl_text, ptr_expr, count)."""
+    if not zones:
+        return '', 'NULL', 0
+    items = []
+    for idx, z in enumerate(zones):
+        if not hasattr(z, 'type'):
+            raise fatal_error(f'AWB zone #{idx} in {name} has no "type"')
+        ztype = _awb_zone_type_to_c(z.type)
+        if not (hasattr(z, 'rg') and hasattr(z.rg, 'min') and hasattr(z.rg, 'max')):
+            raise fatal_error(f'AWB zone #{idx} in {name} missing rg.min/max')
+        if not (hasattr(z, 'bg') and hasattr(z.bg, 'min') and hasattr(z.bg, 'max')):
+            raise fatal_error(f'AWB zone #{idx} in {name} missing bg.min/max')
+        enabled = getattr(z, 'enabled', True)
+        items.append(
+            f'    {{ .type = {ztype}, '
+            f'.rg_min = {float(z.rg.min):.6f}f, .rg_max = {float(z.rg.max):.6f}f, '
+            f'.bg_min = {float(z.bg.min):.6f}f, .bg_max = {float(z.bg.max):.6f}f, '
+            f'.enabled = {str(bool(enabled)).lower()} }},'
+        )
+    decl = (
+        f'static const esp_ipa_awb_zone_t s_ipa_awb_{name}_zones[] = {{\n'
+        + '\n'.join(items)
+        + '\n};\n'
+    )
+    return decl, f's_ipa_awb_{name}_zones', len(zones)
+
+def _awb_render_ref_points(name, pts):
+    if not pts:
+        return '', 'NULL', 0
+    items = []
+    for idx, p in enumerate(pts):
+        if not hasattr(p, 'ct') or not hasattr(p, 'rg') or not hasattr(p, 'bg'):
+            raise fatal_error(f'AWB ref_point #{idx} in {name} missing ct/rg/bg')
+        radius = getattr(p, 'radius', 0.0)
+        items.append(
+            f'    {{ .ct = {int(p.ct)}, '
+            f'.rg = {float(p.rg):.6f}f, .bg = {float(p.bg):.6f}f, '
+            f'.radius = {float(radius):.6f}f }},'
+        )
+    decl = (
+        f'static const esp_ipa_awb_ct_point_t s_ipa_awb_{name}_ref_points[] = {{\n'
+        + '\n'.join(items)
+        + '\n};\n'
+    )
+    return decl, f's_ipa_awb_{name}_ref_points', len(pts)
 
 def _awb_resolve_subwin_weight(name, obj):
     """Same layout as ian.luma.ae.weight: prefer awb.sub_win.weight (25 numbers, int or float)."""
@@ -91,11 +213,28 @@ class ipa_unit_awb_c(ipa_unit_c):
 
         model_dict = {
             0: 'ESP_IPA_AWB_MODEL_0',
-            1: 'ESP_IPA_AWB_MODEL_1'
+            1: 'ESP_IPA_AWB_MODEL_1',
+            2: 'ESP_IPA_AWB_MODEL_2',
         }
 
-        if obj.model not in model_dict:
-            raise fatal_error(f'AWB config {name} has invalid model value: {obj.model}. Expected 0 or 1.')
+        # Accept string aliases too; 'zone'/'hybrid' both map to the new classifier (model 2).
+        model_val = obj.model
+        if isinstance(model_val, str):
+            alias = model_val.strip().lower()
+            str_to_int = {
+                'gray_world': 0, 'model_0': 0, 'gw': 0,
+                'ct_index':   1, 'model_1': 1,
+                'zone': 2, 'model_2': 2, 'hybrid': 2, 'ct2': 2,
+            }
+            if alias not in str_to_int:
+                raise fatal_error(
+                    f'AWB config {name} has unknown model string: "{obj.model}". '
+                    f'Expected int 0/1/2 or one of {list(str_to_int.keys())}.')
+            model_val = str_to_int[alias]
+
+        if model_val not in model_dict:
+            raise fatal_error(
+                f'AWB config {name} has invalid model value: {obj.model}. Expected 0, 1 or 2.')
 
         subwin_table = _awb_resolve_subwin_weight(name, obj)
         min_subwin = _awb_resolve_min_subwin_counted(obj)
@@ -110,12 +249,29 @@ class ipa_unit_awb_c(ipa_unit_c):
             for row in rows
         )
 
+        # Model 2 extras: zones + ref_points + smoothing weights + CT export flag.
+        zones = _awb_collect_zones(obj)
+        refs = _awb_collect_ref_points(obj)
+        new_w, prev_w = _awb_collect_smooth_weights(obj)
+        export_ct = bool(getattr(obj, 'export_ct', False))
+        zones_decl, zones_ptr, zones_cnt = _awb_render_zones(name, zones)
+        refs_decl, refs_ptr, refs_cnt = _awb_render_ref_points(name, refs)
+
+        if model_val == 2 and zones_cnt == 0:
+            raise fatal_error(
+                f'AWB config {name} uses model 2 (zone) but no zones were provided '
+                f'(expected awb.zones[] or awb.hybrid.ct2.zones[]).')
+
+        prefix = (zones_decl + ('\n' if zones_decl else '') + refs_decl + ('\n' if refs_decl else ''))
+
         config_text = cfmt_string(f'''
-            static const esp_ipa_awb_config_t s_ipa_awb_{name}_config = {{
-                .model = {model_dict[obj.model]},
+            {prefix}static const esp_ipa_awb_config_t s_ipa_awb_{name}_config = {{
+                .model = {model_dict[model_val]},
                 .min_counted = {obj.min_counted},
                 .min_red_gain_step = {obj.min_red_gain_step},
                 .min_blue_gain_step = {obj.min_blue_gain_step},
+                .red_gain_scale = {float(obj.red_gain_scale):.6f}f,
+                .blue_gain_scale = {float(obj.blue_gain_scale):.6f}f,
                 .range = {{
                     .green_max = {obj.range.green.max},
                     .green_min = {obj.range.green.min},
@@ -135,7 +291,19 @@ class ipa_unit_awb_c(ipa_unit_c):
                 }},
                 .subwin_green_dark = {ldark},
                 .subwin_green_mid = {lmid},
-                .subwin_green_bright = {lbright}
+                .subwin_green_bright = {lbright},
+                .zones = {zones_ptr},
+                .zones_count = {zones_cnt},
+                .ref_points = {refs_ptr},
+                .ref_points_count = {refs_cnt},
+                .new_w = {float(new_w):.6f}f,
+                .prev_w = {float(prev_w):.6f}f,
+                .export_ct = {str(export_ct).lower()},
+                .outlier_rg = {float(obj.outlier_rg):.6f}f,
+                .outlier_bg = {float(obj.outlier_bg):.6f}f,
+                .zone_hysteresis_ratio = {float(obj.zone_hysteresis_ratio):.6f}f,
+                .zone_switch_count = {int(obj.zone_switch_count)},
+                .type_counter_max = {int(obj.type_counter_max)}
             }};
             ''')
 

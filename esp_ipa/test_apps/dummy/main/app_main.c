@@ -1150,6 +1150,65 @@ TEST_CASE("AWB sub-window config and subwin stats path", "[IPA]")
     TEST_ESP_OK(esp_ipa_pipeline_destroy(handle));
 }
 
+TEST_CASE("AWB model_2 zone", "[IPA]")
+{
+    const esp_ipa_config_t *base = esp_ipa_pipeline_get_config(IPA_TARGET_NAME);
+    static esp_ipa_config_t cfg;
+    static esp_ipa_awb_config_t awb;
+    esp_ipa_pipeline_handle_t handle = NULL;
+    esp_ipa_metadata_t metadata = {0};
+    esp_ipa_stats_t stats = {0};
+
+    TEST_ASSERT_NOT_NULL(base);
+    TEST_ASSERT_NOT_NULL(base->awb);
+    memcpy(&cfg, base, sizeof(cfg));
+    memcpy(&awb, base->awb, sizeof(awb));
+    awb.model = ESP_IPA_AWB_MODEL_2;
+    awb.enable_sub_win = false;
+    cfg.awb = &awb;
+
+    /* test_apps_dummy.json awb lines 216–239 (copied into awb) */
+    TEST_ASSERT_FLOAT_WITHIN(0.001f, 1.0f, awb.new_w);
+    TEST_ASSERT_FLOAT_WITHIN(0.001f, 0.0f, awb.prev_w);
+    TEST_ASSERT_FALSE(awb.export_ct);
+    TEST_ASSERT_EQUAL_UINT32(1, awb.zone_switch_count);
+    TEST_ASSERT_EQUAL_UINT32(500, awb.type_counter_max);
+    TEST_ASSERT_FLOAT_WITHIN(0.001f, 0.0f, awb.outlier_rg);
+    TEST_ASSERT_FLOAT_WITHIN(0.001f, 0.0f, awb.outlier_bg);
+    TEST_ASSERT_FLOAT_WITHIN(0.001f, 0.0f, awb.zone_hysteresis_ratio);
+    TEST_ASSERT_EQUAL_UINT32(1, awb.zones_count);
+    TEST_ASSERT_EQUAL_UINT32(1, awb.ref_points_count);
+    TEST_ASSERT_NOT_NULL(awb.zones);
+    TEST_ASSERT_NOT_NULL(awb.ref_points);
+    TEST_ASSERT_EQUAL(ESP_IPA_AWB_ZONE_MCT, awb.zones[0].type);
+    TEST_ASSERT_FLOAT_WITHIN(0.001f, 0.45f, awb.zones[0].rg_min);
+    TEST_ASSERT_FLOAT_WITHIN(0.001f, 0.70f, awb.zones[0].rg_max);
+    TEST_ASSERT_FLOAT_WITHIN(0.001f, 0.45f, awb.zones[0].bg_min);
+    TEST_ASSERT_FLOAT_WITHIN(0.001f, 0.70f, awb.zones[0].bg_max);
+    TEST_ASSERT_TRUE(awb.zones[0].enabled);
+    TEST_ASSERT_EQUAL_UINT32(5200, awb.ref_points[0].ct);
+    TEST_ASSERT_FLOAT_WITHIN(0.001f, 0.55f, awb.ref_points[0].rg);
+    TEST_ASSERT_FLOAT_WITHIN(0.001f, 0.55f, awb.ref_points[0].bg);
+    TEST_ASSERT_FLOAT_WITHIN(0.001f, 0.35f, awb.ref_points[0].radius);
+
+    memset(&stats, 0, sizeof(stats));
+    stats.flags = IPA_STATS_FLAGS_AWB;
+    {
+        const uint32_t cnt = awb.min_counted;
+        stats.awb_stats[0].counted = cnt;
+        stats.awb_stats[0].sum_g = cnt * 200U;
+        stats.awb_stats[0].sum_r = (uint32_t)((double)stats.awb_stats[0].sum_g * 0.55);
+        stats.awb_stats[0].sum_b = (uint32_t)((double)stats.awb_stats[0].sum_g * 0.55);
+    }
+
+    TEST_ESP_OK(esp_ipa_pipeline_create(&cfg, &handle));
+    TEST_ESP_OK(esp_ipa_pipeline_init(handle, &s_esp_ipa_sensor, &metadata));
+    metadata.flags = 0;
+    TEST_ESP_OK(esp_ipa_pipeline_process(handle, &stats, &s_esp_ipa_sensor, &metadata));
+    TEST_ASSERT_NOT_EQUAL_HEX32(0, metadata.flags & (IPA_METADATA_FLAGS_RG | IPA_METADATA_FLAGS_BG));
+    TEST_ESP_OK(esp_ipa_pipeline_destroy(handle));
+}
+
 TEST_CASE("Auto gain control test", "[IPA]")
 {
     int seq = 0;
@@ -1445,7 +1504,64 @@ TEST_CASE("Auto gain control test", "[IPA]")
         TEST_ESP_OK(esp_ipa_pipeline_destroy(handle));
     }
 
+}
 
+/*
+ * esp_ipa_agc_config_t::max_gain: when > 0, clamps output gain after sensor min/max (see maxgain.txt).
+ * RAM copy; very dark AE stats so AGC requests gain above the lower cap.
+ */
+TEST_CASE("AGC max_gain caps sensor gain", "[IPA][AGC]")
+{
+    const esp_ipa_config_t *base = esp_ipa_pipeline_get_config(IPA_TARGET_NAME);
+    static esp_ipa_config_t cfg;
+    static esp_ipa_agc_config_t agc;
+    esp_ipa_pipeline_handle_t handle = NULL;
+    esp_ipa_metadata_t metadata = {0};
+    esp_ipa_stats_t stats = {0};
+
+    TEST_ASSERT_NOT_NULL(base);
+    TEST_ASSERT_NOT_NULL(base->agc);
+
+    memcpy(&cfg, base, sizeof(cfg));
+    memcpy(&agc, base->agc, sizeof(agc));
+    agc.exposure_adjust_delay = 0;
+    agc.exposure_frame_delay = 0;
+    agc.gain_frame_delay = 0;
+    agc.luma_low = 99;
+    agc.luma_high = 101;
+    agc.luma_target = 100;
+    agc.luma_pwl_enable = false;
+    agc.meter_mode = ESP_IPA_AGC_METER_HIGHLIGHT_PRIOR;
+    cfg.agc = &agc;
+
+    stats.flags = IPA_STATS_FLAGS_AE;
+    for (int j = 0; j < ISP_AE_REGIONS; j++) {
+        stats.ae_stats[j].luminance = 1;
+    }
+
+    agc.max_gain = 1.1f;
+    TEST_ESP_OK(esp_ipa_pipeline_create(&cfg, &handle));
+    TEST_ESP_OK(esp_ipa_pipeline_init(handle, &s_esp_ipa_sensor, &metadata));
+    metadata.flags = 0;
+    TEST_ESP_OK(esp_ipa_pipeline_process(handle, &stats, &s_esp_ipa_sensor, &metadata));
+    TEST_ASSERT_NOT_EQUAL_HEX32(0, metadata.flags & IPA_METADATA_FLAGS_GN);
+    const float gain_lo_cap = metadata.gain;
+    TEST_ASSERT_LESS_OR_EQUAL_FLOAT(1.1f, gain_lo_cap);
+    TEST_ASSERT_GREATER_OR_EQUAL_FLOAT(s_esp_ipa_sensor.min_gain, gain_lo_cap);
+    TEST_ESP_OK(esp_ipa_pipeline_destroy(handle));
+
+    agc.max_gain = 2.2f;
+    TEST_ESP_OK(esp_ipa_pipeline_create(&cfg, &handle));
+    TEST_ESP_OK(esp_ipa_pipeline_init(handle, &s_esp_ipa_sensor, &metadata));
+    metadata.flags = 0;
+    TEST_ESP_OK(esp_ipa_pipeline_process(handle, &stats, &s_esp_ipa_sensor, &metadata));
+    TEST_ASSERT_NOT_EQUAL_HEX32(0, metadata.flags & IPA_METADATA_FLAGS_GN);
+    const float gain_hi_cap = metadata.gain;
+    TEST_ASSERT_LESS_OR_EQUAL_FLOAT(2.2f, gain_hi_cap);
+    TEST_ASSERT_GREATER_OR_EQUAL_FLOAT(s_esp_ipa_sensor.min_gain, gain_hi_cap);
+    TEST_ESP_OK(esp_ipa_pipeline_destroy(handle));
+
+    TEST_ASSERT_GREATER_THAN_FLOAT(gain_lo_cap + 0.05f, gain_hi_cap);
 }
 
 TEST_CASE("Auto sensor target control test", "[IPA]")

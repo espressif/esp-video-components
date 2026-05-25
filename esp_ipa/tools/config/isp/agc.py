@@ -54,11 +54,13 @@ class ipa_unit_agc_c(ipa_unit_c):
             exp = obj.exposure
             gain = obj.gain
             anti_flicker_mode, af_freq = get_anti_flicker_param(obj)
+            max_gain = getattr(gain, 'max', 0)
             exposure_text = (f'''
                 .exposure_frame_delay = {exp.frame_delay},
                 .exposure_adjust_delay = {exp.adjust_delay},
                 .gain_frame_delay = {gain.frame_delay},
                 .min_gain_step = {gain.min_step},
+                .max_gain = {max_gain},
                 .inc_gain_ratio = {obj.f_n0},
                 .dec_gain_ratio = {obj.f_m0},
                 .anti_flicker_mode = {anti_flicker_mode},
