@@ -17,15 +17,15 @@ Now we have implementations based on:
 
 ## Supported SoCs and Interfaces
 
-| SoC | MIPI-CSI Video Device | DVP Video Device | SPI Video Device | JPEG HW Video Device | H.264 HW Video Device | ISP Video Device | USB Video Device |
-|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|
-| ESP32-P4 | Y   | Y   | Y | Y | Y | Y | Y |
-| ESP32-S3 | N/A | Y   | Y | N/A | N/A | N/A | Y |
-| ESP32-S31 | N/A | Y   | Y | Y | N/A | N/A | Y |
-| ESP32-C3 | N/A | N/A | Y | N/A | N/A | N/A | N/A |
-| ESP32-C5 | N/A | N/A | Y | N/A | N/A | N/A | N/A |
-| ESP32-C6 | N/A | N/A | Y | N/A | N/A | N/A | N/A |
-| ESP32-C61 | N/A | N/A | Y | N/A | N/A | N/A | N/A |
+| SoC | MIPI-CSI Video Device | DVP Video Device | SPI Video Device | JPEG HW Encoder Video Device | JPEG HW Decode Video Device | H.264 HW Video Device | ISP Video Device | USB Video Device |
+|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|
+| ESP32-P4 | Y   | Y   | Y | Y | Y | Y | Y | Y |
+| ESP32-S3 | N/A | Y   | Y | N/A | N/A | N/A | N/A | Y |
+| ESP32-S31 | N/A | Y   | Y | Y | Y | N/A | N/A | Y |
+| ESP32-C3 | N/A | N/A | Y | N/A | N/A | N/A | N/A | N/A |
+| ESP32-C5 | N/A | N/A | Y | N/A | N/A | N/A | N/A | N/A |
+| ESP32-C6 | N/A | N/A | Y | N/A | N/A | N/A | N/A | N/A |
+| ESP32-C61 | N/A | N/A | Y | N/A | N/A | N/A | N/A | N/A |
 
 ## Video Device
 
@@ -36,12 +36,16 @@ Now we have implementations based on:
 | SPI0 | /dev/video3 | Capture  | / | camera output pixel format |
 | SPI1(2) | /dev/video4 | Capture  | / | camera output pixel format |
 | USB | /dev/video40 | Capture  | / | camera output pixel format |
-| JPEG HW encode | /dev/video10 | M2M | RGB565: V4L2_PIX_FMT_RGB565<br> RGB888: V4L2_PIX_FMT_RGB24<br> YUV422: V4L2_PIX_FMT_UYVY<br> Gray8: V4L2_PIX_FMT_GREY | JPEG: V4L2_PIX_FMT_JPEG |
+| JPEG HW encode | /dev/video10 | M2M | RGB565: V4L2_PIX_FMT_RGB565<br> RGB888: V4L2_PIX_FMT_RGB24<br> YUV422: V4L2_PIX_FMT_UYVY<br> Gray8: V4L2_PIX_FMT_GREY<br> V4L2_PIX_FMT_YUV420<br> V4L2_PIX_FMT_YUV444 | JPEG: V4L2_PIX_FMT_JPEG |
+| JPEG HW decode | /dev/video12 | M2M | JPEG: V4L2_PIX_FMT_JPEG | RGB565: V4L2_PIX_FMT_RGB565<br> BGR565: V4L2_PIX_FMT_BGR565<br> RGB888: V4L2_PIX_FMT_RGB24<br> BGR888: V4L2_PIX_FMT_BGR24<br> YUV422: V4L2_PIX_FMT_UYVY<br> Gray8: V4L2_PIX_FMT_GREY<br> V4L2_PIX_FMT_YUV420<br> V4L2_PIX_FMT_YUV444 |
 | H.264 encode | /dev/video11 | M2M | YUV420: V4L2_PIX_FMT_YUV420 | H.264: V4L2_PIX_FMT_H264 |
 | ISP | /dev/video20 | Meta | camera output pixel format  | Metadata: V4L2_META_FMT_ESP_ISP_STATS |
 
-- (1): if camera output pixel format is RAW8, ISP can transform it to other pixel format: RGB565, RGB888, YUV420 and YUV422
-- (2): select option `ESP_VIDEO_ENABLE_THE_SECOND_SPI_VIDEO_DEVICE` to enable the second SPI video device
+- (1): if camera output pixel format is RAW8, ISP can transform it to other pixel format: RGB565, RGB888, YUV420 and YUV422.
+- (2): select option `ESP_VIDEO_ENABLE_THE_SECOND_SPI_VIDEO_DEVICE` to enable the second SPI video device.
+- (3): On ESP32-P4 ECO3 and later versions, the JPEG hardware encoder supports V4L2_PIX_FMT_YUV420 and V4L2_PIX_FMT_YUV444. All other formats are supported on all chip version
+- (4): On ESP32-P4 ECO3 and later versions, the JPEG hardware decoder supports V4L2_PIX_FMT_YUV420. All other formats are supported on all chip versions.
+- (5): The JPEG hardware decoder supports swapping the RGB bit order, enabling support for both BGR565 and BGR888 formats.
 
 ## V4L2 Control Classes
 

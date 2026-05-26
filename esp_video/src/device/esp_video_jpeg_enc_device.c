@@ -386,7 +386,7 @@ static const struct esp_video_ops s_jpeg_video_ops = {
 };
 
 /**
- * @brief Create JPEG video device
+ * @brief Create JPEG encoder video device
  *
  * @param enc_handle JPEG encoder driver handle,
  *      - NULL, JPEG video device will create JPEG encoder driver handle by itself
@@ -396,7 +396,7 @@ static const struct esp_video_ops s_jpeg_video_ops = {
  *      - ESP_OK on success
  *      - Others if failed
  */
-esp_err_t esp_video_create_jpeg_video_device(jpeg_encoder_handle_t enc_handle)
+esp_err_t esp_video_create_jpeg_enc_video_device(jpeg_encoder_handle_t enc_handle)
 {
     struct esp_video *video;
     struct jpeg_video *jpeg_video;
@@ -425,7 +425,7 @@ esp_err_t esp_video_create_jpeg_video_device(jpeg_encoder_handle_t enc_handle)
 }
 
 /**
- * @brief Destroy JPEG video device
+ * @brief Destroy JPEG encoder video device
  *
  * @param None
  *
@@ -433,7 +433,7 @@ esp_err_t esp_video_create_jpeg_video_device(jpeg_encoder_handle_t enc_handle)
  *      - ESP_OK on success
  *      - Others if failed
  */
-esp_err_t esp_video_destroy_jpeg_video_device(void)
+esp_err_t esp_video_destroy_jpeg_enc_video_device(void)
 {
     esp_err_t ret;
     struct esp_video *video;

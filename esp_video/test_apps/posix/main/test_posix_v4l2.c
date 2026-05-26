@@ -15,6 +15,10 @@
 #include "freertos/task.h"
 #include "esp_timer.h"
 #include "unity.h"
+#include "esp_log_buffer.h"
+#if CONFIG_ESP_VIDEO_ENABLE_HW_JPEG_DEC_VIDEO_DEVICE
+#include "driver/jpeg_decode.h"
+#endif
 
 #include "example_video_common.h"
 #include "esp_video_ioctl.h"
@@ -22,6 +26,11 @@
 #define VIDEO_BUFFER_NUM 2
 
 #define TEST_APP_VIDEO_DEVICE EXAMPLE_CAM_DEV_PATH
+
+#define HEAP_RECORD_NUM 32
+
+#define TEST_JPEG_WIDTH      128
+#define TEST_JPEG_HEIGHT     128
 
 void setUp(void);
 
@@ -355,7 +364,7 @@ TEST_CASE("V4L2 Video Buffer Sequence", "[video]")
     TEST_ESP_OK(example_video_deinit());
 }
 
-#if CONFIG_ESP_VIDEO_ENABLE_JPEG_VIDEO_DEVICE
+#if CONFIG_ESP_VIDEO_ENABLE_JPEG_ENC_VIDEO_DEVICE
 TEST_CASE("V4L2 M2M device", "[video]")
 {
     int fd;
@@ -490,7 +499,377 @@ TEST_CASE("V4L2 M2M device", "[video]")
 
     TEST_ESP_OK(example_video_deinit());
 }
-#endif /* CONFIG_ESP_VIDEO_ENABLE_JPEG_VIDEO_DEVICE */
+#endif /* CONFIG_ESP_VIDEO_ENABLE_JPEG_ENC_VIDEO_DEVICE */
+
+#if CONFIG_ESP_VIDEO_ENABLE_HW_JPEG_DEC_VIDEO_DEVICE && CONFIG_ESP_VIDEO_ENABLE_HW_JPEG_ENC_VIDEO_DEVICE
+
+static void fill_rgb_image(uint8_t *buf, int width, int height)
+{
+    for (int y = 0; y < height; y++) {
+        for (int x = 0; x < width; x++) {
+            int offset = (y * width + x) * 3;
+            buf[offset + 0] = (uint8_t)(x);   // R
+            buf[offset + 1] = (uint8_t)(y);   // G
+            buf[offset + 2] = (uint8_t)(x ^ y); // B
+        }
+    }
+}
+
+/**
+ * Helper: Compare decoded data
+ */
+static bool compare_buffers(const uint8_t *buf1, const uint8_t *buf2, size_t len)
+{
+    return memcmp(buf1, buf2, len) == 0;
+}
+
+TEST_CASE("JPEG encoder and decoder consistency test", "[jpeg][video]")
+{
+    int ret;
+    esp_err_t err;
+    size_t frame_buf_sz = TEST_JPEG_WIDTH * TEST_JPEG_HEIGHT * 3;
+    static const uint32_t s_test_decode_formats[] = {
+        V4L2_PIX_FMT_RGB565,
+        V4L2_PIX_FMT_RGB24,
+        V4L2_PIX_FMT_BGR24,
+        V4L2_PIX_FMT_BGR565,
+        V4L2_PIX_FMT_YUV420,
+        V4L2_PIX_FMT_YUV444,
+        V4L2_PIX_FMT_UYVY,
+    };
+    int test_decode_formats_num = ARRAY_SIZE(s_test_decode_formats);
+
+    setUp();
+
+    // Step 1. Initialize ESP-IDF JPEG decoder
+    jpeg_decoder_handle_t jpeg_dec_handle = NULL;
+    jpeg_decode_engine_cfg_t dev_cfg = {
+        .intr_priority = 1,
+        .timeout_ms = 100,
+    };
+    err = jpeg_new_decoder_engine(&dev_cfg, &jpeg_dec_handle);
+    TEST_ASSERT_EQUAL_HEX8(ESP_OK, err);
+    TEST_ASSERT_NOT_NULL(jpeg_dec_handle);
+
+    // Step 2. Initialize ESP-VIDEO decoder
+    esp_video_init_jpeg_dec_config_t jpeg_dec_config = {
+        .dec_handle = jpeg_dec_handle,
+    };
+    esp_video_init_jpeg_enc_config_t jpeg_enc_config = {
+        .enc_handle = NULL,
+    };
+    esp_video_init_config_t config = {
+        .jpeg_dec = &jpeg_dec_config,
+        .jpeg_enc = &jpeg_enc_config,
+    };
+    err = esp_video_init_with_flags(&config, ESP_VIDEO_INIT_FLAGS_JPEG_DEC | ESP_VIDEO_INIT_FLAGS_JPEG_ENC);
+    TEST_ASSERT_EQUAL_HEX8(ESP_OK, err);
+
+    // Step 3. Create V4L2 Encoder
+    int fd_enc = open(ESP_VIDEO_JPEG_ENC_DEVICE_NAME, O_RDWR);  // Assume device path
+    TEST_ASSERT_GREATER_OR_EQUAL(0, fd_enc);
+
+    // Step 4. Generate a raw RGB24 test image
+
+    uint8_t *src_img = heap_caps_malloc(frame_buf_sz, MALLOC_CAP_CACHE_ALIGNED | MALLOC_CAP_SPIRAM);
+    TEST_ASSERT_NOT_NULL(src_img);
+
+    fill_rgb_image(src_img, TEST_JPEG_WIDTH, TEST_JPEG_HEIGHT);
+
+    // Step 5. Encode loop & comparison
+    for (int fmt = 0; fmt < test_decode_formats_num; ++fmt) {
+        uint32_t pixfmt = s_test_decode_formats[fmt];
+
+        printf("==== Testing decode output pixel format: " V4L2_FMT_STR " ====\n", V4L2_FMT_STR_ARG(pixfmt));
+
+        for (int qual = 10, i = 0; i < 10; ++i, qual += 5) {
+            // Set encoder format
+            struct v4l2_format enc_fmt = {0};
+            enc_fmt.type           = V4L2_BUF_TYPE_VIDEO_OUTPUT;
+            enc_fmt.fmt.pix.width  = TEST_JPEG_WIDTH;
+            enc_fmt.fmt.pix.height = TEST_JPEG_HEIGHT;
+            enc_fmt.fmt.pix.pixelformat = V4L2_PIX_FMT_RGB24;
+
+            switch (pixfmt) {
+            case V4L2_PIX_FMT_YUV420:
+                enc_fmt.fmt.pix.pixelformat = V4L2_PIX_FMT_YUV420;
+                break;
+            case V4L2_PIX_FMT_YUV444:
+                enc_fmt.fmt.pix.pixelformat = V4L2_PIX_FMT_YUV444;
+                break;
+            case V4L2_PIX_FMT_UYVY:
+                enc_fmt.fmt.pix.pixelformat = V4L2_PIX_FMT_UYVY;
+                break;
+            default:
+                break;
+            }
+
+            ret = ioctl(fd_enc, VIDIOC_S_FMT, &enc_fmt);
+            TEST_ASSERT(ret == 0);
+
+            memset(&enc_fmt, 0, sizeof(enc_fmt));
+            enc_fmt.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
+            enc_fmt.fmt.pix.pixelformat = V4L2_PIX_FMT_JPEG;
+            enc_fmt.fmt.pix.width = TEST_JPEG_WIDTH;
+            enc_fmt.fmt.pix.height = TEST_JPEG_HEIGHT;
+            ret = ioctl(fd_enc, VIDIOC_S_FMT, &enc_fmt);
+            TEST_ASSERT(ret == 0);
+
+            // Set encoder quality
+            struct v4l2_ext_control ext_ctrl = {0};
+            struct v4l2_ext_controls ext_ctrls = {0};
+            ext_ctrl.id = V4L2_CID_JPEG_COMPRESSION_QUALITY;
+            ext_ctrl.value = qual;
+            ext_ctrls.count = 1;
+            ext_ctrls.controls = &ext_ctrl;
+            ret = ioctl(fd_enc, VIDIOC_S_EXT_CTRLS, &ext_ctrls);
+            TEST_ASSERT(ret == 0);
+
+            // Request (allocate and queue) buffers for encoder input (output) and output (capture)
+            struct v4l2_requestbuffers req;
+
+            // Request 1 buffer for OUTPUT (input to encoder)
+            memset(&req, 0, sizeof(req));
+            req.count = 1;
+            req.type = V4L2_BUF_TYPE_VIDEO_OUTPUT;
+            req.memory = V4L2_MEMORY_USERPTR;
+            ret = ioctl(fd_enc, VIDIOC_REQBUFS, &req);
+            TEST_ASSERT(ret == 0);
+
+            // Request 1 buffer for CAPTURE (output from encoder)
+            memset(&req, 0, sizeof(req));
+            req.count = 1;
+            req.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
+            req.memory = V4L2_MEMORY_USERPTR;
+            ret = ioctl(fd_enc, VIDIOC_REQBUFS, &req);
+            TEST_ASSERT(ret == 0);
+
+            // Queue output buffer
+            struct v4l2_buffer buf = {0};
+            buf.type = V4L2_BUF_TYPE_VIDEO_OUTPUT;
+            buf.memory = V4L2_MEMORY_USERPTR;
+            buf.index = 0;
+            buf.length = frame_buf_sz;
+            buf.m.userptr = (unsigned long)src_img;
+            ret = ioctl(fd_enc, VIDIOC_QBUF, &buf);
+            TEST_ASSERT(ret == 0);
+
+            // Get encoded JPEG
+            uint8_t *jpeg_buf = heap_caps_malloc(frame_buf_sz, MALLOC_CAP_CACHE_ALIGNED | MALLOC_CAP_SPIRAM);
+            TEST_ASSERT_NOT_NULL(jpeg_buf);
+
+            // Queue capture buffer
+            buf.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
+            buf.memory = V4L2_MEMORY_USERPTR;
+            buf.index = 0;
+            buf.length = frame_buf_sz;
+            buf.m.userptr = (unsigned long)jpeg_buf;
+            ret = ioctl(fd_enc, VIDIOC_QBUF, &buf);
+            TEST_ASSERT(ret == 0);
+
+            // Start stream
+            int type = V4L2_BUF_TYPE_VIDEO_OUTPUT;
+            ret = ioctl(fd_enc, VIDIOC_STREAMON, &type);
+            TEST_ASSERT(ret == 0);
+
+            type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
+            ret = ioctl(fd_enc, VIDIOC_STREAMON, &type);
+            TEST_ASSERT(ret == 0);
+
+            buf.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
+            buf.memory = V4L2_MEMORY_USERPTR;
+            buf.index = 0;
+            ret = ioctl(fd_enc, VIDIOC_DQBUF, &buf);
+            TEST_ASSERT(ret == 0);
+            TEST_ASSERT_GREATER_THAN(0, buf.bytesused);
+            TEST_ASSERT_EQUAL_HEX8(0xff, jpeg_buf[0]);
+            TEST_ASSERT_EQUAL_HEX8(0xd8, jpeg_buf[1]);
+            size_t jpeg_size = buf.bytesused;
+
+            // Step 6. Decode with both decoders
+            // (a) Decode directly with esp-idf decoder
+            // Select decode parameters
+            jpeg_decode_cfg_t dec_cfg = {
+                .output_format = JPEG_DECODE_OUT_FORMAT_RGB565,
+                .rgb_order = JPEG_DEC_RGB_ELEMENT_ORDER_RGB,
+                .conv_std = COLOR_CONV_STD_RGB_YUV_BT601,
+            };
+
+            uint8_t *esp_dec_out = heap_caps_malloc(frame_buf_sz, MALLOC_CAP_CACHE_ALIGNED | MALLOC_CAP_SPIRAM);
+            TEST_ASSERT_NOT_NULL(esp_dec_out);
+            uint32_t esp_dec_out_size = 0;
+
+            // Set output_format
+            switch (pixfmt) {
+            case V4L2_PIX_FMT_RGB565:
+                dec_cfg.output_format = JPEG_DECODE_OUT_FORMAT_RGB565;
+                break;
+            case V4L2_PIX_FMT_RGB24:
+                dec_cfg.output_format = JPEG_DECODE_OUT_FORMAT_RGB888;
+                break;
+            case V4L2_PIX_FMT_BGR24:
+                dec_cfg.output_format = JPEG_DECODE_OUT_FORMAT_RGB888;
+                dec_cfg.rgb_order = JPEG_DEC_RGB_ELEMENT_ORDER_BGR;
+                break;
+            case V4L2_PIX_FMT_BGR565:
+                dec_cfg.output_format = JPEG_DECODE_OUT_FORMAT_RGB565;
+                dec_cfg.rgb_order = JPEG_DEC_RGB_ELEMENT_ORDER_BGR;
+                break;
+            case V4L2_PIX_FMT_YUV420:
+                dec_cfg.output_format = JPEG_DECODE_OUT_FORMAT_YUV420;
+                break;
+            case V4L2_PIX_FMT_YUV444:
+                dec_cfg.output_format = JPEG_DECODE_OUT_FORMAT_YUV444;
+                break;
+            case V4L2_PIX_FMT_UYVY:
+                dec_cfg.output_format = JPEG_DECODE_OUT_FORMAT_YUV422;
+                break;
+            default:
+                TEST_FAIL_MESSAGE("Unexpected pixel format");
+            }
+
+            err = jpeg_decoder_process(jpeg_dec_handle, &dec_cfg, jpeg_buf, jpeg_size, esp_dec_out, frame_buf_sz, &esp_dec_out_size);
+            TEST_ASSERT_EQUAL_HEX8(ESP_OK, err);
+            TEST_ASSERT_GREATER_THAN(0, esp_dec_out_size);
+
+            // (b) Decode using V4L2 decoder interface
+            int fd_dec = open(ESP_VIDEO_JPEG_DEC_DEVICE_NAME, O_RDWR); // Assume
+            TEST_ASSERT_GREATER_OR_EQUAL(0, fd_dec);
+
+            struct v4l2_format v4l2_fmt;
+
+            memset(&v4l2_fmt, 0, sizeof(v4l2_fmt));
+            v4l2_fmt.type           = V4L2_BUF_TYPE_VIDEO_OUTPUT;
+            v4l2_fmt.fmt.pix.width  = TEST_JPEG_WIDTH;
+            v4l2_fmt.fmt.pix.height = TEST_JPEG_HEIGHT;
+            v4l2_fmt.fmt.pix.pixelformat = V4L2_PIX_FMT_JPEG;
+            ret = ioctl(fd_dec, VIDIOC_S_FMT, &v4l2_fmt);
+            TEST_ASSERT(ret == 0);
+
+            memset(&v4l2_fmt, 0, sizeof(v4l2_fmt));
+            v4l2_fmt.type           = V4L2_BUF_TYPE_VIDEO_CAPTURE;
+            v4l2_fmt.fmt.pix.width  = TEST_JPEG_WIDTH;
+            v4l2_fmt.fmt.pix.height = TEST_JPEG_HEIGHT;
+            v4l2_fmt.fmt.pix.pixelformat = pixfmt;
+            ret = ioctl(fd_dec, VIDIOC_S_FMT, &v4l2_fmt);
+            TEST_ASSERT(ret == 0);
+
+            // Request 1 buffer for OUTPUT (input to decoder)
+            memset(&req, 0, sizeof(req));
+            req.count = 1;
+            req.type = V4L2_BUF_TYPE_VIDEO_OUTPUT;
+            req.memory = V4L2_MEMORY_USERPTR;
+            ret = ioctl(fd_dec, VIDIOC_REQBUFS, &req);
+            TEST_ASSERT(ret == 0);
+
+            // Request 1 buffer for CAPTURE (output from decoder)
+            memset(&req, 0, sizeof(req));
+            req.count = 1;
+            req.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
+            req.memory = V4L2_MEMORY_USERPTR;
+            ret = ioctl(fd_dec, VIDIOC_REQBUFS, &req);
+            TEST_ASSERT(ret == 0);
+
+            // Queue output buffer
+            memset(&buf, 0, sizeof(buf));
+            buf.type = V4L2_BUF_TYPE_VIDEO_OUTPUT;
+            buf.memory = V4L2_MEMORY_USERPTR;
+            buf.index = 0;
+            buf.length = frame_buf_sz;
+            buf.m.userptr = (unsigned long)jpeg_buf;
+            ret = ioctl(fd_dec, VIDIOC_QBUF, &buf);
+            TEST_ASSERT(ret == 0);
+
+            uint8_t *v4l2_dec_out = heap_caps_malloc(frame_buf_sz, MALLOC_CAP_CACHE_ALIGNED | MALLOC_CAP_SPIRAM);
+            TEST_ASSERT_NOT_NULL(v4l2_dec_out);
+
+            memset(&buf, 0, sizeof(buf));
+            buf.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
+            buf.memory = V4L2_MEMORY_USERPTR;
+            buf.index = 0;
+            buf.length = frame_buf_sz;
+            buf.m.userptr = (unsigned long)v4l2_dec_out;
+            ret = ioctl(fd_dec, VIDIOC_QBUF, &buf);
+            TEST_ASSERT(ret == 0);
+
+            int out_type = V4L2_BUF_TYPE_VIDEO_OUTPUT;
+            ret = ioctl(fd_dec, VIDIOC_STREAMON, &out_type);
+            TEST_ASSERT(ret == 0);
+
+            out_type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
+            ret = ioctl(fd_dec, VIDIOC_STREAMON, &out_type);
+            TEST_ASSERT(ret == 0);
+
+            memset(&buf, 0, sizeof(buf));
+            buf.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
+            buf.memory = V4L2_MEMORY_USERPTR;
+            buf.index = 0;
+            ret = ioctl(fd_dec, VIDIOC_DQBUF, &buf);
+            TEST_ASSERT(ret == 0);
+            TEST_ASSERT_GREATER_THAN(0, buf.bytesused);
+
+            out_type = V4L2_BUF_TYPE_VIDEO_OUTPUT;
+            ret = ioctl(fd_dec, VIDIOC_STREAMOFF, &out_type);
+            TEST_ASSERT(ret == 0);
+
+            out_type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
+            ret = ioctl(fd_dec, VIDIOC_STREAMOFF, &out_type);
+            TEST_ASSERT(ret == 0);
+
+            // Step 7. Compare the output of both decoders
+            // Note: RGB565 2 bytes/pix, RGB24 3 bytes/pix, GREY 1 byte/pix
+            size_t cmp_len = 0;
+            switch (pixfmt) {
+            case V4L2_PIX_FMT_RGB565:
+            case V4L2_PIX_FMT_BGR565:
+                cmp_len = TEST_JPEG_WIDTH * TEST_JPEG_HEIGHT * 2;
+                break;
+            case V4L2_PIX_FMT_RGB24:
+            case V4L2_PIX_FMT_BGR24:
+                cmp_len = TEST_JPEG_WIDTH * TEST_JPEG_HEIGHT * 3;
+                break;
+            case V4L2_PIX_FMT_YUV420:
+                cmp_len = TEST_JPEG_WIDTH * TEST_JPEG_HEIGHT * 3 / 2;
+                break;
+            case V4L2_PIX_FMT_YUV444:
+                cmp_len = TEST_JPEG_WIDTH * TEST_JPEG_HEIGHT * 3;
+                break;
+            case V4L2_PIX_FMT_UYVY:
+                cmp_len = TEST_JPEG_WIDTH * TEST_JPEG_HEIGHT * 2;
+                break;
+            }
+
+            bool eq = compare_buffers(esp_dec_out, v4l2_dec_out, cmp_len);
+            if (!eq) {
+                printf("Decoder comparison failed: format=0x%" PRIx32 ", quality=%d\n", pixfmt, qual);
+            }
+            TEST_ASSERT_MESSAGE(eq, "esp-idf decoder output and v4l2 decoder output mismatch");
+
+            // Stop encoder streams
+            type = V4L2_BUF_TYPE_VIDEO_OUTPUT;
+            ret = ioctl(fd_enc, VIDIOC_STREAMOFF, &type);
+            TEST_ASSERT(ret == 0);
+
+            type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
+            ret = ioctl(fd_enc, VIDIOC_STREAMOFF, &type);
+            TEST_ASSERT(ret == 0);
+
+            // Close V4L2 decoder and free memory
+            close(fd_dec);
+            heap_caps_free(v4l2_dec_out);
+            heap_caps_free(esp_dec_out);
+            heap_caps_free(jpeg_buf);
+        }
+    }
+
+    heap_caps_free(src_img);
+    close(fd_enc);
+
+    // Step 8. Clean up
+    esp_video_deinit_with_flags(ESP_VIDEO_INIT_FLAGS_JPEG_DEC | ESP_VIDEO_INIT_FLAGS_JPEG_ENC);
+    jpeg_del_decoder_engine(jpeg_dec_handle);
+}
+#endif /* CONFIG_ESP_VIDEO_ENABLE_HW_JPEG_DEC_VIDEO_DEVICE && CONFIG_ESP_VIDEO_ENABLE_HW_JPEG_ENC_VIDEO_DEVICE */
 
 #if CONFIG_ESP_VIDEO_ENABLE_MIPI_CSI_VIDEO_DEVICE
 TEST_CASE("V4L2 set/get selection", "[video]")

@@ -120,7 +120,8 @@ static SemaphoreHandle_t s_usb_uvc_sem;
 
 #if CONFIG_ESP_VIDEO_ENABLE_DVP_VIDEO_DEVICE || \
     CONFIG_ESP_VIDEO_ENABLE_HW_H264_VIDEO_DEVICE || \
-    CONFIG_ESP_VIDEO_ENABLE_HW_JPEG_VIDEO_DEVICE || \
+    CONFIG_ESP_VIDEO_ENABLE_HW_JPEG_ENC_VIDEO_DEVICE || \
+    CONFIG_ESP_VIDEO_ENABLE_HW_JPEG_DEC_VIDEO_DEVICE || \
     CONFIG_ESP_VIDEO_ENABLE_ISP_VIDEO_DEVICE || \
     CONFIG_ESP_VIDEO_ENABLE_MIPI_CSI_VIDEO_DEVICE || \
     CONFIG_ESP_VIDEO_ENABLE_SPI_VIDEO_DEVICE || \
@@ -735,13 +736,24 @@ esp_err_t esp_video_deinit_with_flags(uint32_t flags)
 
     _lock_acquire_recursive(&s_init_lock);
 
-#if CONFIG_ESP_VIDEO_ENABLE_HW_JPEG_VIDEO_DEVICE
-    if (flags & ESP_VIDEO_INIT_FLAGS_JPEG) {
-        if (s_video_device_inited_flags & ESP_VIDEO_INIT_FLAGS_JPEG) {
-            ESP_GOTO_ON_ERROR(esp_video_destroy_jpeg_video_device(), fail0, TAG, "Failed to deinitialize hardware JPEG video device");
-            s_video_device_inited_flags &= ~ESP_VIDEO_INIT_FLAGS_JPEG;
+#if CONFIG_ESP_VIDEO_ENABLE_HW_JPEG_ENC_VIDEO_DEVICE
+    if (flags & ESP_VIDEO_INIT_FLAGS_JPEG_ENC) {
+        if (s_video_device_inited_flags & ESP_VIDEO_INIT_FLAGS_JPEG_ENC) {
+            ESP_GOTO_ON_ERROR(esp_video_destroy_jpeg_enc_video_device(), fail0, TAG, "Failed to deinitialize hardware JPEG video device");
+            s_video_device_inited_flags &= ~ESP_VIDEO_INIT_FLAGS_JPEG_ENC;
         } else {
             ESP_LOGD(TAG, "hardware JPEG video device is not initialized");
+        }
+    }
+#endif
+
+#if CONFIG_ESP_VIDEO_ENABLE_HW_JPEG_DEC_VIDEO_DEVICE
+    if (flags & ESP_VIDEO_INIT_FLAGS_JPEG_DEC) {
+        if (s_video_device_inited_flags & ESP_VIDEO_INIT_FLAGS_JPEG_DEC) {
+            ESP_GOTO_ON_ERROR(esp_video_destroy_jpeg_dec_video_device(), fail0, TAG, "Failed to deinitialize hardware JPEG decode video device");
+            s_video_device_inited_flags &= ~ESP_VIDEO_INIT_FLAGS_JPEG_DEC;
+        } else {
+            ESP_LOGD(TAG, "hardware JPEG decode video device is not initialized");
         }
     }
 #endif
@@ -817,7 +829,8 @@ esp_err_t esp_video_deinit_with_flags(uint32_t flags)
     }
 #endif
 
-#if CONFIG_ESP_VIDEO_ENABLE_HW_JPEG_VIDEO_DEVICE || \
+#if CONFIG_ESP_VIDEO_ENABLE_HW_JPEG_ENC_VIDEO_DEVICE || \
+    CONFIG_ESP_VIDEO_ENABLE_HW_JPEG_DEC_VIDEO_DEVICE || \
     CONFIG_ESP_VIDEO_ENABLE_HW_H264_VIDEO_DEVICE || \
     CONFIG_ESP_VIDEO_ENABLE_MIPI_CSI_VIDEO_DEVICE || \
     CONFIG_ESP_VIDEO_ENABLE_DVP_VIDEO_DEVICE || \
@@ -1022,15 +1035,28 @@ esp_err_t esp_video_init_with_flags(const esp_video_init_config_t *config, uint3
     }
 #endif
 
-#if CONFIG_ESP_VIDEO_ENABLE_HW_JPEG_VIDEO_DEVICE
-    if (flags & ESP_VIDEO_INIT_FLAGS_JPEG) {
-        if (!(s_video_device_inited_flags & ESP_VIDEO_INIT_FLAGS_JPEG)) {
-            jpeg_encoder_handle_t handle = config->jpeg ? config->jpeg->enc_handle : NULL;
+#if CONFIG_ESP_VIDEO_ENABLE_HW_JPEG_ENC_VIDEO_DEVICE
+    if (flags & ESP_VIDEO_INIT_FLAGS_JPEG_ENC) {
+        if (!(s_video_device_inited_flags & ESP_VIDEO_INIT_FLAGS_JPEG_ENC)) {
+            jpeg_encoder_handle_t handle = config->jpeg_enc ? config->jpeg_enc->enc_handle : NULL;
 
-            ESP_GOTO_ON_ERROR(esp_video_create_jpeg_video_device(handle), fail1, TAG, "Failed to create hardware JPEG video device");
-            s_video_device_inited_flags |= ESP_VIDEO_INIT_FLAGS_JPEG;
+            ESP_GOTO_ON_ERROR(esp_video_create_jpeg_enc_video_device(handle), fail1, TAG, "Failed to create hardware JPEG video device");
+            s_video_device_inited_flags |= ESP_VIDEO_INIT_FLAGS_JPEG_ENC;
         } else {
             ESP_LOGW(TAG, "JPEG video device is already initialized");
+        }
+    }
+#endif
+
+#if CONFIG_ESP_VIDEO_ENABLE_HW_JPEG_DEC_VIDEO_DEVICE
+    if (flags & ESP_VIDEO_INIT_FLAGS_JPEG_DEC) {
+        if (!(s_video_device_inited_flags & ESP_VIDEO_INIT_FLAGS_JPEG_DEC)) {
+            jpeg_decoder_handle_t handle = config->jpeg_dec ? config->jpeg_dec->dec_handle : NULL;
+
+            ESP_GOTO_ON_ERROR(esp_video_create_jpeg_dec_video_device(handle), fail1, TAG, "Failed to create hardware JPEG decode video device");
+            s_video_device_inited_flags |= ESP_VIDEO_INIT_FLAGS_JPEG_DEC;
+        } else {
+            ESP_LOGW(TAG, "JPEG decode video device is already initialized");
         }
     }
 #endif
@@ -1043,7 +1069,8 @@ esp_err_t esp_video_init_with_flags(const esp_video_init_config_t *config, uint3
     CONFIG_ESP_VIDEO_ENABLE_DVP_VIDEO_DEVICE || \
     CONFIG_ESP_VIDEO_ENABLE_SPI_VIDEO_DEVICE || \
     CONFIG_ESP_VIDEO_ENABLE_HW_H264_VIDEO_DEVICE || \
-    CONFIG_ESP_VIDEO_ENABLE_HW_JPEG_VIDEO_DEVICE
+    CONFIG_ESP_VIDEO_ENABLE_HW_JPEG_ENC_VIDEO_DEVICE || \
+    CONFIG_ESP_VIDEO_ENABLE_HW_JPEG_DEC_VIDEO_DEVICE
 fail1:
     esp_video_deinit_with_flags(s_video_device_inited_flags);
 #endif

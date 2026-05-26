@@ -6,6 +6,7 @@
 - Fixed a compilation issue with the ioctl macro definitions in certain cases
 - Fixed ISP processor clock frequency being hardcoded to 80 MHz regardless of the selected clock source; `clk_hz` is now derived from `clk_src` (XTAL → 40 MHz, PLL160 → 160 MHz, PLL240 → 240 MHz) to prevent FIFO overflow errors
 - Fixed an issue where USB UVC video device queue buffers were not handled correctly after streaming was stopped.
+- Added JPEG hardware decode video device
 
 ## 2.2.0
 

@@ -4,7 +4,11 @@ menu "Espressif Video Configuration"
         bool
         default n
 
-    config ESP_VIDEO_ENABLE_JPEG_VIDEO_DEVICE
+    config ESP_VIDEO_ENABLE_JPEG_ENC_VIDEO_DEVICE
+        bool
+        default n
+
+    config ESP_VIDEO_ENABLE_JPEG_DEC_VIDEO_DEVICE
         bool
         default n
 
@@ -218,10 +222,10 @@ menu "Espressif Video Configuration"
             Best for: Video streaming, recording applications requiring
             efficient compression with minimal CPU impact.
 
-    config ESP_VIDEO_ENABLE_HW_JPEG_VIDEO_DEVICE
-        bool "Enable Hardware JPEG based Video Device"
+    config ESP_VIDEO_ENABLE_HW_JPEG_ENC_VIDEO_DEVICE
+        bool "Enable Hardware JPEG Encoder based Video Device"
         depends on SOC_JPEG_CODEC_SUPPORTED
-        select ESP_VIDEO_ENABLE_JPEG_VIDEO_DEVICE
+        select ESP_VIDEO_ENABLE_JPEG_ENC_VIDEO_DEVICE
         default n
         help
             Enable hardware-accelerated JPEG image compression video device support.
@@ -235,10 +239,32 @@ menu "Espressif Video Configuration"
             - Fast encoding speed
             - Standard JPEG format output
 
-            Available on ESP32-P4 and other chips with JPEG codec support.
+            Available on ESP32-P4/S31 and other chips with JPEG codec support.
 
             Best for: Image capture, surveillance systems, and applications
             requiring fast JPEG compression.
+
+    config ESP_VIDEO_ENABLE_HW_JPEG_DEC_VIDEO_DEVICE
+        bool "Enable Hardware JPEG Decode based Video Device"
+        depends on SOC_JPEG_CODEC_SUPPORTED
+        select ESP_VIDEO_ENABLE_JPEG_DEC_VIDEO_DEVICE
+        default n
+        help
+            Enable hardware-accelerated JPEG image decompression video device support.
+
+            Uses dedicated JPEG decoding hardware for efficient image decompression
+            with minimal CPU overhead.
+
+            Features:
+            - Hardware-accelerated decompression
+            - Low CPU usage
+            - Fast decoding speed
+            - Standard JPEG format input
+
+            Available on ESP32-P4/S31 and other chips with JPEG codec support.
+
+            Best for: Applications that receive JPEG streams and need raw pixel
+            formats for display or further processing.
 
     menuconfig ESP_VIDEO_ENABLE_ISP_VIDEO_DEVICE
         bool "Enable ISP based Video Device"

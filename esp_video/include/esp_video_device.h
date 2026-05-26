@@ -70,6 +70,12 @@ extern "C" {
 #define ESP_VIDEO_H264_DEVICE_ID            11
 #define ESP_VIDEO_H264_DEVICE_NAME          "/dev/video11"
 
+#define ESP_VIDEO_JPEG_ENC_DEVICE_ID        ESP_VIDEO_JPEG_DEVICE_ID
+#define ESP_VIDEO_JPEG_ENC_DEVICE_NAME      ESP_VIDEO_JPEG_DEVICE_NAME
+
+#define ESP_VIDEO_JPEG_DEC_DEVICE_ID        12
+#define ESP_VIDEO_JPEG_DEC_DEVICE_NAME      "/dev/video12"
+
 /**
  * @brief ISP video device
  */
