@@ -13,10 +13,11 @@ Now we have implementations based on:
 
 ## Supported SoCs and Interfaces
 
-| SoC | MIPI-CSI Video Device | DVP Video Device | SPI Video Device | JPEG Video Device | H.264 Video Device | ISP Video Device | USB Video Device |
+| SoC | MIPI-CSI Video Device | DVP Video Device | SPI Video Device | JPEG HW Video Device | H.264 HW Video Device | ISP Video Device | USB Video Device |
 |:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|
 | ESP32-P4 | Y   | Y   | Y | Y | Y | Y | Y |
 | ESP32-S3 | N/A | Y   | Y | N/A | N/A | N/A | Y |
+| ESP32-S31 | N/A | Y   | Y | Y | N/A | N/A | Y |
 | ESP32-C3 | N/A | N/A | Y | N/A | N/A | N/A | N/A |
 | ESP32-C5 | N/A | N/A | Y | N/A | N/A | N/A | N/A |
 | ESP32-C6 | N/A | N/A | Y | N/A | N/A | N/A | N/A |
