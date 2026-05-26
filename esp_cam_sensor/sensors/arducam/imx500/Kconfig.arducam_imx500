@@ -109,7 +109,7 @@ if CAMERA_ARDUCAM_IMX500
             bool "Use default configuration"
             help
                 Use the built-in default IPA configuration file:
-                "esp_cam_sensor/sensors/arducam/imx500/cfg/imx500_default.json"
+                "esp_cam_sensor/sensors/arducam/imx500/cfg/arducam_imx500_default.json"
 
                 This configuration provides optimized settings for general use cases
                 and is recommended for most applications.
