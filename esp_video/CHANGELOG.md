@@ -2,6 +2,10 @@
 
 - Added information about the document system to README.md.
 - Added a common camera interface module to manage MIPI-CSI, DVP, and SPI video devices globally
+- Added an M2M example to demonstrate the performance of capture and M2M video devices. This example implements three test cases:
+    - Capture a video stream and encode it using either the JPEG or H.264 encoder
+    - Capture a JPEG stream and decode it using the JPEG decoder
+    - Capture a video stream, decode it using the JPEG decoder, and then encode it using the H.264 encoder
 
 - MIPI-CSI video device now supports swapping the endianness for 32-bit (u32) data
 
