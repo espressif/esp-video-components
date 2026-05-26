@@ -4,6 +4,7 @@
 
 - Improve camera sensor json configuration files.
   - Decreased the color temperature speed, step, and AWB gain adjustment step to solve the problem of image flicker caused by sudden changes in color temperature.
+  - Re-tuned CCM matrices, AWB CT/RG-BG calibration tables, and AGC luma targets in the default IPA JSON configurations for the sensors(imx500 sc2336 os04c10).
 - Added Arducam IMX500 MIPI driver.
   - The Arducam IMX500 MIPI driver is only compatible with the Arducam IMX500 camera module.
 - The SPI interface now supports high-active level and LSB data modes for SPI camera sensors.
