@@ -1,4 +1,4 @@
-## Unreleased
+## 2.2.0
 
 - The ISP video device now utilizes the sensor's full resolution for statistical analysis
 - Added support for the ESP32-S31 Korvo board

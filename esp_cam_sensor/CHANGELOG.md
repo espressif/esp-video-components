@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 2.2.0
 
 - Improve camera sensor json configuration files.
   - Decreased the color temperature speed, step, and AWB gain adjustment step to solve the problem of image flicker caused by sudden changes in color temperature.
