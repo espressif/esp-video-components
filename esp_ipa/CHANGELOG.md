@@ -1,4 +1,4 @@
-## Unreleased
+## 2.1.0
 
 - AGC: optional JSON `agc.gain.max` maps to `esp_ipa_agc_config_t::max_gain`; when greater than zero, clamps the gain chosen by AGC after applying the sensor `min_gain` / `max_gain` limits; zero keeps previous behaviour (no extra cap)
 - AWB **model_2 (zone classifier)**: classify each AWB by chromaticity against a **zone** table; neutral CT bands vote for illuminant selection, while **GREEN** / **SKIN** zones exclude those cells from the vote.
