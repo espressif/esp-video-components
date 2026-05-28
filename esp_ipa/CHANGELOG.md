@@ -1,3 +1,7 @@
+## Unreleased
+
+- Added information about the document system to README.md.
+
 ## 2.1.0
 
 - AGC: optional JSON `agc.gain.max` maps to `esp_ipa_agc_config_t::max_gain`; when greater than zero, clamps the gain chosen by AGC after applying the sensor `min_gain` / `max_gain` limits; zero keeps previous behaviour (no extra cap)
