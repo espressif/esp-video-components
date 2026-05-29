@@ -58,4 +58,5 @@ if CAMERA_SC121AT
         help
             Sets the default configuration for the MIPI CSI interface.
             Use query_support_formats() API to get more format options.
+
 endif

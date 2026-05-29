@@ -5,7 +5,7 @@
 - Added information about the document system to README.md.
 - Added more output size formats to the OV3660 driver and fixed the configuration method for JPEG compression factor.
 - Added more output size formats to the OV3660 driver and fixed the configuration method for JPEG compression factor.
-- Added SC121AT mipi yuv sensor driver.
+- Added SC121AT MIPI YUV sensor driver.
 
 - Adjust AWB configuration in sc2336_default_p4_eco5.json for better white balance stability
 

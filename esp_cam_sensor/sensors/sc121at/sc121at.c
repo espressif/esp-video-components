@@ -118,6 +118,7 @@ static esp_err_t sc121at_set_reg_bits(esp_sccb_io_handle_t sccb_handle, uint16_t
     ret = sc121at_write(sccb_handle, reg, value);
     return ret;
 }
+
 static esp_err_t sc121at_hw_reset(esp_cam_sensor_device_t *dev)
 {
     if (dev->reset_pin >= 0) {
@@ -163,11 +164,12 @@ static esp_err_t sc121at_set_stream(esp_cam_sensor_device_t *dev, int enable)
         } else {
             ret = sc121at_write_array(dev->sccb_handle, sc121at_mipi_stream_off);
         }
-    } else
+    }
 #endif
 #if CONFIG_SOC_LCDCAM_CAM_SUPPORTED
-    {
+    if (dev->sensor_port == ESP_CAM_SENSOR_DVP) {
         ESP_LOGW(TAG, "Stream control not supported on DVP port");
+        ret = ESP_ERR_NOT_SUPPORTED;
     }
 #endif
 
@@ -179,27 +181,13 @@ static esp_err_t sc121at_set_stream(esp_cam_sensor_device_t *dev, int enable)
     return ret;
 }
 
-static esp_err_t sc121at_set_hmirror(esp_cam_sensor_device_t *dev, int enable)
-{
-    return sc121at_set_reg_bits(dev->sccb_handle, 0x5005, 1, 1, enable ? 1 : 0);
-}
-
-static esp_err_t sc121at_set_vflip(esp_cam_sensor_device_t *dev, int enable)
-{
-    return sc121at_set_reg_bits(dev->sccb_handle, 0x3221, 1, 2, enable ? 0x03 : 0);
-}
-
 static esp_err_t sc121at_query_para_desc(esp_cam_sensor_device_t *dev, esp_cam_sensor_param_desc_t *qdesc)
 {
     esp_err_t ret = ESP_OK;
     switch (qdesc->id) {
-    case ESP_CAM_SENSOR_VFLIP:
-    case ESP_CAM_SENSOR_HMIRROR:
-        qdesc->type = ESP_CAM_SENSOR_PARAM_TYPE_NUMBER;
-        qdesc->number.minimum = 0;
-        qdesc->number.maximum = 1;
-        qdesc->number.step = 1;
-        qdesc->default_value = 0;
+    case ESP_CAM_SENSOR_DATA_SEQ:
+        qdesc->type = ESP_CAM_SENSOR_PARAM_TYPE_U8;
+        qdesc->u8.size = sizeof(uint32_t);
         break;
     default: {
         ESP_LOGD(TAG, "id=%"PRIx32" is not supported", qdesc->id);
@@ -212,7 +200,31 @@ static esp_err_t sc121at_query_para_desc(esp_cam_sensor_device_t *dev, esp_cam_s
 
 static esp_err_t sc121at_get_para_value(esp_cam_sensor_device_t *dev, uint32_t id, void *arg, size_t size)
 {
-    return ESP_ERR_NOT_SUPPORTED;
+    esp_err_t ret = ESP_OK;
+    switch (id) {
+    case ESP_CAM_SENSOR_DATA_SEQ:
+        *(uint32_t *)arg = ESP_CAM_SENSOR_DATA_SEQ_NONE;
+        if (dev->cur_format != NULL) {
+            if (dev->cur_format->port == ESP_CAM_SENSOR_MIPI_CSI) {
+#if CONFIG_IDF_TARGET_ESP32P4
+                if (dev->cur_format->format == ESP_CAM_SENSOR_PIXFORMAT_YUV422_UYVY) {
+                    esp_chip_info_t chip_info;
+                    esp_chip_info(&chip_info);
+                    unsigned major_rev = chip_info.revision / 100;
+                    if (major_rev < 3) {
+                        *(uint32_t *)arg = ESP_CAM_SENSOR_DATA_SEQ_WORD_INTERNAL_SWAPPED;
+                    }
+                }
+#endif
+            }
+        }
+        break;
+    default:
+        ret = ESP_ERR_NOT_SUPPORTED;
+        break;
+    }
+
+    return ret;
 }
 
 static esp_err_t sc121at_set_para_value(esp_cam_sensor_device_t *dev, uint32_t id, const void *arg, size_t size)
@@ -220,16 +232,6 @@ static esp_err_t sc121at_set_para_value(esp_cam_sensor_device_t *dev, uint32_t i
     esp_err_t ret = ESP_OK;
 
     switch (id) {
-    case ESP_CAM_SENSOR_VFLIP: {
-        int *value = (int *)arg;
-        ret = sc121at_set_vflip(dev, *value);
-        break;
-    }
-    case ESP_CAM_SENSOR_HMIRROR: {
-        int *value = (int *)arg;
-        ret = sc121at_set_hmirror(dev, *value);
-        break;
-    }
     default: {
         ESP_LOGE(TAG, "set id=%" PRIx32 " is not supported", id);
         ret = ESP_ERR_INVALID_ARG;
@@ -242,6 +244,7 @@ static esp_err_t sc121at_set_para_value(esp_cam_sensor_device_t *dev, uint32_t i
 
 static esp_err_t sc121at_query_support_formats(esp_cam_sensor_device_t *dev, esp_cam_sensor_format_array_t *formats)
 {
+    esp_err_t ret = ESP_OK;
     ESP_CAM_SENSOR_NULL_POINTER_CHECK(TAG, dev);
     ESP_CAM_SENSOR_NULL_POINTER_CHECK(TAG, formats);
 
@@ -254,9 +257,10 @@ static esp_err_t sc121at_query_support_formats(esp_cam_sensor_device_t *dev, esp
 #if CONFIG_SOC_LCDCAM_CAM_SUPPORTED
     if (dev->sensor_port == ESP_CAM_SENSOR_DVP) {
         ESP_LOGW(TAG, "DVP formats not supported yet");
+        ret = ESP_ERR_NOT_SUPPORTED;
     }
 #endif
-    return ESP_OK;
+    return ret;
 }
 
 static esp_err_t sc121at_query_support_capability(esp_cam_sensor_device_t *dev, esp_cam_sensor_capability_t *sensor_cap)
@@ -284,11 +288,11 @@ static esp_err_t sc121at_set_format(esp_cam_sensor_device_t *dev, const esp_cam_
 #if CONFIG_SOC_LCDCAM_CAM_SUPPORTED
         if (dev->sensor_port == ESP_CAM_SENSOR_DVP) {
             ESP_LOGW(TAG, "Set format not supported on DVP port");
-            return ESP_FAIL;
+            return ESP_ERR_NOT_SUPPORTED;
         }
 #endif
     }
-
+    ESP_RETURN_ON_FALSE(format != NULL, ESP_ERR_NOT_SUPPORTED, TAG, "format is NULL");
 #if CONFIG_SOC_MIPI_CSI_SUPPORTED
     if (dev->sensor_port == ESP_CAM_SENSOR_MIPI_CSI) {
         ret = sc121at_write_array(dev->sccb_handle, sc121at_mipi_reset_regs);
@@ -298,12 +302,12 @@ static esp_err_t sc121at_set_format(esp_cam_sensor_device_t *dev, const esp_cam_
         ESP_RETURN_ON_FALSE(ret == ESP_OK, ESP_CAM_SENSOR_ERR_FAILED_SET_FORMAT, TAG, "write format regs failed");
 
         dev->cur_format = format;
-    } else
+    }
 #endif
 #if CONFIG_SOC_LCDCAM_CAM_SUPPORTED
-    {
+    if (dev->sensor_port == ESP_CAM_SENSOR_DVP) {
         ESP_LOGW(TAG, "Set format not supported on DVP port");
-        ret = ESP_FAIL;
+        ret = ESP_ERR_NOT_SUPPORTED;
     }
 #endif
 
@@ -379,7 +383,7 @@ static esp_err_t sc121at_power_on(esp_cam_sensor_device_t *dev)
         conf.pin_bit_mask = 1LL << dev->pwdn_pin;
         conf.mode = GPIO_MODE_OUTPUT;
         ret = gpio_config(&conf);
-
+        ESP_RETURN_ON_FALSE(ret == ESP_OK, ret, TAG, "pin config failed");
         // carefully, logic is inverted compared to reset pin
         gpio_set_level(dev->pwdn_pin, 1);
         delay_ms(10);
@@ -392,7 +396,7 @@ static esp_err_t sc121at_power_on(esp_cam_sensor_device_t *dev)
         conf.pin_bit_mask = 1LL << dev->reset_pin;
         conf.mode = GPIO_MODE_OUTPUT;
         ret = gpio_config(&conf);
-
+        ESP_RETURN_ON_FALSE(ret == ESP_OK, ret, TAG, "pin config failed");
         gpio_set_level(dev->reset_pin, 0);
         delay_ms(10);
         gpio_set_level(dev->reset_pin, 1);
@@ -431,6 +435,7 @@ static esp_err_t sc121at_delete(esp_cam_sensor_device_t *dev)
 {
     ESP_LOGD(TAG, "del sc121at (%p)", dev);
     if (dev) {
+        sc121at_power_off(dev);
         free(dev);
         dev = NULL;
     }
@@ -479,6 +484,7 @@ esp_cam_sensor_device_t *sc121at_detect(esp_cam_sensor_config_t *config)
 #if CONFIG_SOC_LCDCAM_CAM_SUPPORTED
     if (config->sensor_port == ESP_CAM_SENSOR_DVP) {
         ESP_LOGW(TAG, "Not support DVP port");
+        goto err_free_handler;
     }
 #endif
 
