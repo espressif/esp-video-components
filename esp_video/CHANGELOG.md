@@ -5,6 +5,8 @@
 
 - Fixed a compilation issue with the ioctl macro definitions in certain cases
 
+- Fixed ISP processor clock frequency being hardcoded to 80 MHz regardless of the selected clock source; `clk_hz` is now derived from `clk_src` (XTAL → 40 MHz, PLL160 → 160 MHz, PLL240 → 240 MHz) to prevent FIFO overflow errors
+
 ## 2.2.0
 
 - The ISP video device now utilizes the sensor's full resolution for statistical analysis

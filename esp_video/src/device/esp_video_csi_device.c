@@ -40,8 +40,6 @@
 #define CSI_CTRL_ID                 0 // ESP32-P4 only supports one CSI controller, so the controller ID is fixed to 0
 #define CSI_QUEUE_ITEMS             1 // CSI queue items is fixed to 1 to avoid buffer allocation and deallocation in the video device
 
-#define ISP_CLK_FREQ_HZ             (80 * 1000 * 1000) // ISP clock frequency is fixed to 80MHz for ESP32-P4
-
 #define V4L2_DEFAULT_OUT_COLOR      V4L2_PIX_FMT_RGB565 // Default output color is RGB565 for ESP32-P4 when input is RAW8
 
 #define ISP_CROP_MIN_WIDTH          32
@@ -265,7 +263,6 @@ static esp_err_t start_isp(esp_video_device_common_t *common)
 
     esp_isp_processor_cfg_t isp_config = {
         .clk_src = ISP_CLK_SRC_DEFAULT,
-        .clk_hz = ISP_CLK_FREQ_HZ,
         .input_data_source = ISP_INPUT_DATA_SOURCE_CSI, // Force input data source to CSI
         .has_line_start_packet = mipi_info->line_sync_en,
         .has_line_end_packet = mipi_info->line_sync_en,
@@ -283,6 +280,19 @@ static esp_err_t start_isp(esp_video_device_common_t *common)
 #endif
     };
 
+    // Set clk_hz according to clk_src
+    switch (isp_config.clk_src) {
+    case ISP_CLK_SRC_XTAL:
+        isp_config.clk_hz = 40000000; // 40MHz XTAL typical for ESP chips
+        break;
+    case ISP_CLK_SRC_PLL160:
+        isp_config.clk_hz = 160000000; // 160MHz PLL
+        break;
+    case ISP_CLK_SRC_PLL240: // Default value
+    default:
+        isp_config.clk_hz = 240000000; // 240MHz PLL
+        break;
+    }
     ESP_RETURN_ON_ERROR(esp_isp_new_processor(&isp_config, &isp_proc), TAG, "failed to new ISP");
 
     bool crop_required = false;
