@@ -27,6 +27,7 @@
   - ".gitlab/ci/build_docs.yml"
   - ".gitlab/ci/deploy.yml"
   - ".gitlab/ci/post_deploy.yml"
+  - ".gitlab-ci.yml"
 
 # rules for examples
 .rules:build:examples:
