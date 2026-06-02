@@ -1,6 +1,6 @@
 # Espressif Image Process Algorithm for ISP
 
-[![alt text][doc-latest]](https://docs.espressif.com/projects/esp-video-components/en/latest/)
+[![alt text][doc-latest]](https://docs.espressif.com/projects/esp-video-components/en/latest/esp32p4/index.html)
 
 [doc-latest]: https://img.shields.io/badge/docs-latest-blue
 
