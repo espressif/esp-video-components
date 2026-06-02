@@ -11,7 +11,7 @@
  * @param a1    Destination buffer pointer
  * @param a2    Buffer size
  *
- * @Note void esp_video_swap_byte_riscv(void *src, void *dst, size_t size);
+ * @Note void esp_video_swap_byte_riscv(void *src, void *dst, uint32_t size);
  */
     .text
     .section    .text.esp_video_swap_byte_riscv, "ax"

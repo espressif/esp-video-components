@@ -1,6 +1,7 @@
 ## Unreleased
 
 - Added information about the document system to README.md.
+- Added a common camera interface module to manage MIPI-CSI, DVP, and SPI video devices globally
 
 ## 2.2.0
 

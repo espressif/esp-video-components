@@ -2189,6 +2189,7 @@ esp_err_t esp_video_config_buffer(struct esp_video *video, const struct v4l2_for
      */
     buf_size = ESP_VIDEO_ALIGN(buf_size, alignments);
 
+    SET_STREAM_FORMAT_PIXEL_FORMAT(stream, pix->pixelformat);
     SET_STREAM_FORMAT_WIDTH(stream, pix->width);
     SET_STREAM_FORMAT_HEIGHT(stream, pix->height);
     SET_STREAM_FORMAT_PIXEL_FORMAT(stream, pix->pixelformat);

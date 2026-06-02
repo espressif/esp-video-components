@@ -22,39 +22,25 @@
 #include "esp_video_device.h"
 #include "esp_video_isp_ioctl.h"
 #include "esp_video_device_internal.h"
+#include "esp_video_device_common.h"
 
 /**
  * IDF-9706
  */
 #include "soc/isp_struct.h"
 
-#if ESP_VIDEO_ISP_DEVICE_BLC
-#define STORE_CSI_WINDOW          1
-#endif
-
 #define ISP_NAME                   "ISP"
 
 #define ISP_DMA_ALIGN_BYTES         4
 #define ISP_MEM_CAPS                MALLOC_CAP_8BIT
-
-#define ISP_INPUT_DATA_SRC          ISP_INPUT_DATA_SOURCE_CSI
-
-/* AEG-1489 */
-#define ISP_CLK_SRC                 ISP_CLK_SRC_DEFAULT
-#define ISP_CLK_FREQ_HZ             (80 * 1000 * 1000)
 
 #define ISP_BRIGHTNESS_DEFAULT      0
 #define ISP_CONTRAST_DEFAULT        128
 #define ISP_SATURATION_DEFAULT      128
 #define ISP_HUE_DEFAULT             0
 
-#if CONFIG_ESP_VIDEO_ENABLE_ISP_VIDEO_DEVICE
-#define ISP_LOCK(i)                 xSemaphoreTake((i)->mutex, portMAX_DELAY)
-#define ISP_UNLOCK(i)               xSemaphoreGive((i)->mutex)
-#else
-#define ISP_LOCK(i)
-#define ISP_UNLOCK(i)
-#endif
+#define ISP_LOCK(i)                 xSemaphoreTakeRecursive((i)->mutex, portMAX_DELAY)
+#define ISP_UNLOCK(i)               xSemaphoreGiveRecursive((i)->mutex)
 
 #ifndef ARRAY_SIZE
 #define ARRAY_SIZE(x)               sizeof(x) / sizeof((x)[0])
@@ -100,7 +86,6 @@ do {                                                                            
 struct isp_video {
     isp_proc_handle_t isp_proc;
 
-#if CONFIG_ESP_VIDEO_ENABLE_ISP_VIDEO_DEVICE
     struct esp_video *video;
 
     isp_awb_ctlr_t awb_ctlr;
@@ -202,6 +187,10 @@ struct isp_video {
 
     uint8_t af_started              : 1;
 
+#if ESP_VIDEO_ISP_DEVICE_CROP
+    uint8_t crop_started            : 1;
+#endif
+
     /**
      * Output format dependence:
      *
@@ -219,14 +208,8 @@ struct isp_video {
 
     uint64_t seq;
     esp_video_isp_stats_t *stats_buffer;
-#if STORE_CSI_WINDOW
-    uint32_t csi_width;
-    uint32_t csi_height;
-#endif
-#endif
 };
 
-#if CONFIG_ESP_VIDEO_ENABLE_ISP_VIDEO_DEVICE
 static const struct v4l2_query_ext_ctrl s_isp_qctrl[] = {
     {
         .id = V4L2_CID_RED_BALANCE,
@@ -420,93 +403,11 @@ static const struct v4l2_query_ext_ctrl s_isp_qctrl[] = {
         .name = "AF",
     },
 };
-#endif
+static const int s_isp_qctrl_nums = ARRAY_SIZE(s_isp_qctrl);
 static const char *TAG = "isp_video";
-
-static const uint32_t s_isp_isp_format[] = {
-    V4L2_PIX_FMT_SBGGR8,
-    V4L2_PIX_FMT_RGB565,
-    V4L2_PIX_FMT_RGB24,
-    V4L2_PIX_FMT_YUV420,
-    V4L2_PIX_FMT_UYVY,
-};
-static const int s_isp_isp_format_nums = ARRAY_SIZE(s_isp_isp_format);
 
 static struct isp_video s_isp_video;
 
-static esp_err_t isp_get_input_frame_type(cam_ctlr_color_t ctlr_color, isp_color_t *isp_color)
-{
-    esp_err_t ret = ESP_OK;
-
-    switch (ctlr_color) {
-    case CAM_CTLR_COLOR_RAW8:
-        *isp_color = ISP_COLOR_RAW8;
-        break;
-    case CAM_CTLR_COLOR_RAW10:
-        *isp_color = ISP_COLOR_RAW10;
-        break;
-    case CAM_CTLR_COLOR_RAW12:
-        *isp_color = ISP_COLOR_RAW12;
-        break;
-    default:
-        ret = ESP_ERR_NOT_SUPPORTED;
-        break;
-    }
-
-    return ret;
-}
-
-static esp_err_t isp_get_output_frame_type(cam_ctlr_color_t ctlr_color, isp_color_t *isp_color)
-{
-    esp_err_t ret = ESP_OK;
-
-    switch (ctlr_color) {
-    case CAM_CTLR_COLOR_RAW8:
-        *isp_color = ISP_COLOR_RAW8;
-        break;
-    case CAM_CTLR_COLOR_RGB565:
-        *isp_color = ISP_COLOR_RGB565;
-        break;
-    case CAM_CTLR_COLOR_RGB888:
-        *isp_color = ISP_COLOR_RGB888;
-        break;
-    case CAM_CTLR_COLOR_YUV420:
-        *isp_color = ISP_COLOR_YUV420;
-        break;
-#if ESP_VIDEO_CSI_DEVICE_CONV_FORMAT
-    /**
-     * @brief For ESP-IDF versions < v6.0.0, CAM_CTLR_COLOR_YUV422_YUYV = CAM_CTLR_COLOR_YUV422_UYVY = CAM_CTLR_COLOR_YUV422
-     */
-    case CAM_CTLR_COLOR_YUV422_YUYV:
-    case CAM_CTLR_COLOR_YUV422_VYUY:
-    case CAM_CTLR_COLOR_YUV422_YVYU:
-#endif
-    case CAM_CTLR_COLOR_YUV422_UYVY:
-        *isp_color = ISP_COLOR_YUV422;
-        break;
-    default:
-        ret = ESP_ERR_NOT_SUPPORTED;
-        break;
-    }
-
-    return ret;
-}
-
-static bool cam_ctlr_color_is_raw_type(cam_ctlr_color_t color)
-{
-    switch (color) {
-    case CAM_CTLR_COLOR_RAW8:
-        return true;
-    case CAM_CTLR_COLOR_RAW10:
-        return true;
-    case CAM_CTLR_COLOR_RAW12:
-        return true;
-    default:
-        return false;
-    }
-}
-
-#if CONFIG_ESP_VIDEO_ENABLE_ISP_VIDEO_DEVICE
 static bool isp_color_is_raw_type(isp_color_t color)
 {
     switch (color) {
@@ -1336,8 +1237,8 @@ static esp_err_t isp_start_blc(struct isp_video *isp_video)
                 .y = 0,
             },
             .btm_right = {
-                .x = isp_video->csi_width,
-                .y = isp_video->csi_height,
+                .x = META_VIDEO_GET_FORMAT_WIDTH(isp_video->video), // Note: No need to subtract 1
+                .y = META_VIDEO_GET_FORMAT_HEIGHT(isp_video->video), // Note: No need to subtract 1
             },
         },
         .filter_threshold = {
@@ -1474,6 +1375,43 @@ static esp_err_t isp_reconfigure_af(struct isp_video *isp_video)
 
     ESP_RETURN_ON_ERROR(isp_stop_af(isp_video), TAG, "failed to stop AF");
     ESP_RETURN_ON_ERROR(isp_start_af(isp_video), TAG, "failed to start AF");
+
+    return ESP_OK;
+}
+
+static esp_err_t isp_start_crop(struct isp_video *isp_video, const struct v4l2_rect *crop_rect)
+{
+    esp_err_t ret = ESP_OK;
+#if ESP_VIDEO_ISP_DEVICE_CROP
+    esp_isp_crop_config_t crop_config = {
+        .window = {
+            .top_left = {
+                .x = crop_rect->left,
+                .y = crop_rect->top
+            },
+            .btm_right = {
+                .x = crop_rect->left + crop_rect->width - 1,
+                .y = crop_rect->top + crop_rect->height - 1
+            }
+        }
+    };
+
+    ESP_RETURN_ON_ERROR(esp_isp_crop_configure(isp_video->isp_proc, &crop_config), TAG, "failed to configure ISP crop");
+    ESP_RETURN_ON_ERROR(esp_isp_crop_enable(isp_video->isp_proc), TAG, "failed to enable ISP crop");
+
+    isp_video->crop_started = true;
+#endif
+    return ret;
+}
+
+static esp_err_t isp_stop_crop(struct isp_video *isp_video)
+{
+#if ESP_VIDEO_ISP_DEVICE_CROP
+    if (isp_video->crop_started) {
+        ESP_RETURN_ON_ERROR(esp_isp_crop_disable(isp_video->isp_proc), TAG, "failed to disable ISP crop");
+        isp_video->crop_started = false;
+    }
+#endif
 
     return ESP_OK;
 }
@@ -2174,48 +2112,7 @@ static esp_err_t isp_video_get_ext_ctrl(struct esp_video *video, struct v4l2_ext
 
 static esp_err_t isp_video_query_ext_ctrl(struct esp_video *video, struct v4l2_query_ext_ctrl *qctrl)
 {
-    int num = -1;
-    uint32_t id = qctrl->id;
-    int isp_qctrl_cnt = ARRAY_SIZE(s_isp_qctrl);
-    esp_err_t ret = ESP_ERR_NOT_SUPPORTED;
-
-    if (id & V4L2_CTRL_FLAG_NEXT_CTRL) {
-        uint32_t new_id = UINT32_MAX; // UINT32_MAX is out of range of V4L2_CTRL_ID_MASK, so used to indicate that the new ID is not found
-
-        id &= ~V4L2_CTRL_FLAG_NEXT_CTRL;
-        if (id == 0) {
-            new_id = s_isp_qctrl[0].id;
-            num = 0;
-        } else {
-            for (int i = 0; i < isp_qctrl_cnt; i++) {
-                if (id == s_isp_qctrl[i].id) {
-                    if (i < (isp_qctrl_cnt - 1)) {
-                        new_id = s_isp_qctrl[i + 1].id;
-                        num = i + 1;
-                        break;
-                    }
-                }
-            }
-        }
-
-        if (new_id == UINT32_MAX) {
-            return ESP_ERR_INVALID_ARG;
-        }
-    } else {
-        for (int i = 0; i < isp_qctrl_cnt; i++) {
-            if (id == s_isp_qctrl[i].id) {
-                num = i;
-                break;
-            }
-        }
-    }
-
-    if (num >= 0) {
-        memcpy(qctrl, &s_isp_qctrl[num], sizeof(struct v4l2_query_ext_ctrl));
-        ret = ESP_OK;
-    }
-
-    return ret;
+    return esp_video_device_common_query_ext_ctrl(s_isp_qctrl, s_isp_qctrl_nums, qctrl);
 }
 
 static esp_err_t isp_video_set_selection(struct esp_video *video, struct v4l2_selection *selection)
@@ -2316,82 +2213,28 @@ esp_err_t esp_video_destroy_isp_video_device(void)
 
     return ESP_OK;
 }
-#endif
 
-/**
- * @brief Start ISP process based on MIPI-CSI state
- *
- * @param state MIPI-CSI state object
- * @param state MIPI-CSI V4L2 capture format
- *
- * @return
- *      - ESP_OK on success
- *      - Others if failed
- */
-esp_err_t esp_video_isp_start_by_csi(const esp_video_csi_state_t *state, const struct v4l2_format *format)
+esp_err_t esp_video_isp_video_device_add_isp_proc(isp_proc_handle_t isp_proc, uint32_t width, uint32_t height,
+        bool crop_required, const struct v4l2_rect *crop_rect,
+        const esp_video_csi_isp_in_out_format_t *in_out_format)
 {
-    esp_err_t ret;
-    isp_color_t isp_in_color;
-    isp_color_t isp_out_color;
-    isp_color_range_t yuv_range;
-    isp_yuv_conv_std_t yuv_std;
+    esp_err_t ret = ESP_OK;
+
+    assert(isp_proc);
+    assert(width > 0);
+    assert(height > 0);
+    assert(in_out_format);
+    if (crop_required) {
+        assert(crop_rect);
+    }
+
+    ISP_LOCK(&s_isp_video);
+
     struct isp_video *isp_video = &s_isp_video;
-    uint32_t width = format->fmt.pix.width;
-    uint32_t height = format->fmt.pix.height;
+    isp_video->isp_proc = isp_proc;
 
-    if ((format->fmt.pix.quantization == V4L2_QUANTIZATION_DEFAULT) ||
-            (format->fmt.pix.quantization == V4L2_QUANTIZATION_FULL_RANGE)) {
-        yuv_range = COLOR_RANGE_FULL;
-    } else if (format->fmt.pix.quantization == V4L2_QUANTIZATION_LIM_RANGE) {
-        yuv_range = ISP_COLOR_RANGE_LIMIT;
-    } else {
-        return ESP_ERR_NOT_SUPPORTED;
-    }
+    CAPTURE_VIDEO_SET_FORMAT(isp_video->video, width, height, V4L2_META_FMT_ESP_ISP_STATS);
 
-    if ((format->fmt.pix.ycbcr_enc == V4L2_YCBCR_ENC_DEFAULT) ||
-            (format->fmt.pix.ycbcr_enc == V4L2_YCBCR_ENC_601)) {
-        yuv_std = ISP_YUV_CONV_STD_BT601;
-    } else if (format->fmt.pix.ycbcr_enc == V4L2_YCBCR_ENC_709) {
-        yuv_std = ISP_YUV_CONV_STD_BT709;
-    } else {
-        return ESP_ERR_NOT_SUPPORTED;
-    }
-
-#if ESP_VIDEO_ISP_DEVICE_CROP
-    if (state->crop) {
-        width = state->raw_width;
-        height = state->raw_height;
-    }
-#endif
-
-    if (state->bypass_isp) {
-        isp_in_color = ISP_COLOR_RAW8;
-        isp_out_color = ISP_COLOR_RGB565;
-    } else {
-        ESP_RETURN_ON_ERROR(isp_get_input_frame_type(state->in_color, &isp_in_color), TAG, "invalid ISP in format");
-        ESP_RETURN_ON_ERROR(isp_get_output_frame_type(state->out_color, &isp_out_color), TAG, "invalid ISP out format");
-    }
-
-    esp_isp_processor_cfg_t isp_config = {
-        .clk_src = ISP_CLK_SRC,
-        .input_data_source = ISP_INPUT_DATA_SRC,
-        .has_line_start_packet = state->line_sync,
-        .has_line_end_packet = state->line_sync,
-        .h_res = width,
-        .v_res = height,
-        .yuv_range = yuv_range,
-        .yuv_std = yuv_std,
-        .clk_hz = ISP_CLK_FREQ_HZ,
-        .input_data_color_type = isp_in_color,
-        .output_data_color_type = isp_out_color,
-        .bayer_order = state->bayer_order
-    };
-
-    ISP_LOCK(isp_video);
-
-    ESP_GOTO_ON_ERROR(esp_isp_new_processor(&isp_config, &isp_video->isp_proc), fail_0, TAG, "failed to new ISP");
-
-#if CONFIG_ESP_VIDEO_ENABLE_ISP_VIDEO_DEVICE
     if (!isp_video->rect_set) {
         struct v4l2_rect rect = {
             .left = width * ISP_REGION_START,
@@ -2400,246 +2243,66 @@ esp_err_t esp_video_isp_start_by_csi(const esp_video_csi_state_t *state, const s
             .width = width * (ISP_REGION_END - ISP_REGION_START),
         };
 
-
         META_VIDEO_SET_RECT(isp_video->video, &rect);
-        isp_video->rect_set = true;
     }
-#endif
 
-    if (state->bypass_isp) {
-        /**
-         * IDF-9706
-         */
+    /* This should be done before start ISP pipeline */
+    esp_isp_evt_cbs_t cbs = {
+        .on_sharpen_frame_done = isp_sharpen_stats_done
+    };
+    ESP_GOTO_ON_ERROR(esp_isp_register_event_callbacks(isp_proc, &cbs, isp_video), fail_0, TAG, "failed to register sharpen callback");
 
-        ISP.frame_cfg.hadr_num = ceil((float)(isp_config.h_res * state->out_bpp) / 32.0) - 1;
-        ISP.frame_cfg.vadr_num = isp_config.v_res - 1;
-        ISP.cntl.isp_en = 0;
+    if (crop_required) {
+        ESP_GOTO_ON_ERROR(isp_start_crop(isp_video, crop_rect), fail_1, TAG, "failed to configure ISP crop");
+    }
+
+    if ((isp_color_is_raw_type(in_out_format->isp_input_fmt)) && !isp_color_is_raw_type(in_out_format->isp_output_fmt)) {
+        isp_video->af_support = 1;
     } else {
-#if CONFIG_ESP_VIDEO_ENABLE_ISP_VIDEO_DEVICE
-        esp_isp_evt_cbs_t cbs = {
-            .on_sharpen_frame_done = isp_sharpen_stats_done
-        };
-
-        ESP_GOTO_ON_ERROR(esp_isp_register_event_callbacks(isp_video->isp_proc, &cbs, isp_video), fail_1, TAG, "failed to register sharpen callback");
-#endif
-
-        ESP_GOTO_ON_ERROR(esp_isp_enable(isp_video->isp_proc), fail_2, TAG, "failed to enable ISP");
-
-#if CONFIG_ESP_VIDEO_ENABLE_ISP_VIDEO_DEVICE
-#if ESP_VIDEO_ISP_DEVICE_CROP
-        if (state->crop) {
-            esp_isp_crop_config_t crop_config = {
-                .window = {
-                    .top_left = {
-                        .x = state->crop->left,
-                        .y = state->crop->top
-                    },
-                    .btm_right = {
-                        .x = state->crop->left + state->crop->width - 1,
-                        .y = state->crop->top + state->crop->height - 1
-                    }
-                }
-            };
-
-            ESP_GOTO_ON_ERROR(esp_isp_crop_configure(isp_video->isp_proc, &crop_config), fail_3, TAG, "failed to configure ISP crop");
-            ESP_GOTO_ON_ERROR(esp_isp_crop_enable(isp_video->isp_proc), fail_3, TAG, "failed to enable ISP crop");
-        }
-#endif
-
-        if ((isp_color_is_raw_type(isp_in_color)) && !isp_color_is_raw_type(isp_out_color)) {
-            isp_video->af_support = 1;
-        } else {
-            isp_video->af_support = 0;
-        }
-
-#if STORE_CSI_WINDOW
-        /**
-         * Store CSI window size for the BLC
-         */
-#if ESP_VIDEO_ISP_DEVICE_CROP
-        isp_video->csi_width = state->raw_width;
-        isp_video->csi_height = state->raw_height;
-#else
-        isp_video->csi_width = width;
-        isp_video->csi_height = height;
-#endif
-#endif
-
-        META_VIDEO_SET_FORMAT(isp_video->video, width, height, V4L2_META_FMT_ESP_ISP_STATS);
-        ESP_GOTO_ON_ERROR(isp_start_pipeline(isp_video), fail_4, TAG, "failed to start ISP pipeline");
-#endif
+        isp_video->af_support = 0;
     }
 
-    ISP_UNLOCK(isp_video);
+    ESP_GOTO_ON_ERROR(isp_start_pipeline(isp_video), fail_2, TAG, "failed to start ISP pipeline");
+
+    ISP_UNLOCK(&s_isp_video);
     return ESP_OK;
 
-#if CONFIG_ESP_VIDEO_ENABLE_ISP_VIDEO_DEVICE
-fail_4:
-#if ESP_VIDEO_ISP_DEVICE_CROP
-    if (state->crop) {
-        esp_isp_crop_disable(isp_video->isp_proc);
+fail_2:
+    if (crop_required) {
+        isp_stop_crop(isp_video);
     }
-fail_3:
-#endif
-    esp_isp_disable(isp_video->isp_proc);
-fail_2:
-    esp_isp_evt_cbs_t cbs = {0};
-    esp_isp_register_event_callbacks(isp_video->isp_proc, &cbs, NULL);
 fail_1:
-#else
-fail_2:
-#endif
-    esp_isp_del_processor(isp_video->isp_proc);
-    isp_video->isp_proc = NULL;
+    cbs.on_sharpen_frame_done = NULL;
+    esp_isp_register_event_callbacks(isp_proc, &cbs, NULL);
 fail_0:
-    ISP_UNLOCK(isp_video);
+    isp_video->isp_proc = NULL;
+    ISP_UNLOCK(&s_isp_video);
     return ret;
 }
 
-/**
- * @brief Stop ISP process
- *
- * @param state MIPI-CSI state object
- *
- * @return
- *      - ESP_OK on success
- *      - Others if failed
- */
-esp_err_t esp_video_isp_stop(const esp_video_csi_state_t *state)
+esp_err_t esp_video_isp_video_device_remove_isp_proc(isp_proc_handle_t isp_proc)
 {
     esp_err_t ret = ESP_OK;
+
+    ISP_LOCK(&s_isp_video);
+
+    ESP_GOTO_ON_FALSE(isp_proc == s_isp_video.isp_proc, ESP_ERR_INVALID_ARG, fail_0, TAG, "ISP processor is not the same as the one in the video device");
+
     struct isp_video *isp_video = &s_isp_video;
 
-    ISP_LOCK(isp_video);
+    ESP_GOTO_ON_ERROR(isp_stop_pipeline(isp_video), fail_0, TAG, "failed to stop ISP pipeline");
 
-    if (!state->bypass_isp) {
-#if CONFIG_ESP_VIDEO_ENABLE_ISP_VIDEO_DEVICE
-        ESP_GOTO_ON_ERROR(isp_stop_pipeline(isp_video), exit, TAG, "failed to stop ISP pipeline");
-#endif
+    ESP_GOTO_ON_ERROR(isp_stop_crop(isp_video), fail_0, TAG, "failed to stop ISP crop");
 
-        ESP_GOTO_ON_ERROR(esp_isp_disable(isp_video->isp_proc), exit, TAG, "failed to disable ISP");
+    esp_isp_evt_cbs_t cbs = {0};
+    ESP_GOTO_ON_ERROR(esp_isp_register_event_callbacks(isp_video->isp_proc, &cbs, NULL), fail_0, TAG, "failed to unregister sharpen callback");
 
-#if CONFIG_ESP_VIDEO_ENABLE_ISP_VIDEO_DEVICE
-        esp_isp_evt_cbs_t cbs = {0};
-        ESP_GOTO_ON_ERROR(esp_isp_register_event_callbacks(isp_video->isp_proc, &cbs, NULL), exit, TAG, "failed to free ISP event");
-#endif
-    }
-
-    ESP_GOTO_ON_ERROR(esp_isp_del_processor(isp_video->isp_proc), exit, TAG, "failed to delete ISP");
     isp_video->isp_proc = NULL;
 
-exit:
-    ISP_UNLOCK(isp_video);
+    ISP_UNLOCK(&s_isp_video);
+    return ESP_OK;
+
+fail_0:
+    ISP_UNLOCK(&s_isp_video);
     return ret;
-}
-
-/**
- * @brief Enumerate ISP supported output pixel format
- *
- * @param state        MIPI-CSI state object
- * @param index        Enumerated number index
- * @param pixel_format Supported output pixel format
- * @param isp_format_nums ISP supported output pixel format number pointer
- *
- * @return
- *      - ESP_OK on success
- *      - Others if failed
- */
-esp_err_t esp_video_isp_enum_format(esp_video_csi_state_t *state, uint32_t index, uint32_t *pixel_format, uint32_t *isp_format_nums)
-{
-    if (state->bypass_isp) {
-        *isp_format_nums = 1;
-
-        if (cam_ctlr_color_is_raw_type(state->in_color)) {
-#if ESP_VIDEO_CSI_DEVICE_CONV_FORMAT
-            if (index == s_isp_isp_format_nums) {
-#else
-            if (index == 0) {
-#endif
-                *pixel_format = state->in_fmt;
-            } else {
-                return ESP_ERR_INVALID_ARG;
-            }
-        } else {
-            if (index == 0) {
-                *pixel_format = state->in_fmt;
-            } else {
-                return ESP_ERR_INVALID_ARG;
-            }
-        }
-    } else {
-        *isp_format_nums = s_isp_isp_format_nums;
-
-        if (index < s_isp_isp_format_nums) {
-            *pixel_format = s_isp_isp_format[index];
-        } else if (index == s_isp_isp_format_nums) {
-            if (state->in_color != CAM_CTLR_COLOR_RAW8) {
-                *pixel_format = state->in_fmt;
-            } else {
-                return ESP_ERR_INVALID_ARG;
-            }
-        } else {
-            return ESP_ERR_INVALID_ARG;
-        }
-    }
-
-    return ESP_OK;
-}
-
-/**
- * @brief Check if input format is valid
- *
- * @param state  MIPI-CSI state object
- * @param format V4L2 format object
- *
- * @return
- *      - ESP_OK on success
- *      - Others if failed
- */
-esp_err_t esp_video_isp_check_format(esp_video_csi_state_t *state, const struct v4l2_format *format)
-{
-    bool found = false;
-    isp_color_t isp_in_color;
-    uint32_t pixel_format = format->fmt.pix.pixelformat;
-
-    if (isp_get_input_frame_type(state->in_color, &isp_in_color) != ESP_OK) {
-        return ESP_ERR_NOT_SUPPORTED;
-    }
-
-#if ESP_VIDEO_CSI_DEVICE_CONV_FORMAT
-    /**
-     * ISP only support UYVY format, and the other YUV422 series format will be converted to UYVY format by CSI
-     */
-    if (pixel_format == V4L2_PIX_FMT_YVYU || pixel_format == V4L2_PIX_FMT_VYUY || pixel_format == V4L2_PIX_FMT_YUYV) {
-        pixel_format = V4L2_PIX_FMT_UYVY;
-    }
-#endif
-
-    for (int i = 0; i < s_isp_isp_format_nums; i++) {
-        if (pixel_format == s_isp_isp_format[i]) {
-            found = true;
-            break;
-        }
-    }
-
-    if (!found) {
-        return ESP_ERR_NOT_SUPPORTED;
-    }
-
-    if ((format->fmt.pix.pixelformat == V4L2_PIX_FMT_YUV420) ||
-            (format->fmt.pix.pixelformat == V4L2_PIX_FMT_UYVY)) {
-        if ((format->fmt.pix.ycbcr_enc != V4L2_YCBCR_ENC_DEFAULT) &&
-                (format->fmt.pix.ycbcr_enc != V4L2_YCBCR_ENC_601) &&
-                (format->fmt.pix.ycbcr_enc != V4L2_YCBCR_ENC_709)) {
-            return ESP_ERR_NOT_SUPPORTED;
-        }
-
-        if ((format->fmt.pix.quantization != V4L2_QUANTIZATION_DEFAULT) &&
-                (format->fmt.pix.quantization != V4L2_QUANTIZATION_FULL_RANGE) &&
-                (format->fmt.pix.quantization != V4L2_QUANTIZATION_LIM_RANGE)) {
-            return ESP_ERR_NOT_SUPPORTED;
-        }
-    }
-
-    return ESP_OK;
 }

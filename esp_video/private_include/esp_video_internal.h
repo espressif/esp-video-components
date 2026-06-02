@@ -57,6 +57,12 @@ extern "C" {
 #define GET_FORMAT_PIXEL_FORMAT(_fmt)                                   \
     ((_fmt)->fmt.pix.pixelformat)
 
+#define GET_RECT_WIDTH(_rect)                                           \
+    ((_rect)->width)
+
+#define GET_RECT_HEIGHT(_rect)                                          \
+    ((_rect)->height)
+
 #define SET_STREAM_BUF_INFO(st, s, a, c)                                \
     SET_BUF_INFO(STREAM_BUF_INFO(st), s, a, c)
 
@@ -77,6 +83,12 @@ extern "C" {
 
 #define GET_STREAM_FORMAT_PIXEL_FORMAT(st)                              \
     GET_FORMAT_PIXEL_FORMAT(STREAM_FORMAT(st))
+
+#define GET_STREAM_RECT_WIDTH(st)                                     \
+    GET_RECT_WIDTH(STREAM_RECT(st))
+
+#define GET_STREAM_RECT_HEIGHT(st)                                    \
+    GET_RECT_HEIGHT(STREAM_RECT(st))
 
 /* video capture operations */
 
@@ -108,6 +120,14 @@ extern "C" {
 #define CAPTURE_VIDEO_GET_FORMAT_PIXEL_FORMAT(v)                        \
     GET_STREAM_FORMAT_PIXEL_FORMAT(CAPTURE_VIDEO_STREAM(v))
 
+#define CAPTURE_VIDEO_GET_RECT(v)                                       \
+    STREAM_RECT(CAPTURE_VIDEO_STREAM(v))
+
+#define CAPTURE_VIDEO_GET_RECT_WIDTH(v)                                 \
+    GET_STREAM_RECT_WIDTH(CAPTURE_VIDEO_STREAM(v))
+
+#define CAPTURE_VIDEO_GET_RECT_HEIGHT(v)                                \
+    GET_STREAM_RECT_HEIGHT(CAPTURE_VIDEO_STREAM(v))
 
 #define CAPTURE_VIDEO_SET_FORMAT(v, w, h, f)                            \
 {                                                                       \
