@@ -3,6 +3,7 @@
 ## Unreleased
 
 - Added information about the document system to README.md.
+- Fixed the macro definition representing automatic detection in the OV9281 driver.
 
 ## 2.2.0
 
