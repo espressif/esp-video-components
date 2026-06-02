@@ -3,6 +3,8 @@
 - Added information about the document system to README.md.
 - Added a common camera interface module to manage MIPI-CSI, DVP, and SPI video devices globally
 
+- Fixed a compilation issue with the ioctl macro definitions in certain cases
+
 ## 2.2.0
 
 - The ISP video device now utilizes the sensor's full resolution for statistical analysis
