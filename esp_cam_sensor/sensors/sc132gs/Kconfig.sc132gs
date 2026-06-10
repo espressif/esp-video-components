@@ -1,0 +1,114 @@
+menuconfig CAMERA_SC132GS
+    bool "SC132GS"
+    default n
+    depends on SOC_MIPI_CSI_SUPPORTED
+    help
+        Enabling this option will add the support for SC132GS.
+
+if CAMERA_SC132GS
+    menu "Auto detect SC132GS"
+        config CAMERA_SC132GS_AUTO_DETECT_MIPI_INTERFACE_SENSOR
+            bool "Detect for MIPI CSI interface sensor"
+            default y
+            depends on SOC_MIPI_CSI_SUPPORTED
+            help
+                When enabled, the SC132GS sensor will be automatically detected
+                and initialized on the MIPI CSI interface at startup without requiring
+                manual detection call(sc132gs_detect) in your application.
+    endmenu
+
+    choice CAMERA_SC132GS_SCCB_DEFAULT_ID
+        prompt "Select default sccb ID"
+        default CAMERA_SC132GS_SCCB_ID_33
+        help
+            This option allows you to select the default sccb ID for the SC132GS sensor.
+
+        config CAMERA_SC132GS_SCCB_ID_30
+            bool "0x30"
+
+        config CAMERA_SC132GS_SCCB_ID_31
+            bool "0x31"
+
+        config CAMERA_SC132GS_SCCB_ID_32
+            bool "0x32"
+        
+        config CAMERA_SC132GS_SCCB_ID_33
+            bool "0x33"
+    endchoice # CAMERA_SC132GS_SCCB_DEFAULT_ID
+
+    menu "Choose supported formats for MIPI CSI interface"
+        config CAMERA_SC132GS_MIPI_RAW10_544X640_60FPS
+            bool "MIPI 2-lane, 24M input, 544x640 60fps, RAW10"
+            default n
+            help
+                RAW10 format at 544x640 resolution with 60fps framerate.
+                Requires MIPI CSI-2 2-lane interface with 24MHz input clock.
+
+        config CAMERA_SC132GS_MIPI_RAW10_1080X1280_60FPS
+            bool "MIPI 2-lane, 24M input, 1080x1280 60fps, RAW10"
+            default y
+            help
+                RAW10 format at 1080x1280 resolution with 60fps framerate.
+                Requires MIPI CSI-2 2-lane interface with 24MHz input clock.
+    endmenu
+
+    choice CAMERA_SC132GS_MIPI_DEFAULT_FMT
+        prompt "Select default output format for MIPI CSI interface"
+        default CAMERA_SC132GS_MIPI_DEFAULT_FMT_RAW10_544X640_60FPS
+        help
+            This option allows you to select the default video format for the SC132GS sensor
+            when it is initialized on the MIPI CSI interface. The selected format will be used
+            when the sensor is detected and initialized, and can be changed later when the
+            sensor is in stream off state.
+
+        config CAMERA_SC132GS_MIPI_DEFAULT_FMT_RAW10_544X640_60FPS
+            bool "MIPI 2-lane, 24M input, 544x640 60fps, RAW10"
+            depends on CAMERA_SC132GS_MIPI_RAW10_544X640_60FPS
+
+        config CAMERA_SC132GS_MIPI_DEFAULT_FMT_RAW10_1080X1280_60FPS
+            bool "MIPI 2-lane, 24M input, 1080x1280 60fps, RAW10"
+            depends on CAMERA_SC132GS_MIPI_RAW10_1080X1280_60FPS
+    endchoice # CAMERA_SC132GS_MIPI_DEFAULT_FMT
+
+    config CAMERA_SC132GS_MIPI_IF_FORMAT_INDEX_DEFAULT
+        int
+        default 0 if CAMERA_SC132GS_MIPI_DEFAULT_FMT_RAW10_544X640_60FPS
+        default 1 if CAMERA_SC132GS_MIPI_DEFAULT_FMT_RAW10_1080X1280_60FPS
+        help
+            Sets the default configuration for the MIPI CSI interface.
+            Use query_support_formats() API to get more format options.
+
+    config CAMERA_SC132GS_ABSOLUTE_GAIN_LIMIT
+            int "Maximum absolute gain limit"
+            default 66016
+            range 4000 126016
+            help
+                Use this value to limit the maximum gain that upper level applications can use.
+                To avoid using float type, the size of this value is gain x 1000.
+                Excessive gain can lead to a worse signal-to-noise ratio and may cause the device to overheat, affecting its functionality.
+
+    choice CAMERA_SC132GS_IPA_JSON_CONFIGURATION_FILE
+        prompt "IPA JSON Configuration File"
+        default CAMERA_SC132GS_DEFAULT_IPA_JSON_CONFIGURATION_FILE
+        help
+            Select SC132GS JSON configuration file.
+
+        config CAMERA_SC132GS_DEFAULT_IPA_JSON_CONFIGURATION_FILE
+            bool "Default"
+            help
+                Use the "esp_cam_sensor/sensors/sc132gs/cfg/sc132gs_default.json".
+
+        config CAMERA_SC132GS_CUSTOMIZED_IPA_JSON_CONFIGURATION_FILE
+            bool "Customized"
+            help
+                Use a customized SC132GS JSON configuration file. Users should configure
+                the file's path using the option "CAMERA_SC132GS_CUSTOMIZED_IPA_JSON_CONFIGURATION_FILE_PATH."
+    endchoice
+
+    config CAMERA_SC132GS_CUSTOMIZED_IPA_JSON_CONFIGURATION_FILE_PATH
+        string "SC132GS Customized JSON Configuration File Path"
+        depends on CAMERA_SC132GS_CUSTOMIZED_IPA_JSON_CONFIGURATION_FILE
+        help
+            Customized SC132GS JSON configuration file's path and this path is evaluated
+            relative to the project root directory by default.
+endif

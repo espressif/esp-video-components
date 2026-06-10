@@ -89,6 +89,9 @@
 #elif CONFIG_CAMERA_SC121AT
 #include "sc121at.h"
 #define SCCB0_CAM_DEVICE_ADDR SC121AT_SCCB_ADDR
+#elif CONFIG_CAMERA_SC132GS
+#include "sc132gs.h"
+#define SCCB0_CAM_DEVICE_ADDR SC132GS_SCCB_ADDR
 #elif CONFIG_CAMERA_SC202CS
 #include "sc202cs.h"
 #define SCCB0_CAM_DEVICE_ADDR SC202CS_SCCB_ADDR
@@ -229,6 +232,8 @@ TEST_CASE("Camera sensor detect test", "[video]")
     cam0 = sc101iot_detect(&cam0_config);
 #elif CONFIG_CAMERA_SC121AT
     cam0 = sc121at_detect(&cam0_config);
+#elif CONFIG_CAMERA_SC132GS
+    cam0 = sc132gs_detect(&cam0_config);
 #elif CONFIG_CAMERA_SC202CS
     cam0 = sc202cs_detect(&cam0_config);
 #elif CONFIG_CAMERA_SC2331

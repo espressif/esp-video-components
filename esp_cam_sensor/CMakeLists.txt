@@ -134,6 +134,12 @@ if(CONFIG_CAMERA_SC101IOT)
     list(APPEND priv_include_dirs "sensors/sc101iot/private_include")
 endif()
 
+if(CONFIG_CAMERA_SC132GS)
+    list(APPEND srcs "sensors/sc132gs/sc132gs.c")
+    list(APPEND include_dirs "sensors/sc132gs/include")
+    list(APPEND priv_include_dirs "sensors/sc132gs/private_include")
+endif()
+
 if(CONFIG_CAMERA_SC030IOT)
     list(APPEND srcs "sensors/sc030iot/sc030iot.c")
     list(APPEND include_dirs "sensors/sc030iot/include")
@@ -318,6 +324,10 @@ if(CONFIG_CAMERA_SENSOR_MOTOR_DETECT_METHOD_DYNAMIC_LINK)
 
     if(CONFIG_CAMERA_SC030IOT_AUTO_DETECT_DVP_INTERFACE_SENSOR OR CONFIG_CAMERA_SC030IOT_AUTO_DETECT_MIPI_INTERFACE_SENSOR)
         target_link_libraries(${COMPONENT_LIB} INTERFACE "-u sc030iot_detect")
+    endif()
+
+    if(CONFIG_CAMERA_SC132GS_AUTO_DETECT_MIPI_INTERFACE_SENSOR)
+        target_link_libraries(${COMPONENT_LIB} INTERFACE "-u sc132gs_detect")
     endif()
 
     if(CONFIG_CAMERA_OV2710_AUTO_DETECT_MIPI_INTERFACE_SENSOR)

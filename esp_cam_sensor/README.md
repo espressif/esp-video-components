@@ -53,6 +53,7 @@ It is highly recommended that users use it in the [esp-video](https://github.com
 | SC030IOT  | 640 x 480    | MIPI & DVP | YCbCr422<br/>8bit Raw RGB data | 1/6.5"     |
 | SC035HGS  | 640 x 480    | MIPI & DVP | Raw MONO<br/>Raw RGB data | 1/6"     |
 | SC101IOT  | 1280 x 720    | DVP | YCbCr422<br/>8/10-bit Raw RGB data | 1/4.2"     |
+| SC132GS  | 1080 x 1280    | MIPI | 8/10-bit Raw RGB/MONO data | 1/4"     |
 | SC202CS(SC2356) | 1600 x 1200    | MIPI      | 8/10-bit Raw RGB data | 1/5.1"     |
 | SC1346  | 1280 x 720    | MIPI      | 8/10-bit Raw RGB data | 1/4.5"     |
 | SC2331  | 1920 x 1080    | MIPI      | 8/10-bit Raw RGB data | 1/3.2"     |
