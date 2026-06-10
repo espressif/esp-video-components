@@ -1,5 +1,8 @@
 # Changelog
 
+## Unreleased
+- Added SC2331 MIPI RAW sensor driver.
+
 ## 2.3.0
 
 - Added information about the document system to README.md.
