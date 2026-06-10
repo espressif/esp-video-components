@@ -41,10 +41,10 @@
             "model": 2,
             "min_red_gain_step": 0.05,
             "min_blue_gain_step": 0.05,
-            "min_counted": 1200,
+            "min_counted": 10,
             "range":
             {
-                "green": { "max": 208, "min": 98 },
+                "green": { "max": 208, "min": 18 },
                 "rg":    { "max": 0.97, "min": 0.32 },
                 "bg":    { "max": 0.80, "min": 0.22 }
             },
@@ -53,6 +53,8 @@
             "green_luma_step_ratio": 0.3,
             "new_w": 0.3,
             "prev_w": 0.7,
+            "red_gain_scale": 1.1,
+            "blue_gain_scale": 1.1,
             "export_ct": true,
             "outlier_rg": 0.08,
             "outlier_bg": 0.08,
@@ -63,13 +65,13 @@
                 { "type": "hct",   "rg": {"min": 0.48, "max": 0.58}, "bg": {"min": 0.59, "max": 0.63}, "enabled": true },
                 { "type": "mct",   "rg": {"min": 0.55, "max": 0.68}, "bg": {"min": 0.52, "max": 0.59}, "enabled": true },
                 { "type": "lct",   "rg": {"min": 0.65, "max": 0.82}, "bg": {"min": 0.40, "max": 0.52}, "enabled": true },
-                { "type": "ulct",  "rg": {"min": 0.82, "max": 1.05}, "bg": {"min": 0.22, "max": 0.40}, "enabled": true }
+                { "type": "ulct",  "rg": {"min": 0.82, "max": 1.05}, "bg": {"min": 0.22, "max": 0.40}, "enabled": false }
             ],
             "ref_points":
             [
                 { "ct": 2567,  "rg": 0.9778, "bg": 0.2834, "radius": 0.02 },
-                { "ct": 3673,  "rg": 0.7598, "bg": 0.4496, "radius": 0.01 },
-                { "ct": 3946,  "rg": 0.7230, "bg": 0.4729, "radius": 0.01 },
+                { "ct": 3673,  "rg": 0.7598, "bg": 0.4496, "radius": 0.02 },
+                { "ct": 3946,  "rg": 0.7230, "bg": 0.4729, "radius": 0.02 },
                 { "ct": 4377,  "rg": 0.6753, "bg": 0.5081, "radius": 0.03 },
                 { "ct": 4862,  "rg": 0.6308, "bg": 0.5416, "radius": 0.04 },
                 { "ct": 5625,  "rg": 0.5736, "bg": 0.5814, "radius": 0.04 },
