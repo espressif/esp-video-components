@@ -35,6 +35,9 @@
 #elif CONFIG_CAMERA_GC0308
 #include "gc0308.h"
 #define SCCB0_CAM_DEVICE_ADDR GC0308_SCCB_ADDR
+#elif CONFIG_CAMERA_GC2053
+#include "gc2053.h"
+#define SCCB0_CAM_DEVICE_ADDR GC2053_SCCB_ADDR
 #elif CONFIG_CAMERA_GC2145
 #include "gc2145.h"
 #define SCCB0_CAM_DEVICE_ADDR GC2145_SCCB_ADDR
@@ -196,6 +199,8 @@ TEST_CASE("Camera sensor detect test", "[video]")
     cam0 = bf3a03_detect(&cam0_config);
 #elif CONFIG_CAMERA_GC0308
     cam0 = gc0308_detect(&cam0_config);
+#elif CONFIG_CAMERA_GC2053
+    cam0 = gc2053_detect(&cam0_config);
 #elif CONFIG_CAMERA_GC2145
     cam0 = gc2145_detect(&cam0_config);
 #elif CONFIG_CAMERA_LT6911

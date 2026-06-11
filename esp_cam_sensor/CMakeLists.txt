@@ -92,6 +92,12 @@ if(CONFIG_CAMERA_GC0308)
     list(APPEND priv_include_dirs "sensors/gc0308/private_include")
 endif()
 
+if(CONFIG_CAMERA_GC2053)
+    list(APPEND srcs "sensors/gc2053/gc2053.c")
+    list(APPEND include_dirs "sensors/gc2053/include")
+    list(APPEND priv_include_dirs "sensors/gc2053/private_include")
+endif()
+
 if(CONFIG_CAMERA_GC2145)
     list(APPEND srcs "sensors/gc2145/gc2145.c")
     list(APPEND include_dirs "sensors/gc2145/include")
@@ -292,6 +298,10 @@ if(CONFIG_CAMERA_SENSOR_MOTOR_DETECT_METHOD_DYNAMIC_LINK)
 
     if(CONFIG_CAMERA_GC0308_AUTO_DETECT_DVP_INTERFACE_SENSOR)
         target_link_libraries(${COMPONENT_LIB} INTERFACE "-u gc0308_detect")
+    endif()
+
+    if(CONFIG_CAMERA_GC2053_AUTO_DETECT_MIPI_INTERFACE_SENSOR)
+        target_link_libraries(${COMPONENT_LIB} INTERFACE "-u gc2053_detect")
     endif()
 
     if(CONFIG_CAMERA_GC2145_AUTO_DETECT_MIPI_INTERFACE_SENSOR OR CONFIG_CAMERA_GC2145_AUTO_DETECT_DVP_INTERFACE_SENSOR)
