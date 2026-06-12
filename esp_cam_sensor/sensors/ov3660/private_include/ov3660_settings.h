@@ -404,6 +404,9 @@ static const ov3660_reginfo_t ov3660_sensor_default_regs[] = {
     {0x460c, 0x22}, \
 
 #include "ov3660_dvp_8bit_10Minput_1280x720_jpeg_12fps.h"
+#include "ov3660_dvp_8bit_20Minput_240x240_jpeg_30fps.h"
+#include "ov3660_dvp_8bit_20Minput_320x240_jpeg_25fps.h"
+#include "ov3660_dvp_8bit_20Minput_640x480_jpeg_25fps.h"
 #include "ov3660_dvp_8bit_20Minput_240x240_rgb565_be_24fps.h"
 #include "ov3660_dvp_8bit_20Minput_240x240_yuv422_yuyv_24fps.h"
 #include "ov3660_dvp_8bit_20Minput_640x480_rgb565_be_10fps.h"

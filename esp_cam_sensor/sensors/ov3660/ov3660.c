@@ -41,7 +41,7 @@ struct ov3660_cam {
 #endif
 #define delay_ms(ms)  vTaskDelay((ms > portTICK_PERIOD_MS ? ms/ portTICK_PERIOD_MS : 1))
 #define OV3660_SUPPORT_NUM CONFIG_CAMERA_OV3660_MAX_SUPPORT
-#define OV3660_AE_LEVEL_DEFAULT (0x0)
+#define OV3660_AE_LEVEL_DEFAULT (-2)
 #define OV3660_XCLK_DEFAULT       (20*1000*1000)
 
 static const char *TAG = "ov3660";
@@ -67,6 +67,15 @@ static const uint8_t ov3660_format_index[] = {
 #endif
 #if CONFIG_CAMERA_OV3660_DVP_JPEG_1280X720_12FPS
     4,
+#endif
+#if CONFIG_CAMERA_OV3660_DVP_JPEG_240X240_30FPS
+    5,
+#endif
+#if CONFIG_CAMERA_OV3660_DVP_JPEG_320X240_25FPS
+    6,
+#endif
+#if CONFIG_CAMERA_OV3660_DVP_JPEG_640X480_25FPS
+    7,
 #endif
 };
 
@@ -140,12 +149,60 @@ static const esp_cam_sensor_format_t ov3660_format_info[] = {
         .name = "DVP_8bit_20Minput_JPEG_1280x720_12fps",
         .format = ESP_CAM_SENSOR_PIXFORMAT_JPEG,
         .port = ESP_CAM_SENSOR_DVP,
-        .xclk = 20000000,
+        .xclk = 10000000,
         .width = 1280,
         .height = 720,
         .regs = ov3660_dvp_8bit_10Minput_1280x720_jpeg_12fps,
         .regs_size = ARRAY_SIZE(ov3660_dvp_8bit_10Minput_1280x720_jpeg_12fps),
         .fps = 12,
+        .isp_info = NULL,
+        .mipi_info = {},
+        .reserved = NULL,
+    },
+#endif
+#if CONFIG_CAMERA_OV3660_DVP_JPEG_240X240_30FPS
+    {
+        .name = "DVP_8bit_20Minput_JPEG_240x240_30fps",
+        .format = ESP_CAM_SENSOR_PIXFORMAT_JPEG,
+        .port = ESP_CAM_SENSOR_DVP,
+        .xclk = 20000000,
+        .width = 240,
+        .height = 240,
+        .regs = ov3660_dvp_8bit_20Minput_240x240_jpeg_30fps,
+        .regs_size = ARRAY_SIZE(ov3660_dvp_8bit_20Minput_240x240_jpeg_30fps),
+        .fps = 30,
+        .isp_info = NULL,
+        .mipi_info = {},
+        .reserved = NULL,
+    },
+#endif
+#if CONFIG_CAMERA_OV3660_DVP_JPEG_320X240_25FPS
+    {
+        .name = "DVP_8bit_20Minput_JPEG_320x240_25fps",
+        .format = ESP_CAM_SENSOR_PIXFORMAT_JPEG,
+        .port = ESP_CAM_SENSOR_DVP,
+        .xclk = 20000000,
+        .width = 320,
+        .height = 240,
+        .regs = ov3660_dvp_8bit_20Minput_320x240_jpeg_25fps,
+        .regs_size = ARRAY_SIZE(ov3660_dvp_8bit_20Minput_320x240_jpeg_25fps),
+        .fps = 25,
+        .isp_info = NULL,
+        .mipi_info = {},
+        .reserved = NULL,
+    },
+#endif
+#if CONFIG_CAMERA_OV3660_DVP_JPEG_640X480_25FPS
+    {
+        .name = "DVP_8bit_20Minput_JPEG_640x480_25fps",
+        .format = ESP_CAM_SENSOR_PIXFORMAT_JPEG,
+        .port = ESP_CAM_SENSOR_DVP,
+        .xclk = 20000000,
+        .width = 640,
+        .height = 480,
+        .regs = ov3660_dvp_8bit_20Minput_640x480_jpeg_25fps,
+        .regs_size = ARRAY_SIZE(ov3660_dvp_8bit_20Minput_640x480_jpeg_25fps),
+        .fps = 25,
         .isp_info = NULL,
         .mipi_info = {},
         .reserved = NULL,
@@ -219,9 +276,14 @@ static esp_err_t ov3660_set_test_pattern(esp_cam_sensor_device_t *dev, int enabl
     return ov3660_set_reg_bits(dev->sccb_handle, 0x503d, 7, 1, enable ? 0x01 : 0x00);
 }
 
-static esp_err_t ov3660_set_jpeg_quality(esp_cam_sensor_device_t *dev, int qs)
+static esp_err_t ov3660_set_jpeg_quality(esp_cam_sensor_device_t *dev, int quality)
 {
-    return ov3660_write(dev->sccb_handle, COMPRESSION_CTRL07, qs & 0x3f);
+    if (quality < 1 || quality > 40) {
+        return ESP_ERR_INVALID_ARG;
+    }
+    /* QS (COMPRESSION_CTRL07[5:0]): lower register value means higher JPEG quality */
+    int qs = 41 - quality;
+    return ov3660_write(dev->sccb_handle, COMPRESSION_CTRL07, qs);
 }
 
 static esp_err_t ov3660_set_saturation(esp_cam_sensor_device_t *dev, int level)
@@ -416,7 +478,7 @@ static esp_err_t ov3660_query_para_desc(esp_cam_sensor_device_t *dev, esp_cam_se
     case ESP_CAM_SENSOR_JPEG_QUALITY:
         qdesc->type = ESP_CAM_SENSOR_PARAM_TYPE_NUMBER;
         qdesc->number.minimum = 1;
-        qdesc->number.maximum = 63;
+        qdesc->number.maximum = 40;
         qdesc->number.step = 1;
         qdesc->default_value = 0x11;
         break;

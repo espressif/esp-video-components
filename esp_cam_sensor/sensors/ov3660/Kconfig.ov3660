@@ -17,18 +17,39 @@ if CAMERA_OV3660
     endmenu
 
     menu "Choose supported formats for DVP interface"
-        config CAMERA_OV3660_DVP_JPEG_1280X720_12FPS
-            bool "DVP 8-bit, 10M input, 1280x720  12fps, JPEG"
+        config CAMERA_OV3660_DVP_YUV422_YUYV_240X240_24FPS
+            bool "DVP 8-bit, 20M input,  240x240  24fps, YUV422(YUYV)"
             default n
             help
-                JPEG format at 1280x720 resolution (HD) with 12fps framerate.
-                Requires 8-bit DVP interface and 10MHz input clock.
-
+                YUV422(YUYV) color format at 240x240 resolution with 24fps framerate.
+                Requires 8-bit DVP interface and 20MHz input clock.
+        
         config CAMERA_OV3660_DVP_RGB565_BE_240X240_24FPS
             bool "DVP 8-bit, 20M input,  240x240  24fps, RGB565(BE)"
             default n
             help
                 RGB565(BE) color format at 240x240 resolution with 24fps framerate.
+                Requires 8-bit DVP interface and 20MHz input clock.
+
+        config CAMERA_OV3660_DVP_JPEG_240X240_30FPS
+            bool "DVP 8-bit, 20M input,  240x240  30fps, JPEG"
+            default n
+            help
+                JPEG format at 240x240 resolution with 30fps framerate.
+                Requires 8-bit DVP interface and 20MHz input clock.
+
+        config CAMERA_OV3660_DVP_JPEG_320X240_25FPS
+            bool "DVP 8-bit, 20M input,  320x240  25fps, JPEG"
+            default n
+            help
+                JPEG format at 320x240 resolution (QVGA) with 25fps framerate.
+                Requires 8-bit DVP interface and 20MHz input clock.
+
+        config CAMERA_OV3660_DVP_JPEG_640X480_25FPS
+            bool "DVP 8-bit, 20M input,  640x480  25fps, JPEG"
+            default n
+            help
+                JPEG format at 640x480 resolution (VGA) with 25fps framerate.
                 Requires 8-bit DVP interface and 20MHz input clock.
 
         config CAMERA_OV3660_DVP_RGB565_BE_640X480_10FPS
@@ -38,19 +59,19 @@ if CAMERA_OV3660
                 RGB565(BE) color format at 640x480 resolution (VGA) with 10fps framerate.
                 Requires 8-bit DVP interface and 20MHz input clock.
 
-        config CAMERA_OV3660_DVP_YUV422_YUYV_240X240_24FPS
-            bool "DVP 8-bit, 20M input,  240x240  24fps, YUV422(YUYV)"
-            default n
-            help
-                YUV422(YUYV) color format at 240x240 resolution with 24fps framerate.
-                Requires 8-bit DVP interface and 20MHz input clock.
-
         config CAMERA_OV3660_DVP_YUV422_YUYV_640X480_10FPS
             bool "DVP 8-bit, 20M input,  640x480  10fps, YUV422(YUYV)"
             default y
             help
                 YUV422(YUYV) color format at 640x480 resolution (VGA) with 10fps framerate.
                 Requires 8-bit DVP interface and 20MHz input clock.
+        
+        config CAMERA_OV3660_DVP_JPEG_1280X720_12FPS
+            bool "DVP 8-bit, 10M input, 1280x720  12fps, JPEG"
+            default n
+            help
+                JPEG format at 1280x720 resolution (HD) with 12fps framerate.
+                Requires 8-bit DVP interface and 10MHz input clock.
     endmenu
 
     choice CAMERA_OV3660_DVP_DEFAULT_FMT
@@ -65,6 +86,18 @@ if CAMERA_OV3660
         config CAMERA_OV3660_DVP_DEFAULT_FMT_JPEG_1280X720_12FPS
             bool "DVP 8-bit, 10M input, 1280x720  12fps, JPEG"
             depends on CAMERA_OV3660_DVP_JPEG_1280X720_12FPS
+
+        config CAMERA_OV3660_DVP_DEFAULT_FMT_JPEG_240X240_30FPS
+            bool "DVP 8-bit, 20M input,  240x240  30fps, JPEG"
+            depends on CAMERA_OV3660_DVP_JPEG_240X240_30FPS
+
+        config CAMERA_OV3660_DVP_DEFAULT_FMT_JPEG_320X240_25FPS
+            bool "DVP 8-bit, 20M input,  320x240  25fps, JPEG"
+            depends on CAMERA_OV3660_DVP_JPEG_320X240_25FPS
+
+        config CAMERA_OV3660_DVP_DEFAULT_FMT_JPEG_640X480_25FPS
+            bool "DVP 8-bit, 20M input,  640x480  25fps, JPEG"
+            depends on CAMERA_OV3660_DVP_JPEG_640X480_25FPS
 
         config CAMERA_OV3660_DVP_DEFAULT_FMT_RGB565_BE_240X240_24FPS
             bool "DVP 8-bit, 20M input,  240x240  24fps, RGB565(BE)"
@@ -90,6 +123,9 @@ if CAMERA_OV3660
         default 2 if CAMERA_OV3660_DVP_DEFAULT_FMT_RGB565_BE_640X480_10FPS
         default 3 if CAMERA_OV3660_DVP_DEFAULT_FMT_YUV422_YUYV_640X480_10FPS
         default 4 if CAMERA_OV3660_DVP_DEFAULT_FMT_JPEG_1280X720_12FPS
+        default 5 if CAMERA_OV3660_DVP_DEFAULT_FMT_JPEG_240X240_30FPS
+        default 6 if CAMERA_OV3660_DVP_DEFAULT_FMT_JPEG_320X240_25FPS
+        default 7 if CAMERA_OV3660_DVP_DEFAULT_FMT_JPEG_640X480_25FPS
         help
             Sets the default configuration for the DVP interface.
             Use query_support_formats() API to get more format options.
