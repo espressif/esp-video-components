@@ -2,6 +2,15 @@
 # See https://pre-commit.com/hooks.html for more hooks
 
 repos:
+  - repo: local
+    hooks:
+      - id: check-cam-sensor-detect
+        name: check cam sensor detect registration
+        entry: python3 tools/ci/check_cam_sensor_detect.py
+        language: system
+        pass_filenames: false
+        files: ^esp_cam_sensor/(sensors/|src/esp_cam_sensor_detect\.c)
+
   - repo: https://github.com/espressif/check-copyright/
     rev: v1.0.3
     hooks:

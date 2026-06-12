@@ -209,6 +209,37 @@ ESP_CAM_SENSOR_DETECT_FN(sc2336_detect, ESP_CAM_SENSOR_DVP, SC2336_SCCB_ADDR)
 }
 ```
 
+Register in `src/esp_cam_sensor_detect.c`:
+
+1. `#include` sensor header.
+2. `ESP_CAM_SENSOR_DETECT_DECLARE` per enabled interface.
+3. `ESP_CAM_SENSOR_DETECT_ENTRY` in `__esp_cam_sensor_detect_fn_array_start[]`.
+
+Example (SC2336):
+
+```c
+#if CONFIG_CAMERA_SC2336
+#include "sc2336.h"
+#endif
+
+#if CONFIG_CAMERA_SC2336_AUTO_DETECT_MIPI_INTERFACE_SENSOR
+ESP_CAM_SENSOR_DETECT_DECLARE(sc2336_detect, ESP_CAM_SENSOR_MIPI_CSI);
+#endif
+#if CONFIG_CAMERA_SC2336_AUTO_DETECT_DVP_INTERFACE_SENSOR
+ESP_CAM_SENSOR_DETECT_DECLARE(sc2336_detect, ESP_CAM_SENSOR_DVP);
+#endif
+
+static const esp_cam_sensor_detect_fn_t __esp_cam_sensor_detect_fn_array_start[] = {
+    /* ... other sensors ... */
+#if CONFIG_CAMERA_SC2336_AUTO_DETECT_MIPI_INTERFACE_SENSOR
+    ESP_CAM_SENSOR_DETECT_ENTRY(sc2336_detect, ESP_CAM_SENSOR_MIPI_CSI, SC2336_SCCB_ADDR),
+#endif
+#if CONFIG_CAMERA_SC2336_AUTO_DETECT_DVP_INTERFACE_SENSOR
+    ESP_CAM_SENSOR_DETECT_ENTRY(sc2336_detect, ESP_CAM_SENSOR_DVP, SC2336_SCCB_ADDR),
+#endif
+};
+```
+
 #### Update compilation files and documentation
 
 Taking SC2336 as an example, the updates of each file are as follows:

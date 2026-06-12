@@ -6,13 +6,16 @@
     - Capture a video stream and encode it using either the JPEG or H.264 encoder
     - Capture a JPEG stream and decode it using the JPEG decoder
     - Capture a video stream, decode it using the JPEG decoder, and then encode it using the H.264 encoder
+- Added JPEG hardware decode video device
 
 - MIPI-CSI video device now supports swapping the endianness for 32-bit (u32) data
+- Use function calls instead of relying on global data
+    - Enabling the options `CAMERA_SENSOR_MOTOR_DETECT_METHOD_STATIC_STORE` and `ESP_IPA_DETECT_METHOD_STATIC_STORE` now prevents unused functions from being linked into the firmware
 
 - Fixed a compilation issue with the ioctl macro definitions in certain cases
 - Fixed ISP processor clock frequency being hardcoded to 80 MHz regardless of the selected clock source; `clk_hz` is now derived from `clk_src` (XTAL → 40 MHz, PLL160 → 160 MHz, PLL240 → 240 MHz) to prevent FIFO overflow errors
 - Fixed an issue where USB UVC video device queue buffers were not handled correctly after streaming was stopped.
-- Added JPEG hardware decode video device
+
 
 ## 2.2.0
 

@@ -80,11 +80,14 @@ camera motor 的驱动程序提供下述功能：
 探测指定 sccb 总线上的所有设备
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-camera motor 驱动提供了一个数组，以供用户探测指定的 sccb 上连接的所有对焦电机设备。
+camera motor 驱动提供了一个数组，以供用户探测指定的 sccb 上连接的所有对焦电机设备。请通过 ``esp_cam_motor_detect_get_array()`` 获取该数组的起止指针，以兼容不同的设备探测方式。
 
 .. code-block:: c
 
-    for (esp_cam_motor_detect_fn_t *p = &__esp_cam_motor_detect_fn_array_start; p < &__esp_cam_motor_detect_fn_array_end; p++) {
+    esp_cam_motor_detect_fn_t *array_start = NULL;
+    esp_cam_motor_detect_fn_t *array_end = NULL;
+    esp_cam_motor_detect_get_array(&array_start, &array_end);
+    for (esp_cam_motor_detect_fn_t *p = array_start; p < array_end; p++) {
         esp_cam_motor_config_t cfg = {0};
         esp_cam_motor_device_t *motor_dev;
         const esp_video_init_cam_motor_config_t *cm = config->cam_motor;
@@ -151,6 +154,13 @@ Kconfig 选项
 ^^^^^^^^^^^^^^^^
 
 每一个对焦电机都有一个配置文件，以 DW9714 为例，对应的是 ``sensors/dw9714/Kconfig.dw9714`` 文件。通过该文件可以配置设备默认加载的格式、是否启用自动探测功能等。
+
+此外，还有一些通用的配置选项：
+
+- ``CONFIG_CAMERA_SENSOR_MOTOR_DETECT_METHOD`` 用于选择相机传感器与对焦电机的设备探测方式，支持以下两种模式：
+
+  - ``CONFIG_CAMERA_SENSOR_MOTOR_DETECT_METHOD_DYNAMIC_LINK``（默认）：通过 ``esp_cam_motor_detect_fn`` 链接器段，将当前固件中所有可用的对焦电机探测函数及其配置数据自动纳入固件。即使应用代码未显式引用这些函数，链接器也会保留它们，从而支持对所有已启用电机的自动探测，但固件体积相对较大。
+  - ``CONFIG_CAMERA_SENSOR_MOTOR_DETECT_METHOD_STATIC_STORE``：仅将应用实际引用的对焦电机探测函数及其配置数据以 C 语言数组形式静态存储在 Flash 中。未被引用的探测函数和数据可由链接器从最终固件中排除，从而减小二进制体积。
 
 API 参考
 -------------------------

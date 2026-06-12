@@ -5,6 +5,12 @@
     - host_test
   dependencies: []
 
+check_cam_sensor_detect:
+  extends:
+    - .pre_check_template
+  script:
+    - python3 tools/ci/check_cam_sensor_detect.py
+
 check_pre_commit:
   extends:
     - .pre_check_template

@@ -347,4 +347,30 @@ menu "Espressif Camera Sensors Configurations"
                 Consider to the message process operations may not cost much time, so default value of 23 provides
                 good performance for most applications.
     endif
+
+    choice CAMERA_SENSOR_MOTOR_DETECT_METHOD
+        prompt "Choose camera sensor and motor detection method"
+        default CAMERA_SENSOR_MOTOR_DETECT_METHOD_DYNAMIC_LINK
+        help
+            Specify how the camera sensor and motor detection functions and configuration data are included in the firmware.
+
+        config CAMERA_SENSOR_MOTOR_DETECT_METHOD_DYNAMIC_LINK
+            bool "Dynamic linking of camera sensor and motor detection functions"
+            help
+                Automatically include all available camera sensor and motor detection functions and related configuration data
+                in firmware via the esp_cam_sensor_detect_fn and esp_cam_motor_detect_fn sections in flash memory.
+
+                In this mode, the linker retains all detection functions and configuration data, even if they are not
+                explicitly referenced by the application code. This ensures that auto-detection works for all supported
+                sensors and motors but will increase the overall firmware size.
+
+        config CAMERA_SENSOR_MOTOR_DETECT_METHOD_STATIC_STORE
+            bool "Static inclusion of camera sensor and motor detection objects"
+            help
+                Only include the detection functions and configuration data for sensors and motors that are actually referenced by
+                the application, with data stored in a flash-based C-language array.
+
+                With this mode, if detection functions or data are unused in your application, the linker will exclude
+                them from the final firmware, resulting in a smaller binary size.
+    endchoice
 endmenu
