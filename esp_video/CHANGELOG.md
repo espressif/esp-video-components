@@ -3,6 +3,8 @@
 - Added information about the document system to README.md.
 - Added a common camera interface module to manage MIPI-CSI, DVP, and SPI video devices globally
 
+- MIPI-CSI video device now supports swapping the endianness for 32-bit (u32) data
+
 - Fixed a compilation issue with the ioctl macro definitions in certain cases
 - Fixed ISP processor clock frequency being hardcoded to 80 MHz regardless of the selected clock source; `clk_hz` is now derived from `clk_src` (XTAL → 40 MHz, PLL160 → 160 MHz, PLL240 → 240 MHz) to prevent FIFO overflow errors
 - Fixed an issue where USB UVC video device queue buffers were not handled correctly after streaming was stopped.
