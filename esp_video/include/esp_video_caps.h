@@ -77,6 +77,10 @@ extern "C" {
 #if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 5, 0)
 #define ESP_VIDEO_ISP_DRIVER_HAS_BYPASS 1  /*!< ISP driver supports bypass mode */
 #endif /* ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 5, 0) */
+
+#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 5, 0)
+#define ESP_VIDEO_ISP_DRIVER_HAS_BYTE_SWAP 1  /*!< ISP driver supports byte swap mode */
+#endif /* ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 5, 0) */
 #endif /* CONFIG_IDF_TARGET_ESP32P4 */
 
 /**

@@ -297,9 +297,11 @@ static esp_err_t start_isp(esp_video_device_common_t *common, bool isp_swap_shor
 #endif
     };
 
+#if ESP_VIDEO_ISP_DRIVER_HAS_BYTE_SWAP
     if (isp_swap_short_required) {
         isp_config.flags.byte_swap_en = true;
     }
+#endif
 
     // Set clk_hz according to clk_src
     switch (isp_config.clk_src) {
@@ -366,6 +368,7 @@ static esp_err_t csi_video_start(esp_video_device_common_t *common, esp_cam_ctlr
     esp_err_t ret = ESP_OK;
     bool isp_swap_short_required = false;
 
+#if ESP_VIDEO_ISP_DRIVER_HAS_BYTE_SWAP
     uint32_t data_seq = ESP_CAM_SENSOR_DATA_SEQ_NONE;
     if (esp_cam_sensor_get_para_value(common->cam.sensor, ESP_CAM_SENSOR_DATA_SEQ, &data_seq, sizeof(data_seq)) == ESP_OK) {
         if (data_seq == ESP_CAM_SENSOR_DATA_SEQ_WORD_INTERNAL_SWAPPED) {
@@ -373,6 +376,7 @@ static esp_err_t csi_video_start(esp_video_device_common_t *common, esp_cam_ctlr
             ESP_LOGI(TAG, "ISP swap short enabled");
         }
     }
+#endif
 
     ESP_RETURN_ON_ERROR(start_csi_swap_short(common, isp_swap_short_required), TAG, "failed to start CSI swap short");
     ESP_GOTO_ON_ERROR(start_csi_ctlr(common, cam_ctrl_handle_ret, isp_swap_short_required), fail_0, TAG, "failed to start CSI ctlr");
