@@ -417,6 +417,8 @@ static esp_err_t uvc_video_stop(struct esp_video *video, uint32_t type)
 {
     struct esp_video_buffer_element *element;
     struct uvc_video *device = VIDEO_PRIV_DATA(struct uvc_video *, video);
+    struct esp_video_buffer *buffer = CAPTURE_VIDEO_BUF(video);
+    int buffer_count = CAPTURE_VIDEO_BUF_COUNT(video);
 
     ESP_RETURN_ON_FALSE(device->dev_addr, ESP_ERR_NOT_FOUND, TAG, "UVC device=%p is not connected", device);
 
@@ -430,6 +432,13 @@ static esp_err_t uvc_video_stop(struct esp_video *video, uint32_t type)
     }
 
     ESP_RETURN_ON_ERROR(uvc_host_stream_close(device->stream_hdl), TAG, "Failed to close UVC stream");
+
+    /**
+     * Clear the private data of the buffer elements, so will not be passed to the UVC stream in the function uvc_video_notify.
+     */
+    for (int i = 0; i < buffer_count; i++) {
+        buffer->element[i].priv_data = NULL;
+    }
 
     return ESP_OK;
 }
