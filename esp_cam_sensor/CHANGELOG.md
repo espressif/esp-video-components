@@ -3,9 +3,12 @@
 ## Unreleased
 
 - Added information about the document system to README.md.
+- Added more output size formats to the OV3660 driver and fixed the configuration method for JPEG compression factor.
+
+- Adjust AWB configuration in sc2336_default_p4_eco5.json for better white balance stability
+
 - Fixed the macro definition representing automatic detection in the OV9281 driver.
 - Fixed the description of the interface in the readme document for SC030IOT.
-- Added more output size formats to the OV3660 driver and fixed the configuration method for JPEG compression factor.
 
 ## 2.2.0
 
