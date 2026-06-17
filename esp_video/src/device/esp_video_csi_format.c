@@ -364,7 +364,7 @@ esp_err_t esp_video_csi_enum_format(esp_cam_sensor_output_format_t sensor_fmt, u
  * given the sensor's output format and the capabilities of ISP and MIPI-CSI.
  *
  * @param sensor_fmt Sensor output format
- * @param v4l2_fmt V4L2 format
+ * @param v4l2_fmt V4L2 format, if 0, use the sensor format
  * @param in_out_format Pointer to the CSI-ISP input/output format structure
  *
  * @return ESP_OK if format is supported, ESP_ERR_NOT_SUPPORTED otherwise
@@ -379,6 +379,13 @@ esp_err_t esp_video_csi_check_format(esp_cam_sensor_output_format_t sensor_fmt, 
     if (sensor_v4l2_fmt == 0) {
         ESP_LOGE(TAG, "Unsupported sensor format: %d", sensor_fmt);
         return ESP_ERR_NOT_SUPPORTED;
+    }
+
+    /**
+     * If the requested format is not set, use the sensor format, so the ISP is in the bypass mode
+     */
+    if (requested_fmt == 0) {
+        requested_fmt = sensor_v4l2_fmt;
     }
 
     ESP_LOGD(TAG, "Checking format: requested=%" PRIx32 ", sensor_fmt=%d (0x%" PRIx32 ")",

@@ -33,7 +33,7 @@ typedef struct esp_video_csi_isp_in_out_format {
  * given the sensor's output format and the capabilities of ISP and MIPI-CSI.
  *
  * @param sensor_fmt Sensor output format
- * @param v4l2_fmt V4L2 format
+ * @param v4l2_fmt V4L2 format, if 0, use the sensor format
  * @param in_out_format Pointer to the CSI-ISP input/output format structure
  *
  * @return ESP_OK if format is supported, ESP_ERR_NOT_SUPPORTED otherwise

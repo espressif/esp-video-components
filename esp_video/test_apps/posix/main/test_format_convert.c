@@ -489,3 +489,41 @@ TEST_CASE("Test format convert when ISP is in enable(on-bypass) mode", "[video]"
         TEST_ASSERT(all_supported);
     }
 }
+
+TEST_CASE("Test ISP bypass mode and requested format is 0", "[video]")
+{
+    esp_cam_sensor_output_format_t sensor_fmt_1[] = {
+        ESP_CAM_SENSOR_PIXFORMAT_RAW8,
+        ESP_CAM_SENSOR_PIXFORMAT_RAW10,
+        ESP_CAM_SENSOR_PIXFORMAT_RGB565,
+        ESP_CAM_SENSOR_PIXFORMAT_RGB888,
+        ESP_CAM_SENSOR_PIXFORMAT_YUV420,
+#if ESP_VIDEO_CSI_DEVICE_CONV_FORMAT
+        ESP_CAM_SENSOR_PIXFORMAT_YUV422_UYVY,
+        ESP_CAM_SENSOR_PIXFORMAT_YUV422_YUYV,
+#else
+        ESP_CAM_SENSOR_PIXFORMAT_YUV422,
+#endif
+    };
+    const uint32_t expected_formats_1[] = {
+        CAM_CTLR_COLOR_RAW8,
+        CAM_CTLR_COLOR_RAW10,
+        CAM_CTLR_COLOR_RGB565,
+        CAM_CTLR_COLOR_RGB888,
+        CAM_CTLR_COLOR_YUV420,
+#if ESP_VIDEO_CSI_DEVICE_CONV_FORMAT
+        CAM_CTLR_COLOR_YUV422_UYVY,
+        CAM_CTLR_COLOR_YUV422_YUYV,
+#else
+        CAM_CTLR_COLOR_YUV422,
+#endif
+    };
+
+    for (int i = 0; i < sizeof(sensor_fmt_1) / sizeof(sensor_fmt_1[0]); i++) {
+        esp_video_csi_isp_in_out_format_t in_out_format = {0};
+        esp_err_t ret = esp_video_csi_check_format(sensor_fmt_1[i], 0, &in_out_format);
+        TEST_ASSERT_EQUAL(ESP_OK, ret);
+        TEST_ASSERT_EQUAL(true, in_out_format.isp_bypass_required);
+        TEST_ASSERT_EQUAL_HEX(expected_formats_1[i], in_out_format.csi_output_fmt);
+    }
+}

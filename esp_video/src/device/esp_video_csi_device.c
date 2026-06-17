@@ -137,7 +137,7 @@ static esp_err_t csi_video_init(esp_video_device_common_t *common)
     return ESP_OK;
 }
 
-static esp_err_t start_csi_ctlr(esp_video_device_common_t *common, esp_cam_ctlr_handle_t *cam_ctrl_handle_ret)
+static esp_err_t start_csi_ctlr(esp_video_device_common_t *common, esp_cam_ctlr_handle_t *cam_ctrl_handle_ret, bool isp_swap_short_required)
 {
     struct csi_video *csi_video = (struct csi_video *)common->priv;
     const esp_cam_sensor_format_t *sensor_format = common->sensor_format;
@@ -163,15 +163,21 @@ static esp_err_t start_csi_ctlr(esp_video_device_common_t *common, esp_cam_ctlr_
 
 #if ESP_VIDEO_CSI_DEVICE_SWAP_SHORT
     /**
-     * If the sensor output format is YUV422, enable 16-bit swap for input data
+     * If the ISP swap short is required, don't enable 16-bit swap for input data
+     * because the ISP swap short will handle the data swapping.
      */
-    if (sensor_format->format == ESP_CAM_SENSOR_PIXFORMAT_YUV422_YUYV ||
-            sensor_format->format == ESP_CAM_SENSOR_PIXFORMAT_YUV422_UYVY) {
-        csi_config.input_16bit_swap_en = true;
+    if (!isp_swap_short_required) {
+        /**
+         * If the sensor output format is YUV422, enable 16-bit swap for input data
+         */
+        if (sensor_format->format == ESP_CAM_SENSOR_PIXFORMAT_YUV422_YUYV ||
+                sensor_format->format == ESP_CAM_SENSOR_PIXFORMAT_YUV422_UYVY) {
+            csi_config.input_16bit_swap_en = true;
 
-        ESP_LOGI(TAG, "16-bit HW swap enabled");
-    } else {
-        ESP_LOGD(TAG, "16-bit HW not enabled");
+            ESP_LOGI(TAG, "16-bit HW swap enabled");
+        } else {
+            ESP_LOGD(TAG, "16-bit HW not enabled");
+        }
     }
 #endif
 
@@ -182,9 +188,19 @@ static esp_err_t start_csi_ctlr(esp_video_device_common_t *common, esp_cam_ctlr_
     return ESP_OK;
 }
 
-static esp_err_t start_csi_swap_short(esp_video_device_common_t *common)
+static esp_err_t start_csi_swap_short(esp_video_device_common_t *common, bool isp_swap_short_required)
 {
 #if ESP_VIDEO_CSI_DEVICE_SW_SWAP_SHORT
+    /**
+     * If the ISP swap short is required, don't start CSI swap short
+     */
+    if (isp_swap_short_required) {
+        ESP_LOGD(TAG, "ISP swap short is required, skipping CSI swap short");
+        return ESP_OK;
+    } else {
+        ESP_LOGD(TAG, "ISP swap short is not required, starting CSI swap short");
+    }
+
     const esp_cam_sensor_format_t *sensor_format = common->sensor_format;
     struct csi_video *csi_video = (struct csi_video *)common->priv;
     struct esp_video *video = common->video;
@@ -244,12 +260,13 @@ static esp_err_t remove_isp_proc(isp_proc_handle_t isp_proc)
  *
  * @param state MIPI-CSI state object
  * @param state MIPI-CSI V4L2 capture format
+ * @param isp_swap_short_required Whether ISP swap short is required
  *
  * @return
  *      - ESP_OK on success
  *      - Others if failed
  */
-static esp_err_t start_isp(esp_video_device_common_t *common)
+static esp_err_t start_isp(esp_video_device_common_t *common, bool isp_swap_short_required)
 {
     esp_err_t ret;
     isp_proc_handle_t isp_proc;
@@ -279,6 +296,12 @@ static esp_err_t start_isp(esp_video_device_common_t *common)
         }
 #endif
     };
+
+#if ESP_VIDEO_ISP_DRIVER_HAS_BYTE_SWAP
+    if (isp_swap_short_required) {
+        isp_config.flags.byte_swap_en = true;
+    }
+#endif
 
     // Set clk_hz according to clk_src
     switch (isp_config.clk_src) {
@@ -343,10 +366,21 @@ static esp_err_t stop_isp(esp_video_device_common_t *common)
 static esp_err_t csi_video_start(esp_video_device_common_t *common, esp_cam_ctlr_handle_t *cam_ctrl_handle_ret)
 {
     esp_err_t ret = ESP_OK;
+    bool isp_swap_short_required = false;
 
-    ESP_RETURN_ON_ERROR(start_csi_swap_short(common), TAG, "failed to start CSI swap short");
-    ESP_GOTO_ON_ERROR(start_csi_ctlr(common, cam_ctrl_handle_ret), fail_0, TAG, "failed to start CSI ctlr");
-    ESP_GOTO_ON_ERROR(start_isp(common), fail_1, TAG, "failed to start ISP");
+#if ESP_VIDEO_ISP_DRIVER_HAS_BYTE_SWAP
+    uint32_t data_seq = ESP_CAM_SENSOR_DATA_SEQ_NONE;
+    if (esp_cam_sensor_get_para_value(common->cam.sensor, ESP_CAM_SENSOR_DATA_SEQ, &data_seq, sizeof(data_seq)) == ESP_OK) {
+        if (data_seq == ESP_CAM_SENSOR_DATA_SEQ_WORD_INTERNAL_SWAPPED) {
+            isp_swap_short_required = true;
+            ESP_LOGI(TAG, "ISP swap short enabled");
+        }
+    }
+#endif
+
+    ESP_RETURN_ON_ERROR(start_csi_swap_short(common, isp_swap_short_required), TAG, "failed to start CSI swap short");
+    ESP_GOTO_ON_ERROR(start_csi_ctlr(common, cam_ctrl_handle_ret, isp_swap_short_required), fail_0, TAG, "failed to start CSI ctlr");
+    ESP_GOTO_ON_ERROR(start_isp(common, isp_swap_short_required), fail_1, TAG, "failed to start ISP");
 
     return ESP_OK;
 
