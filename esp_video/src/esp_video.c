@@ -60,10 +60,16 @@ static const struct esp_video_format_desc_map esp_video_format_desc_maps[] = {
         V4L2_PIX_FMT_RGB565, "RGB 5-6-5 LE", 16
     },
     {
+        V4L2_PIX_FMT_BGR565, "BGR 5-6-5 LE", 16
+    },
+    {
         V4L2_PIX_FMT_RGB565X, "RGB 5-6-5 BE", 16
     },
     {
         V4L2_PIX_FMT_RGB24, "RGB 8-8-8", 24
+    },
+    {
+        V4L2_PIX_FMT_BGR24, "BGR 8-8-8", 24
     },
     {
         V4L2_PIX_FMT_YUV420, "YUV 4:2:0", 12
@@ -79,6 +85,9 @@ static const struct esp_video_format_desc_map esp_video_format_desc_maps[] = {
     },
     {
         V4L2_PIX_FMT_YVYU, "YUV 4:2:2 YVYU", 16
+    },
+    {
+        V4L2_PIX_FMT_YUV444, "YUV 4:4:4", 24
     },
     {
         V4L2_PIX_FMT_JPEG, "JPEG", 8
@@ -1206,9 +1215,17 @@ esp_err_t esp_video_queue_element_index_buffer(struct esp_video *video, uint32_t
     info = &stream->buffer->info;
 
     if ((info->memory_type != V4L2_MEMORY_USERPTR) ||
-            (((uintptr_t)buffer) % info->align_size) ||
-            (size < info->size)) {
+            (((uintptr_t)buffer) % info->align_size)) {
         return ESP_ERR_INVALID_ARG;
+    }
+
+    /**
+     * For video output, the buffer is read only and maybe the size of the buffer is random, such JPEG decoder or H264 decoder, so we don't need to check the size.
+     */
+    if (V4L2_BUF_TYPE_VIDEO_OUTPUT != type) {
+        if (size < info->size) {
+            return ESP_ERR_INVALID_ARG;
+        }
     }
 
     if (info->caps & MALLOC_CAP_SPIRAM) {

@@ -44,8 +44,12 @@ if(CONFIG_ESP_VIDEO_ENABLE_H264_VIDEO_DEVICE)
     list(APPEND srcs "src/device/esp_video_h264_device.c")
 endif()
 
-if(CONFIG_ESP_VIDEO_ENABLE_JPEG_VIDEO_DEVICE)
-    list(APPEND srcs "src/device/esp_video_jpeg_device.c")
+if(CONFIG_ESP_VIDEO_ENABLE_JPEG_ENC_VIDEO_DEVICE)
+    list(APPEND srcs "src/device/esp_video_jpeg_enc_device.c")
+endif()
+
+if(CONFIG_ESP_VIDEO_ENABLE_JPEG_DEC_VIDEO_DEVICE)
+    list(APPEND srcs "src/device/esp_video_jpeg_dec_device.c")
 endif()
 
 if(CONFIG_ESP_VIDEO_ENABLE_ISP)
@@ -96,7 +100,7 @@ if(CONFIG_IDF_TARGET_ESP32P4)
     endif()
 endif()
 
-if(CONFIG_ESP_VIDEO_ENABLE_HW_JPEG_VIDEO_DEVICE)
+if(CONFIG_ESP_VIDEO_ENABLE_HW_JPEG_ENC_VIDEO_DEVICE OR CONFIG_ESP_VIDEO_ENABLE_HW_JPEG_DEC_VIDEO_DEVICE)
     # Supply the header files to applications
     idf_component_optional_requires(PUBLIC "esp_driver_jpeg")
 endif()

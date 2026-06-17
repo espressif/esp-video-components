@@ -13,8 +13,11 @@
 #if CONFIG_ESP_VIDEO_ENABLE_DVP_VIDEO_DEVICE
 #include "esp_cam_ctlr_dvp.h"
 #endif
-#if CONFIG_ESP_VIDEO_ENABLE_HW_JPEG_VIDEO_DEVICE
+#if CONFIG_ESP_VIDEO_ENABLE_HW_JPEG_ENC_VIDEO_DEVICE
 #include "driver/jpeg_encode.h"
+#endif
+#if CONFIG_ESP_VIDEO_ENABLE_HW_JPEG_DEC_VIDEO_DEVICE
+#include "driver/jpeg_decode.h"
 #endif
 #if CONFIG_ESP_VIDEO_ENABLE_SPI_VIDEO_DEVICE
 #include "esp_cam_ctlr_spi.h"
@@ -45,9 +48,17 @@ extern "C" {
 #define ESP_VIDEO_INIT_FLAGS_ISP            (1 << 3)
 #define ESP_VIDEO_INIT_FLAGS_USB_UVC        (1 << 4)
 #define ESP_VIDEO_INIT_FLAGS_H264           (1 << 5)
-#define ESP_VIDEO_INIT_FLAGS_JPEG           (1 << 6)
+#define ESP_VIDEO_INIT_FLAGS_JPEG_ENC       (1 << 6)
 #define ESP_VIDEO_INIT_FLAGS_MOTOR          (1 << 7)
-#define ESP_VIDEO_INIT_FLAGS_ALL            (ESP_VIDEO_INIT_FLAGS_MIPI_CSI | ESP_VIDEO_INIT_FLAGS_DVP | ESP_VIDEO_INIT_FLAGS_SPI | ESP_VIDEO_INIT_FLAGS_ISP | ESP_VIDEO_INIT_FLAGS_USB_UVC | ESP_VIDEO_INIT_FLAGS_H264 | ESP_VIDEO_INIT_FLAGS_JPEG | ESP_VIDEO_INIT_FLAGS_MOTOR)
+#define ESP_VIDEO_INIT_FLAGS_JPEG_DEC       (1 << 8)
+#define ESP_VIDEO_INIT_FLAGS_ALL            (ESP_VIDEO_INIT_FLAGS_MIPI_CSI | ESP_VIDEO_INIT_FLAGS_DVP | ESP_VIDEO_INIT_FLAGS_SPI | ESP_VIDEO_INIT_FLAGS_ISP | ESP_VIDEO_INIT_FLAGS_USB_UVC | ESP_VIDEO_INIT_FLAGS_H264 | ESP_VIDEO_INIT_FLAGS_JPEG_ENC | ESP_VIDEO_INIT_FLAGS_MOTOR | ESP_VIDEO_INIT_FLAGS_JPEG_DEC)
+
+/**
+ * @brief JPEG initialization flags
+ *
+ * @note This is a backward compatibility.
+ */
+#define ESP_VIDEO_INIT_FLAGS_JPEG           ESP_VIDEO_INIT_FLAGS_JPEG_ENC
 
 #if CONFIG_ESP_VIDEO_ENABLE_MIPI_CSI_VIDEO_DEVICE || \
     CONFIG_ESP_VIDEO_ENABLE_DVP_VIDEO_DEVICE || \
@@ -177,12 +188,30 @@ typedef struct esp_video_init_usb_uvc_config {
 /**
  * @brief JPEG initialization configuration
  */
-#if CONFIG_ESP_VIDEO_ENABLE_HW_JPEG_VIDEO_DEVICE
-typedef struct esp_video_init_jpeg_config {
+#if CONFIG_ESP_VIDEO_ENABLE_HW_JPEG_ENC_VIDEO_DEVICE
+typedef struct esp_video_init_jpeg_enc_config {
     jpeg_encoder_handle_t enc_handle;           /*!< JPEG encoder driver handle:
                                                      - NULL, JPEG video device will create JPEG encoder driver handle by itself
                                                      - Not null, JPEG video device will use this handle instead of creating JPEG encoder driver handle */
-} esp_video_init_jpeg_config_t;
+} esp_video_init_jpeg_enc_config_t;
+
+/**
+ * @brief JPEG initialization configuration
+ *
+ * @note This is a backward compatibility alias for esp_video_init_jpeg_enc_config_t.
+ */
+typedef esp_video_init_jpeg_enc_config_t esp_video_init_jpeg_config_t;
+#endif
+
+/**
+ * @brief JPEG decode initialization configuration
+ */
+#if CONFIG_ESP_VIDEO_ENABLE_HW_JPEG_DEC_VIDEO_DEVICE
+typedef struct esp_video_init_jpeg_dec_config {
+    jpeg_decoder_handle_t dec_handle;           /*!< JPEG decoder driver handle:
+                                                     - NULL, JPEG decode video device will create JPEG decoder driver handle by itself
+                                                     - Not null, JPEG decode video device will use this handle instead of creating JPEG decoder driver handle */
+} esp_video_init_jpeg_dec_config_t;
 #endif
 
 /**
@@ -208,8 +237,14 @@ typedef struct esp_video_init_config {
 #if CONFIG_ESP_VIDEO_ENABLE_DVP_VIDEO_DEVICE
     const esp_video_init_dvp_config_t *dvp;     /*!< DVP initialization configuration array */
 #endif
-#if CONFIG_ESP_VIDEO_ENABLE_HW_JPEG_VIDEO_DEVICE
-    const esp_video_init_jpeg_config_t *jpeg;   /*!< JPEG initialization configuration */
+#if CONFIG_ESP_VIDEO_ENABLE_HW_JPEG_ENC_VIDEO_DEVICE
+    union {
+        const esp_video_init_jpeg_enc_config_t *jpeg_enc;   /*!< JPEG encoder initialization configuration */
+        const esp_video_init_jpeg_enc_config_t *jpeg;       /*!< JPEG encoder initialization configuration, this is a backward compatibility alias for jpeg_enc */
+    };
+#endif
+#if CONFIG_ESP_VIDEO_ENABLE_HW_JPEG_DEC_VIDEO_DEVICE
+    const esp_video_init_jpeg_dec_config_t *jpeg_dec;   /*!< JPEG decode initialization configuration */
 #endif
 #if CONFIG_ESP_VIDEO_ENABLE_CAMERA_MOTOR_CONTROLLER
     const esp_video_init_cam_motor_config_t *cam_motor;     /*!< Camera motor initialization configuration */

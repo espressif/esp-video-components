@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2024 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2024-2026 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: ESPRESSIF MIT
  */
@@ -45,6 +45,11 @@ extern "C" {
  * other fields are not supported.
  */
 #define V4L2_CTRL_CLASS_ESP_CAM_IOCTL   (0x00a70000)
+
+/**
+ * @brief BGR565 format for JPEG decoder video device.
+ */
+#define V4L2_PIX_FMT_BGR565             v4l2_fourcc('B', 'G', 'R', 'P')
 
 #ifdef __cplusplus
 }

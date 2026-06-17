@@ -9,12 +9,16 @@
 #include "esp_err.h"
 #include "esp_cam_sensor_types.h"
 #include "esp_cam_motor_types.h"
-#if CONFIG_ESP_VIDEO_ENABLE_HW_JPEG_VIDEO_DEVICE
+#if CONFIG_ESP_VIDEO_ENABLE_HW_JPEG_ENC_VIDEO_DEVICE
 #include "driver/jpeg_encode.h"
+#endif
+#if CONFIG_ESP_VIDEO_ENABLE_HW_JPEG_DEC_VIDEO_DEVICE
+#include "driver/jpeg_decode.h"
 #endif
 #if CONFIG_ESP_VIDEO_ENABLE_ISP
 #include "driver/isp.h"
 #endif
+#include "esp_video_device.h"
 #include "hal/cam_ctlr_types.h"
 #include "esp_cam_ctlr_spi.h"
 #include "esp_video_csi_format.h"
@@ -153,9 +157,9 @@ esp_err_t esp_video_create_h264_video_device(bool hw_codec);
 esp_err_t esp_video_destroy_h264_video_device(bool hw_codec);
 #endif
 
-#ifdef CONFIG_ESP_VIDEO_ENABLE_HW_JPEG_VIDEO_DEVICE
+#ifdef CONFIG_ESP_VIDEO_ENABLE_HW_JPEG_ENC_VIDEO_DEVICE
 /**
- * @brief Create JPEG video device
+ * @brief Create JPEG encoder video device
  *
  * @param enc_handle JPEG encoder driver handle,
  *      - NULL, JPEG video device will create JPEG encoder driver handle by itself
@@ -166,10 +170,10 @@ esp_err_t esp_video_destroy_h264_video_device(bool hw_codec);
  *      - Others if failed
  */
 
-esp_err_t esp_video_create_jpeg_video_device(jpeg_encoder_handle_t enc_handle);
+esp_err_t esp_video_create_jpeg_enc_video_device(jpeg_encoder_handle_t enc_handle);
 
 /**
- * @brief Destroy JPEG video device
+ * @brief Destroy JPEG encoder video device
  *
  * @param None
  *
@@ -177,7 +181,31 @@ esp_err_t esp_video_create_jpeg_video_device(jpeg_encoder_handle_t enc_handle);
  *      - ESP_OK on success
  *      - Others if failed
  */
-esp_err_t esp_video_destroy_jpeg_video_device(void);
+esp_err_t esp_video_destroy_jpeg_enc_video_device(void);
+#endif
+
+#ifdef CONFIG_ESP_VIDEO_ENABLE_HW_JPEG_DEC_VIDEO_DEVICE
+/**
+ * @brief Create JPEG decode video device
+ *
+ * @param dec_handle JPEG decoder driver handle,
+ *      - NULL, JPEG decode video device will create JPEG decoder driver handle by itself
+ *      - Not null, JPEG decode video device will use this handle instead of creating JPEG decoder driver handle
+ *
+ * @return
+ *      - ESP_OK on success
+ *      - Others if failed
+ */
+esp_err_t esp_video_create_jpeg_dec_video_device(jpeg_decoder_handle_t dec_handle);
+
+/**
+ * @brief Destroy JPEG decode video device
+ *
+ * @return
+ *      - ESP_OK on success
+ *      - Others if failed
+ */
+esp_err_t esp_video_destroy_jpeg_dec_video_device(void);
 #endif
 
 #if CONFIG_ESP_VIDEO_ENABLE_ISP_VIDEO_DEVICE
