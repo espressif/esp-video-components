@@ -5,6 +5,8 @@
 
 * [image_storage](https://github.com/espressif/esp-video-components/tree/master/esp_video/examples/image_storage) demonstrates how to store image data and video stream data to an SD card or flash.
 
+* [Memory To Memory](https://github.com/espressif/esp-video-components/tree/master/esp_video/examples/m2m) demonstrates how to encode or decode streams using the M2M video devices.
+
 * [simple_video_server](https://github.com/espressif/esp-video-components/tree/master/esp_video/examples/simple_video_server) shows how to set up a local server and then preview and download images through the server.
 
 * [uvc](https://github.com/espressif/esp-video-components/tree/master/esp_video/examples/uvc) demonstrates how to implement a USB camera through the USB peripheral and camera drivers.

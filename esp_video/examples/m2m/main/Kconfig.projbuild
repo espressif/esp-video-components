@@ -1,0 +1,64 @@
+menu "Example Configuration"
+
+    choice EXAMPLE_M2M_MODE
+        prompt "M2M test mode"
+        default EXAMPLE_M2M_MODE_DECODE
+        help
+            Select whether to run hardware encode or decode pipeline test.
+
+        config EXAMPLE_M2M_MODE_ENCODE
+            bool "Encode (capture -> codec)"
+            depends on ESP_VIDEO_ENABLE_JPEG_ENC_VIDEO_DEVICE || ESP_VIDEO_ENABLE_H264_VIDEO_DEVICE
+
+        config EXAMPLE_M2M_MODE_DECODE
+            bool "Decode (JPEG capture -> decode)"
+            depends on ESP_VIDEO_ENABLE_JPEG_DEC_VIDEO_DEVICE
+
+        config EXAMPLE_M2M_MODE_PIPELINE
+            bool "Pipeline (JPEG capture -> decode -> H.264 encode)"
+            depends on ESP_VIDEO_ENABLE_JPEG_DEC_VIDEO_DEVICE && ESP_VIDEO_ENABLE_H264_VIDEO_DEVICE
+    endchoice
+
+    config EXAMPLE_TEST_DURATION_SEC
+        int "Frame rate test duration (seconds)"
+        default 5
+        range 1 60
+        help
+            Duration in seconds for each frame rate measurement.
+
+    if EXAMPLE_M2M_MODE_ENCODE || EXAMPLE_M2M_MODE_PIPELINE
+        menu "Video Encoding Configuration"
+            if EXAMPLE_M2M_MODE_ENCODE
+                config EXAMPLE_JPEG_COMPRESSION_QUALITY
+                    int "JPEG compression quality (%)"
+                    default 80
+                    range 1 100
+                    depends on ESP_VIDEO_ENABLE_JPEG_ENC_VIDEO_DEVICE
+                    help
+                        JPEG compression quality percentage (1-100).
+            endif
+
+            if EXAMPLE_M2M_MODE_PIPELINE || ESP_VIDEO_ENABLE_H264_VIDEO_DEVICE
+                config EXAMPLE_H264_I_PERIOD
+                    int "H.264 Intra Frame period (frames)"
+                    default 120
+                    range 1 120
+
+                config EXAMPLE_H264_BITRATE
+                    int "H.264 Target Bitrate (bps)"
+                    default 1000000
+                    range 25000 2500000
+
+                config EXAMPLE_H264_MIN_QP
+                    int "H.264 Minimum quantization parameter (QP)"
+                    default 25
+                    range 1 51
+
+                config EXAMPLE_H264_MAX_QP
+                    int "H.264 Maximum quantization parameter (QP)"
+                    default 26
+                    range EXAMPLE_H264_MIN_QP 51
+            endif
+        endmenu
+    endif
+endmenu
