@@ -1,6 +1,7 @@
 ## Unreleased
 
 - Added information about the document system to README.md.
+- Fixed linking issue on the Arduino platform.
 
 ## 2.1.0
 
