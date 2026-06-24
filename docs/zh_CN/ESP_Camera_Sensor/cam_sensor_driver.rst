@@ -102,7 +102,31 @@ esp_cam_sensor 驱动提供以下服务：
 探测指定 SCCB 总线上的所有设备
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-esp_cam_sensor 组件提供了一个数组，以供用户探测指定的 SCCB 上连接的所有相机设备。相关示例可以参考 `example_sensor_init <https://github.com/espressif/esp-idf/blob/master/examples/peripherals/camera/common_components/sensor_init/example_sensor_init.c>`_ 。
+esp_cam_sensor 组件提供了一个数组，以供用户探测指定的 SCCB 上连接的所有相机设备。请通过 ``esp_cam_sensor_detect_get_array()`` 获取该数组的起止指针，以兼容不同的设备探测方式。相关示例可以参考 `example_sensor_init <https://github.com/espressif/esp-idf/blob/master/examples/peripherals/camera/common_components/sensor_init/example_sensor_init.c>`_ 。
+
+.. code-block:: c
+
+    esp_cam_sensor_detect_fn_t *array_start = NULL;
+    esp_cam_sensor_detect_fn_t *array_end = NULL;
+    esp_cam_sensor_detect_get_array(&array_start, &array_end);
+    for (esp_cam_sensor_detect_fn_t *p = array_start; p < array_end; ++p) {
+        esp_cam_sensor_config_t cfg = {0};
+        esp_cam_sensor_device_t *sensor_dev;
+
+        cfg.sccb_handle = create_sccb_device(sccb_mark, p->port, &sccb_config, p->sccb_addr);
+        if (!cfg.sccb_handle) {
+            return ESP_FAIL;
+        }
+
+        cfg.reset_pin = reset_pin;
+        cfg.pwdn_pin = pwdn_pin;
+        sensor_dev = (*(p->detect))((void *)&cfg);
+        if (!sensor_dev) {
+            destroy_sccb_device(cfg.sccb_handle, sccb_mark, &sccb_config);
+            continue;
+        }
+        break;
+    }
 
 删除设备
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -155,6 +179,10 @@ Kconfig 选项
 
 此外，还有一些通用的配置选项：
 
+- ``CONFIG_CAMERA_SENSOR_MOTOR_DETECT_METHOD`` 用于选择相机传感器与对焦电机的设备探测方式，支持以下两种模式：
+
+  - ``CONFIG_CAMERA_SENSOR_MOTOR_DETECT_METHOD_DYNAMIC_LINK``（默认）：通过 ``esp_cam_sensor_detect_fn`` 链接器段，将当前固件中所有可用的传感器探测函数及其配置数据自动纳入固件。即使应用代码未显式引用这些函数，链接器也会保留它们，从而支持对所有已启用传感器的自动探测，但固件体积相对较大。
+  - ``CONFIG_CAMERA_SENSOR_MOTOR_DETECT_METHOD_STATIC_STORE``：仅将应用实际引用的传感器探测函数及其配置数据以 C 语言数组形式静态存储在 Flash 中。未被引用的探测函数和数据可由链接器从最终固件中排除，从而减小二进制体积。
 - CONFIG_CAMERA_XCLK_USE_LEDC 配置 XCLK 时钟生成器由 LEDC 外设来实现。
 - CONFIG_CAMERA_XCLK_USE_ESP_CLOCK_ROUTER 配置 XCLK 时钟生成器由 ESP_CLOCK 外设来实现。
 

@@ -39,4 +39,30 @@ menu "Espressif Image Process Algorithm Configuration"
     config ESP_IPA_EXT_CONFIG
         bool "Extended Configuration"
         default y
+
+    choice ESP_IPA_DETECT_METHOD
+        prompt "Choose IPA detection method"
+        default ESP_IPA_DETECT_METHOD_DYNAMIC_LINK
+        help
+            Specify how the IPA detection functions are included in the firmware.
+
+        config ESP_IPA_DETECT_METHOD_DYNAMIC_LINK
+            bool "Dynamic linking of IPA detection functions"
+            help
+                Automatically include all available IPA detection functions in firmware via
+                the esp_ipa_detect section in flash memory.
+
+                In this mode, the linker retains all detection functions, even if they are not
+                explicitly referenced by the application code. This ensures that auto-detection
+                works for all supported IPAs but will increase the overall firmware size.
+
+        config ESP_IPA_DETECT_METHOD_STATIC_STORE
+            bool "Static inclusion of IPA detection objects"
+            help
+                Only include the detection functions for IPAs that are actually referenced by
+                the application, with data stored in a flash-based C-language array.
+
+                With this mode, if detection functions are unused in your application, the linker
+                will exclude them from the final firmware, resulting in a smaller binary size.
+    endchoice
 endmenu

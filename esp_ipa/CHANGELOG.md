@@ -2,6 +2,7 @@
 
 - Added information about the document system to README.md.
 - Fixed linking issue on the Arduino platform.
+- Added a static linking method that prevents unused functions from being included in the final firmware, reducing its size.
 
 ## 2.1.0
 

@@ -465,7 +465,10 @@ static esp_err_t create_csi_video_device(esp_cam_sensor_device_t *cam, void *pri
     if (config->cam_motor) {
         const esp_video_init_cam_motor_config_t *cm = config->cam_motor;
 
-        for (esp_cam_motor_detect_fn_t *p = &__esp_cam_motor_detect_fn_array_start; p < &__esp_cam_motor_detect_fn_array_end; p++) {
+        esp_cam_motor_detect_fn_t *array_start = NULL;
+        esp_cam_motor_detect_fn_t *array_end = NULL;
+        esp_cam_motor_detect_get_array(&array_start, &array_end);
+        for (esp_cam_motor_detect_fn_t *p = array_start; p < array_end; p++) {
             video_device_init_config_t motor_init_config = {
                 .is_motor = true,
                 .sccb_config = &cm->sccb_config,
@@ -912,7 +915,11 @@ esp_err_t esp_video_init_with_flags(const esp_video_init_config_t *config, uint3
     }
 #endif
 
-    for (esp_cam_sensor_detect_fn_t *p = &__esp_cam_sensor_detect_fn_array_start; p < &__esp_cam_sensor_detect_fn_array_end; ++p) {
+    esp_cam_sensor_detect_fn_t *array_start = NULL;
+    esp_cam_sensor_detect_fn_t *array_end = NULL;
+    esp_cam_sensor_detect_get_array(&array_start, &array_end);
+
+    for (esp_cam_sensor_detect_fn_t *p = array_start; p < array_end; ++p) {
 #if CONFIG_ESP_VIDEO_ENABLE_MIPI_CSI_VIDEO_DEVICE
         if (flags & ESP_VIDEO_INIT_FLAGS_MIPI_CSI) {
             if (!(s_video_device_inited_flags & ESP_VIDEO_INIT_FLAGS_MIPI_CSI) && p->port == ESP_CAM_SENSOR_MIPI_CSI && config->csi != NULL) {

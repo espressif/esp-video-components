@@ -3,12 +3,16 @@ idf_build_get_property(idf_target IDF_TARGET)
 set(include_dirs "include")
 
 set(ipa_config_source "${CMAKE_CURRENT_BINARY_DIR}/esp_video_ipa_config.c")
-set(srcs ${ipa_config_source} "src/version.c")
+set(srcs ${ipa_config_source} "src/version.c" "src/esp_ipa_detect.c")
+
+if(CONFIG_ESP_IPA_DETECT_METHOD_DYNAMIC_LINK)
+    set(ldfragments "linker.lf")
+endif()
 
 idf_component_register(SRCS ${srcs}
                        INCLUDE_DIRS ${include_dirs}
                        REQUIRES esp_driver_isp
-                       LDFRAGMENTS linker.lf)
+                       LDFRAGMENTS ${ldfragments})
 
 include(package_manager)
 cu_pkg_define_version(${CMAKE_CURRENT_LIST_DIR})
@@ -22,46 +26,48 @@ else()
 endif()
 
 add_prebuilt_library(prebuilt "lib/${idf_target}/${ipa_lib_version}/libesp_ipa.a"
-                     PRIV_REQUIRES esp_timer)
+                     PRIV_REQUIRES esp_timer esp_ipa)
 target_link_libraries(${COMPONENT_LIB} PRIVATE prebuilt)
 
 # Add -lc -lm to the prebuilt library to fix the link error on esp-idf v6+
 set_property(TARGET prebuilt APPEND PROPERTY INTERFACE_LINK_LIBRARIES "-lc -lm")
 
-if(CONFIG_ESP_IPA_IAN_ALGORITHM)
-    target_link_libraries(${COMPONENT_LIB} INTERFACE "-u __esp_ipa_detect_fn_esp_ipa_ian")
-endif()
+if(CONFIG_ESP_IPA_DETECT_METHOD_DYNAMIC_LINK)
+    if(CONFIG_ESP_IPA_IAN_ALGORITHM)
+        target_link_libraries(${COMPONENT_LIB} INTERFACE "-u __esp_ipa_detect_fn_esp_ipa_ian")
+    endif()
 
-if(CONFIG_ESP_IPA_ADN_ALGORITHM)
-    target_link_libraries(${COMPONENT_LIB} INTERFACE "-u __esp_ipa_detect_fn_esp_ipa_adn")
-endif()
+    if(CONFIG_ESP_IPA_ADN_ALGORITHM)
+        target_link_libraries(${COMPONENT_LIB} INTERFACE "-u __esp_ipa_detect_fn_esp_ipa_adn")
+    endif()
 
-if(CONFIG_ESP_IPA_AWB_ALGORITHM)
-    target_link_libraries(${COMPONENT_LIB} INTERFACE "-u __esp_ipa_detect_fn_esp_ipa_awb")
-endif()
+    if(CONFIG_ESP_IPA_AWB_ALGORITHM)
+        target_link_libraries(${COMPONENT_LIB} INTERFACE "-u __esp_ipa_detect_fn_esp_ipa_awb")
+    endif()
 
-if(CONFIG_ESP_IPA_ACC_ALGORITHM)
-    target_link_libraries(${COMPONENT_LIB} INTERFACE "-u __esp_ipa_detect_fn_esp_ipa_acc")
-endif()
+    if(CONFIG_ESP_IPA_ACC_ALGORITHM)
+        target_link_libraries(${COMPONENT_LIB} INTERFACE "-u __esp_ipa_detect_fn_esp_ipa_acc")
+    endif()
 
-if(CONFIG_ESP_IPA_AGC_ALGORITHM)
-    target_link_libraries(${COMPONENT_LIB} INTERFACE "-u __esp_ipa_detect_fn_esp_ipa_agc")
-endif()
+    if(CONFIG_ESP_IPA_AGC_ALGORITHM)
+        target_link_libraries(${COMPONENT_LIB} INTERFACE "-u __esp_ipa_detect_fn_esp_ipa_agc")
+    endif()
 
-if(CONFIG_ESP_IPA_AEN_ALGORITHM)
-    target_link_libraries(${COMPONENT_LIB} INTERFACE "-u __esp_ipa_detect_fn_esp_ipa_aen")
-endif()
+    if(CONFIG_ESP_IPA_AEN_ALGORITHM)
+        target_link_libraries(${COMPONENT_LIB} INTERFACE "-u __esp_ipa_detect_fn_esp_ipa_aen")
+    endif()
 
-if(CONFIG_ESP_IPA_ATC_ALGORITHM)
-    target_link_libraries(${COMPONENT_LIB} INTERFACE "-u __esp_ipa_detect_fn_esp_ipa_atc")
-endif()
+    if(CONFIG_ESP_IPA_ATC_ALGORITHM)
+        target_link_libraries(${COMPONENT_LIB} INTERFACE "-u __esp_ipa_detect_fn_esp_ipa_atc")
+    endif()
 
-if(CONFIG_ESP_IPA_EXT_CONFIG)
-    target_link_libraries(${COMPONENT_LIB} INTERFACE "-u __esp_ipa_detect_fn_esp_ipa_ext")
-endif()
+    if(CONFIG_ESP_IPA_EXT_CONFIG)
+        target_link_libraries(${COMPONENT_LIB} INTERFACE "-u __esp_ipa_detect_fn_esp_ipa_ext")
+    endif()
 
-if(CONFIG_ESP_IPA_AF_ALGORITHM)
-    target_link_libraries(${COMPONENT_LIB} INTERFACE "-u __esp_ipa_detect_fn_esp_ipa_af")
+    if(CONFIG_ESP_IPA_AF_ALGORITHM)
+        target_link_libraries(${COMPONENT_LIB} INTERFACE "-u __esp_ipa_detect_fn_esp_ipa_af")
+    endif()
 endif()
 
 idf_build_get_property(python PYTHON)
