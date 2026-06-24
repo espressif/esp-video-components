@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 2.3.0
 
 - Added information about the document system to README.md.
 - Added more output size formats to the OV3660 driver and fixed the configuration method for JPEG compression factor.
