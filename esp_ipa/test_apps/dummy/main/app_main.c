@@ -515,6 +515,68 @@ TEST_CASE("Auto color correction test", "[IPA]")
     TEST_ESP_OK(esp_ipa_pipeline_destroy(handle));
 }
 
+TEST_CASE("ACC CCM gain LUT blend test", "[IPA][ACC]")
+{
+    esp_ipa_pipeline_handle_t handle = NULL;
+    esp_ipa_metadata_t metadata = {0};
+    esp_ipa_stats_t stats = {0};
+    esp_ipa_sensor_t sensor = s_esp_ipa_sensor;
+    const esp_ipa_config_t *ipa_config = esp_ipa_pipeline_get_config(IPA_TARGET_NAME);
+    const float base = 1.2f;
+
+    TEST_ASSERT_NOT_NULL(ipa_config->acc->ccm);
+    TEST_ASSERT_TRUE(ipa_config->acc->ccm->gain_lut_enable);
+    TEST_ASSERT_NOT_NULL(ipa_config->acc->ccm->gain_lut);
+    TEST_ASSERT_EQUAL(3, ipa_config->acc->ccm->gain_lut_size);
+
+    TEST_ESP_OK(esp_ipa_pipeline_create(ipa_config, &handle));
+    TEST_ESP_OK(esp_ipa_pipeline_init(handle, &sensor, &metadata));
+
+    esp_ipa_set_float(handle->ipa_array[0], "dummy_gamma_luma", 20.0);
+    esp_ipa_set_int32(handle->ipa_array[0], "ct", 2000);
+
+    static const struct {
+        float gain;
+        float m0;
+        float m01;
+    } test_data[] = {
+        { 1.0f,  1.2f,  1.2f },
+        { 8.0f,  1.1f,  0.6f },
+        { 16.0f, 1.0f,  0.0f },
+        { 12.0f, 1.05f, 0.3f },
+        { 4.0f,  1.157142857f, 0.942857143f },
+    };
+
+    for (int i = 0; i < ARRAY_SIZE(test_data); i++) {
+        metadata.flags = 0;
+        sensor.cur_gain = test_data[i].gain;
+        TEST_ESP_OK(esp_ipa_pipeline_process(handle, &stats, &sensor, &metadata));
+        TEST_ASSERT_EQUAL_HEX32(IPA_METADATA_FLAGS_CCM, metadata.flags & IPA_METADATA_FLAGS_CCM);
+        TEST_ASSERT_FLOAT_WITHIN(0.001f, test_data[i].m0, metadata.ccm.matrix[0][0]);
+        TEST_ASSERT_FLOAT_WITHIN(0.001f, test_data[i].m01, metadata.ccm.matrix[0][1]);
+        TEST_ASSERT_FLOAT_WITHIN(0.001f, test_data[i].m0, metadata.ccm.matrix[1][1]);
+        TEST_ASSERT_FLOAT_WITHIN(0.001f, test_data[i].m0, metadata.ccm.matrix[2][2]);
+    }
+
+    TEST_ESP_OK(esp_ipa_pipeline_destroy(handle));
+
+    ipa_config = esp_ipa_pipeline_get_config(IPA_TARGET_NAME_2);
+    TEST_ASSERT_FALSE(ipa_config->acc->ccm->gain_lut_enable);
+
+    TEST_ESP_OK(esp_ipa_pipeline_create(ipa_config, &handle));
+    TEST_ESP_OK(esp_ipa_pipeline_init(handle, &sensor, &metadata));
+
+    esp_ipa_set_float(handle->ipa_array[0], "dummy_gamma_luma", 20.0);
+    esp_ipa_set_int32(handle->ipa_array[0], "ct", 2000);
+    sensor.cur_gain = 16.0f;
+    metadata.flags = 0;
+    TEST_ESP_OK(esp_ipa_pipeline_process(handle, &stats, &sensor, &metadata));
+    TEST_ASSERT_EQUAL_HEX32(IPA_METADATA_FLAGS_CCM, metadata.flags & IPA_METADATA_FLAGS_CCM);
+    TEST_ASSERT_FLOAT_WITHIN(0.001f, base, metadata.ccm.matrix[0][0]);
+
+    TEST_ESP_OK(esp_ipa_pipeline_destroy(handle));
+}
+
 TEST_CASE("Auto denoising test", "[IPA]")
 {
     esp_ipa_pipeline_handle_t handle = NULL;

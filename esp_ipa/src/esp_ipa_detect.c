@@ -81,7 +81,7 @@ static const esp_ipa_detect_t __esp_ipa_detect_array_start[] = {
  * @param array_start_ptr Pointer to the start of the array.
  * @param array_end_ptr Pointer to the end of the array.
  */
-void esp_ipa_detect_get_array(esp_ipa_detect_t **array_start_ptr, esp_ipa_detect_t **array_end_ptr)
+void __wrap_esp_ipa_detect_get_array(esp_ipa_detect_t **array_start_ptr, esp_ipa_detect_t **array_end_ptr)
 {
 #if CONFIG_ESP_IPA_DETECT_METHOD_STATIC_STORE
     int size = sizeof(__esp_ipa_detect_array_start) / sizeof(__esp_ipa_detect_array_start[0]);

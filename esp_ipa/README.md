@@ -302,6 +302,33 @@ Developers can refer to the configuration files in [esp_cam_sensor](https://gith
 ---
 
 ```json
+"ccm":
+{
+    "gain_lut":
+    {
+        "enable": true,
+        "table":
+        [
+            { "gain": 1.0,  "strength": 1.0 },
+            { "gain": 8.0,  "strength": 0.85 },
+            { "gain": 16.0, "strength": 0.7 },
+            { "gain": 32.0, "strength": 0.5 }
+        ]
+    }
+}
+```
+
+| Parameter | Type | Range | Description |
+|:-:|:-:|:-:|:-|
+| gain_lut | Object | / | Optional gain-based CCM strength LUT |
+| enable | Bool | true or false | If true, blend the CT-selected CCM with identity using `strength` from the LUT |
+| table | Array | / | Gain and strength mapping table; `strength` is linearly interpolated between entries |
+| gain | Float | >0 | Camera sensor gain (same unit as `sensor->cur_gain`) |
+| strength | Float | [0,1] | Blend weight `s` in `(1-s)*I + s*ccm`; 0 means identity, 1 means full CCM |
+
+---
+
+```json
 "acc":
 {
     "lsc": {}
