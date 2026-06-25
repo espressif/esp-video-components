@@ -455,6 +455,14 @@ typedef struct esp_ipa_acc_ccm_unit {
 } esp_ipa_acc_ccm_unit_t;
 
 /**
+ * @brief CCM blend strength and gain mapping data for auto color correction algorithm
+ */
+typedef struct esp_ipa_acc_ccm_gain_lut {
+    float gain;                                 /*!< Camera sensor gain */
+    float strength;                             /*!< CCM blend strength s: output = (1-s)*I + s*ccm */
+} esp_ipa_acc_ccm_gain_lut_t;
+
+/**
  * @brief Color temperature and lens shadow correction parameters mapping data for auto color correction algorithm
  */
 typedef struct esp_ipa_acc_lsc_lut {
@@ -733,6 +741,10 @@ typedef struct esp_ipa_acc_ccm_config {
 
     const esp_ipa_acc_ccm_unit_t *ccm_table;    /*!< Color correction matrix and color temperature mapping table */
     uint32_t ccm_table_size;                    /*!< Color correction matrix and color temperature mapping table size */
+
+    bool gain_lut_enable;                       /*!< Enable gain-based CCM strength LUT */
+    const esp_ipa_acc_ccm_gain_lut_t *gain_lut; /*!< Gain and CCM blend strength mapping table */
+    uint32_t gain_lut_size;                     /*!< Gain and CCM blend strength mapping table size */
 
     /* Configuration parameters used in model_1 */
 

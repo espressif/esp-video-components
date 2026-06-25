@@ -30,7 +30,7 @@ add_prebuilt_library(prebuilt "lib/${idf_target}/${ipa_lib_version}/libesp_ipa.a
 target_link_libraries(${COMPONENT_LIB} PRIVATE prebuilt)
 
 # Add -lc -lm to the prebuilt library to fix the link error on esp-idf v6+
-set_property(TARGET prebuilt APPEND PROPERTY INTERFACE_LINK_LIBRARIES "-lc -lm")
+set_property(TARGET prebuilt APPEND PROPERTY INTERFACE_LINK_LIBRARIES "-Wl,--wrap=esp_ipa_detect_get_array -lc -lm")
 
 if(CONFIG_ESP_IPA_DETECT_METHOD_DYNAMIC_LINK)
     if(CONFIG_ESP_IPA_IAN_ALGORITHM)

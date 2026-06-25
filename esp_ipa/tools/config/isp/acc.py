@@ -65,6 +65,37 @@ class ipa_unit_acc_c(ipa_unit_c):
                     .min_ct_step = {ccm.min_ct_step},
                     ''')
 
+            gain_lut_text = str()
+            gain_lut_config_text = str()
+            gain_lut_fields = str()
+            if hasattr(ccm, 'gain_lut'):
+                gl = ccm.gain_lut
+                if hasattr(gl, 'table') and len(gl.table):
+                    for i in gl.table:
+                        gain_lut_text += (f'''
+                    {{
+                        .gain = {i.gain},
+                        .strength = {i.strength}
+                    }},''')
+
+                    gain_lut_config_text = cfmt_string(f'''
+                static const esp_ipa_acc_ccm_gain_lut_t s_esp_ipa_acc_ccm_{name}_gain_lut[] = {{
+                    {gain_lut_text}
+                }};
+                ''')
+
+                enable = 1 if getattr(gl, 'enable', False) else 0
+                if gain_lut_config_text:
+                    gain_lut_fields = cfmt_string(f'''
+                    .gain_lut_enable = {enable},
+                    .gain_lut = s_esp_ipa_acc_ccm_{name}_gain_lut,
+                    .gain_lut_size = ARRAY_SIZE(s_esp_ipa_acc_ccm_{name}_gain_lut),
+                    ''')
+                else:
+                    gain_lut_fields = cfmt_string(f'''
+                    .gain_lut_enable = {enable},
+                    ''')
+
             ccm_text = cfmt_string(f'''
                 static const esp_ipa_acc_ccm_config_t s_esp_ipa_acc_ccm_{name}_config = {{
                     .model = {ccm.model},
@@ -73,11 +104,12 @@ class ipa_unit_acc_c(ipa_unit_c):
                     .luma_low_ccm = {ccm_low_table_text},
                     .ccm_table = s_esp_ipa_acc_ccm_{name}_table,
                     .ccm_table_size = {len(ccm.table)},
+                    {gain_lut_fields}
                     {sub_param_text}
                 }};
                 ''')
 
-            return ccm_table_text + ccm_text
+            return ccm_table_text + gain_lut_config_text + ccm_text
 
         def lsc_code(name, obj):
             lsc = obj.lsc
@@ -316,7 +348,26 @@ if __name__ == '__main__':
                         1.5, 1.5, 1.5
                     ]
                 }
-            ]
+            ],
+            'gain_lut':
+            {
+                'enable': True,
+                'table':
+                [
+                    {
+                        'gain': 1.0,
+                        'strength': 1.0
+                    },
+                    {
+                        'gain': 8.0,
+                        'strength': 0.5
+                    },
+                    {
+                        'gain': 16.0,
+                        'strength': 0.0
+                    }
+                ]
+            }
         },
         'lsc':
         {

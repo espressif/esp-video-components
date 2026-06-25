@@ -323,7 +323,17 @@
                             1.5, 1.5, 1.5
                         ]
                     }
-                ]
+                ],
+                "gain_lut":
+                {
+                    "enable": true,
+                    "table":
+                    [
+                        { "gain": 1.0,  "strength": 1.0 },
+                        { "gain": 8.0,  "strength": 0.5 },
+                        { "gain": 16.0, "strength": 0.0 }
+                    ]
+                }
             },
             "lsc":
             {
