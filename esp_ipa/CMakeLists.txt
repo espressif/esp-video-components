@@ -17,20 +17,25 @@ idf_component_register(SRCS ${srcs}
 include(package_manager)
 cu_pkg_define_version(${CMAKE_CURRENT_LIST_DIR})
 
+set(lib_name "libesp_ipa.a")
+
 if("${IDF_VERSION_MAJOR}.${IDF_VERSION_MINOR}" VERSION_GREATER_EQUAL "6.0")
     set(ipa_lib_version "v6.0+")
+
+    if (CONFIG_LIBC_NEWLIB)
+        set(lib_name "libesp_ipa_newlib.a")
+    endif()
 elseif("${IDF_VERSION_MAJOR}.${IDF_VERSION_MINOR}" VERSION_EQUAL "5.5")
     set(ipa_lib_version "v5.5")
 else()
     set(ipa_lib_version "v5.4-")
 endif()
 
-add_prebuilt_library(prebuilt "lib/${idf_target}/${ipa_lib_version}/libesp_ipa.a"
+add_prebuilt_library(prebuilt "lib/${idf_target}/${ipa_lib_version}/${lib_name}"
                      PRIV_REQUIRES esp_timer esp_ipa)
 target_link_libraries(${COMPONENT_LIB} PRIVATE prebuilt)
 
-# Add -lc -lm to the prebuilt library to fix the link error on esp-idf v6+
-set_property(TARGET prebuilt APPEND PROPERTY INTERFACE_LINK_LIBRARIES "-Wl,--wrap=esp_ipa_detect_get_array -lc -lm")
+set_property(TARGET prebuilt APPEND PROPERTY INTERFACE_LINK_LIBRARIES "-Wl,--wrap=esp_ipa_detect_get_array")
 
 if(CONFIG_ESP_IPA_DETECT_METHOD_DYNAMIC_LINK)
     if(CONFIG_ESP_IPA_IAN_ALGORITHM)
