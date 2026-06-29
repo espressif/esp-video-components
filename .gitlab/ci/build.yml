@@ -39,7 +39,16 @@
     - export PEDANTIC_FLAGS="-DIDF_CI_BUILD -Werror -Werror=unused-variable -Werror=unused-but-set-variable -Werror=unused-function"
     - export EXTRA_CFLAGS="${PEDANTIC_FLAGS} -Wstrict-prototypes"
     - export EXTRA_CXXFLAGS="${PEDANTIC_FLAGS}"
-    - python tools/ci/build_apps.py --targets $IDF_TARGETS
+    - |
+      if [ "$ENABLE_NEWLIB" == "1" ]; then
+        cd esp_video/examples/capture_stream
+        echo "CONFIG_LIBC_NEWLIB is set to 1"
+        echo "CONFIG_LIBC_NEWLIB=y" >> sdkconfig.defaults
+        idf.py set-target esp32p4
+        idf.py build
+      else
+        python tools/ci/build_apps.py --targets $IDF_TARGETS
+      fi
 
 build_test_esp32p4_idf_v5.x:
   extends:
@@ -59,6 +68,18 @@ build_test_esp32p4_idf_v6.x:
   variables:
     IDF_TARGETS: "esp32p4"
     IDF_BUILD_APPS_VERSION: "2.13.3"
+  parallel:
+    matrix:
+      - IMAGE: [espressif/idf:release-v6.0, espressif/idf:release-v6.1]
+
+build_test_esp32p4_idf_v6.x_newlib:
+  extends:
+    - .build_examples_template
+    - .rules:build:test_apps
+  variables:
+    IDF_TARGETS: "esp32p4"
+    IDF_BUILD_APPS_VERSION: "2.13.3"
+    ENABLE_NEWLIB: "1"
   parallel:
     matrix:
       - IMAGE: [espressif/idf:release-v6.0, espressif/idf:release-v6.1]
