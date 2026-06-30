@@ -5,6 +5,8 @@
     - Added `libesp_ipa_newlib.a` to support builds using the Newlib C library.
 - Added a static linking method that prevents unused functions from being included in the final firmware, reducing its size.
 - ACC CCM: optional `gain_lut` blends the CT-selected CCM toward identity by sensor gain: `output = (1-s)*I + s*ccm`, where `s` is linearly interpolated from the LUT (`enable` + `table` with `gain` / `strength`)
+- AGC: fix exposure and gain not being updated when average luma is zero
+- IAN: fix `env.luma.avg` stuck at zero in very dark scenes
 
 ## 2.1.0
 
