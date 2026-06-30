@@ -32,8 +32,12 @@ else()
 endif()
 
 add_prebuilt_library(prebuilt "lib/${idf_target}/${ipa_lib_version}/${lib_name}"
-                     PRIV_REQUIRES esp_timer esp_ipa)
+                     PRIV_REQUIRES esp_timer)
 target_link_libraries(${COMPONENT_LIB} PRIVATE prebuilt)
+# prebuilt blob needs __wrap_esp_ipa_detect_get_array from this component's src.
+# Use the ${COMPONENT_LIB} target, not the name, so it resolves when namespaced
+# (espressif__esp_ipa) for registry consumers.
+target_link_libraries(prebuilt INTERFACE ${COMPONENT_LIB})
 
 set_property(TARGET prebuilt APPEND PROPERTY INTERFACE_LINK_LIBRARIES "-Wl,--wrap=esp_ipa_detect_get_array")
 
