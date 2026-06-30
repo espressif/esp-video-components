@@ -40,6 +40,7 @@
   - "**/sdkconfig.ci.*.*"
   - "esp_cam_sensor/sensors/**/*.json"
   - "esp_ipa/tools/config/*.py"
+  - "esp_ipa/**/*.a"
   - "**/idf_component.yml"
   - "**/*.cmake"
   - ".gitlab/ci/build.yml"
