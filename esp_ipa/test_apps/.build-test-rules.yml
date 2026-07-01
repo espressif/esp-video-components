@@ -4,3 +4,10 @@ test_apps/dummy:
       reason: only support on esp32p4
   depends_components:
     - esp_ipa
+
+test_apps/registry_consumer:
+  enable:
+    - if: IDF_TARGET == "esp32p4"
+      reason: esp_ipa ships prebuilt libraries only for esp32p4
+  depends_components:
+    - esp_ipa

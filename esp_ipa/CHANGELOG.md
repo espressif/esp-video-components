@@ -1,3 +1,7 @@
+## 2.2.0~1
+
+- Fix `Failed to resolve component 'esp_ipa'` at configure time for component-registry consumers (namespaced `espressif__esp_ipa`): route the prebuilt's component-lib dependency through the `${COMPONENT_LIB}` target instead of the component name.
+
 ## 2.2.0
 
 - Added information about the document system to README.md.

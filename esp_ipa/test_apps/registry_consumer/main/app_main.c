@@ -15,4 +15,9 @@
 
 void app_main(void)
 {
+    esp_ipa_pipeline_create(NULL, NULL);
+    esp_ipa_pipeline_print(NULL);
+    esp_ipa_pipeline_init(NULL, NULL, NULL);
+    esp_ipa_pipeline_process(NULL, NULL, NULL, NULL);
+    esp_ipa_pipeline_destroy(NULL);
 }
