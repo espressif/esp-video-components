@@ -1,0 +1,180 @@
+menuconfig CAMERA_SC2331
+    bool "SC2331"
+    default n
+    depends on SOC_MIPI_CSI_SUPPORTED
+    help
+        Enable support for the SC2331 CMOS image sensor.
+
+if CAMERA_SC2331
+    menu "Auto detect SC2331"
+        config CAMERA_SC2331_AUTO_DETECT_MIPI_INTERFACE_SENSOR
+            bool "Detect for MIPI CSI interface sensor"
+            default y
+            depends on SOC_MIPI_CSI_SUPPORTED
+            help
+                When enabled, the SC2331 sensor will be automatically detected
+                and initialized on the MIPI CSI interface at startup without requiring
+                manual detection call(sc2331_detect) in your application.
+    endmenu
+
+    config CAMERA_SC2331_SID_HIGH
+        bool "Set SID pin to high"
+        default n
+        help
+            This option allows you to configure the sensor ID. When the SID pin uses a high level, 
+            the sensor ID will be configured as 0x32, otherwise, the sensor ID will be configured as 0x30.
+
+    menu "Choose supported formats for MIPI CSI interface"
+        depends on SOC_MIPI_CSI_SUPPORTED
+        config CAMERA_SC2331_MIPI_RAW8_1280X720_25FPS
+            bool "MIPI 2-lane, 24M input, 1280x720 25fps, RAW8"
+            default n
+            help
+                RAW8 color format at 1280x720 resolution (HD) with 25fps framerate.
+                Requires MIPI CSI-2 2-lane interface with 24MHz input clock.
+
+        config CAMERA_SC2331_MIPI_RAW8_1280X720_30FPS
+            bool "MIPI 2-lane, 24M input, 1280x720 30fps, RAW8"
+            default n
+            help
+                RAW8 color format at 1280x720 resolution (HD) with 30fps framerate.
+                Requires MIPI CSI-2 2-lane interface with 24MHz input clock.
+
+        config CAMERA_SC2331_MIPI_RAW8_1920X1080_5FPS
+            bool "MIPI 2-lane, 24M input, 1920x1080 5fps, RAW8"
+            default n
+            help
+                RAW8 color format at 1920x1080 resolution (FHD) with 5fps framerate.
+                Requires MIPI CSI-2 2-lane interface with 24MHz input clock.
+
+        config CAMERA_SC2331_MIPI_RAW8_1920X1080_25FPS
+            bool "MIPI 2-lane, 24M input, 1920x1080 25fps, RAW8"
+            default y
+            help
+                RAW8 color format at 1920x1080 resolution (FHD) with 25fps framerate.
+                Requires MIPI CSI-2 2-lane interface with 24MHz input clock.
+
+        config CAMERA_SC2331_MIPI_RAW10_1920X1080_25FPS
+            bool "MIPI 2-lane, 24M input, 1920x1080 25fps, RAW10"
+            default n
+            help
+                RAW10 color format at 1920x1080 resolution (FHD) with 25fps framerate.
+                Requires MIPI CSI-2 2-lane interface with 24MHz input clock.
+
+        config CAMERA_SC2331_MIPI_RAW8_1920X1080_30FPS
+            bool "MIPI 2-lane, 24M input, 1920x1080 30fps, RAW8"
+            default n
+            help
+                RAW8 color format at 1920x1080 resolution (FHD) with 30fps framerate.
+                Requires MIPI CSI-2 2-lane interface with 24MHz input clock.
+    endmenu
+
+    choice CAMERA_SC2331_MIPI_DEFAULT_FMT
+        prompt "Select default output format for MIPI CSI interface"
+        default CAMERA_SC2331_MIPI_DEFAULT_FMT_RAW10_1920X1080_25FPS
+        depends on SOC_MIPI_CSI_SUPPORTED
+        help
+            This option allows you to select the default video format for the SC2331 sensor
+            when it is initialized on the MIPI CSI interface. The selected format will be used
+            when the sensor is detected and initialized, and can be changed later when the
+            sensor is in stream off state.
+
+        config CAMERA_SC2331_MIPI_DEFAULT_FMT_RAW10_1920X1080_25FPS
+            bool "MIPI 2-lane, 24M input, 1920x1080 25fps, RAW10"
+            depends on CAMERA_SC2331_MIPI_RAW10_1920X1080_25FPS
+
+        config CAMERA_SC2331_MIPI_DEFAULT_FMT_RAW8_1920X1080_5FPS
+            bool "MIPI 2-lane, 24M input, 1920x1080 5fps, RAW8"
+            depends on CAMERA_SC2331_MIPI_RAW8_1920X1080_5FPS
+
+        config CAMERA_SC2331_MIPI_DEFAULT_FMT_RAW8_1920X1080_25FPS
+            bool "MIPI 2-lane, 24M input, 1920x1080 25fps, RAW8"
+            depends on CAMERA_SC2331_MIPI_RAW8_1920X1080_25FPS
+
+        config CAMERA_SC2331_MIPI_DEFAULT_FMT_RAW8_1920X1080_30FPS
+            bool "MIPI 2-lane, 24M input, 1920x1080 30fps, RAW8"
+            depends on CAMERA_SC2331_MIPI_RAW8_1920X1080_30FPS
+
+        config CAMERA_SC2331_MIPI_DEFAULT_FMT_RAW8_1280X720_25FPS
+            bool "MIPI 2-lane, 24M input, 1280x720 25fps, RAW8"
+            depends on CAMERA_SC2331_MIPI_RAW8_1280X720_25FPS
+
+        config CAMERA_SC2331_MIPI_DEFAULT_FMT_RAW8_1280X720_30FPS
+            bool "MIPI 2-lane, 24M input, 1280x720 30fps, RAW8"
+            depends on CAMERA_SC2331_MIPI_RAW8_1280X720_30FPS
+    endchoice # CAMERA_SC2331_MIPI_DEFAULT_FMT
+
+    config CAMERA_SC2331_MIPI_IF_FORMAT_INDEX_DEFAULT
+        int
+        depends on SOC_MIPI_CSI_SUPPORTED
+        default 0 if CAMERA_SC2331_MIPI_DEFAULT_FMT_RAW10_1920X1080_25FPS
+        default 1 if CAMERA_SC2331_MIPI_DEFAULT_FMT_RAW8_1920X1080_5FPS
+        default 2 if CAMERA_SC2331_MIPI_DEFAULT_FMT_RAW8_1920X1080_25FPS
+        default 3 if CAMERA_SC2331_MIPI_DEFAULT_FMT_RAW8_1920X1080_30FPS
+        default 4 if CAMERA_SC2331_MIPI_DEFAULT_FMT_RAW8_1280X720_25FPS
+        default 5 if CAMERA_SC2331_MIPI_DEFAULT_FMT_RAW8_1280X720_30FPS
+        help
+            Sets the default configuration for the MIPI CSI interface.
+            Use query_support_formats() API to get more format options.
+
+    config CAMERA_SC2331_ABSOLUTE_GAIN_LIMIT
+            int "Maximum absolute gain limit (x1000)"
+            default 66016
+            range 4000 126016
+            help
+                Set the maximum gain limit that can be applied by upper-level applications.
+
+                Value is gain multiplied by 1000 to avoid floating-point arithmetic:
+                - 4000 = 4x gain (minimum)
+                - 66016 = 66.016x gain (default)
+                - 126016 = 126.016x gain (maximum)
+
+                Lower values reduce noise but may limit low-light performance.
+                Higher values improve low-light sensitivity but increase noise and
+                may cause sensor overheating.
+
+                Recommended values:
+                - 32000 (32x): Good balance for most applications
+                - 66016 (66x): Enhanced low-light performance
+                - 126016 (126x): Maximum sensitivity (use with caution)
+
+    choice CAMERA_SC2331_IPA_JSON_CONFIGURATION_FILE
+        prompt "IPA Configuration File"
+        default CAMERA_SC2331_DEFAULT_IPA_JSON_CONFIGURATION_FILE
+        help
+            Select the Image Processing Algorithm (IPA) JSON configuration file
+            for the SC2331 sensor.
+
+        config CAMERA_SC2331_DEFAULT_IPA_JSON_CONFIGURATION_FILE
+            bool "Use default configuration"
+            help
+                Use the built-in default IPA configuration file:
+                "esp_cam_sensor/sensors/sc2331/cfg/sc2331_default.json"
+
+                This configuration provides optimized settings for general use cases
+                and is recommended for most applications.
+
+        config CAMERA_SC2331_CUSTOMIZED_IPA_JSON_CONFIGURATION_FILE
+            bool "Use custom configuration"
+            help
+                Use a custom IPA configuration file with your own optimized settings.
+
+                This option allows you to fine-tune sensor parameters for specific
+                lighting conditions, color requirements, or application needs.
+
+                You must specify the custom file path in the configuration below.
+    endchoice
+
+    config CAMERA_SC2331_CUSTOMIZED_IPA_JSON_CONFIGURATION_FILE_PATH
+        string "Custom IPA configuration file path"
+        depends on CAMERA_SC2331_CUSTOMIZED_IPA_JSON_CONFIGURATION_FILE
+        help
+            Specify the path to your custom SC2331 IPA JSON configuration file.
+
+            The path is relative to your project root directory.
+
+            Example: "components/my_camera_config/sc2331_custom.json"
+
+            Ensure the file exists and contains valid JSON configuration
+            parameters compatible with the SC2331 sensor.
+endif

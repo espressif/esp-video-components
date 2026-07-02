@@ -1,0 +1,495 @@
+{
+    "version": 1,
+    "SC2331": {
+        "ian": {
+            "luma": {
+                "ae": {
+                    "weight":
+                    [
+                        1, 1, 1, 1, 1,
+                        1, 1, 1, 1, 1,
+                        1, 1, 1, 1, 1,
+                        1, 1, 1, 1, 1,
+                        1, 1, 1, 1, 1
+                    ]
+                },
+                "env": {
+                    "k": 495432,
+                    "speed_param":
+                    [
+                        -0.005463, -0.010018, 0.000000, 0.033241, 0.085583, 0.136704,  0.160734,  0.148777,
+                         0.148777,  0.160734, 0.136704, 0.085583, 0.033241, 0.000000, -0.010018, -0.005463
+                    ],
+                    "weight":
+                    [
+                        1, 2, 2, 2, 1,
+                        1, 2, 2, 2, 1,
+                        1, 2, 2, 2, 1,
+                        1, 2, 2, 2, 1,
+                        1, 2, 2, 2, 1
+                    ]
+                }
+            }
+        },
+        "awb": {
+            "model": 2,
+            "min_red_gain_step": 0.05,
+            "min_blue_gain_step": 0.05,
+            "min_counted": 10,
+            "range":
+            {
+                "green": { "max": 208, "min": 18 },
+                "rg":    { "max": 0.97, "min": 0.32 },
+                "bg":    { "max": 0.80, "min": 0.22 }
+            },
+            "green_luma_env": "dummy_awb_luma",
+            "green_luma_init": 180,
+            "green_luma_step_ratio": 0.3,
+            "new_w": 0.3,
+            "prev_w": 0.7,
+            "red_gain_step": 1.1,
+            "blue_gain_step": 1.15,
+            "export_ct": true,
+            "outlier_rg": 0.08,
+            "outlier_bg": 0.08,
+            "type_counter_max": 100,
+            "zones": [
+                {"type": "uhct", "rg": {"min": 0.38, "max": 0.52}, "bg": {"min": 0.5, "max": 0.62}, "enabled": true},
+                {"type": "hct", "rg": {"min": 0.47, "max": 0.62}, "bg": {"min": 0.42, "max": 0.54}, "enabled": true},
+                {"type": "mct", "rg": {"min": 0.58, "max": 0.72}, "bg": {"min": 0.32, "max": 0.46}, "enabled": true},
+                {"type": "lct", "rg": {"min": 0.7, "max": 0.86}, "bg": {"min": 0.28, "max": 0.36}, "enabled": true},
+                {"type": "ulct", "rg": {"min": 0.82, "max": 1.05}, "bg": {"min": 0.22, "max": 0.35}, "enabled": false}
+            ],
+            "ref_points":
+            [
+                {"ct": 2800, "rg": 0.8474, "bg": 0.3138, "radius": 0.02},
+                {"ct": 3000, "rg": 0.783, "bg": 0.3091, "radius": 0.03},
+                {"ct": 3500, "rg": 0.6761, "bg": 0.3525, "radius": 0.04},
+                {"ct": 4000, "rg": 0.6171, "bg": 0.3974, "radius": 0.04},
+                {"ct": 5000, "rg": 0.5502, "bg": 0.4781, "radius": 0.04},
+                {"ct": 6500, "rg": 0.4531, "bg": 0.5525, "radius": 0.04}
+            ]
+        },
+        "agc": {
+            "exposure": {
+                "frame_delay": 3,
+                "adjust_delay": 0
+            },
+            "gain": {
+                "min_step": 0.03,
+                "frame_delay": 3,
+                "max": 42
+            },
+            "anti_flicker": {
+                "mode": "none",
+                "ac_freq": 50
+            },
+            "f_n0": 0.32,
+            "f_m0": 0.42,
+            "luma_adjust": {
+                "target_low": 40,
+                "target_high": 50,
+                "target": 45,
+                "low_threshold": 13,
+                "low_regions": 5,
+                "high_threshold": 230,
+                "high_regions": 3,
+                "weight":
+                [
+                    1, 1, 1, 1, 1,
+                    1, 1, 1, 1, 1,
+                    1, 1, 1, 1, 1,
+                    1, 1, 1, 1, 1,
+                    1, 1, 1, 1, 1
+                ]
+            },
+            "mode": "light_threshold_priority",
+            "high_light_priority": {
+                "low_threshold": 129,
+                "high_threshold": 202,
+                "weight_offset": 0,
+                "luma_offset": 0
+            },
+            "low_light_priority": {
+                "low_threshold": 39,
+                "high_threshold": 44,
+                "weight_offset": 0,
+                "luma_offset": 0
+            },
+            "light_threshold_priority_use_env_luma": true,
+            "light_threshold_priority": [
+                {
+                    "env_luma_threshold": 1.6363,
+                    "weight_offset": 1
+                }
+            ],
+            "luma_pwl": {
+                "enable": true,
+                "table": [
+                    {
+                        "env_luma": 10,
+                        "luma_shift": -30
+                    },
+                    {
+                        "env_luma": 90,
+                        "luma_shift": -10
+                    },
+                    {
+                        "env_luma": 100,
+                        "luma_shift": -10
+                    },
+                    {
+                        "env_luma": 432,
+                        "luma_shift": -10
+                    },
+                    {
+                        "env_luma": 700,
+                        "luma_shift": -10
+                    },
+                    {
+                        "env_luma": 900,
+                        "luma_shift": -10
+                    },
+                    {
+                        "env_luma": 5000,
+                        "luma_shift": 10
+                    },
+                    {
+                        "env_luma": 10000,
+                        "luma_shift": 5
+                    },
+                    {
+                        "env_luma": 12000,
+                        "luma_shift": 0
+                    }
+                ]
+            }
+        },
+        "acc": {
+            "blc": {
+                "model": 0,
+                "stretch": false,
+                "blc_table": [
+                    {
+                        "gain": 1,
+                        "blc_param": {
+                            "blc_top_left": 16,
+                            "blc_top_right": 16,
+                            "blc_bottom_left": 16,
+                            "blc_bottom_right": 16
+                        }
+                    }
+                ]
+            },
+            "saturation": [
+                {
+                    "color_temp": 0,
+                    "value": 128
+                },
+                {
+                    "color_temp": 4500,
+                    "value": 130
+                }
+            ],
+            "ccm": {
+                "low_luma": {
+                    "luma_env": "env.luma.avg",
+                    "threshold": 100,
+                    "matrix":
+                    [
+                        1.00,  0.00, 0.00,
+                        0.00,    1.00,  0.00,
+                        0.00,  0.00,  1.00
+                    ]
+                },
+                "table": [
+                    {
+                        "color_temp": 1200,
+                        "matrix":
+                        [
+                            1.00,  0.00, 0.00,
+                            0.00,    1.00,  0.00,
+                            0.00,  0.00,  1.00
+                        ]
+                    },
+                    {
+                        "color_temp": 2800,
+                        "matrix": [
+                          1.2784, -0.2788, 0.0004,
+                          -1.0545, 2.7159, -0.6614,
+                            -0.2893, -0.8837, 2.173
+                        ]
+                      },
+                      {
+                        "color_temp": 3000,
+                        "matrix": [
+                          1.6164, -0.6171, 0.0007,
+                            -0.6865, 1.9219,-0.2353,
+                          -0.1569, -0.8123, 1.9693
+                        ]
+                      },
+                      {
+                        "color_temp": 3500,
+                        "matrix": [
+                          1.5779, -0.3196, -0.2584,
+                          -0.4918, 1.6696, -0.1779,
+                          -0.1036, -0.6252, 1.7288
+                        ]
+                      },
+                      {
+                        "color_temp": 4000,
+                        "matrix": [
+                          1.5568, -0.3001, -0.2567,
+                            -0.452, 1.6896, -0.2375,
+                          -0.1011, -0.5162, 1.6174
+                        ]
+                      },
+                      {
+                        "color_temp": 5000,
+                        "matrix": [
+                          1.6081, -0.4743, -0.1338,
+                          -0.3889, 1.6952, -0.3064,
+                          -0.0723, -0.6656, 1.7379
+                        ]
+                      },
+                      {
+                        "color_temp": 6500,
+                        "matrix": [
+                          1.3263, -0.0315, -0.2948,
+                          -0.3463, 1.6396, -0.2933,
+                            -0.088, -0.4816, 1.5697
+                        ]
+                      },
+                    {
+                        "color_temp": 12000,
+                        "matrix":
+                        [
+                            1.00,  0.00, 0.00,
+                            0.00,    1.00,  0.00,
+                            0.00,  0.00,  1.00
+                        ]   
+                    }
+                ],
+                "gain_lut": {
+                    "enable": true,
+                    "table": [
+                        { "gain": 1.0,  "strength": 0.5 },
+                        { "gain": 1.2,  "strength": 0.4 },
+                        { "gain": 1.6,  "strength": 0.3 },
+                        { "gain": 2.0,  "strength": 0.0 }
+                    ]
+                }
+              }
+        },
+        "adn": {
+            "bf": [
+                {
+                    "gain": 1,
+                    "param": {
+                        "level": 10,
+                        "matrix":
+                        [
+                            1, 3, 1,
+                            3, 4, 3,
+                            1, 3, 1
+                        ]
+                    }
+                },
+                {
+                    "gain": 2,
+                    "param": {
+                        "level": 14,
+                        "matrix":
+                        [
+                            1, 1, 1,
+                            1, 1, 1,
+                            1, 1, 1
+                        ]
+                    }
+                },
+                {
+                    "gain": 7,
+                    "param": {
+                        "level": 14,
+                        "matrix":
+                        [
+                            1, 1, 1,
+                            1, 1, 1,
+                            1, 1, 1
+                        ]
+                    }
+                },
+                {
+                    "gain": 16,
+                    "param": {
+                        "level": 14,
+                        "matrix":
+                        [
+                            1, 1, 1,
+                            1, 1, 1,
+                            1, 1, 1
+                        ]
+                    }
+                },
+                {
+                    "gain": 24,
+                    "param": {
+                        "level": 14,
+                        "matrix":
+                        [
+                            1, 1, 1,
+                            1, 1, 1,
+                            1, 1, 1
+                        ]
+                    }
+                },
+                {
+                    "gain": 32,
+                    "param": {
+                        "level": 14,
+                        "matrix":
+                        [
+                            1, 1, 1,
+                            1, 1, 1,
+                            1, 1, 1
+                        ]
+                    }
+                },
+                {
+                    "gain": 64,
+                    "param": {
+                        "level": 14,
+                        "matrix":
+                        [
+                            1, 1, 1,
+                            1, 1, 1,
+                            1, 1, 1
+                        ]
+                    }
+                }
+            ],
+            "demosaic": [
+                {
+                    "gain": 1,
+                    "gradient_ratio": 1.5
+                },
+                {
+                    "gain": 2,
+                    "gradient_ratio": 1.05
+                },
+                {
+                    "gain": 8,
+                    "gradient_ratio": 1.05
+                },
+                {
+                    "gain": 12,
+                    "gradient_ratio": 1.0
+                }
+            ]
+        },
+        "aen": {
+            "gamma": {
+                "use_gamma_param": false,
+                "luma_env": "env.luma.avg",
+                "luma_min_step": 3.0,
+                "table": [
+                    {
+                        "luma": 30.1,
+                        "gamma_param": 0.51,
+                        "y": [50, 88, 109, 126, 141, 155, 168, 179, 191, 201, 211, 221, 230, 239, 247, 255]
+                    },
+                    {
+                        "luma": 90.1,
+                        "gamma_param": 0.585,
+                        "y": [40,76,96,114,129,144,158,170,183,194,205,216,226,236,246,255]
+                    },
+                    {
+                        "luma": 360.1,
+                        "gamma_param": 0.605,
+                        "y": [20,73,93,110,126,141,155,168,180,192,204,215,225,236,246,255]
+                    }
+                ]
+            },    
+            "sharpen": [
+                {
+                    "gain": 1,
+                    "param": {
+                        "h_thresh": 16,
+                        "l_thresh": 5,
+                        "h_coeff": 1.625,
+                        "m_coeff": 1.525,
+                        "matrix":
+                        [
+                            1, 2, 1,
+                            2, 3, 2,
+                            1, 2, 1
+                        ]
+                    }
+                },
+                {
+                    "gain": 2,
+                    "param": {
+                        "h_thresh": 20,
+                        "l_thresh": 5,
+                        "h_coeff": 1.625,
+                        "m_coeff": 1.425,
+                        "matrix":
+                        [
+                            1, 1, 1,
+                            1, 1, 1,
+                            1, 1, 1
+                        ]
+                    }
+                },
+                {
+                    "gain": 12,
+                    "param": {
+                        "h_thresh": 16,
+                        "l_thresh": 5,
+                        "h_coeff": 1.625,
+                        "m_coeff": 1.325,
+                        "matrix":
+                        [
+                            1, 1, 1,
+                            1, 1, 1,
+                            1, 1, 1
+                        ]
+                    }
+                },
+                {
+                    "gain": 65,
+                    "param": {
+                        "h_thresh": 20,
+                        "l_thresh": 5,
+                        "h_coeff": 1.625,
+                        "m_coeff": 1.225,
+                        "matrix":
+                        [
+                            1, 1, 1,
+                            1, 1, 1,
+                            1, 1, 1
+                        ]
+                    }
+                }
+            ],
+            "contrast": [
+                {
+                    "gain": 1,
+                    "value": 132
+                },
+                {
+                    "gain": 16,
+                    "value": 130
+                },
+                {
+                    "gain": 24,
+                    "value": 128
+                },
+                {
+                    "gain": 65,
+                    "value": 126
+                }
+            ]
+        }
+    }
+}
