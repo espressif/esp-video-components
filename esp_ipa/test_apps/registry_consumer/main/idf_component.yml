@@ -1,0 +1,10 @@
+dependencies:
+  idf: ">=5.3"
+  # Namespaced on purpose: this pulls esp_ipa as `espressif__esp_ipa`, the same
+  # way a component-registry consumer sees it. `override_path` keeps that
+  # namespace while building the in-repo source, so the prebuilt's require
+  # resolution is exercised exactly as it is for registry users. Using the bare
+  # `esp_ipa` key here would resolve the short name locally and hide the bug.
+  espressif/esp_ipa:
+    version: "*"
+    override_path: "../../../"
