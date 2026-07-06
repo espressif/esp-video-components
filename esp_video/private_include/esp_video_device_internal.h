@@ -259,6 +259,13 @@ esp_err_t esp_video_create_isp_video_device(void);
  *      - Others if failed
  */
 esp_err_t esp_video_destroy_isp_video_device(void);
+
+/**
+ * @brief Check if the ISP bypass mode is enabled
+ *
+ * @return true if the ISP bypass mode is enabled, false otherwise
+ */
+bool esp_video_isp_video_device_is_raw_bypass(void);
 #endif
 
 #ifdef CONFIG_ESP_VIDEO_ENABLE_SPI_VIDEO_DEVICE
