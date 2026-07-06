@@ -2,6 +2,7 @@
 
 ## Unreleased
 - Added SC2331 MIPI RAW sensor driver.
+- Added OV3640 DVP JPEG sensor driver.
 
 ## 2.3.0
 
