@@ -2,6 +2,8 @@
 
 - H.264 video device now supports setting parameters after streaming has started
 
+- Fixed a warning related to the ISP AWB subwindow during initialization
+
 ## 2.3.0
 
 - Added information about the document system to README.md.
