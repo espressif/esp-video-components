@@ -6,6 +6,7 @@
 
 #include <string.h>
 #include "esp_log.h"
+#include "esp_timer.h"
 #include "unity.h"
 #include "unity_test_utils.h"
 #include "unity_test_utils_memory.h"
@@ -1886,6 +1887,119 @@ TEST_CASE("Auto focus test", "[IPA]")
     TEST_ASSERT_EQUAL_INT32(1, ipa_config->af->weight_table[0]);
     TEST_ASSERT_EQUAL_INT32(0, ipa_config->af->weight_table[1]);
     TEST_ASSERT_EQUAL_INT32(0, ipa_config->af->weight_table[2]);
+
+    TEST_ESP_OK(esp_ipa_pipeline_destroy(handle));
+}
+
+TEST_CASE("IOCTL set/get test", "[IPA]")
+{
+    esp_ipa_pipeline_handle_t handle = NULL;
+    esp_ipa_metadata_t metadata = {0};
+    const esp_ipa_config_t *ipa_config = esp_ipa_pipeline_get_config(IPA_TARGET_NAME);
+
+    TEST_ESP_OK(esp_ipa_pipeline_create(ipa_config, &handle));
+    TEST_ESP_OK(esp_ipa_pipeline_init(handle, &s_esp_ipa_sensor, &metadata));
+
+    /**
+     * Test AGC status get and set, the initial status is 1, so the get status should be 1.
+     * After set status to 0, the get status should be 0.
+     */
+    int status = 0;
+    TEST_ESP_OK(esp_ipa_pipeline_ioctl(handle, ESP_IPA_AGC_G_STATUS, &status));
+    TEST_ASSERT_EQUAL_INT32(1, status);
+
+    status = 0;
+    TEST_ESP_OK(esp_ipa_pipeline_ioctl(handle, ESP_IPA_AGC_S_STATUS, &status));
+    TEST_ESP_OK(esp_ipa_pipeline_ioctl(handle, ESP_IPA_AGC_G_STATUS, &status));
+    TEST_ASSERT_EQUAL_INT32(0, status);
+
+    TEST_ESP_OK(esp_ipa_pipeline_destroy(handle));
+}
+
+typedef struct {
+    esp_ipa_pipeline_handle_t handle;
+    const esp_ipa_stats_t *stats;
+    esp_ipa_metadata_t *metadata;
+    int64_t duration_us;
+    int64_t start_us;
+} ipa_mt_thread_ctx_t;
+
+static void *ipa_mt_process_thread(void *arg)
+{
+    ipa_mt_thread_ctx_t *ctx = arg;
+
+    while (esp_timer_get_time() - ctx->start_us < ctx->duration_us) {
+        assert(esp_ipa_pipeline_process(ctx->handle, ctx->stats, &s_esp_ipa_sensor, ctx->metadata) == ESP_OK);
+    }
+
+    return NULL;
+}
+
+static void *ipa_mt_ioctl_read_thread(void *arg)
+{
+    ipa_mt_thread_ctx_t *ctx = arg;
+    int status = 0;
+
+    while (esp_timer_get_time() - ctx->start_us < ctx->duration_us) {
+        assert(esp_ipa_pipeline_ioctl(ctx->handle, ESP_IPA_AGC_G_STATUS, &status) == ESP_OK);
+    }
+
+    return NULL;
+}
+
+static void *ipa_mt_ioctl_write_thread(void *arg)
+{
+    ipa_mt_thread_ctx_t *ctx = arg;
+    int status = 0;
+
+    while (esp_timer_get_time() - ctx->start_us < ctx->duration_us) {
+        assert(esp_ipa_pipeline_ioctl(ctx->handle, ESP_IPA_AGC_S_STATUS, &status) == ESP_OK);
+        status ^= 1;
+    }
+
+    return NULL;
+}
+
+TEST_CASE("IOCTL multiple threads test", "[IPA]")
+{
+    esp_ipa_pipeline_handle_t handle = NULL;
+    esp_ipa_metadata_t metadata = {0};
+    esp_ipa_stats_t stats = {0};
+    const esp_ipa_config_t *ipa_config = esp_ipa_pipeline_get_config(IPA_TARGET_NAME);
+
+    TEST_ESP_OK(esp_ipa_pipeline_create(ipa_config, &handle));
+    TEST_ESP_OK(esp_ipa_pipeline_init(handle, &s_esp_ipa_sensor, &metadata));
+
+    /* case1: t0 process 2s, t1 ioctl read 2s, t2 ioctl write 2s */
+    pthread_t t0;
+    pthread_t t1;
+    pthread_t t2;
+    int64_t start_us = esp_timer_get_time();
+    ipa_mt_thread_ctx_t ctx0 = {
+        .handle = handle,
+        .stats = &stats,
+        .metadata = &metadata,
+        .duration_us = 2 * 1000000LL,
+        .start_us = start_us,
+    };
+    ipa_mt_thread_ctx_t ctx1 = {
+        .handle = handle,
+        .duration_us = 2 * 1000000LL,
+        .start_us = start_us,
+    };
+    ipa_mt_thread_ctx_t ctx2 = {
+        .handle = handle,
+        .duration_us = 2 * 1000000LL,
+        .start_us = start_us,
+    };
+
+    TEST_ASSERT_EQUAL(0, pthread_create(&t0, NULL, ipa_mt_process_thread, &ctx0));
+    TEST_ASSERT_EQUAL(0, pthread_create(&t1, NULL, ipa_mt_ioctl_read_thread, &ctx1));
+    TEST_ASSERT_EQUAL(0, pthread_create(&t2, NULL, ipa_mt_ioctl_write_thread, &ctx2));
+
+    TEST_ASSERT_EQUAL(0, pthread_join(t0, NULL));
+    TEST_ASSERT_EQUAL(0, pthread_join(t1, NULL));
+    TEST_ASSERT_EQUAL(0, pthread_join(t2, NULL));
 
     TEST_ESP_OK(esp_ipa_pipeline_destroy(handle));
 }

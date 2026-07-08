@@ -2,6 +2,7 @@
 
 - H.264 video device now supports setting parameters after streaming has started
 - Added a control ID to enable or disable ISP bypass mode when both the input and output formats are RAW8
+- Added functions to enable or disable AGC and to retrieve the current AGC status
 
 - Fixed a warning related to the ISP AWB subwindow during initialization
 

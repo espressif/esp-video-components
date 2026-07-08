@@ -15,6 +15,7 @@
 #include <sys/mman.h>
 #include <sys/param.h>
 #include <sys/errno.h>
+#include <sys/lock.h>
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "freertos/queue.h"
@@ -26,6 +27,7 @@
 #include "esp_video_ioctl.h"
 #include "esp_video_isp_ioctl.h"
 #include "esp_video_device_internal.h"
+#include "esp_video_isp_pipeline.h"
 #include "esp_ipa.h"
 #include "esp_cam_sensor.h"
 
@@ -81,6 +83,7 @@ typedef struct esp_video_isp {
 
 static const char *TAG = "ISP";
 static esp_video_isp_t *s_esp_video_isp;
+static _lock_t s_isp_lock;
 
 /**
  * @brief Print ISP statistics data
@@ -1354,18 +1357,30 @@ esp_err_t esp_video_isp_pipeline_init(const esp_video_isp_config_t *config)
     esp_video_isp_t *isp;
     esp_ipa_metadata_t metadata;
 
-#if LOG_LOCAL_LEVEL >= ESP_LOG_DEBUG
-    esp_log_level_set(TAG, ESP_LOG_DEBUG);
-#endif
-
     if (!config || !config->isp_dev || !config->cam_dev ||
             !config->ipa_config) {
         ESP_LOGE(TAG, "failed to check ISP configuration");
         return ESP_ERR_INVALID_ARG;
     }
 
+    _lock_acquire(&s_isp_lock);
+
+    if (s_esp_video_isp) {
+        ESP_LOGE(TAG, "ISP controller is already initialized");
+        _lock_release(&s_isp_lock);
+        return ESP_ERR_INVALID_STATE;
+    }
+
+#if LOG_LOCAL_LEVEL >= ESP_LOG_DEBUG
+    esp_log_level_set(TAG, ESP_LOG_DEBUG);
+#endif
+
     isp = calloc(1, sizeof(esp_video_isp_t));
-    ESP_RETURN_ON_FALSE(isp, ESP_ERR_NO_MEM, TAG, "failed to malloc isp");
+    if (!isp) {
+        ESP_LOGE(TAG, "failed to malloc isp");
+        _lock_release(&s_isp_lock);
+        return ESP_ERR_NO_MEM;
+    }
 
     ESP_GOTO_ON_ERROR(esp_ipa_pipeline_create(config->ipa_config, &isp->ipa_pipeline),
                       fail_0, TAG, "failed to create IPA pipeline");
@@ -1403,6 +1418,7 @@ esp_err_t esp_video_isp_pipeline_init(const esp_video_isp_config_t *config)
 #endif
 
     s_esp_video_isp = isp;
+    _lock_release(&s_isp_lock);
     return ESP_OK;
 
 #if CONFIG_ISP_PIPELINE_CONTROLLER_TASK_STACK_USE_PSRAM
@@ -1419,6 +1435,7 @@ fail_1:
     esp_ipa_pipeline_destroy(isp->ipa_pipeline);
 fail_0:
     free(isp);
+    _lock_release(&s_isp_lock);
     return ret;
 }
 
@@ -1434,13 +1451,16 @@ fail_0:
 esp_err_t esp_video_isp_pipeline_deinit(void)
 {
     int ret;
-    esp_video_isp_t *isp = s_esp_video_isp;
     int type = V4L2_BUF_TYPE_META_CAPTURE;
 
-    ESP_RETURN_ON_FALSE(s_esp_video_isp, ESP_FAIL, TAG, "ISP controller is not initialized");
+    _lock_acquire(&s_isp_lock);
+
+    ESP_GOTO_ON_FALSE(s_esp_video_isp, ESP_FAIL, fail_0, TAG, "ISP controller is not initialized");
+
+    esp_video_isp_t *isp = s_esp_video_isp;
 
     ret = ioctl(isp->isp_fd, VIDIOC_STREAMOFF, &type);
-    ESP_RETURN_ON_FALSE(ret == 0, ESP_FAIL, TAG, "failed to stop stream");
+    ESP_GOTO_ON_FALSE(ret == 0, ESP_FAIL, fail_0, TAG, "failed to stop stream");
     vTaskDelay(ISP_METADATA_BUFFER_COUNT * 50 / portTICK_PERIOD_MS);
 
     vTaskDelete(isp->task_handler);
@@ -1450,13 +1470,18 @@ esp_err_t esp_video_isp_pipeline_deinit(void)
     heap_caps_free(isp->task_stack_ptr);
 #endif
 
-    ESP_RETURN_ON_FALSE(close(isp->isp_fd) == 0, ESP_FAIL, TAG, "failed to close ISP");
-    ESP_RETURN_ON_FALSE(close(isp->cam_fd) == 0, ESP_FAIL, TAG, "failed to close camera sensor");
-    ESP_RETURN_ON_ERROR(esp_ipa_pipeline_destroy(isp->ipa_pipeline), TAG, "failed to destroy pipeline");
+    ESP_GOTO_ON_FALSE(close(isp->isp_fd) == 0, ESP_FAIL, fail_0, TAG, "failed to close ISP");
+    ESP_GOTO_ON_FALSE(close(isp->cam_fd) == 0, ESP_FAIL, fail_0, TAG, "failed to close camera sensor");
+    ESP_GOTO_ON_ERROR(esp_ipa_pipeline_destroy(isp->ipa_pipeline), fail_0, TAG, "failed to destroy pipeline");
     free(isp);
     s_esp_video_isp = NULL;
 
+    _lock_release(&s_isp_lock);
     return ESP_OK;
+
+fail_0:
+    _lock_release(&s_isp_lock);
+    return ESP_FAIL;
 }
 
 /**
@@ -1468,5 +1493,66 @@ esp_err_t esp_video_isp_pipeline_deinit(void)
  */
 bool esp_video_isp_pipeline_is_initialized(void)
 {
-    return s_esp_video_isp != NULL;
+    _lock_acquire(&s_isp_lock);
+    bool is_initialized = s_esp_video_isp != NULL;
+    _lock_release(&s_isp_lock);
+
+    return is_initialized;
+}
+
+/**
+ * @brief Set AGC status.
+ *
+ * @param status AGC status
+ *
+ * @return
+ *      - ESP_OK on success
+ *      - Others if failed
+ */
+esp_err_t esp_video_isp_pipeline_set_agc_status(esp_video_isp_pipeline_agc_status_t status)
+{
+    esp_err_t ret = ESP_ERR_INVALID_STATE;
+
+    _lock_acquire(&s_isp_lock);
+    if (s_esp_video_isp) {
+        int value = status;
+
+        ret = esp_ipa_pipeline_ioctl(s_esp_video_isp->ipa_pipeline, ESP_IPA_AGC_S_STATUS, &value);
+    } else {
+        ESP_LOGD(TAG, "ISP controller is not initialized");
+    }
+    _lock_release(&s_isp_lock);
+
+    return ret;
+}
+
+/**
+ * @brief Get AGC status.
+ *
+ * @param status Pointer to store AGC status
+ *
+ * @return
+ *      - ESP_OK on success
+ *      - Others if failed
+ */
+esp_err_t esp_video_isp_pipeline_get_agc_status(esp_video_isp_pipeline_agc_status_t *status)
+{
+    esp_err_t ret = ESP_ERR_INVALID_STATE;
+
+    ESP_RETURN_ON_FALSE(status, ESP_ERR_INVALID_ARG, TAG, "status is NULL");
+
+    _lock_acquire(&s_isp_lock);
+    if (s_esp_video_isp) {
+        int value;
+
+        ret = esp_ipa_pipeline_ioctl(s_esp_video_isp->ipa_pipeline, ESP_IPA_AGC_G_STATUS, &value);
+        if (ret == ESP_OK) {
+            *status = value;
+        }
+    } else {
+        ESP_LOGD(TAG, "ISP controller is not initialized");
+    }
+    _lock_release(&s_isp_lock);
+
+    return ret;
 }

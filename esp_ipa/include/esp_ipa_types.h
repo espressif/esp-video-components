@@ -9,6 +9,7 @@
 #include <stdint.h>
 #include <sys/param.h>
 #include <stdbool.h>
+#include <pthread.h>
 #include "driver/isp.h"
 
 #ifdef __cplusplus
@@ -945,6 +946,10 @@ typedef struct esp_ipa_config {
  * @brief Image process algorithm operations
  */
 typedef struct esp_ipa_ops {
+    uint8_t type;                               /*!< IPA type: 0: no type,
+                                                               1: AGC,
+                                                               others: reserved */
+
     /**
      * @brief Initialize IPA, this function generally contains the following steps:
      *
@@ -962,6 +967,17 @@ typedef struct esp_ipa_ops {
      *        can be set to be NULL.
      */
     void (*process)(struct esp_ipa *ipa, const esp_ipa_stats_t *stats, const esp_ipa_sensor_t *sensor, esp_ipa_metadata_t *metadata);
+
+    /**
+     * @brief Set IPA command
+     *
+     * @param ipa IPA pointer
+     * @param cmd Command ID includingt the data buffer size
+     * @param data Command data
+     *
+     * @return ESP_OK on success, otherwise an error code
+     */
+    esp_err_t (*ioctl)(struct esp_ipa *ipa, uint32_t cmd, void *data);
 
     /**
      * @brief Free all resource allocated by IAP detect function.
@@ -983,6 +999,7 @@ typedef struct esp_ipa {
  * @brief Image process algorithm pipeline object
  */
 typedef struct esp_ipa_pipeline {
+    pthread_mutex_t mutex;                  /*!< IPA pipeline mutex */
     const esp_ipa_config_t *config;         /*!< IPA numbers */
     esp_ipa_t **ipa_array;                  /*!< IPA array */
     void *map;                              /*!< IPA global map object pointer */
