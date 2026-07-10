@@ -1,3 +1,7 @@
+## Unrelease
+
+- H.264 video device now supports setting parameters after streaming has started
+
 ## 2.3.0
 
 - Added information about the document system to README.md.

@@ -352,22 +352,76 @@ static esp_err_t h264_video_notify(struct esp_video *video, enum esp_video_event
 static esp_err_t h264_video_set_ext_ctrl(struct esp_video *video, const struct v4l2_ext_controls *ctrls)
 {
     esp_err_t ret = ESP_OK;
+    esp_h264_enc_param_hw_handle_t param;
     struct h264_video *h264_video = VIDEO_PRIV_DATA(struct h264_video *, video);
+    bool h264_started = h264_video->enc_handle != NULL;
+
+    if (h264_started) {
+        ret = esp_h264_enc_hw_get_param_hd(h264_video->enc_handle, &param);
+        if (ret != ESP_H264_ERR_OK) {
+            ESP_LOGE(TAG, "failed to get H.264 encoder parameter");
+            return errno_h264_to_std(ret);
+        }
+    }
 
     for (int i = 0; i < ctrls->count; i++) {
         struct v4l2_ext_control *ctrl = &ctrls->controls[i];
 
         switch (ctrl->id) {
         case V4L2_CID_MPEG_VIDEO_H264_I_PERIOD:
+            if (ctrl->value < H264_VIDEO_MIN_I_PERIOD || ctrl->value > H264_VIDEO_MAX_I_PERIOD) {
+                ESP_LOGE(TAG, "GOP value is out of range");
+                return ESP_ERR_INVALID_ARG;
+            }
+
+            if (h264_started) {
+                ret = esp_h264_enc_set_gop(&param->base, ctrl->value);
+                if (ret != ESP_H264_ERR_OK) {
+                    ESP_LOGE(TAG, "failed to set H.264 encoder GOP");
+                    return errno_h264_to_std(ret);
+                }
+
+                ESP_LOGD(TAG, "GOP set to %" PRIu32, ctrl->value);
+            }
             h264_video->gop = ctrl->value;
             break;
         case V4L2_CID_MPEG_VIDEO_BITRATE:
+            if (ctrl->value < H264_VIDEO_MIN_BITRATE || ctrl->value > H264_VIDEO_MAX_BITRATE) {
+                ESP_LOGE(TAG, "bitrate value is out of range");
+                return ESP_ERR_INVALID_ARG;
+            }
+
+            if (h264_started) {
+                ret = esp_h264_enc_set_bitrate(&param->base, ctrl->value);
+                if (ret != ESP_H264_ERR_OK) {
+                    ESP_LOGE(TAG, "failed to set H.264 encoder bitrate");
+                    return errno_h264_to_std(ret);
+                }
+
+                ESP_LOGD(TAG, "bitrate set to %" PRIu32, ctrl->value);
+            }
             h264_video->bitrate = ctrl->value;
             break;
         case V4L2_CID_MPEG_VIDEO_H264_MIN_QP:
+            if (ctrl->value > H264_VIDEO_MAX_QP || ctrl->value < H264_VIDEO_MIN_QP) {
+                ESP_LOGE(TAG, "min QP value is out of range");
+                return ESP_ERR_INVALID_ARG;
+            }
+            if (h264_started) {
+                ESP_LOGW(TAG, "min QP is not supported when encoder is started");
+            }
+
             h264_video->min_qp = ctrl->value;
             break;
         case V4L2_CID_MPEG_VIDEO_H264_MAX_QP:
+            if (ctrl->value < H264_VIDEO_MIN_QP || ctrl->value > H264_VIDEO_MAX_QP) {
+                ESP_LOGE(TAG, "max QP value is out of range");
+                return ESP_ERR_INVALID_ARG;
+            }
+            if (h264_started) {
+                ESP_LOGW(TAG, "max QP is not supported when encoder is started");
+            }
+
             h264_video->max_qp = ctrl->value;
             break;
         default:
