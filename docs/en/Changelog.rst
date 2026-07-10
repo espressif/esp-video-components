@@ -10,7 +10,7 @@ Version 0.1.0 (2026-04-16)
 
 - First interim version released.
 
-Version 0.2.0 (2026-07-xx)
+Version 0.2.0 (2026-07-10)
 ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 - Added and expanded English documentation, with synchronized updates to the Chinese documentation.
