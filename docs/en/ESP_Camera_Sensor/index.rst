@@ -1,6 +1,6 @@
-********************************************************
-ESP Camera Peripheral Development and Testing Guide
-********************************************************
+**********************************************
+Camera Peripheral Development and Tuning Guide
+**********************************************
 
 :link_to_translation:`zh_CN:[中文]`
 
@@ -8,5 +8,5 @@ ESP Camera Peripheral Development and Testing Guide
    :maxdepth: 1
 
    Camera Sensor Driver Development <cam_sensor_driver>
-   Camera Sensor Testing Reference <cam_sensor_test>
-   Camera Motor Driver Development <cam_motor_driver>
+   Camera Sensor Tuning <cam_sensor_test>
+   Camera Auto-Focus Motor Driver Development <cam_motor_driver>

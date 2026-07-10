@@ -195,7 +195,7 @@ Open VLC media player APP and then open the `*.bin` file in the player to view t
 
 ## Troubleshooting
 
-* If the console log shows as follows, it means your SOC chip version is v0.0, and it is not supported by default configuration, please configure the right version by menuconfig:
+* If the console log shows as follows, it means your SoC chip version is v0.0, and it is not supported by default configuration, please configure the right version by menuconfig:
 
     ```txt
     A fatal error occurred: bootloader/bootloader.bin requires chip revision in range [v0.1 - v0.99] (this chip is revision v0.0). Use --force to flash anyway
