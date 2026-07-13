@@ -122,6 +122,9 @@
 #elif CONFIG_CAMERA_ARDUCAM_IMX500
 #include "arducam_imx500.h"
 #define SCCB0_CAM_DEVICE_ADDR ARDUCAM_IMX500_SCCB_ADDR
+#elif CONFIG_CAMERA_TC358743
+#include "tc358743.h"
+#define SCCB0_CAM_DEVICE_ADDR TC358743_SCCB_ADDR
 #else
 #define SCCB0_CAM_DEVICE_ADDR 0x01
 #endif
@@ -257,6 +260,8 @@ TEST_CASE("Camera sensor detect test", "[video]")
     cam0 = pivariety_detect(&cam0_config);
 #elif CONFIG_CAMERA_ARDUCAM_IMX500
     cam0 = arducam_imx500_detect(&cam0_config);
+#elif CONFIG_CAMERA_TC358743
+    cam0 = tc358743_detect(&cam0_config);
 #endif
 
     TEST_ASSERT_MESSAGE(cam0 != NULL, "detect fail");

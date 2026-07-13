@@ -8,6 +8,7 @@
 - Modified the order of the camera sensors in the Kconfig and README.md files.
 - Added 720p bining mode support in OS04C10 driver.
 - Added gc2053 mipi driver.
+- Added TC358743 HDMI to MIPI-CSI bridge.
 
 ## 2.4.0
 - Added SC2331 MIPI RAW sensor driver.

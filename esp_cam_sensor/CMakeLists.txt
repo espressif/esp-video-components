@@ -248,6 +248,12 @@ if(CONFIG_CAMERA_ARDUCAM_IMX500)
     list(APPEND priv_include_dirs "sensors/arducam/imx500/private_include")
 endif()
 
+if(CONFIG_CAMERA_TC358743)
+    list(APPEND srcs "sensors/tc358743/tc358743.c")
+    list(APPEND include_dirs "sensors/tc358743/include")
+    list(APPEND priv_include_dirs "sensors/tc358743/private_include")
+endif()
+
 idf_component_register(SRCS ${srcs}
                        INCLUDE_DIRS ${include_dirs}
                        PRIV_INCLUDE_DIRS ${priv_include_dirs}
@@ -406,6 +412,10 @@ if(CONFIG_CAMERA_SENSOR_MOTOR_DETECT_METHOD_DYNAMIC_LINK)
 
     if(CONFIG_CAMERA_ARDUCAM_IMX500_AUTO_DETECT_MIPI_INTERFACE_SENSOR)
         target_link_libraries(${COMPONENT_LIB} INTERFACE "-u arducam_imx500_detect")
+    endif()
+
+    if(CONFIG_CAMERA_TC358743_AUTO_DETECT_MIPI_INTERFACE_SENSOR)
+        target_link_libraries(${COMPONENT_LIB} INTERFACE "-u tc358743_detect")
     endif()
 endif()
 

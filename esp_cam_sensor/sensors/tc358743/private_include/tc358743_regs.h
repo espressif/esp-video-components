@@ -1,0 +1,256 @@
+/*
+ * SPDX-FileCopyrightText: 2026 Espressif Systems (Shanghai) CO LTD
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+/*
+ * TC358743 register definitions.
+ */
+#pragma once
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+#define TC358743_REG_DELAY 0xffff
+#define CHIPID 0x0000
+#define SYSCTL 0x0002
+#define MASK_IRRST 0x0800
+#define MASK_CECRST 0x0400
+#define MASK_CTXRST 0x0200
+#define MASK_HDMIRST 0x0100
+#define MASK_SLEEP 0x0001
+
+#define CONFCTL 0x0004
+#define MASK_YCBCRFMT 0x00c0
+#define MASK_YCBCRFMT_422_8_BIT 0x00c0
+#define MASK_VBUFEN 0x0001
+#define MASK_ABUFEN 0x0002
+#define MASK_AUDCHNUM_2 0x0c00
+#define MASK_AUDOUTSEL_I2S 0x0010
+#define MASK_AUTOINDEX 0x0004
+
+#define FIFOCTL 0x0006
+
+#define PLLCTL0 0x0020
+#define MASK_PLL_PRD 0xf000
+#define SET_PLL_PRD(p) ((((p)-1) << 12) & MASK_PLL_PRD)
+#define MASK_PLL_FBD 0x01ff
+#define SET_PLL_FBD(f) (((f)-1) & MASK_PLL_FBD)
+
+#define PLLCTL1 0x0022
+#define MASK_PLL_FRS 0x0c00
+#define SET_PLL_FRS(x) (((x) << 10) & MASK_PLL_FRS)
+#define MASK_PLL_EN 0x0001
+#define MASK_RESETB 0x0002
+#define MASK_CKEN 0x0010
+
+#define CLW_CNTRL 0x0140
+#define MASK_CLW_LANEDISABLE 0x0001
+#define D0W_CNTRL 0x0144
+#define MASK_D0W_LANEDISABLE 0x0001
+#define D1W_CNTRL 0x0148
+#define MASK_D1W_LANEDISABLE 0x0001
+#define D2W_CNTRL 0x014c
+#define MASK_D2W_LANEDISABLE 0x0001
+#define D3W_CNTRL 0x0150
+#define MASK_D3W_LANEDISABLE 0x0001
+
+#define STARTCNTRL 0x0204
+#define MASK_START 0x00000001
+
+#define LINEINITCNT 0x0210
+#define LPTXTIMECNT 0x0214
+#define TCLK_HEADERCNT 0x0218
+#define TCLK_TRAILCNT 0x021c
+#define THS_HEADERCNT 0x0220
+#define TWAKEUP 0x0224
+#define TCLK_POSTCNT 0x0228
+#define THS_TRAILCNT 0x022c
+#define HSTXVREGCNT 0x0230
+#define HSTXVREGEN 0x0234
+#define MASK_CLM_HSTXVREGEN 0x0001
+#define MASK_D0M_HSTXVREGEN 0x0002
+#define MASK_D1M_HSTXVREGEN 0x0004
+#define MASK_D2M_HSTXVREGEN 0x0008
+#define MASK_D3M_HSTXVREGEN 0x0010
+
+#define TXOPTIONCNTRL 0x0238
+
+#define CSI_START 0x0518
+#define MASK_STRT 0x00000001
+
+#define CSI_CONFW 0x0500
+#define MASK_MODE_SET 0xa0000000
+#define MASK_MODE_CLEAR 0xc0000000
+#define MASK_ADDRESS_CSI_CONTROL 0x03000000
+#define MASK_ADDRESS_CSI_ERR_INTENA 0x14000000
+#define MASK_ADDRESS_CSI_ERR_HALT 0x15000000
+#define MASK_ADDRESS_CSI_INT_ENA 0x06000000
+#define MASK_CSI_MODE 0x8000
+#define MASK_TXHSMD 0x0080
+#define MASK_NOL_1 0x0000
+#define MASK_NOL_2 0x0002
+#define MASK_NOL_3 0x0004
+#define MASK_NOL_4 0x0006
+
+#define MASK_INTER 0x00000004
+#define MASK_INER 0x00000200
+#define MASK_WCER 0x00000100
+#define MASK_QUNK 0x00000010
+#define MASK_TXBRK 0x00000002
+
+#define EDID_MODE 0x85c7
+#define MASK_EDID_MODE 0x03
+#define MASK_EDID_MODE_E_DDC 0x02
+#define EDID_LEN1 0x85ca
+#define EDID_LEN2 0x85cb
+#define EDID_RAM 0x8c00
+#define DDC_CTL 0x8543
+#define MASK_DDC5V_MODE 0x03
+#define HPD_CTL 0x8544
+#define MASK_HPD_OUT0 0x01
+
+#define SYS_STATUS 0x8520
+#define VI_STATUS1 0x8522
+#define VI_STATUS2 0x8525
+#define CLK_STATUS 0x8526
+#define PHYERR_STATUS 0x8527
+#define VI_STATUS3 0x8528
+#define CSI_STATUS 0x0410
+#define CSI_CONTROL 0x040c
+#define CSI_INT 0x0414
+#define CSI_ERR 0x044c
+#define HDMI_DVI 0x8550
+/** Captured AVI InfoFrame RAM (Linux tc358743_regs.h). */
+#define PK_AVI_0HEAD 0x8710
+#define PK_AVI_16BYTE 0x8723
+#define PK_AVI_LEN ((PK_AVI_16BYTE) - (PK_AVI_0HEAD) + 1)
+/** Measured input timing (TC9590XBG §6.7 same map as TC358743 on common boards). */
+#define HACT0 0x8582
+#define HACT1 0x8583
+#define VACT0 0x8588
+#define VACT1 0x8589
+#define HTOTAL0 0x858a
+#define HTOTAL1 0x858b
+#define VTOTAL0 0x858c
+#define VTOTAL1 0x858d
+#define PHY_EN 0x8534
+#define MASK_ENABLE_PHY 0x01
+#define PHY_CTL0 0x8531
+#define MASK_PHY_SYSCLK_IND 0x02
+#define PHY_CTL1 0x8532
+#define MASK_PHY_AUTO_RST1 0xf0
+#define SET_PHY_AUTO_RST1_US(us) ((((us) / 200) << 4) & MASK_PHY_AUTO_RST1)
+#define MASK_FREQ_RANGE_MODE 0x0f
+#define SET_FREQ_RANGE_MODE_CYCLES(c) (((c)-1) & MASK_FREQ_RANGE_MODE)
+#define PHY_CTL2 0x8533
+#define MASK_PHY_AUTO_RST4 0x04
+#define MASK_PHY_AUTO_RST3 0x02
+#define MASK_PHY_AUTO_RST2 0x01
+#define MASK_PHY_AUTO_RSTn (MASK_PHY_AUTO_RST4 | MASK_PHY_AUTO_RST3 | MASK_PHY_AUTO_RST2)
+#define PHY_BIAS 0x8536
+#define PHY_CSQ 0x853f
+#define MASK_CSQ_CNT 0x0f
+#define SET_CSQ_CNT_LEVEL(n) ((n) & MASK_CSQ_CNT)
+#define PHY_RST 0x8535
+#define MASK_RESET_CTRL 0x01
+#define HDMI_DET 0x8552
+#define MASK_HDMI_DET_V 0x30
+#define HV_RST 0x85af
+#define MASK_H_PI_RST 0x01
+#define MASK_V_PI_RST 0x02
+#define AVM_CTL 0x8546
+
+#define SYS_FREQ0 0x8540
+#define SYS_FREQ1 0x8541
+#define FH_MIN0 0x85aa
+#define FH_MIN1 0x85ab
+#define FH_MAX0 0x85ac
+#define FH_MAX1 0x85ad
+#define LOCKDET_REF0 0x8630
+#define LOCKDET_REF1 0x8631
+#define LOCKDET_REF2 0x8632
+#define NCO_F0_MOD 0x8670
+#define MASK_NCO_F0_MOD 0x03
+#define MASK_NCO_F0_MOD_27MHZ 0x01
+
+#define HDCP_MODE 0x8560
+#define MASK_MANUAL_AUTHENTICATION 0x02
+
+#define VI_MODE 0x8570
+#define MASK_RGB_DVI 0x08
+#define VOUT_SET2 0x8573
+#define MASK_SEL422 0x80
+#define MASK_VOUT_422FIL_100 0x40
+#define MASK_VOUTCOLORMODE 0x03
+#define MASK_VOUTCOLORMODE_AUTO 0x01
+#define VOUT_SET3 0x8574
+#define MASK_VOUT_EXTCNT 0x08
+
+#define VI_REP 0x8576
+#define MASK_VOUT_COLOR_SEL 0xe0
+#define MASK_VOUT_COLOR_RGB_FULL 0x00
+#define MASK_VOUT_COLOR_601_YCBCR_LIMITED 0x60
+#define MASK_VOUT_COLOR_601_YCBCR_FULL 0x40
+#define MASK_VOUT_COLOR_709_YCBCR_LIMITED 0xa0
+
+#define INTSTATUS 0x0014
+#define INTMASK 0x0016
+#define MASK_HDMI_MSK 0x0200
+#define MASK_CSI_MSK 0x0100
+
+#define VI_MUTE 0x857f
+#define MASK_AUTO_MUTE 0xc0
+#define MASK_VI_MUTE 0x10
+
+#define PK_INT_MODE 0x8709
+#define MASK_ISRC2_INT_MODE 0x80
+#define MASK_ISRC_INT_MODE 0x40
+#define MASK_ACP_INT_MODE 0x20
+#define MASK_VS_INT_MODE 0x10
+#define MASK_SPD_INT_MODE 0x08
+#define MASK_MS_INT_MODE 0x04
+#define MASK_AUD_INT_MODE 0x02
+#define MASK_AVI_INT_MODE 0x01
+#define NO_PKT_LIMIT 0x870b
+#define NO_PKT_CLR 0x870c
+#define ERR_PK_LIMIT 0x870d
+#define NO_PKT_LIMIT2 0x870e
+#define NO_GDB_LIMIT 0x9007
+
+#define FORCE_MUTE 0x8602
+#define AUTO_CMD0 0x8603
+#define MASK_AUTO_MUTE7 0x80
+#define MASK_AUTO_MUTE6 0x40
+#define MASK_AUTO_MUTE5 0x20
+#define MASK_AUTO_MUTE4 0x10
+#define MASK_AUTO_MUTE1 0x02
+#define MASK_AUTO_MUTE0 0x01
+#define AUTO_CMD1 0x8604
+#define MASK_AUTO_MUTE9 0x02
+#define AUTO_CMD2 0x8605
+#define MASK_AUTO_PLAY3 0x08
+#define MASK_AUTO_PLAY2 0x04
+#define BUFINIT_START 0x8606
+#define SET_BUFINIT_START_MS(ms) ((ms) & 0xff)
+#define FS_MUTE 0x8607
+#define FS_IMODE 0x8608
+#define MASK_NLPCM_SMODE 0x02
+#define MASK_FS_SMODE 0x01
+#define ACR_MODE 0x8609
+#define MASK_CTS_MODE 0x02
+#define ACR_MDF0 0x860a
+#define MASK_ACR_L2MDF_1976_PPM 0x20
+#define MASK_ACR_L1MDF_976_PPM 0x10
+#define ACR_MDF1 0x860b
+#define MASK_ACR_L3MDF_3906_PPM 0x07
+#define SDO_MODE1 0x860d
+#define MASK_SDO_FMT_I2S 0x02
+#define DIV_MODE 0x8612
+#define SET_DIV_DLY_MS(ms) ((ms) & 0xff)
+
+#ifdef __cplusplus
+}
+#endif
