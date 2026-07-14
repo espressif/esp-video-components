@@ -10,6 +10,10 @@ if (CONFIG_ESP_VIDEO_ENABLE_ISP_VIDEO_DEVICE)
     list(APPEND srcs "test_isp.c")
 endif()
 
+if (CONFIG_ESP_VIDEO_ENABLE_H264_VIDEO_DEVICE)
+    list(APPEND srcs "test_h264_codec.c")
+endif()
+
 if (CONFIG_ESP_VIDEO_ENABLE_SWAP_BYTE_RISCV)
     list(APPEND srcs "test_data_reprocessing.c")
 endif()
