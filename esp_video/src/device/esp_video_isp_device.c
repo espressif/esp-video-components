@@ -426,11 +426,21 @@ static void video_rect2window(struct esp_video *video, isp_window_t *window)
 {
     struct v4l2_rect *r = META_VIDEO_GET_RECT(video);
 
+#if ESP_VIDEO_ISP_DEVICE_AWB_SUBWIN
+    window->top_left.x = (r->left + ISP_AWB_WINDOW_X_NUM - 1) / ISP_AWB_WINDOW_X_NUM * ISP_AWB_WINDOW_X_NUM;
+    window->top_left.y = (r->top + ISP_AWB_WINDOW_Y_NUM - 1) / ISP_AWB_WINDOW_Y_NUM * ISP_AWB_WINDOW_Y_NUM;
+
+    window->btm_right.x = (r->left + r->width) / ISP_AWB_WINDOW_X_NUM * ISP_AWB_WINDOW_X_NUM - 1;
+    window->btm_right.y = (r->top + r->height) / ISP_AWB_WINDOW_Y_NUM * ISP_AWB_WINDOW_Y_NUM - 1;
+
+    ESP_LOGD(TAG, "window: x=[%" PRIu32 " %" PRIu32 "], y=[%" PRIu32 " %" PRIu32 "]", window->top_left.x, window->btm_right.x, window->top_left.y, window->btm_right.y);
+#else
     window->top_left.x = r->left;
     window->top_left.y = r->top;
 
     window->btm_right.x = r->left + r->width - 1;
     window->btm_right.y = r->top + r->height - 1;
+#endif
 }
 
 static esp_err_t isp_stats_done(struct isp_video *isp_video, const void *buffer, uint32_t flags)
