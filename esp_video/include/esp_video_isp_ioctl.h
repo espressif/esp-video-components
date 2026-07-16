@@ -42,6 +42,19 @@ extern "C" {
 #define V4L2_CID_USER_ESP_ISP_GAMMA_EXT     (V4L2_CID_USER_ESP_ISP_BASE + 0x000a)   /*!< GAMMA extension V4L2 controller ID */
 
 /**
+ * @brief Set ISP bypass mode. When both the ISP input and output formats are RAW8, bypass mode is enabled by default.
+ *        In bypass mode, the ISP does not process the image; the image data is transferred directly to the output.
+ *        As a result, the original image data is not processed by any ISP modules in the raw regions.
+ *
+ * @note This command is for the ISP video device.
+ *
+ * @note This command only has an effect when both ISP input and output formats are set to RAW8.
+ *
+ * @param bypass: true to bypass the ISP, false to enable ISP processing.
+ */
+#define V4L2_CID_USER_ESP_ISP_RAW_BYPASS     (V4L2_CID_USER_ESP_ISP_BASE + 0x000b)
+
+/**
  * @brief ESP32XXX ISP image statistics output, data type is "esp_ipa_stats_t"
  */
 #define V4L2_META_FMT_ESP_ISP_STATS         v4l2_fourcc('E', 'S', 'T', 'A')

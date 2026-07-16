@@ -204,6 +204,9 @@ struct isp_video {
     uint8_t capture_meta            : 1;
     uint8_t rect_set                : 1;
 
+    /* ISP bypass mode */
+    uint8_t isp_raw_bypass           : 1;
+
     /* Statistics data */
 
     uint64_t seq;
@@ -1960,6 +1963,10 @@ static esp_err_t isp_video_set_ext_ctrl(struct esp_video *video, const struct v4
             }
             break;
         }
+        case V4L2_CID_USER_ESP_ISP_RAW_BYPASS: {
+            isp_video->isp_raw_bypass = ctrl->value != 0 ? true : false;
+            break;
+        }
         default:
             ret = ESP_ERR_NOT_SUPPORTED;
             break;
@@ -2106,6 +2113,10 @@ static esp_err_t isp_video_get_ext_ctrl(struct esp_video *video, struct v4l2_ext
             *af = isp_video->af_config;
             break;
         }
+        case V4L2_CID_USER_ESP_ISP_RAW_BYPASS: {
+            ctrl->value = isp_video->isp_raw_bypass ? 1 : 0;
+            break;
+        }
         default:
             ret = ESP_ERR_NOT_SUPPORTED;
             break;
@@ -2190,6 +2201,8 @@ esp_err_t esp_video_create_isp_video_device(void)
     s_isp_video.color_config.color_saturation.val = ISP_SATURATION_DEFAULT;
     s_isp_video.color_config.color_hue = ISP_HUE_DEFAULT;
     s_isp_video.color_config.color_brightness = ISP_BRIGHTNESS_DEFAULT;
+
+    s_isp_video.isp_raw_bypass = true;
 
     return ESP_OK;
 }
@@ -2315,4 +2328,14 @@ esp_err_t esp_video_isp_video_device_remove_isp_proc(isp_proc_handle_t isp_proc)
 fail_0:
     ISP_UNLOCK(&s_isp_video);
     return ret;
+}
+
+/**
+ * @brief Check if the ISP bypass mode is enabled
+ *
+ * @return true if the ISP bypass mode is enabled, false otherwise
+ */
+bool esp_video_isp_video_device_is_raw_bypass(void)
+{
+    return s_isp_video.isp_raw_bypass;
 }

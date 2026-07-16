@@ -1,6 +1,7 @@
 ## Unrelease
 
 - H.264 video device now supports setting parameters after streaming has started
+- Added a control ID to enable or disable ISP bypass mode when both the input and output formats are RAW8
 
 - Fixed a warning related to the ISP AWB subwindow during initialization
 

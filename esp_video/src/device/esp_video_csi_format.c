@@ -424,6 +424,13 @@ esp_err_t esp_video_csi_check_format(esp_cam_sensor_output_format_t sensor_fmt, 
         in_out_format->csi_input_fmt = v4l2_to_csi_color(sensor_v4l2_fmt);
         in_out_format->csi_output_fmt = v4l2_to_csi_color(requested_fmt);
 
+#if CONFIG_ESP_VIDEO_ENABLE_ISP_VIDEO_DEVICE
+        if (sensor_v4l2_fmt == V4L2_PIX_FMT_SBGGR8 && requested_fmt == V4L2_PIX_FMT_SBGGR8 && !esp_video_isp_video_device_is_raw_bypass()) {
+            ESP_LOGI(TAG, "ISP bypass mode is disabled by user");
+            in_out_format->isp_bypass_required = false;
+        }
+#endif
+
         /* CSI supports the conversion */
         ESP_LOGD(TAG, "Format supported: sensor->ISP(bypass)->CSI(convert)->requested");
         return ESP_OK;
@@ -433,6 +440,13 @@ esp_err_t esp_video_csi_check_format(esp_cam_sensor_output_format_t sensor_fmt, 
         if (isp_output_fmt == requested_fmt) {
             in_out_format->csi_input_fmt = v4l2_to_csi_color(sensor_v4l2_fmt);
             in_out_format->csi_output_fmt = v4l2_to_csi_color(requested_fmt);
+
+#if CONFIG_ESP_VIDEO_ENABLE_ISP_VIDEO_DEVICE
+            if (sensor_v4l2_fmt == V4L2_PIX_FMT_SBGGR8 && requested_fmt == V4L2_PIX_FMT_SBGGR8 && !esp_video_isp_video_device_is_raw_bypass()) {
+                ESP_LOGI(TAG, "ISP bypass mode is disabled by user");
+                in_out_format->isp_bypass_required = false;
+            }
+#endif
 
             ESP_LOGD(TAG, "Format supported: sensor->ISP(bypass)->CSI(passthrough)");
             return ESP_OK;
