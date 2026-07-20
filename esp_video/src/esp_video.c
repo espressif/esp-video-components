@@ -2160,6 +2160,19 @@ esp_err_t esp_video_config_buffer(struct esp_video *video, const struct v4l2_for
     }
 
 #if CONFIG_SPIRAM
+#if CONFIG_SPIRAM_ENC_EXEMPT
+    /**
+     * Test results show that enabling PSRAM encryption decreases PSRAM read and write performance.
+     *
+     * Therefore, if PSRAM encryption is enabled, the video buffer should be allocated in unencrypted regions
+     * to avoid reduced PSRAM read and write performance.
+     */
+    if (MALLOC_CAP_SPIRAM & frame_caps) {
+        frame_caps &= ~MALLOC_CAP_SPIRAM;
+        frame_caps |= MALLOC_CAP_SPIRAM_NO_ENC;
+    }
+#endif
+
     ESP_RETURN_ON_ERROR(esp_cache_get_alignment(frame_caps, &alignments), TAG, "failed to get cache alignment");
 #else
     alignments = 4;
