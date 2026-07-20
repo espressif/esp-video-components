@@ -27,6 +27,7 @@
 #include "lwip/inet.h"
 #include "lwip/apps/netbiosns.h"
 #include "example_video_common.h"
+#include "esp_video_isp_pipeline.h"
 
 #define EXAMPLE_CAMERA_VIDEO_BUFFER_NUMBER  CONFIG_EXAMPLE_CAMERA_VIDEO_BUFFER_NUMBER
 
@@ -864,6 +865,10 @@ void app_main(void)
 
     assert(config_count > 0);
     ESP_ERROR_CHECK(start_cam_web_server(config, config_count));
+
+#if CONFIG_EXAMPLE_DISABLE_ISP_PIPELINE_AGC
+    ESP_ERROR_CHECK(esp_video_isp_pipeline_set_agc_status(ESP_VIDEO_ISP_PIPELINE_AGC_DISABLE));
+#endif /* CONFIG_EXAMPLE_DISABLE_ISP_PIPELINE_AGC */
 
     ESP_LOGI(TAG, "Camera web server starts");
 }

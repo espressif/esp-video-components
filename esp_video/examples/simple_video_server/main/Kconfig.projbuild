@@ -95,4 +95,20 @@ menu "Example Configuration"
                 Height of the crop region in pixels.
                 Must be greater than 0 and not exceed the sensor output height.
     endif
+
+    config EXAMPLE_DISABLE_ISP_PIPELINE_AGC
+        bool "Disable Auto Gain Control(AGC)"
+        default n
+        depends on ESP_VIDEO_ENABLE_ISP_PIPELINE_CONTROLLER
+        help
+            Disables the Auto Gain Control (AGC) functionality in the ISP (Image Signal Processor) pipeline controller.
+            When enabled, the ISP pipeline will not automatically adjust the sensor's gain based on scene brightness,
+            which may be useful for custom exposure scenarios or testing purposes.
+
+            If disabled (default), the ISP pipeline will autonomously manage gain adjustments to optimize image quality
+            under varying lighting conditions.
+
+            Note:
+              - This option is only available when the ISP pipeline controller is enabled.
+              - Disabling AGC may require manual gain adjustments to ensure correct image exposure.
 endmenu

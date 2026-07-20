@@ -9,6 +9,7 @@
 #include <stdbool.h>
 #include "esp_err.h"
 #include "esp_ipa_types.h"
+#include "esp_ipa_cmd.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -165,6 +166,17 @@ const void *esp_ipa_get_ptr(esp_ipa_t *ipa, const char *name);
  * @return Target IPA configuration pointer if sensor is supported or null if target is not supported.
  */
 const esp_ipa_config_t *esp_ipa_pipeline_get_config(const char *name);
+
+/**
+ * @brief Send command to IPA.
+ *
+ * @param ipa   Image process algorithm object
+ * @param cmd   Command ID
+ * @param data  Command data
+ *
+ * @return ESP_OK on success, otherwise an error code
+ */
+esp_err_t esp_ipa_pipeline_ioctl(esp_ipa_pipeline_handle_t handle, uint32_t cmd, void *data);
 
 #ifdef __cplusplus
 }
