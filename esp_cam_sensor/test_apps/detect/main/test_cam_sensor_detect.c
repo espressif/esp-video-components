@@ -53,6 +53,9 @@
 #elif CONFIG_CAMERA_OV2710
 #include "ov2710.h"
 #define SCCB0_CAM_DEVICE_ADDR OV2710_SCCB_ADDR
+#elif CONFIG_CAMERA_OV3640
+#include "ov3640.h"
+#define SCCB0_CAM_DEVICE_ADDR OV3640_SCCB_ADDR
 #elif CONFIG_CAMERA_OV3660
 #include "ov3660.h"
 #define SCCB0_CAM_DEVICE_ADDR OV3660_SCCB_ADDR
@@ -193,6 +196,8 @@ TEST_CASE("Camera sensor detect test", "[video]")
     cam0 = ov2640_detect(&cam0_config);
 #elif CONFIG_CAMERA_OV2710
     cam0 = ov2710_detect(&cam0_config);
+#elif CONFIG_CAMERA_OV3640
+    cam0 = ov3640_detect(&cam0_config);
 #elif CONFIG_CAMERA_OV3660
     cam0 = ov3660_detect(&cam0_config);
 #elif CONFIG_CAMERA_OV5640

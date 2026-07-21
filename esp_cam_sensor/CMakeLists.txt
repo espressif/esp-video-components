@@ -134,6 +134,12 @@ if(CONFIG_CAMERA_OV2710)
     list(APPEND priv_include_dirs "sensors/ov2710/private_include")
 endif()
 
+if(CONFIG_CAMERA_OV3640)
+    list(APPEND srcs "sensors/ov3640/ov3640.c")
+    list(APPEND include_dirs "sensors/ov3640/include")
+    list(APPEND priv_include_dirs "sensors/ov3640/private_include")
+endif()
+
 if(CONFIG_CAMERA_OV3660)
     list(APPEND srcs "sensors/ov3660/ov3660.c")
     list(APPEND include_dirs "sensors/ov3660/include")
@@ -290,6 +296,10 @@ if(CONFIG_CAMERA_SENSOR_MOTOR_DETECT_METHOD_DYNAMIC_LINK)
 
     if(CONFIG_CAMERA_OV2710_AUTO_DETECT_MIPI_INTERFACE_SENSOR)
         target_link_libraries(${COMPONENT_LIB} INTERFACE "-u ov2710_detect")
+    endif()
+
+    if(CONFIG_CAMERA_OV3640_AUTO_DETECT_DVP_INTERFACE_SENSOR)
+        target_link_libraries(${COMPONENT_LIB} INTERFACE "-u ov3640_detect")
     endif()
 
     if(CONFIG_CAMERA_OV3660_AUTO_DETECT_DVP_INTERFACE_SENSOR)

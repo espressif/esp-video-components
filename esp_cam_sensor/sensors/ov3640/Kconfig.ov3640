@@ -1,0 +1,133 @@
+menuconfig CAMERA_OV3640
+    bool "OV3640"
+    default n
+    depends on SOC_LCDCAM_CAM_SUPPORTED
+    help
+        Enable support for the OV3640 CMOS image sensor.
+
+if CAMERA_OV3640
+    menu "Auto detect OV3640"
+        config CAMERA_OV3640_AUTO_DETECT_DVP_INTERFACE_SENSOR
+            bool "Detect for DVP interface sensor"
+            default y
+            help
+                When enabled, the OV3640 sensor will be automatically detected
+                and initialized on the DVP interface at startup without requiring
+                manual detection call(ov3640_detect) in your application.
+    endmenu
+
+    menu "Choose supported formats for DVP interface"
+        config CAMERA_OV3640_DVP_RGB565_LE_640X480_7FPS
+            bool "DVP 8-bit, 24M input,  640x480  7fps, RGB565(LE)"
+            default y
+            help
+                RGB565(LE) color format at 640x480 resolution (VGA) with 7fps framerate.
+                Requires 8-bit DVP interface and 24MHz input clock.
+
+        config CAMERA_OV3640_DVP_YUV422_UYVY_640X480_30FPS
+            bool "DVP 8-bit, 24M input,  640x480  30fps, YUV422(UYVY)"
+            default n
+            help
+                YUV422(UYVY) color format at 640x480 resolution (VGA) with 30fps framerate.
+                Requires 8-bit DVP interface and 24MHz input clock.
+
+        config CAMERA_OV3640_DVP_YUV422_UYVY_1024X768_5FPS
+            bool "DVP 8-bit, 24M input, 1024x768   5fps, YUV422(UYVY)"
+            default n
+            help
+                YUV422(UYVY) color format at 1024x768 resolution with 5fps framerate.
+                Requires 8-bit DVP interface and 24MHz input clock.
+
+        config CAMERA_OV3640_DVP_YUV422_UYVY_1024X768_25FPS
+            bool "DVP 8-bit, 24M input, 1024x768  25fps, YUV422(UYVY)"
+            default n
+            help
+                YUV422(UYVY) color format at 1024x768 resolution with 25fps framerate.
+                Requires 8-bit DVP interface and 24MHz input clock.
+
+        config CAMERA_OV3640_DVP_JPEG_1024X768_25FPS
+            bool "DVP 8-bit, 24M input, 1024x768  25fps, JPEG"
+            default n
+            help
+                JPEG format at 1024x768 resolution with 25fps framerate.
+                Requires 8-bit DVP interface and 24MHz input clock.
+
+        config CAMERA_OV3640_DVP_YUV422_UYVY_1280X720_15FPS
+            bool "DVP 8-bit, 24M input, 1280x720  15fps, YUV422(UYVY)"
+            default n
+            help
+                YUV422(UYVY) color format at 1280x720 resolution (720P) with 15fps framerate.
+                Requires 8-bit DVP interface and 24MHz input clock.
+
+        config CAMERA_OV3640_DVP_JPEG_1280X720_15FPS
+            bool "DVP 8-bit, 24M input, 1280x720  15fps, JPEG"
+            default n
+            help
+                JPEG format at 1280x720 resolution (720P) with 15fps framerate.
+                Requires 8-bit DVP interface and 24MHz input clock.
+
+        config CAMERA_OV3640_DVP_JPEG_2048X1536_15FPS
+            bool "DVP 8-bit, 24M input, 2048x1536  15fps, JPEG"
+            default n
+            help
+                JPEG format at 2048x1536 resolution with 15fps framerate.
+                Requires 8-bit DVP interface and 24MHz input clock.
+    endmenu
+
+    choice CAMERA_OV3640_DVP_DEFAULT_FMT
+        prompt "Select default output format for DVP interface"
+        default CAMERA_OV3640_DVP_DEFAULT_FMT_RGB565_LE_640X480_7FPS
+        help
+            This option allows you to select the default video format for the OV3640 sensor
+            when it is initialized on the DVP interface. The selected format will be used
+            when the sensor is detected and initialized, and can be changed later when the
+            sensor is in stream off state.
+
+        config CAMERA_OV3640_DVP_DEFAULT_FMT_RGB565_LE_640X480_7FPS
+            bool "DVP 8-bit, 24M input,  640x480  7fps, RGB565(LE)"
+            depends on CAMERA_OV3640_DVP_RGB565_LE_640X480_7FPS
+
+        config CAMERA_OV3640_DVP_DEFAULT_FMT_YUV422_UYVY_640X480_30FPS
+            bool "DVP 8-bit, 24M input,  640x480  30fps, YUV422(UYVY)"
+            depends on CAMERA_OV3640_DVP_YUV422_UYVY_640X480_30FPS
+
+        config CAMERA_OV3640_DVP_DEFAULT_FMT_YUV422_UYVY_1024X768_5FPS
+            bool "DVP 8-bit, 24M input, 1024x768   5fps, YUV422(UYVY)"
+            depends on CAMERA_OV3640_DVP_YUV422_UYVY_1024X768_5FPS
+
+        config CAMERA_OV3640_DVP_DEFAULT_FMT_YUV422_UYVY_1024X768_25FPS
+            bool "DVP 8-bit, 24M input, 1024x768  25fps, YUV422(UYVY)"
+            depends on CAMERA_OV3640_DVP_YUV422_UYVY_1024X768_25FPS
+
+        config CAMERA_OV3640_DVP_DEFAULT_FMT_YUV422_UYVY_1280X720_15FPS
+            bool "DVP 8-bit, 24M input, 1280x720  15fps, YUV422(UYVY)"
+            depends on CAMERA_OV3640_DVP_YUV422_UYVY_1280X720_15FPS
+
+        config CAMERA_OV3640_DVP_DEFAULT_FMT_JPEG_2048X1536_15fps
+            bool "DVP 8-bit, 24M input, 2048x1536  15fps, JPEG"
+            depends on CAMERA_OV3640_DVP_JPEG_2048X1536_15FPS
+
+        config CAMERA_OV3640_DVP_DEFAULT_FMT_JPEG_1024X768_25FPS
+            bool "DVP 8-bit, 24M input, 1024x768  25fps, JPEG"
+            depends on CAMERA_OV3640_DVP_JPEG_1024X768_25FPS
+
+        config CAMERA_OV3640_DVP_DEFAULT_FMT_JPEG_1280X720_15FPS
+            bool "DVP 8-bit, 24M input, 1280x720  15fps, JPEG"
+            depends on CAMERA_OV3640_DVP_JPEG_1280X720_15FPS
+
+    endchoice # CAMERA_OV3640_DVP_DEFAULT_FMT
+
+    config CAMERA_OV3640_DVP_IF_FORMAT_INDEX_DEFAULT
+        int
+        default 0 if CAMERA_OV3640_DVP_DEFAULT_FMT_RGB565_LE_640X480_7FPS
+        default 1 if CAMERA_OV3640_DVP_DEFAULT_FMT_YUV422_UYVY_640X480_30FPS
+        default 2 if CAMERA_OV3640_DVP_DEFAULT_FMT_YUV422_UYVY_1024X768_5FPS
+        default 3 if CAMERA_OV3640_DVP_DEFAULT_FMT_YUV422_UYVY_1024X768_25FPS
+        default 4 if CAMERA_OV3640_DVP_DEFAULT_FMT_YUV422_UYVY_1280X720_15FPS
+        default 5 if CAMERA_OV3640_DVP_DEFAULT_FMT_JPEG_2048X1536_15fps
+        default 6 if CAMERA_OV3640_DVP_DEFAULT_FMT_JPEG_1024X768_25FPS
+        default 7 if CAMERA_OV3640_DVP_DEFAULT_FMT_JPEG_1280X720_15FPS
+        help
+            Sets the default configuration for the DVP interface.
+            Use query_support_formats() API to get more format options.
+endif
