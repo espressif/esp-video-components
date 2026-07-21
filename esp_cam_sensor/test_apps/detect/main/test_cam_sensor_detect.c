@@ -20,6 +20,9 @@
 #if CONFIG_CAMERA_BF20A6
 #include "bf20a6.h"
 #define SCCB0_CAM_DEVICE_ADDR BF20A6_SCCB_ADDR
+#elif CONFIG_CAMERA_BF3031
+#include "bf3031.h"
+#define SCCB0_CAM_DEVICE_ADDR BF3031_SCCB_ADDR
 #elif CONFIG_CAMERA_BF3901
 #include "bf3901.h"
 #define SCCB0_CAM_DEVICE_ADDR BF3901_SCCB_ADDR
@@ -180,6 +183,8 @@ TEST_CASE("Camera sensor detect test", "[video]")
     esp_cam_sensor_device_t *cam0 = NULL;
 #if CONFIG_CAMERA_BF20A6
     cam0 = bf20a6_detect(&cam0_config);
+#elif CONFIG_CAMERA_BF3031
+    cam0 = bf3031_detect(&cam0_config);
 #elif CONFIG_CAMERA_BF3901
     cam0 = bf3901_detect(&cam0_config);
 #elif CONFIG_CAMERA_BF3925

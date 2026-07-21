@@ -194,6 +194,12 @@ if(CONFIG_CAMERA_BF20A6)
     list(APPEND priv_include_dirs "sensors/bf20a6/private_include")
 endif()
 
+if(CONFIG_CAMERA_BF3031)
+    list(APPEND srcs "sensors/bf3031/bf3031.c")
+    list(APPEND include_dirs "sensors/bf3031/include")
+    list(APPEND priv_include_dirs "sensors/bf3031/private_include")
+endif()
+
 if(CONFIG_CAMERA_SP0A39)
     list(APPEND srcs "sensors/sp0a39/sp0a39.c")
     list(APPEND include_dirs "sensors/sp0a39/include")
@@ -352,6 +358,10 @@ if(CONFIG_CAMERA_SENSOR_MOTOR_DETECT_METHOD_DYNAMIC_LINK)
 
     if(CONFIG_CAMERA_BF20A6_AUTO_DETECT_DVP_INTERFACE_SENSOR)
         target_link_libraries(${COMPONENT_LIB} INTERFACE "-u bf20a6_detect")
+    endif()
+
+    if(CONFIG_CAMERA_BF3031_AUTO_DETECT_DVP_INTERFACE_SENSOR)
+        target_link_libraries(${COMPONENT_LIB} INTERFACE "-u bf3031_detect")
     endif()
 
     if(CONFIG_CAMERA_SP0A39_AUTO_DETECT_DVP_INTERFACE_SENSOR OR CONFIG_CAMERA_SP0A39_AUTO_DETECT_SPI_INTERFACE_SENSOR)
