@@ -77,6 +77,10 @@ typedef struct web_cam_video {
     SemaphoreHandle_t sem;
 
     uint32_t support_control_jpeg_quality   : 1;
+
+#if EXAMPLE_ENABLE_MIPI_CSI_CAM_SENSOR
+    uint32_t video_event_initialized        : 1;
+#endif /* EXAMPLE_ENABLE_MIPI_CSI_CAM_SENSOR */
 } web_cam_video_t;
 
 typedef struct web_cam {
@@ -507,6 +511,17 @@ static esp_err_t init_web_cam_video(web_cam_video_t *video, const web_cam_video_
     fd = open(config->dev_name, O_RDWR);
     ESP_RETURN_ON_FALSE(fd >= 0, ESP_ERR_NOT_FOUND, TAG, "Open video device %s failed", config->dev_name);
 
+#if EXAMPLE_ENABLE_MIPI_CSI_CAM_SENSOR
+    bool video_event_initialized = false;
+
+    if (strcmp(config->dev_name, ESP_VIDEO_MIPI_CSI_DEVICE_NAME) == 0) {
+        ESP_GOTO_ON_ERROR(example_video_event_init(EXAMPLE_VIDEO_EVENT_TARGET_MIPI_CSI, fd), fail0, TAG, "failed to initialize video event");
+        video_event_initialized = true;
+    }
+
+    video->video_event_initialized = video_event_initialized ? 1 : 0;
+#endif
+
 #if CONFIG_EXAMPLE_ENABLE_MIPI_CSI_CROP
     /**
      * Command VIDIOC_S_SELECTION should be called before VIDIOC_REQBUFS and VIDIOC_G_FMT, because the output format resolution will be changed after the selection.
@@ -611,6 +626,11 @@ fail1:
         video->encoder_handle = NULL;
     }
 fail0:
+#if EXAMPLE_ENABLE_MIPI_CSI_CAM_SENSOR
+    if (video_event_initialized) {
+        example_video_event_deinit(EXAMPLE_VIDEO_EVENT_TARGET_MIPI_CSI);
+    }
+#endif
     close(fd);
     video->fd = -1;
     return ret;
@@ -627,6 +647,12 @@ static esp_err_t deinit_web_cam_video(web_cam_video_t *video)
         example_encoder_free_output_buffer(video->encoder_handle, video->jpeg_out_buf);
         example_encoder_deinit(video->encoder_handle);
     }
+
+#if EXAMPLE_ENABLE_MIPI_CSI_CAM_SENSOR
+    if (video->video_event_initialized) {
+        example_video_event_deinit(EXAMPLE_VIDEO_EVENT_TARGET_MIPI_CSI);
+    }
+#endif
 
     close(video->fd);
     return ESP_OK;

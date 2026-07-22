@@ -336,6 +336,30 @@ menu "Espressif Video Configuration"
                     - Compatible autofocus motor hardware
                     - AF algorithm enabled in IPA configuration
         endif
+
+        config ESP_VIDEO_DISABLE_ISP_ERROR_INTERRUPT
+            bool "Disable ISP Error Interrupt"
+            default y
+            help
+                Disable the ISP error interrupt.
+
+                When this option is enabled, the ISP hardware error interrupt will be disabled,
+                and error conditions will not trigger error interrupts or their associated log output.
+                This can help reduce frequent error log messages from the ISP in scenarios
+                where recurring recoverable errors are expected.
+
+                Note: Frequent ISP error logs may cause heavy printing and in some cases
+                may trigger the hardware watchdog timer, leading to unwanted device resets.
+                If you observe frequent ISP error log spam during development, it is strongly
+                recommended to enable this option to suppress error interrupts and avoid
+                unintentional system resets.
+
+                Recommendation:
+                - Enable this option during development or debugging if you encounter
+                frequent ISP error printing causing instability.
+                - For production, evaluate your hardware and error frequency—keep this
+                option disabled to catch and log real errors unless you have confirmed
+                your system is stable and wish to fully suppress ISP error interrupts and logs.
     endif
 
     config ESP_VIDEO_ENABLE_CAMERA_MOTOR_CONTROLLER

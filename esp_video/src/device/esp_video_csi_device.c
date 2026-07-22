@@ -318,6 +318,10 @@ static esp_err_t start_isp(esp_video_device_common_t *common, bool isp_swap_shor
     }
     ESP_RETURN_ON_ERROR(esp_isp_new_processor(&isp_config, &isp_proc), TAG, "failed to new ISP");
 
+#if CONFIG_ESP_VIDEO_DISABLE_ISP_ERROR_INTERRUPT
+    isp_ll_enable_intr(&ISP, ISP_LL_EVENT_ERROR_MASK, false);
+#endif
+
     bool crop_required = false;
 #if ESP_VIDEO_ISP_DEVICE_CROP
     crop_required = csi_video->set_crop;
@@ -512,6 +516,20 @@ static esp_err_t csi_check_enum_framesizes(esp_video_device_common_t *common, st
     return ESP_OK;
 }
 
+#if ESP_VIDEO_CSI_DRIVER_HAS_EVENT
+static esp_err_t csi_video_subscribe_event(esp_video_device_common_t *common, struct v4l2_event_subscription *sub)
+{
+    if (sub->type != V4L2_EVENT_ESP_MIPI_CSI_ERROR) {
+        return ESP_ERR_INVALID_ARG;
+    }
+    return ESP_OK;
+}
+
+static esp_err_t csi_video_unsubscribe_event(esp_video_device_common_t *common, struct v4l2_event_subscription *sub)
+{
+    return ESP_OK;
+}
+#endif
 static const esp_video_device_intf_t s_csi_device_intf = {
     .init              = csi_video_init,
     .start_init_config = csi_start_init_config,
@@ -524,6 +542,10 @@ static const esp_video_device_intf_t s_csi_device_intf = {
     .check_enum_framesizes = csi_check_enum_framesizes,
 #if CONFIG_ESP_VIDEO_ENABLE_ISP_VIDEO_DEVICE && ESP_VIDEO_ISP_DEVICE_CROP
     .set_selection     = csi_set_selection,
+#endif
+#if ESP_VIDEO_CSI_DRIVER_HAS_EVENT
+    .subscribe_event = csi_video_subscribe_event,
+    .unsubscribe_event = csi_video_unsubscribe_event,
 #endif
 };
 

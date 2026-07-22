@@ -9,8 +9,12 @@ set(srcs "src/esp_video_buffer.c"
 
 set(include_dirs "include")
 set(priv_include_dirs "private_include")
-set(priv_requires "vfs")
+set(priv_requires "vfs"  "esp_timer")
 set(requires "esp_driver_cam" "esp_cam_sensor" "lwip")
+
+if(CONFIG_IDF_TARGET_ESP32P4)
+    list(APPEND priv_requires "esp_hal_cam")
+endif()
 
 if(CONFIG_IDF_TARGET_ESP32P4)
     if(CONFIG_ESP_VIDEO_ENABLE_SWAP_SHORT)
@@ -81,10 +85,6 @@ if(CONFIG_IDF_TARGET_ESP32P4)
 
     if(CONFIG_ESP_VIDEO_ENABLE_H264_VIDEO_DEVICE)
         idf_component_optional_requires(PRIVATE "esp_h264")
-    endif()
-
-    if(CONFIG_ESP_VIDEO_ENABLE_SWAP_SHORT_PERF_LOG)
-        idf_component_optional_requires(PRIVATE "esp_timer")
     endif()
 
     if(CONFIG_ESP_VIDEO_ENABLE_BITSCRAMBLER)

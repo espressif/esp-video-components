@@ -81,6 +81,11 @@ extern "C" {
 #if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 5, 0)
 #define ESP_VIDEO_ISP_DRIVER_HAS_BYTE_SWAP 1  /*!< ISP driver supports byte swap mode */
 #endif /* ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 5, 0) */
+
+#if (ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 5, 6) && ESP_IDF_VERSION < ESP_IDF_VERSION_VAL(6, 0, 0)) || \
+    ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(6, 0, 3)
+#define ESP_VIDEO_CSI_DRIVER_HAS_EVENT 1     /*!< CSI driver supports event */
+#endif /* (ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 5, 6) && ESP_IDF_VERSION < ESP_IDF_VERSION_VAL(6, 0, 0)) || (ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(6, 0, 3)) */
 #endif /* CONFIG_IDF_TARGET_ESP32P4 */
 
 /**

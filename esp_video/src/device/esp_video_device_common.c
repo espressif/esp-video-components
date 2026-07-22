@@ -9,13 +9,17 @@
 #include "esp_log.h"
 #include "esp_attr.h"
 #include "esp_check.h"
-
+#include "esp_timer.h"
+#include "esp_memory_utils.h"
 #include "esp_private/esp_cache_private.h"
 #include "esp_video.h"
 #include "esp_video_ioctl.h"
 #include "esp_video_internal.h"
 #include "esp_video_caps.h"
 #include "esp_video_device_common.h"
+#if ESP_VIDEO_CSI_DRIVER_HAS_EVENT
+#include "hal/mipi_csi_host_ll.h"
+#endif
 
 static const char *TAG = "video_common";
 
@@ -173,6 +177,74 @@ bool IRAM_ATTR esp_video_device_common_on_get_new_trans(esp_cam_ctlr_handle_t ha
     return ret;
 }
 
+#if ESP_VIDEO_CSI_DRIVER_HAS_EVENT
+static bool IRAM_ATTR esp_video_device_common_on_error(esp_cam_ctlr_handle_t handle, const esp_cam_ctlr_error_event_data_t *edata, void *user_data)
+{
+    BaseType_t high_task_woken = pdFALSE;
+    struct esp_video *video = (struct esp_video *)user_data;
+    esp_video_device_common_t *common = VIDEO_DEVICE_COMMON(video);
+    QueueHandle_t event_queue = video->event_queue;
+    uint32_t event_type = 0;
+    BaseType_t ret = pdPASS;
+    uint32_t saved_seq = video->event.sequence;
+
+    if (common->event_callback.callback_func) {
+        if (common->event_callback.callback_func(common->event_callback.user_data, (uint32_t)edata->csi_host_err_evts)) {
+            /**
+             * Disable MIPI CSI host interrupt, so sending event will ignore the queue is full
+             */
+            mipi_csi_host_ll_enable_intr(&MIPI_CSI_HOST, MIPI_CSI_HOST_LL_INTR_ERR_ALL, false);
+            if (xQueueIsQueueFullFromISR(event_queue)) {
+                ESP_EARLY_LOGI(TAG, "MIPI CSI host interrupt disabled, but event queue is full");
+                ret = xQueueReceiveFromISR(event_queue, &video->event, &high_task_woken);
+                if (ret != pdPASS) {
+                    /**
+                     * There may be no event in the queue, so it is not an error
+                     */
+                    ESP_EARLY_LOGD(TAG, "failed to receive event from ISR");
+                }
+            }
+            event_type = V4L2_EVENT_ESP_MIPI_CSI_INTERRUPT_DISABLE;
+        }
+    }
+
+    if (!event_type && common->is_event_subscribed && event_queue) {
+        event_type = V4L2_EVENT_ESP_MIPI_CSI_ERROR;
+    }
+
+    if (event_type) {
+        struct v4l2_event *event = &video->event;
+        int64_t timestamp = esp_timer_get_time();
+        v4l2_event_esp_mipi_csi_error_t *csi_error = (v4l2_event_esp_mipi_csi_error_t *)event->u.data;
+
+        event->type = event_type;
+        event->timestamp.tv_sec = timestamp / 1000000;
+        event->timestamp.tv_nsec = timestamp % 1000000 * 1000;
+        event->sequence = saved_seq + 1;
+        csi_error->host_err_mask = (uint32_t)edata->csi_host_err_evts;
+
+        ret = xQueueSendFromISR(event_queue, event, &high_task_woken);
+        if (ret != pdPASS) {
+            /**
+             * By default, print information in the interrupt context is not suggested,
+             * so use debug level log if users want to see the error message
+             */
+            ESP_EARLY_LOGD(TAG, "failed to send event to event queue");
+            if (event_type == V4L2_EVENT_ESP_MIPI_CSI_INTERRUPT_DISABLE) {
+                /**
+                 * Enable MIPI CSI host interrupt, so the event will trigger again
+                 */
+                mipi_csi_host_ll_enable_intr(&MIPI_CSI_HOST, MIPI_CSI_HOST_LL_INTR_ERR_ALL, true);
+            }
+        } else if (high_task_woken == pdTRUE) {
+            portYIELD_FROM_ISR();
+        }
+    }
+
+    return high_task_woken;
+}
+#endif /* ESP_VIDEO_CSI_DRIVER_HAS_EVENT */
+
 /**
  * Query extended control information for ISP video device
  *
@@ -279,19 +351,27 @@ static esp_err_t common_video_init(struct esp_video *video)
 
 static esp_err_t common_video_deinit(struct esp_video *video)
 {
+    esp_err_t ret = ESP_OK;
     esp_video_device_common_t *common = VIDEO_DEVICE_COMMON(video);
 
+    /* Stop ISR enqueue before device teardown. */
+    common->is_event_subscribed = false;
+
     if (common->intf->deinit) {
-        return common->intf->deinit(common);
+        ret = common->intf->deinit(common);
     }
 
-    return ESP_OK;
+    return ret;
 }
 
-static esp_err_t common_video_start(struct esp_video *video, uint32_t type)
+static esp_err_t common_video_start_impl(struct esp_video *video, bool restart_sensor)
 {
     esp_err_t ret;
     esp_video_device_common_t *common = VIDEO_DEVICE_COMMON(video);
+
+    if (common->cam_ctrl_handle) {
+        return ESP_OK;
+    }
 
     assert(common->intf->start); // stop is not required
 
@@ -309,12 +389,21 @@ static esp_err_t common_video_start(struct esp_video *video, uint32_t type)
         .on_get_new_trans = esp_video_device_common_on_get_new_trans,
         .on_trans_finished = esp_video_device_common_on_trans_finished,
     };
+
+#if ESP_VIDEO_CSI_DRIVER_HAS_EVENT
+    if (common->is_event_subscribed) {
+        cam_ctrl_cbs.on_error = esp_video_device_common_on_error;
+    }
+#endif /* ESP_VIDEO_CSI_DRIVER_HAS_EVENT */
+
     ESP_GOTO_ON_ERROR(esp_cam_ctlr_register_event_callbacks(common->cam_ctrl_handle, &cam_ctrl_cbs, video), fail_0, TAG, "failed to register CAM ctlr event callback");
     ESP_GOTO_ON_ERROR(esp_cam_ctlr_enable(common->cam_ctrl_handle), fail_0, TAG, "failed to enable CAM ctlr");
     ESP_GOTO_ON_ERROR(esp_cam_ctlr_start(common->cam_ctrl_handle), fail_1, TAG, "failed to start CAM ctlr");
 
-    int flags = 1;
-    ESP_GOTO_ON_ERROR(esp_cam_sensor_ioctl(common->cam.sensor, ESP_CAM_SENSOR_IOC_S_STREAM, &flags), fail_2, TAG, "failed to start sensor stream");
+    if (restart_sensor) {
+        int flags = 1;
+        ESP_GOTO_ON_ERROR(esp_cam_sensor_ioctl(common->cam.sensor, ESP_CAM_SENSOR_IOC_S_STREAM, &flags), fail_2, TAG, "failed to start sensor stream");
+    }
 
     return ESP_OK;
 
@@ -327,18 +416,25 @@ fail_0:
         common->intf->stop(common);
     }
     esp_cam_ctlr_del(common->cam_ctrl_handle);
+    common->cam_ctrl_handle = NULL;
     return ret;
 }
 
-static esp_err_t common_video_stop(struct esp_video *video, uint32_t type)
+static esp_err_t common_video_stop_impl(struct esp_video *video, bool restart_sensor)
 {
     esp_video_device_common_t *common = VIDEO_DEVICE_COMMON(video);
 
-    assert(common->cam.sensor);
+    if (!common->cam_ctrl_handle) {
+        return ESP_OK;
+    }
 
-    int flags = 0;
-    ESP_RETURN_ON_ERROR(esp_cam_sensor_ioctl(common->cam.sensor, ESP_CAM_SENSOR_IOC_S_STREAM, &flags),
-                        TAG, "failed to stop sensor stream");
+    if (restart_sensor) {
+        assert(common->cam.sensor);
+
+        int flags = 0;
+        ESP_RETURN_ON_ERROR(esp_cam_sensor_ioctl(common->cam.sensor, ESP_CAM_SENSOR_IOC_S_STREAM, &flags),
+                            TAG, "failed to stop sensor stream");
+    }
 
     if (common->intf->stop) {
         ESP_RETURN_ON_ERROR(common->intf->stop(common), TAG, "device stop failed");
@@ -349,6 +445,62 @@ static esp_err_t common_video_stop(struct esp_video *video, uint32_t type)
     common->cam_ctrl_handle = NULL;
 
     return ESP_OK;
+}
+
+static esp_err_t common_video_start(struct esp_video *video, uint32_t type)
+{
+    esp_video_device_common_t *common = VIDEO_DEVICE_COMMON(video);
+
+    if (xSemaphoreTake(common->cam_ctlr_mutex, portMAX_DELAY) != pdPASS) {
+        return ESP_ERR_TIMEOUT;
+    }
+
+    esp_err_t ret = common_video_start_impl(video, true);
+    xSemaphoreGive(common->cam_ctlr_mutex);
+    return ret;
+}
+
+static esp_err_t common_video_stop(struct esp_video *video, uint32_t type)
+{
+    esp_video_device_common_t *common = VIDEO_DEVICE_COMMON(video);
+
+    if (xSemaphoreTake(common->cam_ctlr_mutex, portMAX_DELAY) != pdPASS) {
+        return ESP_ERR_TIMEOUT;
+    }
+
+    esp_err_t ret = common_video_stop_impl(video, true);
+    xSemaphoreGive(common->cam_ctlr_mutex);
+    return ret;
+}
+
+static esp_err_t common_video_restart(struct esp_video *video, struct v4l2_restart_config *config)
+{
+    esp_video_device_common_t *common = VIDEO_DEVICE_COMMON(video);
+    bool restart_sensor = config->restart_sensor;
+
+    if (xSemaphoreTake(common->cam_ctlr_mutex, portMAX_DELAY) != pdPASS) {
+        return ESP_ERR_TIMEOUT;
+    }
+
+    esp_err_t ret = common_video_stop_impl(video, restart_sensor);
+    ESP_GOTO_ON_ERROR(ret, fail_0, TAG, "failed to stop video");
+
+    /** Get buffer from driver and skip it */
+    struct esp_video_buffer_element *element = common->backup_element;
+    if (element) {
+        CAPTURE_VIDEO_SKIP_BUF(video, element->buffer);
+        common->backup_element = NULL;
+    }
+
+    ret = common_video_start_impl(video, restart_sensor);
+    ESP_GOTO_ON_ERROR(ret, fail_0, TAG, "failed to start video");
+
+    xSemaphoreGive(common->cam_ctlr_mutex);
+    return ESP_OK;
+
+fail_0:
+    xSemaphoreGive(common->cam_ctlr_mutex);
+    return ret;
 }
 
 static esp_err_t common_video_enum_format(struct esp_video *video, uint32_t type, uint32_t index, uint32_t *pixel_format)
@@ -584,6 +736,60 @@ static esp_err_t common_video_enum_framesizes(struct esp_video *video, struct v4
     return ESP_OK;
 }
 
+static esp_err_t common_video_subscribe_event(struct esp_video *video, struct v4l2_event_subscription *sub)
+{
+    esp_video_device_common_t *common = VIDEO_DEVICE_COMMON(video);
+
+    if (!common->intf->subscribe_event) {
+        return ESP_ERR_NOT_SUPPORTED;
+    }
+
+    esp_err_t ret = common->intf->subscribe_event(common, sub);
+    if (ret != ESP_OK) {
+        ESP_LOGE(TAG, "failed to subscribe event: %d", ret);
+        return ret;
+    }
+
+    common->is_event_subscribed = true;
+
+    return ESP_OK;
+}
+
+static esp_err_t common_video_unsubscribe_event(struct esp_video *video, struct v4l2_event_subscription *sub)
+{
+    esp_video_device_common_t *common = VIDEO_DEVICE_COMMON(video);
+
+    if (!common->intf->unsubscribe_event) {
+        return ESP_ERR_NOT_SUPPORTED;
+    }
+
+    esp_err_t ret = common->intf->unsubscribe_event(common, sub);
+    if (ret != ESP_OK) {
+        ESP_LOGE(TAG, "failed to unsubscribe event: %d", ret);
+        return ret;
+    }
+
+    common->event_callback.callback_func = NULL;
+    common->event_callback.user_data = NULL;
+    common->is_event_subscribed = false;
+
+    return ESP_OK;
+}
+
+static esp_err_t common_video_set_event_callback(struct esp_video *video, struct v4l2_event_callback *callback)
+{
+    esp_video_device_common_t *common = VIDEO_DEVICE_COMMON(video);
+
+    if (!esp_ptr_in_iram(callback->callback_func)) {
+        ESP_EARLY_LOGE(TAG, "callback function is not in IRAM");
+        return ESP_ERR_INVALID_ARG;
+    }
+
+    common->event_callback = *callback;
+
+    return ESP_OK;
+}
+
 /* ------------------------------------------------------------------ */
 /*  The single ops table shared by ALL video devices                   */
 /* ------------------------------------------------------------------ */
@@ -607,7 +813,11 @@ static const struct esp_video_ops s_common_video_ops = {
     .set_parm           = common_video_set_parm,
     .get_parm           = common_video_get_parm,
     .set_selection      = common_video_set_selection,
-    .enum_framesizes    = common_video_enum_framesizes
+    .enum_framesizes    = common_video_enum_framesizes,
+    .subscribe_event    = common_video_subscribe_event,
+    .unsubscribe_event  = common_video_unsubscribe_event,
+    .restart            = common_video_restart,
+    .set_event_callback = common_video_set_event_callback,
 };
 
 /* ------------------------------------------------------------------ */
@@ -638,8 +848,15 @@ esp_err_t esp_video_device_common_create(const esp_video_device_common_config_t 
         return ESP_ERR_NO_MEM;
     }
 
+    common->cam_ctlr_mutex = xSemaphoreCreateMutex();
+    if (!common->cam_ctlr_mutex) {
+        heap_caps_free(common);
+        return ESP_ERR_NO_MEM;
+    }
+
     common->video = esp_video_create(config->name, config->id, &s_common_video_ops, common, caps, device_caps);
     if (!common->video) {
+        vSemaphoreDelete(common->cam_ctlr_mutex);
         heap_caps_free(common);
         return ESP_ERR_NO_MEM;
     }
@@ -663,6 +880,7 @@ esp_err_t esp_video_device_common_free(esp_video_device_common_t *common)
     assert(common);
 
     ESP_RETURN_ON_ERROR(esp_video_destroy(common->video), TAG, "failed to destroy video");
+    vSemaphoreDelete(common->cam_ctlr_mutex);
     heap_caps_free(common);
 
     return ESP_OK;

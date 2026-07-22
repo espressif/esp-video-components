@@ -3,7 +3,8 @@ set(includes "." "../../../private_include")
 set(requires "unity" "test_utils" "esp_video" "esp_timer")
 
 if (CONFIG_ESP_VIDEO_ENABLE_MIPI_CSI_VIDEO_DEVICE)
-    list(APPEND srcs "test_format_convert.c")
+    list(APPEND srcs "test_format_convert.c" "test_event.c")
+    list(APPEND requires "esp_hal_cam")
 endif()
 
 if (CONFIG_ESP_VIDEO_ENABLE_ISP_VIDEO_DEVICE)

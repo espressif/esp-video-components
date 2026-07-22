@@ -9,6 +9,7 @@
 #include "esp_err.h"
 #include "esp_cam_sensor.h"
 #include "esp_cam_motor.h"
+#include "esp_video_ioctl.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -394,6 +395,22 @@ struct esp_video_ops {
     /*!< Enumerate video frame intervals */
 
     esp_err_t (*enum_frameintervals)(struct esp_video *video, struct v4l2_frmivalenum *frmival, struct esp_video_stream *stream);
+
+    /*!< Subscribe video event */
+
+    esp_err_t (*subscribe_event)(struct esp_video *video, struct v4l2_event_subscription *sub);
+
+    /*!< Unsubscribe video event */
+
+    esp_err_t (*unsubscribe_event)(struct esp_video *video, struct v4l2_event_subscription *sub);
+
+    /* Restart video hardware */
+
+    esp_err_t (*restart)(struct esp_video *video, struct v4l2_restart_config *config);
+
+    /*!< Set event callback */
+
+    esp_err_t (*set_event_callback)(struct esp_video *video, struct v4l2_event_callback *callback);
 };
 
 #ifdef __cplusplus

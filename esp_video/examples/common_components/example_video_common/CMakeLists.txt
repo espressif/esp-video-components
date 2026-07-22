@@ -1,4 +1,4 @@
-set(srcs "example_init_video.c" "example_storage.c")
+set(srcs "example_init_video.c" "example_storage.c" "example_video_event.c")
 set(inc_dirs "include")
 
 if(NOT CONFIG_IDF_TARGET_ESP32C61)
