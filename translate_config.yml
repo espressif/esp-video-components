@@ -1,0 +1,82 @@
+compare_branch: master
+
+specified_files:
+  - docs/zh_CN
+
+target_language: EN-CN
+
+trans_dict:
+  AE: AE
+  Auto Exposure: 自动曝光
+  3A: 3A
+  Auto Exposure, Auto-Focus, Auto White Balance: 自动曝光、自动对焦、自动白平衡
+  AEC: AEC
+  Auto Exposure Control: 自动曝光控制
+  AF: AF
+  Auto-Focus: 自动对焦
+  AWB: AWB
+  Auto White Balance: 自动白平衡
+  BF: BF
+  Bayer Noise Reduction Filter: 拜耳域降噪
+  BLC: BLC
+  Black Level Correction: 黑电平校正
+  brightness: 亮度
+  CCI: CCI
+  Camera Control Interface: 相机控制接口
+  CCM: CCM
+  Color Correction Matrix: 颜色校正矩阵
+  CLUT: CLUT
+  Color Look-Up Table enhancement: 颜色查表增强
+  CM: CM
+  Color Management Module: 颜色调整模块
+  contrast: 对比度
+  CSC: CSC
+  Color Space Conversion: 颜色空间转换
+  CSI: CSI
+  CMOS Sensor Interface: 相机串行传输接口
+  demosaic: 去马赛克
+  demosaic processing: 插值处理
+  DPC: DPC
+  Static and Dynamic Defective Pixel Correction: 静态与动态坏点校正
+  DVP: DVP
+  Digital Video Port: 相机并口传输协议
+  EE: EE
+  Edge Enhancement: 边缘增强
+  fps: fps
+  frames per second: 帧率
+  Gamma correction: 伽马校正
+  Gamma RGB: Gamma RGB
+  Gamma correction in RGB domain: RGB 域的伽马校正
+  hue: 色度
+  image sharpening: 图像锐化增强
+  IOCTL: IOCTL
+  Input Output Control: 输入输出控制
+  IPA: IPA
+  Image Processing Algorithms: 图像处理算法
+  IQ: IQ
+  Image Quality: 图像质量
+  ISP: ISP
+  Image Signal Processor: 图像信号处理器
+  LSC: LSC
+  Lens Shading Correction: 镜头阴影校正
+  M2M: M2M
+  Memory-to-Memory: 内存到内存的视频编码器接口
+  MIPI: MIPI
+  Mobile Industry Processor Interface: 移动处理器接口
+  PCLK: PCLK
+  Pixel Clock: 像素时钟
+  RGB2YUV: RGB2YUV
+  ROI: ROI
+  Region of Interest: 感兴趣的区域
+  saturation: 饱和度
+  SCCB: SCCB
+  Serial Camera Control Bus: 串行相机控制总线
+  sharpen: 锐化
+  UVC: UVC
+  USB Video Class: USB 视频设备类
+  V4L2: V4L2
+  VCM: VCM
+  Voice Coil Motor: 音圈马达
+  YUV2RGB: YUV2RGB
+
+target_language_folder: docs/en
