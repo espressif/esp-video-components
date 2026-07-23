@@ -3,6 +3,7 @@
 ## Unreleased
 - Added SC2331 MIPI RAW sensor driver.
 - Added OV3640 DVP JPEG sensor driver.
+- Added support for SC101 yuv422 uyvy format with 640x480、480x640 resolution
 
 ## 2.3.0
 

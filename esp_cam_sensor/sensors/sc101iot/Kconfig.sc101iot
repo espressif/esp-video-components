@@ -17,6 +17,20 @@ if CAMERA_SC101IOT
     endmenu
 
     menu "Choose supported formats for DVP interface"
+        config CAMERA_SC101IOT_DVP_YUV422_480X640_15FPS
+            bool "DVP 8-bit, 20M input,  480x640 15fps, YUV422(UYVY)"
+            default n
+            help
+                Standard color format using YUV422(UYVY) at 480x640 resolution (portrait)
+                with 15fps framerate. Requires 8-bit DVP interface and 20MHz input clock.
+
+        config CAMERA_SC101IOT_DVP_YUV422_640X480_15FPS
+            bool "DVP 8-bit, 20M input,  640x480 15fps, YUV422(UYVY)"
+            default n
+            help
+                Standard color format using YUV422(UYVY) at 640x480 resolution (VGA)
+                with 15fps framerate. Requires 8-bit DVP interface and 20MHz input clock.
+
         config CAMERA_SC101IOT_DVP_YUV422_1280X720_15FPS
             bool "DVP 8-bit, 20M input, 1280x720 15fps, YUV422(UYVY)"
             default y
@@ -55,6 +69,14 @@ if CAMERA_SC101IOT
             when the sensor is detected and initialized, and can be changed later when the
             sensor is in stream off state.
 
+        config CAMERA_SC101IOT_DVP_DEFAULT_FMT_YUV422_480X640_15FPS
+            bool "DVP 8-bit, 20M input,  480x640 15fps, YUV422(UYVY)"
+            depends on CAMERA_SC101IOT_DVP_YUV422_480X640_15FPS
+
+        config CAMERA_SC101IOT_DVP_DEFAULT_FMT_YUV422_640X480_15FPS
+            bool "DVP 8-bit, 20M input,  640x480 15fps, YUV422(UYVY)"
+            depends on CAMERA_SC101IOT_DVP_YUV422_640X480_15FPS
+
         config CAMERA_SC101IOT_DVP_DEFAULT_FMT_YUV422_1280X720_15FPS
             bool "DVP 8-bit, 20M input, 1280x720 15fps, YUV422(UYVY)"
             depends on CAMERA_SC101IOT_DVP_YUV422_1280X720_15FPS
@@ -78,6 +100,8 @@ if CAMERA_SC101IOT
         default 1 if CAMERA_SC101IOT_DVP_DEFAULT_FMT_YUV422_1280X720_25FPS
         default 2 if CAMERA_SC101IOT_DVP_DEFAULT_FMT_YUV422_YUYV_1280X720_15FPS
         default 3 if CAMERA_SC101IOT_DVP_DEFAULT_FMT_YUV422_YUYV_1280X720_25FPS
+        default 4 if CAMERA_SC101IOT_DVP_DEFAULT_FMT_YUV422_480X640_15FPS
+        default 5 if CAMERA_SC101IOT_DVP_DEFAULT_FMT_YUV422_640X480_15FPS
         help
             Sets the default configuration for the DVP interface.
             Use query_support_formats() API to get more format options.

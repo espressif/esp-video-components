@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2024-2025 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2024-2026 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -47,6 +47,12 @@ static const uint8_t sc101iot_format_index[] = {
 #endif
 #if CONFIG_CAMERA_SC101IOT_DVP_YUV422_YUYV_1280X720_25FPS
     3,
+#endif
+#if CONFIG_CAMERA_SC101IOT_DVP_YUV422_480X640_15FPS
+    4,
+#endif
+#if CONFIG_CAMERA_SC101IOT_DVP_YUV422_640X480_15FPS
+    5,
 #endif
 };
 
@@ -110,6 +116,38 @@ static const esp_cam_sensor_format_t sc101iot_format_info[] = {
         .regs = sc101iot_dvp_8bit_20Minput_1280x720_yuv422_yuyv_25fps,
         .regs_size = ARRAY_SIZE(sc101iot_dvp_8bit_20Minput_1280x720_yuv422_yuyv_25fps),
         .fps = 25,
+        .isp_info = NULL,
+        .mipi_info = {},
+        .reserved = NULL,
+    },
+#endif
+#if CONFIG_CAMERA_SC101IOT_DVP_YUV422_480X640_15FPS
+    {
+        .name = "DVP_8bit_20Minput_YUV422_UYVY_480x640_15fps",
+        .format = ESP_CAM_SENSOR_PIXFORMAT_YUV422_UYVY,
+        .port = ESP_CAM_SENSOR_DVP,
+        .xclk = 20000000,
+        .width = 480,
+        .height = 640,
+        .regs = sc101iot_dvp_8bit_20Minput_480x640_yuv422_uyvy_15fps,
+        .regs_size = ARRAY_SIZE(sc101iot_dvp_8bit_20Minput_480x640_yuv422_uyvy_15fps),
+        .fps = 15,
+        .isp_info = NULL,
+        .mipi_info = {},
+        .reserved = NULL,
+    },
+#endif
+#if CONFIG_CAMERA_SC101IOT_DVP_YUV422_640X480_15FPS
+    {
+        .name = "DVP_8bit_20Minput_YUV422_UYVY_640x480_15fps",
+        .format = ESP_CAM_SENSOR_PIXFORMAT_YUV422_UYVY,
+        .port = ESP_CAM_SENSOR_DVP,
+        .xclk = 20000000,
+        .width = 640,
+        .height = 480,
+        .regs = sc101iot_dvp_8bit_20Minput_640x480_yuv422_uyvy_15fps,
+        .regs_size = ARRAY_SIZE(sc101iot_dvp_8bit_20Minput_640x480_yuv422_uyvy_15fps),
+        .fps = 15,
         .isp_info = NULL,
         .mipi_info = {},
         .reserved = NULL,
