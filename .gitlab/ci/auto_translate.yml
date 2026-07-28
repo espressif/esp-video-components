@@ -1,0 +1,104 @@
+# Triggered by: @bot test label: check_line_num
+# OR as a prerequisite when: @bot test label: auto_trans
+check_line_num:
+  stage: auto_translate
+  tags: [ "build_docs" ]
+  image: python:3.8
+  rules:
+    - if: '$CI_MERGE_REQUEST_LABELS =~ /check_line_num/i || $CI_MERGE_REQUEST_LABELS =~ /auto_trans/i || $BOT_LABEL_CHECK_LINE_NUM || $BOT_LABEL_AUTO_TRANS'
+      when: on_success
+    - when: never
+  script:
+    - git clone $AUTO_TRANSLATE_REPO
+    - pip3 install -r ./auto-translate/requirements.txt
+    - |
+      if [ -n "$TRANS_FILE" ]; then
+        TRANS_FILES_STR=$(printf '%s' "$TRANS_FILE" | sed 's/\[//g; s/\]//g; s/"//g' | tr ',' ' ')
+        RESOLVED_TRANS_FILES=""
+        for FILE in $TRANS_FILES_STR; do
+          MATCHES=$(git ls-files | awk -v target="$FILE" 'tolower($0) == tolower(target)')
+          MATCH_COUNT=$(printf '%s\n' "$MATCHES" | awk 'NF { count++ } END { print count + 0 }')
+          if [ "$MATCH_COUNT" -ne 1 ]; then
+            echo "ERROR: trans_file '$FILE' matched $MATCH_COUNT tracked files (expected exactly one)."
+            exit 1
+          fi
+          if [ -n "$RESOLVED_TRANS_FILES" ]; then
+            RESOLVED_TRANS_FILES="$RESOLVED_TRANS_FILES,$MATCHES"
+          else
+            RESOLVED_TRANS_FILES="$MATCHES"
+          fi
+        done
+        export TRANS_FILE="$RESOLVED_TRANS_FILES"
+        echo "Resolved trans_file: $TRANS_FILE"
+      fi
+    - python3 ./auto-translate/check_line_num.py
+
+# Triggered by: @bot test label: auto_trans
+# To translate updated parts of a specific file or multiple specific files, use:
+# @bot test label: auto_trans; trans_file: <relative path to file> or 
+# @bot test label: auto_trans; trans_file: <relative path to file1>,<relative path to file2>,...
+translate:
+  stage: auto_translate
+  tags: [ "build_docs" ]
+  image: python:3.8
+  rules:
+    - if: '$CI_MERGE_REQUEST_LABELS =~ /auto_trans/i || $BOT_LABEL_AUTO_TRANS'
+      when: on_success
+    - when: never
+  needs:
+    - check_line_num
+  script:
+    - git clone $AUTO_TRANSLATE_REPO
+    - pip3 install -r ./auto-translate/requirements.txt
+    - |
+      if [ -n "$TRANS_FILE" ]; then
+        TRANS_FILES_STR=$(echo $TRANS_FILE | sed 's/\[//g' | sed 's/\]//g' | sed 's/"//g' | tr ',' ' ')
+        echo "Translating specified files: $TRANS_FILES_STR"
+        for FILE in $TRANS_FILES_STR; do
+          MATCHES=$(git ls-files | awk -v target="$FILE" 'tolower($0) == tolower(target)')
+          MATCH_COUNT=$(printf '%s\n' "$MATCHES" | awk 'NF { count++ } END { print count + 0 }')
+          if [ "$MATCH_COUNT" -ne 1 ]; then
+            echo "ERROR: trans_file '$FILE' matched $MATCH_COUNT tracked files (expected exactly one)."
+            exit 1
+          fi
+          echo "Resolved '$FILE' to '$MATCHES'"
+          python3 ./auto-translate/translate_files.py "$OPENAI_API_KEY" "$CI_SERVER_URL" "$CHATGPT_BOT_TOKEN" "$CI_PROJECT_ID" "$CI_COMMIT_REF_NAME" "$MATCHES"
+        done
+      else
+        echo "Translating files in translate_config.yml that were changed in this MR"
+        python3 ./auto-translate/translate_files.py $OPENAI_API_KEY $CI_SERVER_URL $CHATGPT_BOT_TOKEN $CI_PROJECT_ID $CI_COMMIT_REF_NAME tcf
+      fi
+
+# Triggered by: @bot test job: translate_entire; trans_file: <relative path to file>
+# Use for newly added Chinese files that have no existing English translation.
+# Translates the specified file(s) from scratch, skipping the line number pre-check.
+# trans_file is REQUIRED - the job will fail if no file is specified.
+translate_entire:
+  stage: auto_translate
+  tags: [ "build_docs" ]
+  image: python:3.8
+  rules:
+    - if: '$CI_JOB_NAME =~ $BOT_DYNAMIC_TEST_JOBS && $BOT_DYNAMIC_TEST_JOBS'
+      when: on_success
+    - when: never
+  script:
+    - git clone $AUTO_TRANSLATE_REPO
+    - pip3 install -r ./auto-translate/requirements.txt
+    - |
+      if [ -z "$TRANS_FILE" ]; then
+        echo "ERROR: trans_file is required for translate_entire."
+        echo "Usage: @bot test job: translate_entire; trans_file: <relative path to file>"
+        exit 1
+      fi
+      TRANS_FILES_STR=$(echo $TRANS_FILE | sed 's/\[//g' | sed 's/\]//g' | sed 's/"//g' | tr ',' ' ')
+      echo "Translating specified files (full): $TRANS_FILES_STR"
+      for FILE in $TRANS_FILES_STR; do
+        MATCHES=$(git ls-files | awk -v target="$FILE" 'tolower($0) == tolower(target)')
+        MATCH_COUNT=$(printf '%s\n' "$MATCHES" | awk 'NF { count++ } END { print count + 0 }')
+        if [ "$MATCH_COUNT" -ne 1 ]; then
+          echo "ERROR: trans_file '$FILE' matched $MATCH_COUNT tracked files (expected exactly one)."
+          exit 1
+        fi
+        echo "Resolved '$FILE' to '$MATCHES'"
+        python3 ./auto-translate/translate_files.py "$OPENAI_API_KEY" "$CI_SERVER_URL" "$CHATGPT_BOT_TOKEN" "$CI_PROJECT_ID" "$CI_COMMIT_REF_NAME" "$MATCHES" -a
+      done
