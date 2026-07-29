@@ -79,6 +79,15 @@ typedef struct esp_video_isp {
     StaticTask_t *task_ptr;
     StackType_t *task_stack_ptr;
 #endif
+
+    /**
+     * ISP statistics queue, this queue is used to store the ISP statistics data
+     */
+    QueueHandle_t isp_stats_queue;
+    /**
+     * Whether the ISP statistics queue is receiving data by the application layer
+     */
+    bool isp_stats_queue_is_receiving;
 } esp_video_isp_t;
 
 static const char *TAG = "ISP";
@@ -1008,6 +1017,17 @@ static void get_sensor_state(esp_video_isp_t *isp, int index)
     }
 }
 
+static void isp_stats_to_queue(esp_video_isp_t *isp, esp_video_isp_stats_t *stats)
+{
+    _lock_acquire(&s_isp_lock);
+    if (isp->isp_stats_queue) {
+        if (xQueueSend(isp->isp_stats_queue, stats, 0) != pdPASS) {
+            ESP_LOGD(TAG, "failed to send ISP statistics to queue");
+        }
+    }
+    _lock_release(&s_isp_lock);
+}
+
 static void isp_task(void *p)
 {
     esp_err_t ret;
@@ -1024,6 +1044,8 @@ static void isp_task(void *p)
         }
 
         get_sensor_state(isp, buf.index);
+
+        isp_stats_to_queue(isp, isp->isp_stats[buf.index]);
 
         isp_stats_to_ipa_stats(isp->isp_stats[buf.index], &isp->ipa_stats);
         if (ioctl(isp->isp_fd, VIDIOC_QBUF, &buf) != 0) {
@@ -1456,6 +1478,7 @@ esp_err_t esp_video_isp_pipeline_deinit(void)
     _lock_acquire(&s_isp_lock);
 
     ESP_GOTO_ON_FALSE(s_esp_video_isp, ESP_FAIL, fail_0, TAG, "ISP controller is not initialized");
+    ESP_GOTO_ON_FALSE(s_esp_video_isp->isp_stats_queue_is_receiving == false, ESP_FAIL, fail_0, TAG, "ISP statistics queue is receiving");
 
     esp_video_isp_t *isp = s_esp_video_isp;
 
@@ -1473,6 +1496,12 @@ esp_err_t esp_video_isp_pipeline_deinit(void)
     ESP_GOTO_ON_FALSE(close(isp->isp_fd) == 0, ESP_FAIL, fail_0, TAG, "failed to close ISP");
     ESP_GOTO_ON_FALSE(close(isp->cam_fd) == 0, ESP_FAIL, fail_0, TAG, "failed to close camera sensor");
     ESP_GOTO_ON_ERROR(esp_ipa_pipeline_destroy(isp->ipa_pipeline), fail_0, TAG, "failed to destroy pipeline");
+
+    if (isp->isp_stats_queue) {
+        vQueueDelete(isp->isp_stats_queue);
+        isp->isp_stats_queue = NULL;
+    }
+
     free(isp);
     s_esp_video_isp = NULL;
 
@@ -1548,6 +1577,130 @@ esp_err_t esp_video_isp_pipeline_get_agc_status(esp_video_isp_pipeline_agc_statu
         ret = esp_ipa_pipeline_ioctl(s_esp_video_isp->ipa_pipeline, ESP_IPA_AGC_G_STATUS, &value);
         if (ret == ESP_OK) {
             *status = value;
+        }
+    } else {
+        ESP_LOGD(TAG, "ISP controller is not initialized");
+    }
+    _lock_release(&s_isp_lock);
+
+    return ret;
+}
+
+/**
+ * @brief Create a queue to dump ISP statistics.
+ *
+ * @note The queue will be created in the internal memory of the ISP controller.
+ * @note This function will decrease the ISP pipeline performance, so if not necessary, please don't call this function.
+ *       Please call esp_video_isp_pipeline_stop_dump_stats() to stop dumping ISP statistics.
+ *
+ * @param queue_size Queue size
+ *
+ * @return
+ *      - ESP_OK on success
+ *      - Others if failed
+ */
+esp_err_t esp_video_isp_pipeline_start_dump_stats(uint32_t queue_size)
+{
+    esp_err_t ret = ESP_ERR_INVALID_STATE;
+
+    ESP_RETURN_ON_FALSE(queue_size > 0, ESP_ERR_INVALID_ARG, TAG, "queue_size is 0");
+
+    _lock_acquire(&s_isp_lock);
+    if (s_esp_video_isp) {
+        if (s_esp_video_isp->isp_stats_queue) {
+            ESP_LOGD(TAG, "ISP statistics queue is already initialized");
+            ret = ESP_ERR_INVALID_STATE;
+        } else {
+            s_esp_video_isp->isp_stats_queue = xQueueCreate(queue_size, sizeof(esp_video_isp_stats_t));
+            if (!s_esp_video_isp->isp_stats_queue) {
+                ESP_LOGD(TAG, "failed to create ISP statistics queue");
+                ret = ESP_ERR_NO_MEM;
+            } else {
+                s_esp_video_isp->isp_stats_queue_is_receiving = false;
+                ret = ESP_OK;
+            }
+        }
+    } else {
+        ESP_LOGD(TAG, "ISP controller is not initialized");
+    }
+    _lock_release(&s_isp_lock);
+
+    return ret;
+}
+
+/**
+ * @brief Stop dumping ISP statistics to a queue.
+ *
+ * @return
+ *      - ESP_OK on success
+ *      - Others if failed
+ */
+esp_err_t esp_video_isp_pipeline_stop_dump_stats(void)
+{
+    esp_err_t ret = ESP_ERR_INVALID_STATE;
+
+    _lock_acquire(&s_isp_lock);
+    if (s_esp_video_isp) {
+        if (s_esp_video_isp->isp_stats_queue_is_receiving) {
+            ESP_LOGD(TAG, "ISP statistics queue is receiving");
+            ret = ESP_ERR_INVALID_STATE;
+        } else {
+            if (!s_esp_video_isp->isp_stats_queue) {
+                ESP_LOGD(TAG, "ISP statistics queue is not initialized");
+                ret = ESP_ERR_INVALID_STATE;
+            } else {
+                vQueueDelete(s_esp_video_isp->isp_stats_queue);
+                s_esp_video_isp->isp_stats_queue = NULL;
+                ret = ESP_OK;
+            }
+        }
+    } else {
+        ESP_LOGD(TAG, "ISP controller is not initialized");
+    }
+    _lock_release(&s_isp_lock);
+
+    return ret;
+}
+
+/**
+ * @brief Dump ISP statistics to a queue.
+ *
+ * @param stats Pointer to store ISP statistics
+ * @param timeout_ms Timeout in milliseconds
+ *
+ * @return
+ *      - ESP_OK on success
+ *      - Others if failed
+ */
+esp_err_t esp_video_isp_pipeline_dump_stats(esp_video_isp_stats_t *stats, uint32_t timeout_ms)
+{
+    esp_err_t ret = ESP_ERR_INVALID_STATE;
+
+    ESP_RETURN_ON_FALSE(stats, ESP_ERR_INVALID_ARG, TAG, "stats is NULL");
+
+    _lock_acquire(&s_isp_lock);
+    if (s_esp_video_isp) {
+        if (!s_esp_video_isp->isp_stats_queue) {
+            ESP_LOGD(TAG, "ISP statistics queue is not initialized");
+            ret = ESP_ERR_INVALID_STATE;
+        } else {
+            if (s_esp_video_isp->isp_stats_queue_is_receiving) {
+                ESP_LOGD(TAG, "ISP statistics queue is receiving");
+                ret = ESP_ERR_INVALID_STATE;
+            } else {
+                /**
+                 * Release the lock before receiving the statistics data to avoid blocking the ISP pipeline task
+                 */
+                s_esp_video_isp->isp_stats_queue_is_receiving = true;
+                _lock_release(&s_isp_lock);
+                if (xQueueReceive(s_esp_video_isp->isp_stats_queue, stats, pdMS_TO_TICKS(timeout_ms)) == pdTRUE) {
+                    ret = ESP_OK;
+                } else {
+                    ret = ESP_ERR_TIMEOUT;
+                }
+                _lock_acquire(&s_isp_lock);
+                s_esp_video_isp->isp_stats_queue_is_receiving = false;
+            }
         }
     } else {
         ESP_LOGD(TAG, "ISP controller is not initialized");
