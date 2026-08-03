@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- Added SC2337P MIPI RAW sensor driver.
+
 ## 2.4.0
 - Added SC2331 MIPI RAW sensor driver.
 - Added OV3640 DVP JPEG sensor driver.
