@@ -25,6 +25,9 @@ extern "C" {
 #include "sc101iot_dvp_8bit_20Minput_1280x720_yuv422_uyvy_25fps.h"
 #include "sc101iot_dvp_8bit_20Minput_1280x720_yuv422_yuyv_25fps.h"
 
+#include "sc101iot_dvp_8bit_20Minput_480x640_yuv422_uyvy_15fps.h"
+#include "sc101iot_dvp_8bit_20Minput_640x480_yuv422_uyvy_15fps.h"
+
 #ifdef __cplusplus
 }
 #endif
