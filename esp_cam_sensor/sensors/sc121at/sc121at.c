@@ -40,6 +40,9 @@ static const uint8_t sc121at_format_index[] = {
 #if CONFIG_CAMERA_SC121AT_MIPI_YUV422_1280X800_25FPS
     0,
 #endif
+#if CONFIG_CAMERA_SC121AT_MIPI_YUV422_1280X960_30FPS
+    1,
+#endif
 };
 
 static const esp_cam_sensor_format_t sc121at_format_info[] = {
@@ -57,6 +60,26 @@ static const esp_cam_sensor_format_t sc121at_format_info[] = {
         .isp_info = NULL,
         .mipi_info = {
             .mipi_clk = SC121AT_LINE_RATE_16BITS_1280x800_25FPS,
+            .lane_num = 2,
+            .line_sync_en = false,
+        },
+        .reserved = NULL,
+    },
+#endif
+#if CONFIG_CAMERA_SC121AT_MIPI_YUV422_1280X960_30FPS
+    {
+        .name = "MIPI_2lane_24Minput_YUV422_UYVY_1280x960_30fps",
+        .format = ESP_CAM_SENSOR_PIXFORMAT_YUV422_UYVY,
+        .port = ESP_CAM_SENSOR_MIPI_CSI,
+        .xclk = 24000000,
+        .width = 1280,
+        .height = 960,
+        .regs = sc121at_mipi_2lane_24Minput_1280x960_yuv422_30fps,
+        .regs_size = ARRAY_SIZE(sc121at_mipi_2lane_24Minput_1280x960_yuv422_30fps),
+        .fps = 30,
+        .isp_info = NULL,
+        .mipi_info = {
+            .mipi_clk = SC121AT_LINE_RATE_16BITS_1280x960_30FPS,
             .lane_num = 2,
             .line_sync_en = false,
         },
