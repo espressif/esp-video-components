@@ -7,6 +7,7 @@
 - Add a column for notes to the list of supported camera sensors.
 - Added GC4053 MIPI RAW sensor driver.
 - Added MIT245 MIPI RAW sensor driver.
+- Added 1280x960 format support in the driver of SC121AT.
 
 ## 2.5.0
 
