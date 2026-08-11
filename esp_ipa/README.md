@@ -1,9 +1,5 @@
 # Espressif Image Process Algorithm for ISP
 
-[![alt text][doc-latest]](https://docs.espressif.com/projects/esp-video-components/en/latest/esp32p4/index.html)
-
-[doc-latest]: https://img.shields.io/badge/docs-latest-blue
-
 Espressif image process algorithm component provides a suit of image process algorithms.[![Component Registry](https://components.espressif.com/components/espressif/esp_ipa/badge.svg)](https://components.espressif.com/components/espressif/esp_ipa)
 
 ## 1. Supported Algorithms
@@ -665,6 +661,29 @@ Developers can refer to the configuration files in [esp_cam_sensor](https://gith
 | exposure | Object | / | Exposure control configuration parameters object |
 | frame_delay | Integer | >0 | The delayed frames number of setting exposure parameter taking effect, this value is from sensor hardware information |
 | adjust_delay | Integer | >0 | The delayed frames number of calculating and setting new exposure parameter, higher value makes brightness change slower |
+| fixed_exposure_time | Integer | >0 | Fixed exposure time in microseconds. Required when `gain_only` is `true`; ignored otherwise |
+
+---
+
+```json
+"agc":
+{
+    "gain_only": true,
+    "exposure":
+    {
+        "frame_delay": 2,
+        "adjust_delay": 0,
+        "fixed_exposure_time": 20000
+    }
+}
+```
+
+| Parameter | Type | Range | Description |
+|:-:|:-:|:-:|:-|
+| gain_only | Bool | true or false | Optional. `true`: AGC only adjusts gain after init and keeps exposure at `exposure.fixed_exposure_time`; `false` or omitted: adjust both exposure and gain as usual |
+
+* Note: when `gain_only` is `true`, `exposure.fixed_exposure_time` is mandatory and must be within the sensor exposure range
+* Note: init may still set exposure once to `exposure.fixed_exposure_time` if the current sensor exposure differs
 
 ---
 
