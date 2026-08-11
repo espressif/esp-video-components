@@ -2168,7 +2168,7 @@ esp_err_t esp_video_config_buffer(struct esp_video *video, const struct v4l2_for
      * to avoid reduced PSRAM read and write performance.
      */
     if (MALLOC_CAP_SPIRAM & frame_caps) {
-        frame_caps &= ~MALLOC_CAP_SPIRAM;
+        frame_caps &= ~(MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
         frame_caps |= MALLOC_CAP_SPIRAM_NO_ENC;
     }
 #endif
