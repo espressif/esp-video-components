@@ -23,6 +23,7 @@
 #define H264_DEFAULT_MIN_QP     25
 #define H264_DEFAULT_MAX_QP     26
 #define H264_DEFAULT_BITRATE    10000000
+#define H264_DEFAULT_FPS        30
 
 typedef struct {
     int32_t i_period;
@@ -194,6 +195,33 @@ static void h264_stop_m2m_stream(int fd)
     TEST_ESP_OK(ioctl(fd, VIDIOC_STREAMOFF, &val));
 }
 
+static int h264_set_fps(int fd, uint32_t fps)
+{
+    struct v4l2_streamparm sparm;
+
+    memset(&sparm, 0, sizeof(sparm));
+    sparm.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
+    sparm.parm.capture.capability = V4L2_CAP_TIMEPERFRAME;
+    sparm.parm.capture.timeperframe.numerator = 1;
+    sparm.parm.capture.timeperframe.denominator = fps;
+    return ioctl(fd, VIDIOC_S_PARM, &sparm);
+}
+
+static void h264_verify_fps(int fd, uint32_t fps)
+{
+    struct v4l2_streamparm sparm;
+    struct v4l2_captureparm *cparam = &sparm.parm.capture;
+    struct v4l2_fract *timeperframe = &cparam->timeperframe;
+
+    memset(&sparm, 0, sizeof(sparm));
+    sparm.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
+    TEST_ESP_OK(ioctl(fd, VIDIOC_G_PARM, &sparm));
+
+    TEST_ASSERT_EQUAL_UINT32(V4L2_CAP_TIMEPERFRAME, cparam->capability & V4L2_CAP_TIMEPERFRAME);
+    TEST_ASSERT_EQUAL_UINT32(1, timeperframe->numerator);
+    TEST_ASSERT_EQUAL_UINT32(fps, timeperframe->denominator);
+}
+
 TEST_CASE("H.264 video device ext controls", "[video][h264]")
 {
     int fd;
@@ -254,6 +282,43 @@ TEST_CASE("H.264 video device ext controls", "[video][h264]")
     h264_verify_ctrl_values(fd, &during_stream);
     h264_set_ctrl_values(fd, &after_stream);
     h264_verify_ctrl_values(fd, &after_stream);
+
+    close(fd);
+    TEST_ESP_OK(esp_video_deinit_with_flags(ESP_VIDEO_INIT_FLAGS_H264));
+}
+
+TEST_CASE("H.264 video device set/get FPS", "[video][h264]")
+{
+    int fd;
+
+    setUp();
+
+    esp_video_init_config_t config = { 0 };
+    TEST_ESP_OK(esp_video_init_with_flags(&config, ESP_VIDEO_INIT_FLAGS_H264));
+
+    fd = open(ESP_VIDEO_H264_DEVICE_NAME, O_RDWR);
+    TEST_ASSERT_GREATER_OR_EQUAL(0, fd);
+
+    /* Before stream on: read default FPS, write new FPS, read back */
+    h264_verify_fps(fd, H264_DEFAULT_FPS);
+    TEST_ESP_OK(h264_set_fps(fd, 15));
+    h264_verify_fps(fd, 15);
+    TEST_ESP_OK(h264_set_fps(fd, 25));
+    h264_verify_fps(fd, 25);
+
+    /* After stream on: get FPS is allowed, set FPS must fail */
+    h264_setup_m2m_stream(fd);
+    h264_verify_fps(fd, 25);
+    TEST_ASSERT_EQUAL_INT(-1, h264_set_fps(fd, 20));
+    h264_verify_fps(fd, 25);
+
+    /* After stream off: read/write FPS */
+    h264_stop_m2m_stream(fd);
+    h264_verify_fps(fd, 25);
+    TEST_ESP_OK(h264_set_fps(fd, 30));
+    h264_verify_fps(fd, 30);
+    TEST_ESP_OK(h264_set_fps(fd, 5));
+    h264_verify_fps(fd, 5);
 
     close(fd);
     TEST_ESP_OK(esp_video_deinit_with_flags(ESP_VIDEO_INIT_FLAGS_H264));

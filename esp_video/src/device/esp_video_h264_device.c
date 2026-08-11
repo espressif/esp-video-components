@@ -31,6 +31,7 @@
 #define H264_VIDEO_DEVICE_MIN_QP    25
 #define H264_VIDEO_DEVICE_MAX_QP    26
 #define H264_VIDEO_DEVICE_BITRATE   10000000
+#define H264_VIDEO_DEVICE_FPS       30
 
 #define H264_VIDEO_MAX_I_PERIOD     120
 #define H264_VIDEO_MIN_I_PERIOD     1
@@ -58,6 +59,7 @@ struct h264_video {
     uint8_t gop;
     uint8_t min_qp;
     uint8_t max_qp;
+    uint8_t fps;
     uint32_t bitrate;
     esp_h264_enc_handle_t enc_handle;
 };
@@ -201,7 +203,7 @@ static esp_err_t h264_video_start(struct esp_video *video, uint32_t type)
         esp_h264_enc_cfg_hw_t config = {
             .pic_type = h264_video->input_format,
             .gop = h264_video->gop,
-            .fps = h264_video->gop,
+            .fps = h264_video->fps,
             .res = {
                 .width = M2M_VIDEO_GET_OUTPUT_FORMAT_WIDTH(video),
                 .height = M2M_VIDEO_GET_OUTPUT_FORMAT_HEIGHT(video),
@@ -470,6 +472,29 @@ static esp_err_t h264_video_query_ext_ctrl(struct esp_video *video, struct v4l2_
     return esp_video_device_common_query_ext_ctrl(s_h264_qctrl, ARRAY_SIZE(s_h264_qctrl), qctrl);
 }
 
+static esp_err_t h264_video_set_parm(struct esp_video *video, struct v4l2_streamparm *stream_parm, struct esp_video_stream *stream)
+{
+    struct h264_video *h264_video = VIDEO_PRIV_DATA(struct h264_video *, video);
+    struct v4l2_fract *time_per_frame = &stream_parm->parm.capture.timeperframe;
+
+    ESP_RETURN_ON_FALSE(h264_video->enc_handle == NULL, ESP_ERR_INVALID_STATE, TAG, "H.264 encoder is started, cannot set FPS");
+    ESP_RETURN_ON_FALSE(time_per_frame->numerator > 0 && time_per_frame->denominator > 0, ESP_ERR_INVALID_ARG, TAG, "Invalid time per frame");
+
+    h264_video->fps = time_per_frame->denominator / time_per_frame->numerator;
+    return ESP_OK;
+}
+
+static esp_err_t h264_video_get_parm(struct esp_video *video, struct v4l2_streamparm *stream_parm, struct esp_video_stream *stream)
+{
+    struct h264_video *h264_video = VIDEO_PRIV_DATA(struct h264_video *, video);
+    struct v4l2_captureparm *cp = &stream_parm->parm.capture;
+
+    cp->capability |= V4L2_CAP_TIMEPERFRAME;
+    cp->timeperframe.numerator = 1;
+    cp->timeperframe.denominator = h264_video->fps;
+    return ESP_OK;
+}
+
 static const struct esp_video_ops s_h264_video_ops = {
     .init           = h264_video_init,
     .deinit         = h264_video_deinit,
@@ -481,6 +506,8 @@ static const struct esp_video_ops s_h264_video_ops = {
     .set_ext_ctrl   = h264_video_set_ext_ctrl,
     .get_ext_ctrl   = h264_video_get_ext_ctrl,
     .query_ext_ctrl = h264_video_query_ext_ctrl,
+    .set_parm       = h264_video_set_parm,
+    .get_parm       = h264_video_get_parm,
 };
 
 /**
@@ -496,7 +523,7 @@ esp_err_t esp_video_create_h264_video_device(bool hw_codec)
 {
     struct esp_video *video;
     struct h264_video *h264_video;
-    uint32_t device_caps = V4L2_CAP_VIDEO_M2M | V4L2_CAP_EXT_PIX_FORMAT | V4L2_CAP_STREAMING;
+    uint32_t device_caps = V4L2_CAP_VIDEO_M2M | V4L2_CAP_EXT_PIX_FORMAT | V4L2_CAP_STREAMING | V4L2_CAP_TIMEPERFRAME;
     uint32_t caps = device_caps | V4L2_CAP_DEVICE_CAPS;
 
     if (hw_codec == false) {
@@ -513,6 +540,7 @@ esp_err_t esp_video_create_h264_video_device(bool hw_codec)
     h264_video->min_qp = H264_VIDEO_DEVICE_MIN_QP;
     h264_video->max_qp = H264_VIDEO_DEVICE_MAX_QP;
     h264_video->bitrate = H264_VIDEO_DEVICE_BITRATE;
+    h264_video->fps = H264_VIDEO_DEVICE_FPS;
 
     video = esp_video_create(H264_NAME, ESP_VIDEO_H264_DEVICE_ID, &s_h264_video_ops, h264_video, caps, device_caps);
     if (!video) {
