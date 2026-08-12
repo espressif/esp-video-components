@@ -20,6 +20,7 @@
 #include "example_video_common.h"
 #include "esp_video_isp_pipeline.h"
 #include "esp_video_isp_ioctl.h"
+#include "esp_video_pipeline_isp.h"
 
 #if CONFIG_ESP_VIDEO_ENABLE_ISP_PIPELINE_CONTROLLER && CONFIG_ESP_VIDEO_ENABLE_MIPI_CSI_VIDEO_DEVICE
 
@@ -221,4 +222,83 @@ TEST_CASE("ISP pipeline dump stats invalid args", "[video][isp_pipeline]")
     TEST_ESP_OK(example_video_deinit());
 }
 
+TEST_CASE("ISP pipeline set/get AGC status", "[video][isp_pipeline]")
+{
+    esp_video_isp_pipeline_agc_status_t status;
+
+    setUp();
+
+    TEST_ESP_OK(example_video_init());
+    TEST_ASSERT_TRUE(esp_video_isp_pipeline_is_initialized());
+
+    /* Initial AGC status should be enabled */
+    TEST_ESP_OK(esp_video_isp_pipeline_get_agc_status(&status));
+    TEST_ASSERT_EQUAL_INT(ESP_VIDEO_ISP_PIPELINE_AGC_ENABLE, status);
+
+    /* Disable AGC and verify */
+    TEST_ESP_OK(esp_video_isp_pipeline_set_agc_status(ESP_VIDEO_ISP_PIPELINE_AGC_DISABLE));
+    TEST_ESP_OK(esp_video_isp_pipeline_get_agc_status(&status));
+    TEST_ASSERT_EQUAL_INT(ESP_VIDEO_ISP_PIPELINE_AGC_DISABLE, status);
+
+    /* Enable AGC and verify */
+    TEST_ESP_OK(esp_video_isp_pipeline_set_agc_status(ESP_VIDEO_ISP_PIPELINE_AGC_ENABLE));
+    TEST_ESP_OK(esp_video_isp_pipeline_get_agc_status(&status));
+    TEST_ASSERT_EQUAL_INT(ESP_VIDEO_ISP_PIPELINE_AGC_ENABLE, status);
+
+    /* Invalid argument */
+    TEST_ESP_ERR(ESP_ERR_INVALID_ARG, esp_video_isp_pipeline_get_agc_status(NULL));
+
+    TEST_ESP_OK(example_video_deinit());
+}
+
+TEST_CASE("ISP pipeline set/get AGC max/min exposure", "[video][isp_pipeline]")
+{
+    uint32_t min_us;
+    uint32_t max_us;
+    uint32_t value;
+
+    setUp();
+
+    TEST_ESP_OK(example_video_init());
+    TEST_ASSERT_TRUE(esp_video_isp_pipeline_is_initialized());
+
+    TEST_ESP_OK(esp_video_isp_pipeline_get_agc_max_exposure(&max_us));
+    TEST_ESP_OK(esp_video_isp_pipeline_get_agc_min_exposure(&min_us));
+    TEST_ASSERT_GREATER_OR_EQUAL(min_us, max_us);
+
+    /* Set may align down to exposure step; use aligned values for round-trip checks */
+    TEST_ESP_OK(esp_video_isp_pipeline_set_agc_max_exposure(max_us));
+    TEST_ESP_OK(esp_video_isp_pipeline_get_agc_max_exposure(&max_us));
+    TEST_ESP_OK(esp_video_isp_pipeline_set_agc_max_exposure(max_us));
+    TEST_ESP_OK(esp_video_isp_pipeline_get_agc_max_exposure(&value));
+    TEST_ASSERT_EQUAL_UINT32(max_us, value);
+
+    TEST_ESP_OK(esp_video_isp_pipeline_set_agc_min_exposure(min_us));
+    TEST_ESP_OK(esp_video_isp_pipeline_get_agc_min_exposure(&min_us));
+    TEST_ESP_OK(esp_video_isp_pipeline_set_agc_min_exposure(min_us));
+    TEST_ESP_OK(esp_video_isp_pipeline_get_agc_min_exposure(&value));
+    TEST_ASSERT_EQUAL_UINT32(min_us, value);
+
+    /* Narrow the max exposure to the current min and restore */
+    TEST_ESP_OK(esp_video_isp_pipeline_set_agc_max_exposure(min_us));
+    TEST_ESP_OK(esp_video_isp_pipeline_get_agc_max_exposure(&value));
+    TEST_ASSERT_EQUAL_UINT32(min_us, value);
+
+    TEST_ESP_OK(esp_video_isp_pipeline_set_agc_max_exposure(max_us));
+    TEST_ESP_OK(esp_video_isp_pipeline_get_agc_max_exposure(&value));
+    TEST_ASSERT_EQUAL_UINT32(max_us, value);
+
+    /* Out of range values should fail */
+    TEST_ESP_ERR(ESP_ERR_INVALID_ARG, esp_video_isp_pipeline_set_agc_max_exposure(UINT32_MAX));
+    TEST_ESP_ERR(ESP_ERR_INVALID_ARG, esp_video_isp_pipeline_set_agc_min_exposure(UINT32_MAX));
+    if (min_us > 0) {
+        TEST_ESP_ERR(ESP_ERR_INVALID_ARG, esp_video_isp_pipeline_set_agc_max_exposure(0));
+    }
+
+    /* Invalid argument */
+    TEST_ESP_ERR(ESP_ERR_INVALID_ARG, esp_video_isp_pipeline_get_agc_max_exposure(NULL));
+    TEST_ESP_ERR(ESP_ERR_INVALID_ARG, esp_video_isp_pipeline_get_agc_min_exposure(NULL));
+
+    TEST_ESP_OK(example_video_deinit());
+}
 #endif /* CONFIG_ESP_VIDEO_ENABLE_ISP_PIPELINE_CONTROLLER && CONFIG_ESP_VIDEO_ENABLE_MIPI_CSI_VIDEO_DEVICE */

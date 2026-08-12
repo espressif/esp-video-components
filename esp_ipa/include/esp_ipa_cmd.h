@@ -6,6 +6,8 @@
 
 #pragma once
 
+#include <stdint.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -27,6 +29,10 @@ extern "C" {
 
 #define ESP_IPA_AGC_S_STATUS        ESP_IPA_IOW(ESP_IPA_IOC_TYPE_AGC,  0, int)
 #define ESP_IPA_AGC_G_STATUS        ESP_IPA_IOR(ESP_IPA_IOC_TYPE_AGC,  1, int)
+#define ESP_IPA_AGC_S_MAX_EXPOSURE  ESP_IPA_IOW(ESP_IPA_IOC_TYPE_AGC,  2, uint32_t) /* The application should limit the maximum exposure to the step of the exposure */
+#define ESP_IPA_AGC_G_MAX_EXPOSURE  ESP_IPA_IOR(ESP_IPA_IOC_TYPE_AGC,  3, uint32_t)
+#define ESP_IPA_AGC_S_MIN_EXPOSURE  ESP_IPA_IOW(ESP_IPA_IOC_TYPE_AGC,  4, uint32_t) /* The application should limit the minimum exposure to the step of the exposure */
+#define ESP_IPA_AGC_G_MIN_EXPOSURE  ESP_IPA_IOR(ESP_IPA_IOC_TYPE_AGC,  5, uint32_t)
 
 #ifdef __cplusplus
 }

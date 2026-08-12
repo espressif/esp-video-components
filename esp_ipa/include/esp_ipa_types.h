@@ -510,9 +510,42 @@ typedef struct esp_ipa_adn_dm {
  * @brief GAMMA value look-up table unit
  */
 typedef struct esp_ipa_aen_gamma_unit {
-    float luma;                                 /*!< Luma value */
+    float luma;                                 /*!< Luma value or backlight degree */
     esp_ipa_gamma_t gamma;                      /*!< GAMMA parameter */
 } esp_ipa_aen_gamma_unit_t;
+
+/**
+ * @brief Backlight enhancement configuration for auto enhancement algorithm
+ *
+ * Detection: low = sum(hist[low]) / sum(hist), high = sum(hist[high]) / sum(hist).
+ * Enable when low > low_hist_ratio_threshold, high > high_hist_ratio_threshold
+ * and env luma > env_luma_threshold.
+ * Anti-jitter: consecutive detect count must be > detect_count_threshold;
+ * count saturates at detect_count_threshold + detect_count_margin;
+ * low/high ratios are IIR-filtered by hist_ratio_filter.
+ */
+typedef struct esp_ipa_aen_gamma_backlight_config {
+    float low_hist_ratio_threshold;             /*!< Low-bin histogram ratio threshold */
+    float high_hist_ratio_threshold;            /*!< High-bin histogram ratio threshold */
+    float env_luma_threshold;                   /*!< Environment luma threshold for backlight detection */
+
+    uint8_t low_index_start;                    /*!< Low start index in histogram */
+    uint8_t low_index_end;                      /*!< Low end index in histogram */
+    uint8_t high_index_start;                   /*!< High start index in histogram */
+    uint8_t high_index_end;                     /*!< High end index in histogram */
+
+    const char *luma_env;                       /*!< Environment luma variable name */
+
+    uint16_t detect_count_threshold;            /*!< Anti-jitter: backlight on when detect count > this */
+    uint16_t detect_count_margin;               /*!< Anti-jitter: extra count above threshold; defaults to detect_count_threshold */
+    float hist_ratio_filter;                    /*!< Anti-jitter IIR filter coefficient for low/high ratios, range [0, 1] */
+
+    esp_ipa_aen_gamma_model_t model;            /*!< GAMMA model used in backlight mode */
+    float luma_min_step;                        /*!< Minimum backlight degree step to update GAMMA */
+
+    const esp_ipa_aen_gamma_unit_t *gamma_table; /*!< GAMMA look-up table keyed by backlight degree (luma field) */
+    uint32_t gamma_table_size;                  /*!< Backlight GAMMA look-up table size */
+} esp_ipa_aen_gamma_backlight_config_t;
 
 /**
  * @brief GAMMA parameter for auto enhancement algorithm
@@ -526,6 +559,8 @@ typedef struct esp_ipa_aen_gamma_config {
 
     const esp_ipa_aen_gamma_unit_t *gamma_table;    /*!< GAMMA value look-up table */
     uint32_t gamma_table_size;                  /*!< GAMMA value look-up table or extension value look-up table size */
+
+    const esp_ipa_aen_gamma_backlight_config_t *backlight; /*!< Backlight enhancement configuration */
 } esp_ipa_aen_gamma_config_t;
 
 /**

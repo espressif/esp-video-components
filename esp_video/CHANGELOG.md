@@ -14,6 +14,7 @@
 - Added the `ESP_VIDEO_DISABLE_ISP_ERROR_INTERRUPT` option to help prevent unwanted hardware watchdog resets caused by frequent ISP error interrupts
 - Added a function to dump ISP statistics data while the IPA task is running
 - Added a function to configure the AWB, AE, AF, and Histogram windows
+- Added functions to set and retrieve the minimum and maximum exposure values
 
 - Fixed a warning related to the ISP AWB subwindow during initialization
 - Update to use esp_cam_sensor v2.4.x

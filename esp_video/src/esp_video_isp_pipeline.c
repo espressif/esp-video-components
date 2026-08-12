@@ -1823,3 +1823,153 @@ esp_err_t esp_video_isp_pipeline_set_statistics_window(uint32_t target_windows, 
     _lock_release(&s_isp_lock);
     return ret;
 }
+
+/**
+ * @brief Validate exposure against sensor range and align it to the exposure step.
+ *
+ * @param isp         ISP pipeline object
+ * @param exposure_us Input exposure in microseconds; stores aligned value on success
+ *
+ * @return
+ *      - ESP_OK on success
+ *      - ESP_ERR_INVALID_ARG if exposure is out of range
+ *      - Others if failed
+ */
+static esp_err_t isp_check_and_align_exposure(esp_video_isp_t *isp, uint32_t *exposure_us)
+{
+    uint32_t min_us = isp->sensor.min_exposure;
+    uint32_t max_us = isp->sensor.max_exposure;
+    uint32_t step_us = isp->sensor.step_exposure;
+    uint32_t aligned_us = *exposure_us;
+
+    ESP_RETURN_ON_FALSE(isp->sensor_attr.exposure, ESP_ERR_NOT_SUPPORTED, TAG, "exposure is not supported");
+    ESP_RETURN_ON_FALSE(aligned_us >= min_us && aligned_us <= max_us, ESP_ERR_INVALID_ARG, TAG,
+                        "exposure %" PRIu32 " us out of range [%" PRIu32 ", %" PRIu32 "], step %" PRIu32,
+                        aligned_us, min_us, max_us, step_us);
+
+    if (step_us > 0) {
+        aligned_us = aligned_us / step_us * step_us;
+        ESP_RETURN_ON_FALSE(aligned_us >= min_us && aligned_us <= max_us, ESP_ERR_INVALID_ARG, TAG,
+                            "aligned exposure %" PRIu32 " us out of range [%" PRIu32 ", %" PRIu32 "], step %" PRIu32,
+                            aligned_us, min_us, max_us, step_us);
+    }
+
+    *exposure_us = aligned_us;
+    return ESP_OK;
+}
+
+/**
+ * @brief Set AGC maximum exposure time.
+ *
+ * @param exposure_us Maximum exposure time in microseconds
+ *
+ * @return
+ *      - ESP_OK on success
+ *      - Others if failed
+ */
+esp_err_t esp_video_isp_pipeline_set_agc_max_exposure(uint32_t exposure_us)
+{
+    esp_err_t ret = ESP_ERR_INVALID_STATE;
+
+    _lock_acquire(&s_isp_lock);
+    if (s_esp_video_isp) {
+        uint32_t value = exposure_us;
+
+        ret = isp_check_and_align_exposure(s_esp_video_isp, &value);
+        if (ret == ESP_OK) {
+            ret = esp_ipa_pipeline_ioctl(s_esp_video_isp->ipa_pipeline, ESP_IPA_AGC_S_MAX_EXPOSURE, &value);
+            if (ret == ESP_OK) {
+                ESP_LOGD(TAG, "AGC maximum exposure: %" PRIu32 " us", value);
+            }
+        }
+    } else {
+        ESP_LOGD(TAG, "ISP controller is not initialized");
+    }
+    _lock_release(&s_isp_lock);
+
+    return ret;
+}
+
+/**
+ * @brief Get AGC maximum exposure time.
+ *
+ * @param exposure_us Pointer to store maximum exposure time in microseconds
+ *
+ * @return
+ *      - ESP_OK on success
+ *      - Others if failed
+ */
+esp_err_t esp_video_isp_pipeline_get_agc_max_exposure(uint32_t *exposure_us)
+{
+    esp_err_t ret = ESP_ERR_INVALID_STATE;
+
+    ESP_RETURN_ON_FALSE(exposure_us, ESP_ERR_INVALID_ARG, TAG, "exposure_us is NULL");
+
+    _lock_acquire(&s_isp_lock);
+    if (s_esp_video_isp) {
+        ret = esp_ipa_pipeline_ioctl(s_esp_video_isp->ipa_pipeline, ESP_IPA_AGC_G_MAX_EXPOSURE, exposure_us);
+    } else {
+        ESP_LOGD(TAG, "ISP controller is not initialized");
+    }
+    _lock_release(&s_isp_lock);
+
+    return ret;
+}
+
+/**
+ * @brief Set AGC minimum exposure time.
+ *
+ * @param exposure_us Minimum exposure time in microseconds
+ *
+ * @return
+ *      - ESP_OK on success
+ *      - Others if failed
+ */
+esp_err_t esp_video_isp_pipeline_set_agc_min_exposure(uint32_t exposure_us)
+{
+    esp_err_t ret = ESP_ERR_INVALID_STATE;
+
+    _lock_acquire(&s_isp_lock);
+    if (s_esp_video_isp) {
+        uint32_t value = exposure_us;
+
+        ret = isp_check_and_align_exposure(s_esp_video_isp, &value);
+        if (ret == ESP_OK) {
+            ret = esp_ipa_pipeline_ioctl(s_esp_video_isp->ipa_pipeline, ESP_IPA_AGC_S_MIN_EXPOSURE, &value);
+            if (ret == ESP_OK) {
+                ESP_LOGD(TAG, "AGC minimum exposure: %" PRIu32 " us", value);
+            }
+        }
+    } else {
+        ESP_LOGD(TAG, "ISP controller is not initialized");
+    }
+    _lock_release(&s_isp_lock);
+
+    return ret;
+}
+
+/**
+ * @brief Get AGC minimum exposure time.
+ *
+ * @param exposure_us Pointer to store minimum exposure time in microseconds
+ *
+ * @return
+ *      - ESP_OK on success
+ *      - Others if failed
+ */
+esp_err_t esp_video_isp_pipeline_get_agc_min_exposure(uint32_t *exposure_us)
+{
+    esp_err_t ret = ESP_ERR_INVALID_STATE;
+
+    ESP_RETURN_ON_FALSE(exposure_us, ESP_ERR_INVALID_ARG, TAG, "exposure_us is NULL");
+
+    _lock_acquire(&s_isp_lock);
+    if (s_esp_video_isp) {
+        ret = esp_ipa_pipeline_ioctl(s_esp_video_isp->ipa_pipeline, ESP_IPA_AGC_G_MIN_EXPOSURE, exposure_us);
+    } else {
+        ESP_LOGD(TAG, "ISP controller is not initialized");
+    }
+    _lock_release(&s_isp_lock);
+
+    return ret;
+}

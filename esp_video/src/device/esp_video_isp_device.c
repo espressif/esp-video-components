@@ -560,7 +560,11 @@ static esp_err_t isp_start_hist(struct isp_video *isp_video)
 
     esp_err_t ret;
     esp_isp_hist_config_t hist_config = {
+#if CONFIG_ESP_VIDEO_ISP_DEVICE_HIST_SAMPLING_YUV_Y
         .hist_mode = ISP_HIST_SAMPLING_YUV_Y,
+#else /* CONFIG_ESP_VIDEO_ISP_DEVICE_HIST_SAMPLING_YUV_Y */
+        .hist_mode = ISP_HIST_SAMPLING_RGB,
+#endif /* CONFIG_ESP_VIDEO_ISP_DEVICE_HIST_SAMPLING_YUV_Y */
         .window = isp_video->hist_config.windows[0],
         .rgb_coefficient = {
             .coeff_b = {{85, 0}},

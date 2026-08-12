@@ -101,13 +101,20 @@ class gamma_c:
 
         self.gen_gamma_data_str()
 
-    def get_gamma_table_text(self):
+    def get_gamma_table_text(self, table_name=None):
         gamma_table_str = str()
+        name = table_name if table_name else f'gamma_{self.name}'
 
         for u in self.gamma.table:
+            if hasattr(u, 'luma'):
+                key = u.luma
+            elif hasattr(u, 'degree'):
+                key = u.degree
+            else:
+                raise fatal_error('gamma table entry needs luma')
             gamma_table_str += cfmt_string(f'''
                 {{
-                    .luma = {u.luma},
+                    .luma = {key},
                     .gamma = {{
                         .red = {{
                             .x = {{ {u.red_x_str} }},
@@ -126,7 +133,7 @@ class gamma_c:
             ''')
 
         gamma_table_text = cfmt_string(f'''
-            static const esp_ipa_aen_gamma_unit_t s_esp_ipa_aen_gamma_{self.name}_table[] = {{
+            static const esp_ipa_aen_gamma_unit_t s_esp_ipa_aen_{name}_table[] = {{
                 {gamma_table_str}
             }};
             ''')
@@ -140,7 +147,8 @@ class ipa_unit_aen_c(ipa_unit_c):
             gamma = obj.gamma
 
             gamma_generator = gamma_c(gamma, name)
-            gamma_table_text = gamma_generator.get_gamma_table_text()
+            gamma_table_text = gamma_generator.get_gamma_table_text(f'gamma_{name}')
+            extra_code = gamma_table_text
 
             gamma_text = cfmt_string(f'''
                 .model = {gamma.model},
@@ -150,7 +158,76 @@ class ipa_unit_aen_c(ipa_unit_c):
                 .gamma_table_size = {len(gamma.table)},
                 ''')
 
-            return (gamma_text, gamma_table_text)
+            if hasattr(gamma, 'backlight'):
+                bl_text, bl_table = backlight_code(name, gamma)
+                extra_code += bl_table
+                extra_code += cfmt_string(f'''
+                    static const esp_ipa_aen_gamma_backlight_config_t s_ipa_aen_backlight_{name}_config = {{
+                        {bl_text}
+                    }};
+                    ''')
+                gamma_text += cfmt_string(f'''
+                    .backlight = &s_ipa_aen_backlight_{name}_config,
+                    ''')
+
+            return (gamma_text, extra_code)
+
+        def backlight_code(name, gamma):
+            bl = gamma.backlight
+
+            for field in ('low_hist_ratio_threshold', 'high_hist_ratio_threshold', 'env_luma_threshold',
+                          'detect_count_threshold', 'hist_ratio_filter', 'luma_env', 'table'):
+                if not hasattr(bl, field):
+                    raise fatal_error(f'aen.gamma.backlight.{field} is required')
+
+            if not hasattr(bl, 'low_index'):
+                bl.low_index = dict_object({'start': 0, 'end': 4})
+            if not hasattr(bl, 'high_index'):
+                bl.high_index = dict_object({'start': 14, 'end': 15})
+            if not hasattr(bl, 'detect_count_margin'):
+                bl.detect_count_margin = bl.detect_count_threshold
+            if not hasattr(bl, 'model'):
+                bl.model = 0
+            elif bl.model not in (0, 1):
+                raise fatal_error(f'aen.gamma.backlight.model must be 0 or 1, got {bl.model}')
+            if hasattr(bl, 'degree_min_step') and not hasattr(bl, 'luma_min_step'):
+                bl.luma_min_step = bl.degree_min_step
+            if not hasattr(bl, 'luma_min_step'):
+                bl.luma_min_step = 0.05
+            if not hasattr(bl, 'use_gamma_param'):
+                if hasattr(gamma, 'use_gamma_param'):
+                    bl.use_gamma_param = gamma.use_gamma_param
+                else:
+                    bl.use_gamma_param = True
+
+            for u in bl.table:
+                if hasattr(u, 'degree') and not hasattr(u, 'luma'):
+                    u.luma = u.degree
+                elif not hasattr(u, 'luma'):
+                    raise fatal_error('aen.gamma.backlight.table entry needs luma (or degree)')
+
+            gamma_generator = gamma_c(bl, f'backlight_{name}')
+            gamma_table_text = gamma_generator.get_gamma_table_text(f'backlight_gamma_{name}')
+
+            backlight_text = cfmt_string(f'''
+                .low_hist_ratio_threshold = {bl.low_hist_ratio_threshold},
+                .high_hist_ratio_threshold = {bl.high_hist_ratio_threshold},
+                .env_luma_threshold = {bl.env_luma_threshold},
+                .low_index_start = {bl.low_index.start},
+                .low_index_end = {bl.low_index.end},
+                .high_index_start = {bl.high_index.start},
+                .high_index_end = {bl.high_index.end},
+                .luma_env = \"{bl.luma_env}\",
+                .detect_count_threshold = {int(bl.detect_count_threshold)},
+                .detect_count_margin = {int(bl.detect_count_margin)},
+                .hist_ratio_filter = {bl.hist_ratio_filter},
+                .model = {bl.model},
+                .luma_min_step = {bl.luma_min_step},
+                .gamma_table = s_esp_ipa_aen_backlight_gamma_{name}_table,
+                .gamma_table_size = {len(bl.table)},
+                ''')
+
+            return (backlight_text, gamma_table_text)
 
         def sharpen_code(name, obj):
             sharpen_text = str()
@@ -564,5 +641,53 @@ if __name__ == '__main__':
     })
 
     print('step 5')
+    c_code = ipa_unit_aen_c(json_obj, 'sc2336', 'aen').get_text()
+    print(c_code)
+
+    json_obj = dict_object({
+        'gamma':
+        {
+            'model': 0,
+            'use_gamma_param': True,
+            'luma_env': 'ae.luma.avg',
+            'luma_min_step': 16.0,
+            'table':
+            [
+                {
+                    'luma': 31.1,
+                    'gamma_param': 0.51,
+                },
+                {
+                    'luma': 75.1,
+                    'gamma_param': 0.53,
+                }
+            ],
+            'backlight':
+            {
+                'low_hist_ratio_threshold': 0.2,
+                'high_hist_ratio_threshold': 0.15,
+                'env_luma_threshold': 5.0,
+                'low_index': {'start': 0, 'end': 4},
+                'high_index': {'start': 14, 'end': 15},
+                'luma_env': 'env.luma.avg',
+                'detect_count_threshold': 3,
+                'hist_ratio_filter': 0.3,
+                'luma_min_step': 0.05,
+                'table':
+                [
+                    {
+                        'luma': 0.35,
+                        'gamma_param': 0.45,
+                    },
+                    {
+                        'luma': 0.55,
+                        'gamma_param': 0.40,
+                    }
+                ]
+            }
+        }
+    })
+
+    print('step 6')
     c_code = ipa_unit_aen_c(json_obj, 'sc2336', 'aen').get_text()
     print(c_code)
