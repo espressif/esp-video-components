@@ -239,9 +239,11 @@ class ipa_unit_acc_c(ipa_unit_c):
         
         if hasattr(obj, 'lsc'):
             acc_text += lsc_code(name, obj)
+            disable_gain = getattr(obj.lsc, 'disable_gain', 0)
             acc_obj_text += cfmt_string(f'''
                 .lsc_table = s_esp_ipa_acc_lsc_{name}_config,
                 .lsc_table_size = ARRAY_SIZE(s_esp_ipa_acc_lsc_{name}_config),
+                .lsc_disable_gain = {disable_gain},
                 '''
             )
         

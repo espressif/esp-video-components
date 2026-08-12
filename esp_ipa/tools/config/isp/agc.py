@@ -55,6 +55,10 @@ class ipa_unit_agc_c(ipa_unit_c):
             gain = obj.gain
             anti_flicker_mode, af_freq = get_anti_flicker_param(obj)
             max_gain = getattr(gain, 'max', 0)
+            gain_only = getattr(obj, 'gain_only', False)
+            fixed_exposure_time = getattr(exp, 'fixed_exposure_time', 0)
+            if gain_only and not fixed_exposure_time:
+                raise fatal_error('exposure.fixed_exposure_time is required when gain_only is true')
             exposure_text = (f'''
                 .exposure_frame_delay = {exp.frame_delay},
                 .exposure_adjust_delay = {exp.adjust_delay},
@@ -65,6 +69,8 @@ class ipa_unit_agc_c(ipa_unit_c):
                 .dec_gain_ratio = {obj.f_m0},
                 .anti_flicker_mode = {anti_flicker_mode},
                 .ac_freq = {af_freq},
+                .gain_only = {'true' if gain_only else 'false'},
+                .fixed_exposure_time = {int(fixed_exposure_time)},
                 ''')
 
             return exposure_text

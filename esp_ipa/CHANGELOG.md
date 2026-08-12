@@ -1,6 +1,10 @@
 ## Unreleased
 
 - Added support for setting and retrieving IPA pipeline parameters and status
+- AGC: optional `gain_only` mode with fixed `exposure.fixed_exposure_time`; process path only adjusts gain
+- AGC: skip `luma_low`/`luma_high` dead-band when `luma_pwl` is enabled so the PWL-shifted target can take effect
+- ACC LSC: optional JSON `lsc.disable_gain` disables LSC when sensor gain is at or above the threshold (`<=0` keeps LSC always on by gain)
+- AWB model_2: clear stale ref-point counters on stable frames so brief glare cannot skew CT
 
 ## 2.2.0~1
 

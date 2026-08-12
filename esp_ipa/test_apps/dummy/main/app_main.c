@@ -1627,6 +1627,88 @@ TEST_CASE("AGC max_gain caps sensor gain", "[IPA][AGC]")
     TEST_ASSERT_GREATER_THAN_FLOAT(gain_lo_cap + 0.05f, gain_hi_cap);
 }
 
+/*
+ * gain_only + fixed_exposure_time: init may set exposure once; process only adjusts gain.
+ */
+TEST_CASE("AGC gain_only mode only adjusts gain", "[IPA][AGC]")
+{
+    const esp_ipa_config_t *base = esp_ipa_pipeline_get_config(IPA_TARGET_NAME);
+    static esp_ipa_config_t cfg;
+    static esp_ipa_agc_config_t agc;
+    esp_ipa_pipeline_handle_t handle = NULL;
+    esp_ipa_metadata_t metadata = {0};
+    esp_ipa_stats_t stats = {0};
+    esp_ipa_sensor_t sensor = s_esp_ipa_sensor;
+    const uint32_t fixed_exposure_time = 20000;
+
+    TEST_ASSERT_NOT_NULL(base);
+    TEST_ASSERT_NOT_NULL(base->agc);
+
+    memcpy(&cfg, base, sizeof(cfg));
+    memcpy(&agc, base->agc, sizeof(agc));
+    agc.gain_only = true;
+    agc.fixed_exposure_time = fixed_exposure_time;
+    agc.exposure_adjust_delay = 0;
+    agc.exposure_frame_delay = 0;
+    agc.gain_frame_delay = 0;
+    agc.inc_gain_ratio = 1.0f;
+    agc.dec_gain_ratio = 1.0f;
+    agc.luma_low = 99;
+    agc.luma_high = 101;
+    agc.luma_target = 100;
+    agc.luma_pwl_enable = false;
+    agc.anti_flicker_mode = ESP_IPA_AGC_ANTI_FLICKER_NONE;
+    agc.ac_freq = 0;
+    agc.meter_mode = ESP_IPA_AGC_METER_HIGHLIGHT_PRIOR;
+    cfg.agc = &agc;
+
+    /* Init with mismatched exposure should apply fixed_exposure_time once */
+    sensor.cur_exposure = s_esp_ipa_sensor.cur_exposure;
+    sensor.cur_gain = 1.0f;
+    TEST_ESP_OK(esp_ipa_pipeline_create(&cfg, &handle));
+    TEST_ESP_OK(esp_ipa_pipeline_init(handle, &sensor, &metadata));
+    TEST_ASSERT_NOT_EQUAL_HEX32(0, metadata.flags & IPA_METADATA_FLAGS_ET);
+    TEST_ASSERT_EQUAL_INT32(fixed_exposure_time, metadata.exposure);
+    TEST_ESP_OK(esp_ipa_pipeline_destroy(handle));
+
+    /* Process with exposure already at fixed_exposure_time: only gain changes */
+    sensor.cur_exposure = fixed_exposure_time;
+    sensor.cur_gain = 1.0f;
+    stats.flags = IPA_STATS_FLAGS_AE;
+    for (int j = 0; j < ISP_AE_REGIONS; j++) {
+        stats.ae_stats[j].luminance = 50;
+    }
+
+    memset(&metadata, 0, sizeof(metadata));
+    TEST_ESP_OK(esp_ipa_pipeline_create(&cfg, &handle));
+    TEST_ESP_OK(esp_ipa_pipeline_init(handle, &sensor, &metadata));
+    TEST_ASSERT_EQUAL_HEX32(0, metadata.flags & IPA_METADATA_FLAGS_ET);
+
+    metadata.flags = 0;
+    TEST_ESP_OK(esp_ipa_pipeline_process(handle, &stats, &sensor, &metadata));
+    TEST_ASSERT_NOT_EQUAL_HEX32(0, metadata.flags & IPA_METADATA_FLAGS_GN);
+    TEST_ASSERT_EQUAL_HEX32(0, metadata.flags & IPA_METADATA_FLAGS_ET);
+    /* total_gain=2.0, target_total=4.0, exposure_gain=2.0 → gain=2.0 */
+    TEST_ASSERT_FLOAT_WITHIN(0.001f, 2.0f, metadata.gain);
+    TEST_ESP_OK(esp_ipa_pipeline_destroy(handle));
+
+    /* Bright scene with elevated gain: gain decreases, exposure stays fixed */
+    sensor.cur_gain = 4.0f;
+    for (int j = 0; j < ISP_AE_REGIONS; j++) {
+        stats.ae_stats[j].luminance = 200;
+    }
+    memset(&metadata, 0, sizeof(metadata));
+    TEST_ESP_OK(esp_ipa_pipeline_create(&cfg, &handle));
+    TEST_ESP_OK(esp_ipa_pipeline_init(handle, &sensor, &metadata));
+    metadata.flags = 0;
+    TEST_ESP_OK(esp_ipa_pipeline_process(handle, &stats, &sensor, &metadata));
+    TEST_ASSERT_NOT_EQUAL_HEX32(0, metadata.flags & IPA_METADATA_FLAGS_GN);
+    TEST_ASSERT_EQUAL_HEX32(0, metadata.flags & IPA_METADATA_FLAGS_ET);
+    /* total_gain=8.0, target_total=4.0, exposure_gain=2.0 → gain=2.0 */
+    TEST_ASSERT_FLOAT_WITHIN(0.001f, 2.0f, metadata.gain);
+    TEST_ESP_OK(esp_ipa_pipeline_destroy(handle));
+}
+
 TEST_CASE("Auto sensor target control test", "[IPA]")
 {
     esp_ipa_pipeline_handle_t handle = NULL;

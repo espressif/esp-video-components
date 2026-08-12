@@ -329,6 +329,7 @@ typedef struct esp_ipa_demosaic {
  * @brief LSC(lens shadow correction) meta data.
  */
 typedef struct esp_ipa_lsc {
+    bool enable;                                /*!< true: enable LSC, false: disable LSC */
     const isp_lsc_gain_t *gain_r;               /*!< LSC gain array for R channel */
     const isp_lsc_gain_t *gain_gr;              /*!< LSC gain array for GR channel */
     const isp_lsc_gain_t *gain_gb;              /*!< LSC gain array for GB channel */
@@ -773,6 +774,7 @@ typedef struct esp_ipa_acc_config {
 
     const esp_ipa_acc_lsc_t *lsc_table;         /* Lens shadow correction gain array, color temperature and resolution mapping table */
     uint32_t lsc_table_size;                    /* Lens shadow correction gain array, color temperature and resolution mapping table size */
+    float lsc_disable_gain;                     /*!< Disable LSC when sensor gain >= this value; <=0 means never disable by gain */
 
     const esp_ipa_acc_blc_config_t *blc;        /*!< Auto BLC configuration */
 
@@ -849,6 +851,9 @@ typedef struct esp_ipa_agc_config {
     bool luma_pwl_enable;                        /*!< Enable environment luma adaptive target luma shift via PWL */
     const esp_ipa_agc_luma_pwl_t *luma_pwl;    /*!< PWL table: environment luma → target luma shift */
     uint32_t luma_pwl_size;                     /*!< PWL table size */
+
+    bool gain_only;                             /*!< When true, AGC only adjusts gain and keeps exposure fixed */
+    uint32_t fixed_exposure_time;               /*!< Fixed exposure time in microseconds when gain_only is true */
 
     bool enable_log;                            /*!< Enable auto gain control algorithm log */
 } esp_ipa_agc_config_t;
