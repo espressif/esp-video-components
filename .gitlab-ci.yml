@@ -1,5 +1,6 @@
 stages:
   - pre_check
+  - auto_translate
   - build
   - deploy
   - deploy_docs
@@ -54,8 +55,8 @@ workflow:
 include:
   - '.gitlab/ci/rules.yml'
   - '.gitlab/ci/pre_check.yml'
+  - '.gitlab/ci/auto_translate.yml'
   - '.gitlab/ci/build.yml'
   - '.gitlab/ci/build_docs.yml'
   - '.gitlab/ci/deploy.yml'
   #- '.gitlab/ci/test_deploy.yml'
-

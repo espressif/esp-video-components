@@ -4,6 +4,10 @@
   tags:
     - host_test
   dependencies: []
+  rules:
+    - if: '$BOT_DYNAMIC_TEST_JOBS =~ /translate_entire/ || $CI_MERGE_REQUEST_LABELS =~ /check_line_num/i || $CI_MERGE_REQUEST_LABELS =~ /auto_trans/i || $BOT_LABEL_CHECK_LINE_NUM || $BOT_LABEL_AUTO_TRANS'
+      when: never
+    - when: always
 
 check_cam_sensor_detect:
   extends:
