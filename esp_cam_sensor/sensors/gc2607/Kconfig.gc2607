@@ -1,0 +1,108 @@
+menuconfig CAMERA_GC2607
+    bool "GC2607"
+    default n
+    depends on SOC_MIPI_CSI_SUPPORTED
+    help
+        Enable support for the GC2607 CMOS image sensor.
+
+if CAMERA_GC2607
+    menu "Auto detect GC2607"
+        config CAMERA_GC2607_AUTO_DETECT_MIPI_INTERFACE_SENSOR
+            bool "Detect for MIPI CSI interface sensor"
+            default y
+            depends on SOC_MIPI_CSI_SUPPORTED
+            help
+                When enabled, the GC2607 sensor will be automatically detected
+                and initialized on the MIPI CSI interface at startup without requiring
+                manual detection call(gc2607_detect) in your application.
+    endmenu
+
+    menu "Choose supported formats for MIPI CSI interface"
+        config CAMERA_GC2607_MIPI_RAW10_1920X1080_25FPS
+            bool "MIPI 2-lane, 24M input, 1920x1080 25fps, RAW10"
+            default y
+            help
+                RAW10 color format at 1920x1080 resolution (FHD) with 25fps framerate.
+                Requires MIPI CSI-2 2-lane interface with 24MHz input clock.
+    endmenu
+
+    choice CAMERA_GC2607_MIPI_DEFAULT_FMT
+        prompt "Select default output format for MIPI CSI interface"
+        default CAMERA_GC2607_MIPI_DEFAULT_FMT_RAW10_1920X1080_25FPS
+        help
+            This option allows you to select the default video format for the GC2607 sensor
+            when it is initialized on the MIPI CSI interface. The selected format will be used
+            when the sensor is detected and initialized, and can be changed later when the
+            sensor is in stream off state.
+
+        config CAMERA_GC2607_MIPI_DEFAULT_FMT_RAW10_1920X1080_25FPS
+            bool "MIPI 2-lane, 24M input, 1920x1080 25fps, RAW10"
+            depends on CAMERA_GC2607_MIPI_RAW10_1920X1080_25FPS
+    endchoice # CAMERA_GC2607_MIPI_DEFAULT_FMT
+
+    config CAMERA_GC2607_MIPI_IF_FORMAT_INDEX_DEFAULT
+        int
+        default 0 if CAMERA_GC2607_MIPI_DEFAULT_FMT_RAW10_1920X1080_25FPS
+        help
+            Sets the default configuration for the MIPI CSI interface.
+            Use query_support_formats() API to get more format options.
+
+    choice CAMERA_GC2607_IPA_JSON_CONFIGURATION_FILE
+        prompt "IPA Configuration File"
+        default CAMERA_GC2607_DEFAULT_IPA_JSON_CONFIGURATION_FILE
+        help
+            Select the Image Processing Algorithm (IPA) JSON configuration file
+            for the GC2607 sensor.
+
+        config CAMERA_GC2607_DEFAULT_IPA_JSON_CONFIGURATION_FILE
+            bool "Use default configuration"
+            help
+                Use the built-in default IPA configuration file:
+                "esp_cam_sensor/sensors/gc2607/cfg/gc2607_mono_default.json"
+
+                This configuration provides optimized settings for monochrome
+                machine vision applications and is recommended for most use cases.
+
+        config CAMERA_GC2607_CUSTOMIZED_IPA_JSON_CONFIGURATION_FILE
+            bool "Use custom configuration"
+            help
+                Use a custom IPA configuration file with your own optimized settings.
+
+                This option allows you to fine-tune sensor parameters for specific
+                lighting conditions, exposure requirements, or application needs.
+
+                You must specify the custom file path in the configuration below.
+    endchoice
+
+    config CAMERA_GC2607_CUSTOMIZED_IPA_JSON_CONFIGURATION_FILE_PATH
+        string "Custom IPA configuration file path"
+        depends on CAMERA_GC2607_CUSTOMIZED_IPA_JSON_CONFIGURATION_FILE
+        help
+            Specify the path to your custom GC2607 IPA JSON configuration file.
+
+            The path is relative to your project root directory.
+
+            Example: "components/my_camera_config/gc2607_custom.json"
+
+            Ensure the file exists and contains valid JSON configuration
+            parameters compatible with the GC2607 global shutter sensor.
+
+    config CAMERA_GC2607_ABSOLUTE_GAIN_LIMIT
+        int "Maximum absolute gain limit (x1000)"
+        default 15813
+        range 1000 15813
+        help
+            Set the maximum gain limit that can be applied by upper-level applications.
+
+            Value is gain multiplied by 1000 to avoid floating-point arithmetic:
+            - 1000 = 1x gain (minimum)
+            - 15813 = 15.813x gain (maximum, default)
+
+            Lower values reduce noise but may limit low-light performance.
+            Higher values improve low-light sensitivity but increase noise and
+            may cause sensor overheating.
+
+            Recommended values:
+            - 10000 (10x): Good balance for most applications
+            - 15813 (15.813x): Maximum sensitivity (use with caution)
+endif

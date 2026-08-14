@@ -36,6 +36,7 @@ It is highly recommended that users use it in the [esp-video](https://github.com
 | BF3A03  | 640 x 480    | DVP | YCbCr422<br/>RGB565<br/>8bit Raw RGB data | 1/4"     |
 | GC0308  | 640 x 480    | DVP | Grayscale<br/>YCbCr422<br/>RGB565 | 1/6.5"     |
 | GC2145  | 1600 x 1200    | MIPI & DVP | RGB565<br/>YCbCr422<br/>8bit Raw RGB data | 1/5"     |
+| GC2607  | 1920 x 1080    | MIPI | 10bit Raw RGB data | 1/7.3"     |
 | Mira220 | 1600 x 1400    | MIPI      | 8/10/12-bit Raw MONO data | 1/2.7"     |
 | MT9D111 | 1600 x 1200    | DVP | RGB565<br/>YCbCr422<br/>8bit Raw RGB data | 1/3.2"     |
 | OS02N10 | 1920 x 1080    | MIPI | 8/10-bit Raw RGB data | 1/3.27"     |
