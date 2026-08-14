@@ -7,6 +7,7 @@
 - Added support for configuring and retrieving the frames per second (FPS) setting on the H.264 video device
 
 - Fixed a warning related to the ISP AWB subwindow during initialization
+- Update to use esp_cam_sensor v2.4.x
 
 ## 2.3.0
 
