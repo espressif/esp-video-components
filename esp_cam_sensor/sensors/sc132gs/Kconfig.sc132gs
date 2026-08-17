@@ -80,8 +80,8 @@ if CAMERA_SC132GS
 
     config CAMERA_SC132GS_ABSOLUTE_GAIN_LIMIT
             int "Maximum absolute gain limit"
-            default 66016
-            range 4000 126016
+            default 26281
+            range 4000 28547
             help
                 Use this value to limit the maximum gain that upper level applications can use.
                 To avoid using float type, the size of this value is gain x 1000.

@@ -157,12 +157,7 @@ static const sc132gs_reginfo_t sc132gs_mipi_2lane_24Minput_544x640_raw10_60fps[]
 
     {0x36e9, 0x23},
     {0x36f9, 0x51},
-    // {0x0100,0x01},
-    //[gain<2]
-    //{0x33fa,0x01},
-    //{0x3317,0xf0},
 
-    //[gain>=2]
     {0x33fa, 0x02},
     {0x3317, 0x14},
     {SC132GS_REG_END, 0x00},

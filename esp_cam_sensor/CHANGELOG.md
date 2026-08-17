@@ -5,6 +5,7 @@
 - Added SC2337P MIPI RAW sensor driver.
 - Added BF3031 DVP Global color sensor.
 - Added SC132GS MIPI driver.
+- Modified the order of the camera sensors in the Kconfig and README.md files.
 
 ## 2.4.0
 - Added SC2331 MIPI RAW sensor driver.

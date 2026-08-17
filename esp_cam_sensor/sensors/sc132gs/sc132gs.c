@@ -285,6 +285,14 @@ static const uint32_t sc132gs_total_gain_val_map[] = {
     // 26X
     26281,
     26734,
+
+    // 27X
+    27188,
+    27641,
+
+    // 28X
+    28093,
+    28547,
 };
 
 // SC132GS Gain map format: [analog gain fine, analog gain coarse]
@@ -490,6 +498,14 @@ static const sc132gs_gain_t sc132gs_gain_map[] = {
     // 26x
     {0x3A, 0x3F},
     {0x3B, 0x3F},
+
+    // 27x
+    {0x3C, 0x3F},
+    {0x3D, 0x3F},
+
+    // 28x
+    {0x3E, 0x3F},
+    {0x3F, 0x3F},
 };
 
 static const esp_cam_sensor_isp_info_t sc132gs_isp_info[] = {
@@ -716,9 +732,7 @@ static esp_err_t sc132gs_set_total_gain_val(esp_cam_sensor_device_t *dev, uint32
     struct sc132gs_cam *cam_sc132gs = (struct sc132gs_cam *)dev->priv;
 
     if (u32_val > cam_sc132gs->sc132gs_para.limited_abs_gain_index) {
-        if (cam_sc132gs->sc132gs_para.limited_abs_gain_index > 0) {
-            u32_val = cam_sc132gs->sc132gs_para.limited_abs_gain_index;
-        }
+        u32_val = cam_sc132gs->sc132gs_para.limited_abs_gain_index;
     }
 
     ESP_LOGD(TAG, "again_fine %" PRIx8 ", again_coarse %" PRIx8, sc132gs_gain_map[u32_val].again_fine, sc132gs_gain_map[u32_val].again_coarse);
@@ -1097,7 +1111,6 @@ esp_cam_sensor_device_t *sc132gs_detect(esp_cam_sensor_config_t *config)
     dev->sccb_handle = config->sccb_handle;
     dev->xclk_pin = config->xclk_pin;
     dev->reset_pin = config->reset_pin;
-    dev->pwdn_pin = config->pwdn_pin;
     dev->sensor_port = config->sensor_port;
     dev->ops = &sc132gs_ops;
     dev->priv = cam_sc132gs;
