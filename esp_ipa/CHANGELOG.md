@@ -1,4 +1,4 @@
-## Unreleased
+## 2.3.0
 
 - AEN: add backlight enhancement mode — detect backlight from histogram low/high ratios and env luma thresholds, debounce with `detect_count_threshold` / optional `detect_count_margin` (defaults to `detect_count_threshold`), smooth degree with `hist_ratio_filter`, then select a dedicated GAMMA table by backlight degree
 - AGC: optional `gain_only` mode with fixed `exposure.fixed_exposure_time`; process path only adjusts gain
