@@ -5,6 +5,13 @@
 - Added functions to enable or disable AGC and to retrieve the current AGC status
 - Added spiram no encryption used when flash encryption used
 - Added support for configuring and retrieving the frames per second (FPS) setting on the H.264 video device
+- Added support for the VIDIOC_SUBSCRIBE_EVENT, VIDIOC_UNSUBSCRIBE_EVENT, and VIDIOC_DQEVENT commands.
+    - Supports the V4L2_EVENT_ESP_MIPI_CSI_ERROR event type
+    - Provided common example functions for event tracing
+    - Only MIPI-CSI video device support this command
+- Added VIDIOC_RESTART commands to restart video device if some hardware issues trigger
+    - Only MIPI-CSI video device support this command
+- Added the `ESP_VIDEO_DISABLE_ISP_ERROR_INTERRUPT` option to help prevent unwanted hardware watchdog resets caused by frequent ISP error interrupts
 
 - Fixed a warning related to the ISP AWB subwindow during initialization
 - Update to use esp_cam_sensor v2.4.x

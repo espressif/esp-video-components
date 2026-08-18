@@ -72,6 +72,12 @@ typedef struct esp_video_device_intf {
      * NULL → common checks pixel_format == current format.
      */
     esp_err_t (*check_enum_framesizes)(struct esp_video_device_common *common, struct v4l2_frmsizeenum *frmsize);
+
+    esp_err_t (*subscribe_event)(struct esp_video_device_common *common, struct v4l2_event_subscription *sub);
+
+    esp_err_t (*unsubscribe_event)(struct esp_video_device_common *common, struct v4l2_event_subscription *sub);
+
+    esp_err_t (*restart)(struct esp_video_device_common *common, bool restart_sensor);
 } esp_video_device_intf_t;
 
 /**
@@ -102,6 +108,10 @@ typedef struct esp_video_device_common {
     struct esp_video_buffer_element *backup_element;    /*!< Runtime: current backup element (managed by common callbacks) */
 
     esp_cam_ctlr_handle_t cam_ctrl_handle;          /*!< Camera controller handle */
+    bool is_event_subscribed;                       /*!< true: event is subscribed */
+    SemaphoreHandle_t cam_ctlr_mutex;               /*!< Semaphore to wait for restart */
+
+    struct v4l2_event_callback event_callback;      /*!< Event callback */
 
     struct esp_video *video;                        /*!< Pointer to the esp_video instance */
     void *priv;                                     /*!< Private data pointer to device-specific structure, device-specific structure will be allocated by the caller and will be passed to esp_video_device_common_create and esp_video_device_common_free */

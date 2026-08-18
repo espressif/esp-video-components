@@ -182,6 +182,7 @@ static esp_err_t camera_capture_stream(void)
     struct v4l2_ext_controls controls;
     struct v4l2_ext_control control[1];
     const int type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
+    bool event_initialized = false;
 
     fd = open(EXAMPLE_CAM_DEV_PATH, O_RDONLY);
     if (fd < 0) {
@@ -194,6 +195,10 @@ static esp_err_t camera_capture_stream(void)
         ret = ESP_FAIL;
         goto exit_0;
     }
+
+    ret = example_video_event_init(EXAMPLE_VIDEO_EVENT_TARGET_MIPI_CSI, fd);
+    ESP_GOTO_ON_ERROR(ret, exit_0, TAG, "failed to initialize video event");
+    event_initialized = true;
 
     ESP_LOGI(TAG, "version: %d.%d.%d", (uint16_t)(capability.version >> 16),
              (uint8_t)(capability.version >> 8),
@@ -419,6 +424,12 @@ static esp_err_t camera_capture_stream(void)
     ret = ESP_OK;
 
 exit_0:
+    if (event_initialized) {
+        esp_err_t event_ret = example_video_event_deinit(EXAMPLE_VIDEO_EVENT_TARGET_MIPI_CSI);
+        if (event_ret != ESP_OK) {
+            ESP_LOGE(TAG, "failed to deinitialize video event");
+        }
+    }
     close(fd);
     return ret;
 }
