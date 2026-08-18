@@ -12,6 +12,7 @@
 - Added VIDIOC_RESTART commands to restart video device if some hardware issues trigger
     - Only MIPI-CSI video device support this command
 - Added the `ESP_VIDEO_DISABLE_ISP_ERROR_INTERRUPT` option to help prevent unwanted hardware watchdog resets caused by frequent ISP error interrupts
+- Added a function to dump ISP statistics data while the IPA task is running
 
 - Fixed a warning related to the ISP AWB subwindow during initialization
 - Update to use esp_cam_sensor v2.4.x
