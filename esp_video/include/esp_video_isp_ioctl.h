@@ -16,6 +16,10 @@
 extern "C" {
 #endif
 
+#define ISP_AE_WINDOW_NUM                    1   /*!< Auto exposure window number */
+#define ISP_AWB_WINDOW_NUM                   1   /*!< Auto white balance window number */
+#define ISP_HIST_WINDOW_NUM                  1   /*!< Histogram window number */
+
 /**
  * @brief The base for the ESP32XX SoCes driver controls.
  */
@@ -53,6 +57,9 @@ extern "C" {
  * @param bypass: true to bypass the ISP, false to enable ISP processing.
  */
 #define V4L2_CID_USER_ESP_ISP_RAW_BYPASS     (V4L2_CID_USER_ESP_ISP_BASE + 0x000b)
+
+#define V4L2_CID_USER_ESP_ISP_AE             (V4L2_CID_USER_ESP_ISP_BASE + 0x000c)   /*!< Auto exposure V4L2 controller ID */
+#define V4L2_CID_USER_ESP_ISP_HIST           (V4L2_CID_USER_ESP_ISP_BASE + 0x000d)   /*!< Histogram V4L2 controller ID */
 
 /**
  * @brief ESP32XXX ISP image statistics output, data type is "esp_ipa_stats_t"
@@ -245,6 +252,13 @@ typedef struct esp_video_isp_awb {
 
     float bg_max;                   /*!< Maximum blue/green ratio */
     float bg_min;                   /*!< Minimum blue/green ratio */
+
+    /**
+     * AWB statistics windows
+     *
+     * If the right and bottom of the window is 0, it means the window is not set, use the default window.
+     */
+    isp_window_t windows[ISP_AWB_WINDOW_NUM];
 } esp_video_isp_awb_t;
 
 /**
@@ -259,6 +273,24 @@ typedef struct esp_video_isp_blc {
     uint16_t bottom_left_offset;    /*!< Bottom left channel offset value */
     uint16_t bottom_right_offset;   /*!< Bottom right channel offset value */
 } esp_video_isp_blc_t;
+
+/**
+ * @brief Auto exposure statistics configuration.
+ */
+typedef struct esp_video_isp_ae {
+    bool enable;                                /*!< true: enable AE statistics, false: disable AE statistics */
+
+    isp_window_t windows[ISP_AE_WINDOW_NUM];    /*!< AE statistics windows */
+} esp_video_isp_ae_t;
+
+/**
+ * @brief Histogram statistics configuration.
+ */
+typedef struct esp_video_isp_hist {
+    bool enable;                                /*!< true: enable HIST statistics, false: disable HIST statistics */
+
+    isp_window_t windows[ISP_HIST_WINDOW_NUM];  /*!< HIST statistics windows */
+} esp_video_isp_hist_t;
 
 /**
  * @brief ISP statistics.

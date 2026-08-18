@@ -74,7 +74,7 @@ include(package_manager)
 cu_pkg_define_version(${CMAKE_CURRENT_LIST_DIR})
 
 if(CONFIG_ESP_VIDEO_ENABLE_ISP_PIPELINE_CONTROLLER)
-    idf_component_optional_requires(PRIVATE "esp_ipa")
+    idf_component_optional_requires(PUBLIC "esp_ipa")
 endif()
 
 if(CONFIG_IDF_TARGET_ESP32P4)

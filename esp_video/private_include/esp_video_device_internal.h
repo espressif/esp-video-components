@@ -266,6 +266,20 @@ esp_err_t esp_video_destroy_isp_video_device(void);
  * @return true if the ISP bypass mode is enabled, false otherwise
  */
 bool esp_video_isp_video_device_is_raw_bypass(void);
+
+/**
+ * @brief Set ISP statistics windows
+ *
+ * @param left The left coordinate of the window
+ * @param top The top coordinate of the window
+ * @param right The right coordinate of the window
+ * @param bottom The bottom coordinate of the window
+ *
+ * @return
+ *      - ESP_OK on success
+ *      - Others if failed
+ */
+esp_err_t esp_video_isp_video_device_set_stats_windows(uint32_t left, uint32_t top, uint32_t right, uint32_t bottom);
 #endif
 
 #ifdef CONFIG_ESP_VIDEO_ENABLE_SPI_VIDEO_DEVICE

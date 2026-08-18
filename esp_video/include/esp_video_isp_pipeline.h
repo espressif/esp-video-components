@@ -18,6 +18,11 @@ extern "C" {
 
 #if CONFIG_ESP_VIDEO_ENABLE_ISP_PIPELINE_CONTROLLER
 
+#define ESP_VIDEO_ISP_AF_STATS_WIN              (1 << 0)    /*!< AF statistics window */
+#define ESP_VIDEO_ISP_AWB_STATS_WIN             (1 << 1)    /*!< AWB statistics window */
+#define ESP_VIDEO_ISP_AE_STATS_WIN              (1 << 2)    /*!< AE statistics window */
+#define ESP_VIDEO_ISP_HIST_STATS_WIN            (1 << 3)    /*!< Hist statistics window */
+
 /**
  * @brief AGC status.
  */
@@ -83,6 +88,25 @@ esp_err_t esp_video_isp_pipeline_stop_dump_stats(void);
  *      - Others if failed
  */
 esp_err_t esp_video_isp_pipeline_dump_stats(esp_video_isp_stats_t *stats, uint32_t timeout_ms);
+
+/**
+ * @brief Set statistics window.
+ *
+ * @param target_windows Target windows masks, which can be a combination of the following:
+ *      - ESP_VIDEO_ISP_AF_STATS_WIN
+ *      - ESP_VIDEO_ISP_AWB_STATS_WIN
+ *      - ESP_VIDEO_ISP_AE_STATS_WIN
+ *      - ESP_VIDEO_ISP_HIST_STATS_WIN
+ * @param left Left-up X coordinate of the window
+ * @param top Left-up Y coordinate of the window
+ * @param width Window width
+ * @param height Window height
+ *
+ * @return
+ *      - ESP_OK on success
+ *      - Others if failed
+ */
+esp_err_t esp_video_isp_pipeline_set_statistics_window(uint32_t target_windows, uint32_t left, uint32_t top, uint32_t width, uint32_t height);
 #endif /* CONFIG_ESP_VIDEO_ENABLE_ISP_PIPELINE_CONTROLLER */
 
 #ifdef __cplusplus

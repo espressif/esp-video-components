@@ -563,6 +563,17 @@ esp_err_t esp_video_create_csi_video_device(esp_cam_sensor_device_t *sensor, con
     esp_err_t ret;
     struct csi_video *csi_video;
 
+#if CONFIG_ESP_VIDEO_ENABLE_ISP_VIDEO_DEVICE
+    /**
+     * Set ISP initial statistics windows to the full sensor area.
+     */
+    esp_cam_sensor_format_t sensor_format;
+    if (esp_cam_sensor_get_format(sensor, &sensor_format) != ESP_OK) {
+        return ESP_ERR_INVALID_ARG;
+    }
+    esp_video_isp_video_device_set_stats_windows(0, 0, sensor_format.width - 1, sensor_format.height - 1);
+#endif
+
     csi_video = heap_caps_calloc(1, sizeof(struct csi_video), MALLOC_CAP_8BIT | MALLOC_CAP_INTERNAL);
     if (!csi_video) {
         return ESP_ERR_NO_MEM;

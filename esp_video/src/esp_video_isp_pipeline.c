@@ -94,6 +94,8 @@ static const char *TAG = "ISP";
 static esp_video_isp_t *s_esp_video_isp;
 static _lock_t s_isp_lock;
 
+static esp_err_t isp_pipeline_set_statistics_window(esp_video_isp_t *isp, uint32_t target_windows, uint32_t left, uint32_t top, uint32_t width, uint32_t height);
+
 /**
  * @brief Print ISP statistics data
  *
@@ -737,6 +739,12 @@ static void config_awb(esp_video_isp_t *isp, esp_ipa_metadata_t *metadata)
         awb.bg_max = range->bg_max;
         awb.bg_min = range->bg_min;
 
+        /**
+         * If the right and bottom of the window is 0, it means the window is not set, use the default window.
+         */
+        awb.windows[0].btm_right.x = 0;
+        awb.windows[0].btm_right.y = 0;
+
         controls.ctrl_class = V4L2_CID_USER_CLASS;
         controls.count      = 1;
         controls.controls   = control;
@@ -752,16 +760,11 @@ static void config_statistics_region(esp_video_isp_t *isp, esp_ipa_metadata_t *m
 {
     if (metadata->flags & IPA_METADATA_FLAGS_SR) {
         esp_ipa_region_t *sr = &metadata->stats_region;
-        struct v4l2_selection selection;
+        uint32_t target_windows = ESP_VIDEO_ISP_AF_STATS_WIN | ESP_VIDEO_ISP_AWB_STATS_WIN |
+                                  ESP_VIDEO_ISP_AE_STATS_WIN | ESP_VIDEO_ISP_HIST_STATS_WIN;
 
-        memset(&selection, 0, sizeof(selection));
-        selection.type = V4L2_BUF_TYPE_META_CAPTURE;
-        selection.r.left = sr->left;
-        selection.r.width = sr->width;
-        selection.r.top = sr->top;
-        selection.r.height = sr->height;
-        if (ioctl(isp->isp_fd, VIDIOC_S_SELECTION, &selection) != 0) {
-            ESP_LOGE(TAG, "failed to set selection");
+        if (isp_pipeline_set_statistics_window(isp, target_windows, sr->left, sr->top, sr->width, sr->height) != ESP_OK) {
+            ESP_LOGE(TAG, "failed to set statistics window");
         }
     }
 }
@@ -1586,6 +1589,74 @@ esp_err_t esp_video_isp_pipeline_get_agc_status(esp_video_isp_pipeline_agc_statu
     return ret;
 }
 
+static void isp_pipeline_fill_windows(isp_window_t *windows, int num, uint32_t left, uint32_t top, uint32_t width, uint32_t height)
+{
+    for (int i = 0; i < num; i++) {
+        windows[i].top_left.x = left;
+        windows[i].top_left.y = top;
+        windows[i].btm_right.x = left + width - 1;
+        windows[i].btm_right.y = top + height - 1;
+    }
+}
+
+static esp_err_t isp_pipeline_set_statistics_window(esp_video_isp_t *isp, uint32_t target_windows, uint32_t left, uint32_t top, uint32_t width, uint32_t height)
+{
+    struct v4l2_ext_controls controls = {
+        .ctrl_class = V4L2_CID_USER_CLASS,
+        .count = 1,
+    };
+    struct v4l2_ext_control control;
+    int fd = isp->isp_fd;
+
+    controls.controls = &control;
+
+    if (target_windows & ESP_VIDEO_ISP_AF_STATS_WIN) {
+        esp_video_isp_af_t af;
+
+        control.id = V4L2_CID_USER_ESP_ISP_AF;
+        control.p_u8 = (uint8_t *)&af;
+        ESP_RETURN_ON_FALSE(ioctl(fd, VIDIOC_G_EXT_CTRLS, &controls) == 0, ESP_FAIL, TAG, "failed to get AF statistics window");
+
+        isp_pipeline_fill_windows(af.windows, ISP_AF_WINDOW_NUM, left, top, width, height);
+        ESP_RETURN_ON_FALSE(ioctl(fd, VIDIOC_S_EXT_CTRLS, &controls) == 0, ESP_FAIL, TAG, "failed to set AF statistics window");
+    }
+
+    if (target_windows & ESP_VIDEO_ISP_AE_STATS_WIN) {
+        esp_video_isp_ae_t ae;
+
+        control.id = V4L2_CID_USER_ESP_ISP_AE;
+        control.p_u8 = (uint8_t *)&ae;
+        ESP_RETURN_ON_FALSE(ioctl(fd, VIDIOC_G_EXT_CTRLS, &controls) == 0, ESP_FAIL, TAG, "failed to get AE statistics window");
+
+        isp_pipeline_fill_windows(ae.windows, ISP_AE_WINDOW_NUM, left, top, width, height);
+        ESP_RETURN_ON_FALSE(ioctl(fd, VIDIOC_S_EXT_CTRLS, &controls) == 0, ESP_FAIL, TAG, "failed to set AE statistics window");
+    }
+
+    if (target_windows & ESP_VIDEO_ISP_HIST_STATS_WIN) {
+        esp_video_isp_hist_t hist;
+
+        control.id = V4L2_CID_USER_ESP_ISP_HIST;
+        control.p_u8 = (uint8_t *)&hist;
+        ESP_RETURN_ON_FALSE(ioctl(fd, VIDIOC_G_EXT_CTRLS, &controls) == 0, ESP_FAIL, TAG, "failed to get HIST statistics window");
+
+        isp_pipeline_fill_windows(hist.windows, ISP_HIST_WINDOW_NUM, left, top, width, height);
+        ESP_RETURN_ON_FALSE(ioctl(fd, VIDIOC_S_EXT_CTRLS, &controls) == 0, ESP_FAIL, TAG, "failed to set HIST statistics window");
+    }
+
+    if (target_windows & ESP_VIDEO_ISP_AWB_STATS_WIN) {
+        esp_video_isp_awb_t awb;
+
+        control.id = V4L2_CID_USER_ESP_ISP_AWB;
+        control.p_u8 = (uint8_t *)&awb;
+        ESP_RETURN_ON_FALSE(ioctl(fd, VIDIOC_G_EXT_CTRLS, &controls) == 0, ESP_FAIL, TAG, "failed to get AWB statistics window");
+
+        isp_pipeline_fill_windows(awb.windows, ISP_AWB_WINDOW_NUM, left, top, width, height);
+        ESP_RETURN_ON_FALSE(ioctl(fd, VIDIOC_S_EXT_CTRLS, &controls) == 0, ESP_FAIL, TAG, "failed to set AWB statistics window");
+    }
+
+    return ESP_OK;
+}
+
 /**
  * @brief Create a queue to dump ISP statistics.
  *
@@ -1707,5 +1778,48 @@ esp_err_t esp_video_isp_pipeline_dump_stats(esp_video_isp_stats_t *stats, uint32
     }
     _lock_release(&s_isp_lock);
 
+    return ret;
+}
+
+/**
+ * @brief Set statistics window.
+ *
+ * @param target_windows Target windows masks, which can be a combination of the following:
+ *      - ESP_VIDEO_ISP_AF_STATS_WIN
+ *      - ESP_VIDEO_ISP_AWB_STATS_WIN
+ *      - ESP_VIDEO_ISP_AE_STATS_WIN
+ *      - ESP_VIDEO_ISP_HIST_STATS_WIN
+ * @param left Left-up X coordinate of the window
+ * @param top Left-up Y coordinate of the window
+ * @param width Window width
+ * @param height Window height
+ *
+ * @return
+ *      - ESP_OK on success
+ *      - Others if failed
+ */
+esp_err_t esp_video_isp_pipeline_set_statistics_window(uint32_t target_windows, uint32_t left, uint32_t top, uint32_t width, uint32_t height)
+{
+    esp_err_t ret = ESP_ERR_INVALID_ARG;
+
+    const uint32_t valid_windows = ESP_VIDEO_ISP_AF_STATS_WIN |
+                                   ESP_VIDEO_ISP_AWB_STATS_WIN |
+                                   ESP_VIDEO_ISP_AE_STATS_WIN |
+                                   ESP_VIDEO_ISP_HIST_STATS_WIN;
+
+    ESP_RETURN_ON_FALSE(target_windows != 0 && !(target_windows & ~valid_windows),
+                        ESP_ERR_INVALID_ARG, TAG, "invalid target_windows");
+    ESP_RETURN_ON_FALSE(width > 0 && height > 0, ESP_ERR_INVALID_ARG, TAG, "invalid window size");
+
+    _lock_acquire(&s_isp_lock);
+
+    if (s_esp_video_isp) {
+        ret = isp_pipeline_set_statistics_window(s_esp_video_isp, target_windows, left, top, width, height);
+    } else {
+        ESP_LOGD(TAG, "ISP controller is not initialized");
+        ret = ESP_ERR_INVALID_STATE;
+    }
+
+    _lock_release(&s_isp_lock);
     return ret;
 }
