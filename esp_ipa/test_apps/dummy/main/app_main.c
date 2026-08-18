@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2024-2025 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2024-2026 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -1101,6 +1101,116 @@ TEST_CASE("Gamma 3-channel test", "[IPA]")
     TEST_ASSERT_EQUAL_UINT8(25, metadata.gamma.blue.y[1]);
     TEST_ASSERT_EQUAL_UINT8(242, metadata.gamma.blue.y[13]);
     TEST_ASSERT_EQUAL_UINT8(255, metadata.gamma.blue.y[15]);
+
+    TEST_ESP_OK(esp_ipa_pipeline_destroy(handle));
+}
+
+/*
+ * AEN backlight GAMMA: detect from hist low/high ratios + env luma, debounce with
+ * detect_count_threshold, then select dedicated backlight gamma table by degree (low+high).
+ * Config: test_apps_dummy.json aen.gamma.backlight (detect_count_threshold=2, model=0).
+ */
+TEST_CASE("AEN gamma backlight enhancement", "[IPA][AEN]")
+{
+    esp_ipa_pipeline_handle_t handle = NULL;
+    esp_ipa_metadata_t metadata = {0};
+    esp_ipa_stats_t stats = {0};
+    const esp_ipa_config_t *ipa_config = esp_ipa_pipeline_get_config(IPA_TARGET_NAME);
+    const esp_ipa_aen_gamma_backlight_config_t *bl;
+
+    TEST_ASSERT_NOT_NULL(ipa_config);
+    TEST_ASSERT_NOT_NULL(ipa_config->aen);
+    TEST_ASSERT_NOT_NULL(ipa_config->aen->gamma);
+    TEST_ASSERT_NOT_NULL(ipa_config->aen->gamma->backlight);
+    bl = ipa_config->aen->gamma->backlight;
+    TEST_ASSERT_EQUAL_UINT16(2, bl->detect_count_threshold);
+    TEST_ASSERT_EQUAL_UINT16(2, bl->detect_count_margin); /* omitted in JSON → equals detect_count_threshold */
+    TEST_ASSERT_EQUAL(ESP_IPA_AEN_GAMMA_MODEL_0, bl->model);
+    TEST_ASSERT_EQUAL_UINT32(2, bl->gamma_table_size);
+    TEST_ASSERT_NOT_NULL(bl->gamma_table);
+
+    TEST_ESP_OK(esp_ipa_pipeline_create(ipa_config, &handle));
+    TEST_ESP_OK(esp_ipa_pipeline_init(handle, &s_esp_ipa_sensor, &metadata));
+
+    /* Backlight hist: low≈0.32 (>0.2), high≈0.21 (>0.15), degree≈0.53 → table[0] */
+    memset(&stats, 0, sizeof(stats));
+    stats.flags = IPA_STATS_FLAGS_HIST;
+    for (int i = 0; i <= 4; i++) {
+        stats.hist_stats[i].value = 60;
+    }
+    for (int i = 5; i <= 13; i++) {
+        stats.hist_stats[i].value = 50;
+    }
+    for (int i = 14; i <= 15; i++) {
+        stats.hist_stats[i].value = 100;
+    }
+
+    /* Env luma below threshold: never enter backlight mode */
+    esp_ipa_set_float(handle->ipa_array[0], "dummy_backlight_env_luma", 1.0f);
+    for (int i = 0; i < bl->detect_count_threshold + 2; i++) {
+        metadata.flags = 0;
+        TEST_ESP_OK(esp_ipa_pipeline_process(handle, &stats, &s_esp_ipa_sensor, &metadata));
+        TEST_ASSERT_EQUAL_HEX32(0, metadata.flags & IPA_METADATA_FLAGS_GAMMA);
+    }
+
+    /* Env luma above threshold, but count still <= detect_count_threshold for first frames */
+    esp_ipa_set_float(handle->ipa_array[0], "dummy_backlight_env_luma", 10.0f);
+    for (int i = 0; i < bl->detect_count_threshold; i++) {
+        metadata.flags = 0;
+        TEST_ESP_OK(esp_ipa_pipeline_process(handle, &stats, &s_esp_ipa_sensor, &metadata));
+        TEST_ASSERT_EQUAL_HEX32(0, metadata.flags & IPA_METADATA_FLAGS_GAMMA);
+    }
+
+    /* Frame detect_count_threshold+1: count > detect_count_threshold → backlight on, apply table[0] */
+    metadata.flags = 0;
+    TEST_ESP_OK(esp_ipa_pipeline_process(handle, &stats, &s_esp_ipa_sensor, &metadata));
+    TEST_ASSERT_EQUAL_HEX32(IPA_METADATA_FLAGS_GAMMA, metadata.flags & IPA_METADATA_FLAGS_GAMMA);
+    TEST_ASSERT_EQUAL_UINT8(50, metadata.gamma.red.y[0]);
+    TEST_ASSERT_EQUAL_UINT8(60, metadata.gamma.red.y[1]);
+    TEST_ASSERT_EQUAL_UINT8(180, metadata.gamma.red.y[13]);
+    TEST_ASSERT_EQUAL_UINT8(255, metadata.gamma.red.y[15]);
+
+    /* Stronger backlight degree≈0.80 → table[1] */
+    for (int i = 0; i <= 4; i++) {
+        stats.hist_stats[i].value = 80;
+    }
+    for (int i = 5; i <= 13; i++) {
+        stats.hist_stats[i].value = 20;
+    }
+    for (int i = 14; i <= 15; i++) {
+        stats.hist_stats[i].value = 150;
+    }
+    metadata.flags = 0;
+    TEST_ESP_OK(esp_ipa_pipeline_process(handle, &stats, &s_esp_ipa_sensor, &metadata));
+    TEST_ASSERT_EQUAL_HEX32(IPA_METADATA_FLAGS_GAMMA, metadata.flags & IPA_METADATA_FLAGS_GAMMA);
+    TEST_ASSERT_EQUAL_UINT8(70, metadata.gamma.red.y[0]);
+    TEST_ASSERT_EQUAL_UINT8(80, metadata.gamma.red.y[1]);
+    TEST_ASSERT_EQUAL_UINT8(200, metadata.gamma.red.y[13]);
+    TEST_ASSERT_EQUAL_UINT8(255, metadata.gamma.red.y[15]);
+
+    /* Leave backlight: middle-only hist fails low/high thresholds.
+     * After activate+upgrade frames count==4; need 2 misses to reach count<=detect_count_threshold. */
+    memset(stats.hist_stats, 0, sizeof(stats.hist_stats));
+    for (int i = 5; i <= 13; i++) {
+        stats.hist_stats[i].value = 100;
+    }
+    metadata.flags = 0;
+    TEST_ESP_OK(esp_ipa_pipeline_process(handle, &stats, &s_esp_ipa_sensor, &metadata));
+    metadata.flags = 0;
+    TEST_ESP_OK(esp_ipa_pipeline_process(handle, &stats, &s_esp_ipa_sensor, &metadata));
+    /* Mode off: gamma state reset; dummy_gamma_luma unset → no normal gamma update */
+    TEST_ASSERT_EQUAL_HEX32(0, metadata.flags & IPA_METADATA_FLAGS_GAMMA);
+
+    /* After exit, normal gamma path still works via luma_env */
+    esp_ipa_set_float(handle->ipa_array[0], "dummy_gamma_luma", 20.1f);
+    metadata.flags = 0;
+    stats.flags = 0;
+    TEST_ESP_OK(esp_ipa_pipeline_process(handle, &stats, &s_esp_ipa_sensor, &metadata));
+    TEST_ASSERT_EQUAL_HEX32(IPA_METADATA_FLAGS_GAMMA, metadata.flags & IPA_METADATA_FLAGS_GAMMA);
+    TEST_ASSERT_EQUAL_UINT8(16, metadata.gamma.red.y[0]);
+    TEST_ASSERT_EQUAL_UINT8(32, metadata.gamma.red.y[1]);
+    TEST_ASSERT_EQUAL_UINT8(224, metadata.gamma.red.y[13]);
+    TEST_ASSERT_EQUAL_UINT8(255, metadata.gamma.red.y[15]);
 
     TEST_ESP_OK(esp_ipa_pipeline_destroy(handle));
 }

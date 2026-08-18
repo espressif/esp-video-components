@@ -288,6 +288,36 @@ menu "Espressif Video Configuration"
 
     if ESP_VIDEO_ENABLE_ISP_VIDEO_DEVICE
 
+        choice ESP_VIDEO_ISP_DEVICE_HIST_SAMPLING_MODE
+            prompt "ISP Device Histogram Mode"
+            default ESP_VIDEO_ISP_DEVICE_HIST_SAMPLING_RGB
+            help
+                Select where the ISP device samples histogram statistics in the pipeline.
+
+                - RGB: Sample after Demosaic; results are not affected by later RGB-domain
+                  processing such as AWB, CCM and GAMMA.
+                - YUV_Y: Sample after RGB2YUV; results reflect the image after RGB-domain
+                  processing (e.g. AWB, CCM, GAMMA).
+
+        config ESP_VIDEO_ISP_DEVICE_HIST_SAMPLING_RGB
+            bool "RGB Histogram Sampling Mode"
+            help
+                Sample histogram in RGB after the Demosaic node.
+
+                At this point AWB, CCM, GAMMA and other later RGB-domain modules have not
+                been applied, so the histogram is unaffected by those modules. Prefer this
+                when GAMMA correction needs statistics from the pre-processed RGB image.
+
+        config ESP_VIDEO_ISP_DEVICE_HIST_SAMPLING_YUV_Y
+            bool "YUV_Y Histogram Sampling Mode"
+            help
+                Sample histogram on the Y channel after the RGB2YUV node.
+
+                The statistics include the effect of prior RGB-domain processing such as
+                AWB, CCM and GAMMA. Prefer this when GAMMA correction should be driven by
+                the post-processed image appearance.
+        endchoice
+
         config ESP_VIDEO_ENABLE_ISP_PIPELINE_CONTROLLER
             bool "Enable ISP Pipeline Controller"
             default n

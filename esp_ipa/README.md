@@ -524,6 +524,7 @@ Developers can refer to the configuration files in [esp_cam_sensor](https://gith
         "use_gamma_param": true,
         "luma_env": "ae.luma.avg",
         "luma_min_step": 16.0,
+        "backlight": {}
     },
 }
 ```
@@ -535,6 +536,7 @@ Developers can refer to the configuration files in [esp_cam_sensor](https://gith
 | use_gamma_param | bool | true/false | true: use the given gamma parameter to generate gamma Y table; false: use the given gamma Y table |
 | luma_env | String | / | Lumina variable name |
 | luma_min_step | Float | >0 | Minimum brightness step: if the "luma_env" step value is larger than this is the new GAMMA table value set into the ISP |
+| backlight | Object | / | Optional backlight enhancement configuration; when active, selects a dedicated GAMMA table by backlight degree |
 
 ---
 
@@ -564,6 +566,67 @@ Developers can refer to the configuration files in [esp_cam_sensor](https://gith
 | luma | Float | >0 | Luma index value |
 | gamma_param | Float | >0 | Parameter to generate GAMMA Y array |
 | y | <div style="white-space: nowrap;">Array[Integer]</div> | <div style="white-space: nowrap;">ESP32-P4: [0,255]</div> | GAMMA Y array |
+
+---
+
+```json
+"gamma":
+{
+    "backlight":
+    {
+        "low_hist_ratio_threshold": 0.2,
+        "high_hist_ratio_threshold": 0.15,
+        "env_luma_threshold": 5.0,
+        "low_index":
+        {
+            "start": 0,
+            "end": 4
+        },
+        "high_index":
+        {
+            "start": 14,
+            "end": 15
+        },
+        "luma_env": "env.luma.avg",
+        "detect_count_threshold": 3,
+        "detect_count_margin": 3,
+        "hist_ratio_filter": 0.3,
+        "model": 0,
+        "luma_min_step": 0.05,
+        "table":
+        [
+            {
+                "luma": 0.35,
+                "gamma_param": 0.45
+            },
+            {
+                "luma": 0.55,
+                "gamma_param": 0.40
+            }
+        ]
+    }
+}
+```
+
+| Parameter | Type | Range | Description |
+|:-:|:-:|:-:|:-|
+| backlight | Object | / | Backlight enhancement: detect from histogram low/high ratios and env luma, then select a dedicated GAMMA table by degree |
+| low_hist_ratio_threshold | Float | [0, 1] | Low-bin histogram ratio threshold; enable when `low > low_hist_ratio_threshold` |
+| high_hist_ratio_threshold | Float | [0, 1] | High-bin histogram ratio threshold; enable when `high > high_hist_ratio_threshold` |
+| env_luma_threshold | Float | ≥ 0 | Environment luma threshold; enable when env luma > `env_luma_threshold` |
+| low_index | Object | / | Histogram index range for the low ratio; defaults to `{start: 0, end: 4}` |
+| high_index | Object | / | Histogram index range for the high ratio; defaults to `{start: 14, end: 15}` |
+| start / end | Integer | [0, 15] | Inclusive histogram segment indices |
+| luma_env | String | / | Environment luma variable name used for the threshold check |
+| detect_count_threshold | Integer | ≥ 0 | Anti-jitter: backlight turns on when consecutive detect count > `detect_count_threshold` |
+| detect_count_margin | Integer | ≥ 0 | Optional. Extra count above `detect_count_threshold`; detect count saturates at `detect_count_threshold + detect_count_margin`. Omitted: equals `detect_count_threshold` |
+| hist_ratio_filter | Float | [0, 1] | IIR filter coefficient for low/high histogram ratios |
+| model | Integer | {0,1} | GAMMA process model used in backlight mode; defaults to `0` |
+| luma_min_step | Float | >0 | Minimum backlight degree step to update GAMMA; defaults to `0.05` |
+| table | Array | / | Backlight GAMMA look-up table keyed by degree (`luma` or alias `degree`) |
+
+* Note: `low = sum(hist[low_index]) / sum(hist)`, `high = sum(hist[high_index]) / sum(hist)`, degree = `low + high`
+* Note: when backlight is active, the normal `gamma.table` path is replaced by `backlight.table`
 
 ---
 

@@ -1,4 +1,4 @@
-version: "2.3.0"
+version: "2.4.0"
 description: A framework designed to support Linux V4L2, multiple cameras and video streaming.
 targets:
   - esp32p4
@@ -26,7 +26,7 @@ dependencies:
     version: "2.4.*"
     override_path: ../esp_cam_sensor
   esp_ipa:
-    version: "2.2.*"
+    version: "2.3.*"
     override_path: ../esp_ipa
     rules:
       - if: "target in [esp32p4]"

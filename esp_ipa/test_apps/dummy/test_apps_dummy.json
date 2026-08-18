@@ -588,7 +588,48 @@
                             32, 48, 56, 64, 72, 80, 96, 112, 128, 144, 160, 176, 192, 240, 248, 255
                         ]
                     }
-                ]
+                ],
+                "backlight":
+                {
+                    "low_hist_ratio_threshold": 0.2,
+                    "high_hist_ratio_threshold": 0.15,
+                    "env_luma_threshold": 5.0,
+                    "low_index":
+                    {
+                        "start": 0,
+                        "end": 4
+                    },
+                    "high_index":
+                    {
+                        "start": 14,
+                        "end": 15
+                    },
+                    "luma_env": "dummy_backlight_env_luma",
+                    "detect_count_threshold": 2,
+                    "hist_ratio_filter": 1.0,
+                    "model": 0,
+                    "luma_min_step": 0.05,
+                    "use_gamma_param": false,
+                    "table":
+                    [
+                        {
+                            "luma": 0.35,
+                            "gamma_param": 1.0,
+                            "y":
+                            [
+                                50, 60, 70, 80, 90, 100, 110, 120, 130, 140, 150, 160, 170, 180, 190, 255
+                            ]
+                        },
+                        {
+                            "luma": 0.70,
+                            "gamma_param": 1.0,
+                            "y":
+                            [
+                                70, 80, 90, 100, 110, 120, 130, 140, 150, 160, 170, 180, 190, 200, 210, 255
+                            ]
+                        }
+                    ]
+                }
             },
             "sharpen":
             [

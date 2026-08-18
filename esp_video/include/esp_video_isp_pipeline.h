@@ -107,6 +107,58 @@ esp_err_t esp_video_isp_pipeline_dump_stats(esp_video_isp_stats_t *stats, uint32
  *      - Others if failed
  */
 esp_err_t esp_video_isp_pipeline_set_statistics_window(uint32_t target_windows, uint32_t left, uint32_t top, uint32_t width, uint32_t height);
+
+/**
+ * @brief Set AGC maximum exposure time.
+ *
+ * @note The exposure time is in microseconds. The value must be within the
+ *       sensor exposure range [min, max] and will be aligned to the exposure step.
+ *
+ * @param exposure_us Maximum exposure time in microseconds
+ *
+ * @return
+ *      - ESP_OK on success
+ *      - ESP_ERR_INVALID_ARG if exposure is out of range
+ *      - Others if failed
+ */
+esp_err_t esp_video_isp_pipeline_set_agc_max_exposure(uint32_t exposure_us);
+
+/**
+ * @brief Get AGC maximum exposure time.
+ *
+ * @param exposure_us Pointer to store maximum exposure time in microseconds
+ *
+ * @return
+ *      - ESP_OK on success
+ *      - Others if failed
+ */
+esp_err_t esp_video_isp_pipeline_get_agc_max_exposure(uint32_t *exposure_us);
+
+/**
+ * @brief Set AGC minimum exposure time.
+ *
+ * @note The exposure time is in microseconds. The value must be within the
+ *       sensor exposure range [min, max] and will be aligned to the exposure step.
+ *
+ * @param exposure_us Minimum exposure time in microseconds
+ *
+ * @return
+ *      - ESP_OK on success
+ *      - ESP_ERR_INVALID_ARG if exposure is out of range
+ *      - Others if failed
+ */
+esp_err_t esp_video_isp_pipeline_set_agc_min_exposure(uint32_t exposure_us);
+
+/**
+ * @brief Get AGC minimum exposure time.
+ *
+ * @param exposure_us Pointer to store minimum exposure time in microseconds
+ *
+ * @return
+ *      - ESP_OK on success
+ *      - Others if failed
+ */
+esp_err_t esp_video_isp_pipeline_get_agc_min_exposure(uint32_t *exposure_us);
 #endif /* CONFIG_ESP_VIDEO_ENABLE_ISP_PIPELINE_CONTROLLER */
 
 #ifdef __cplusplus
