@@ -319,7 +319,11 @@ static esp_err_t start_isp(esp_video_device_common_t *common, bool isp_swap_shor
     ESP_RETURN_ON_ERROR(esp_isp_new_processor(&isp_config, &isp_proc), TAG, "failed to new ISP");
 
 #if CONFIG_ESP_VIDEO_DISABLE_ISP_ERROR_INTERRUPT
+#if ESP_VIDEO_CSI_DRIVER_HAS_EVENT
     isp_ll_enable_intr(&ISP, ISP_LL_EVENT_ERROR_MASK, false);
+#else
+    ESP_LOGD(TAG, "This version of ISP driver does not support to disable ISP error interrupt");
+#endif
 #endif
 
     bool crop_required = false;

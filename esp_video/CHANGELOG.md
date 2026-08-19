@@ -1,3 +1,7 @@
+## Unreleased
+
+- Fixed ISP driver compatibility when `ESP_VIDEO_DISABLE_ISP_ERROR_INTERRUPT` is enabled
+
 ## 2.4.0
 
 - H.264 video device now supports setting parameters after streaming has started
