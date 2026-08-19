@@ -319,12 +319,13 @@ esp_err_t esp_video_done_buffer(struct esp_video *video, uint32_t type, uint8_t 
  * @param video Video object
  * @param type  Video stream type
  * @param ticks Wait OS tick
+ * @param element_ptr Video buffer element object pointer
  *
  * @return
- *      - Video buffer element object pointer on success
- *      - NULL if failed
+ *      - ESP_OK on success
+ *      - Others if failed
  */
-struct esp_video_buffer_element *esp_video_recv_element(struct esp_video *video, uint32_t type, uint32_t ticks);
+esp_err_t esp_video_recv_element(struct esp_video *video, uint32_t type, uint32_t ticks, struct esp_video_buffer_element **element_ptr);
 
 /**
  * @brief Put buffer element into queued list.
@@ -373,12 +374,13 @@ esp_err_t esp_video_queue_element_index_buffer(struct esp_video *video, uint32_t
  * @param video Video object
  * @param type  Video stream type
  * @param index Video buffer element index
+ * @param payload Buffer element payload pointer
  *
  * @return
  *      - ESP_OK on success
  *      - Others if failed
  */
-uint8_t *esp_video_get_element_index_payload(struct esp_video *video, uint32_t type, int index);
+esp_err_t esp_video_get_element_index_payload(struct esp_video *video, uint32_t type, int index, uint8_t **payload);
 
 /**
  * @brief Get video object by name
