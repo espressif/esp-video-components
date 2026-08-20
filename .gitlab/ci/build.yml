@@ -61,6 +61,17 @@ build_test_esp32p4_idf_v5.x:
     matrix:
       - IMAGE: [espressif/idf:release-v5.4, espressif/idf:release-v5.5]
 
+build_test_esp32p4_idf_v5.5.4:
+  extends:
+    - .build_examples_template
+    - .rules:build:test_apps
+  variables:
+    IDF_TARGETS: "esp32p4"
+    IDF_BUILD_APPS_VERSION: "1.1.4"
+  parallel:
+    matrix:
+      - IMAGE: [espressif/idf:v5.5.4]
+
 build_test_esp32p4_idf_v6.x:
   extends:
     - .build_examples_template
