@@ -22,6 +22,8 @@
 #include "esp_video_ioctl.h"
 #include "example_video_common.h"
 
+#if ESP_VIDEO_CSI_DRIVER_HAS_EVENT && EXAMPLE_ENABLE_MIPI_CSI_CAM_SENSOR
+
 static const char *TAG = "video_event";
 
 #define VIDEO_EVENT_TASK_PRIORITY 9
@@ -192,3 +194,5 @@ esp_err_t example_video_event_deinit(example_video_event_target_t target)
     s_video_event_data[target].sem = NULL;
     return ESP_OK;
 }
+
+#endif /* ESP_VIDEO_CSI_DRIVER_HAS_EVENT && EXAMPLE_ENABLE_MIPI_CSI_CAM_SENSOR */

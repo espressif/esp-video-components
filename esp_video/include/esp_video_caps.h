@@ -56,7 +56,8 @@ extern "C" {
  *
  * @note This is a breaking change for ESP-IDF MIPI-CSI driver API.
  */
-#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(6, 0, 0)
+#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(6, 0, 0) || \
+    (ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 5, 6) && ESP_IDF_VERSION < ESP_IDF_VERSION_VAL(6, 0, 0))
 #define ESP_VIDEO_CSI_DEVICE_CONV_FORMAT 1  /*!< CSI video device supports convert frame format */
 #endif /* ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(6, 0, 0) */
 

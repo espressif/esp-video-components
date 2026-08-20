@@ -9,6 +9,7 @@
 #include "linux/videodev2.h"
 #include "esp_cam_sensor_types.h"
 #include "esp_cam_motor_types.h"
+#include "esp_video_caps.h"
 #include <stdint.h>
 
 #ifdef __cplusplus

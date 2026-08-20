@@ -16,6 +16,7 @@
 #define BUF_OFF_2_INDEX(buf_off)            ((buf_off) & 0x00ffffff)
 #define BUF_OFF_2_TYPE(buf_off)             ((buf_off) >> 24)
 
+#if ESP_VIDEO_CSI_DRIVER_HAS_EVENT
 static esp_err_t esp_video_ioctl_subscribe_event(struct esp_video *video, struct v4l2_event_subscription *sub)
 {
     return esp_video_subscribe_event(video, sub);
@@ -35,6 +36,7 @@ static esp_err_t esp_video_ioctl_set_event_callback(struct esp_video *video, str
 {
     return esp_video_set_event_callback(video, callback);
 }
+#endif /* ESP_VIDEO_CSI_DRIVER_HAS_EVENT */
 
 static esp_err_t esp_video_ioctl_querycap(struct esp_video *video, struct v4l2_capability *cap)
 {
@@ -425,6 +427,7 @@ esp_err_t esp_video_ioctl(struct esp_video *video, int cmd, va_list args)
     case VIDIOC_G_DQBUF_TIMEOUT:
         ret = esp_video_ioctl_get_dqbuf_timeout(video, (struct timeval *)arg_ptr);
         break;
+#if ESP_VIDEO_CSI_DRIVER_HAS_EVENT
     case VIDIOC_SUBSCRIBE_EVENT:
         ret = esp_video_ioctl_subscribe_event(video, (struct v4l2_event_subscription *)arg_ptr);
         break;
@@ -434,11 +437,12 @@ esp_err_t esp_video_ioctl(struct esp_video *video, int cmd, va_list args)
     case VIDIOC_DQEVENT:
         ret = esp_video_ioctl_get_events(video, (struct v4l2_event *)arg_ptr);
         break;
-    case VIDIOC_RESTART:
-        ret = esp_video_ioctl_restart(video, (struct v4l2_restart_config *)arg_ptr);
-        break;
     case VIDIOC_S_EVENT_CALLBACK:
         ret = esp_video_ioctl_set_event_callback(video, (struct v4l2_event_callback *)arg_ptr);
+        break;
+#endif /* ESP_VIDEO_CSI_DRIVER_HAS_EVENT */
+    case VIDIOC_RESTART:
+        ret = esp_video_ioctl_restart(video, (struct v4l2_restart_config *)arg_ptr);
         break;
     default:
         ret = ESP_ERR_INVALID_ARG;
