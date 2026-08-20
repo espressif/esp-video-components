@@ -642,7 +642,11 @@ static void isp_init_awb_param(struct isp_video *isp_video, esp_isp_awb_config_t
 
     memset(awb_config, 0, sizeof(esp_isp_awb_config_t));
 
+#if ESP_VIDEO_ISP_DRIVER_NEW_AWB_SAMPLE_POINT
+    awb_config->sample_point = ISP_AWB_SAMPLE_POINT_0;
+#else
     awb_config->sample_point = ISP_AWB_SAMPLE_POINT_BEFORE_CCM;
+#endif
 
     awb_config->white_patch.luminance.max = (float)awb->green_max * (1 + awb->rg_max + awb->bg_max);
     awb_config->white_patch.luminance.min = (float)awb->green_min * (1 + awb->rg_min + awb->bg_min);
@@ -885,7 +889,11 @@ static esp_err_t isp_start_ae(struct isp_video *isp_video)
     }
 
     esp_isp_ae_config_t ae_config = {
+#if ESP_VIDEO_ISP_DRIVER_NEW_AE_SAMPLE_POINT
+        .sample_point = ISP_AE_SAMPLE_POINT_0,
+#else
         .sample_point = ISP_AE_SAMPLE_POINT_AFTER_DEMOSAIC,
+#endif
         .intr_priority = 0,
         .window = isp_video->ae_config.windows[0],
     };
