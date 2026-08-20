@@ -143,6 +143,7 @@ static esp_err_t esp_video_ioctl_querybuf(struct esp_video *video, struct v4l2_b
 static esp_err_t esp_video_ioctl_mmap(struct esp_video *video, struct esp_video_ioctl_mmap *ioctl_mmap)
 {
     esp_err_t ret;
+    uint8_t *payload;
     struct esp_video_buffer_info info;
     uint8_t type = BUF_OFF_2_TYPE(ioctl_mmap->offset);
     int index = BUF_OFF_2_INDEX(ioctl_mmap->offset);
@@ -158,7 +159,11 @@ static esp_err_t esp_video_ioctl_mmap(struct esp_video *video, struct esp_video_
         return ESP_ERR_INVALID_ARG;
     }
 
-    ioctl_mmap->mapped_ptr = esp_video_get_element_index_payload(video, type, index);
+    ret = esp_video_get_element_index_payload(video, type, index, &payload);
+    if (ret != ESP_OK) {
+        return ret;
+    }
+    ioctl_mmap->mapped_ptr = payload;
 
     return ESP_OK;
 }
@@ -208,9 +213,9 @@ static esp_err_t esp_video_ioctl_dqbuf(struct esp_video *video, struct v4l2_buff
         return ESP_ERR_INVALID_ARG;
     }
 
-    element = esp_video_recv_element(video, vbuf->type, ticks);
-    if (!element) {
-        return ESP_FAIL;
+    ret = esp_video_recv_element(video, vbuf->type, ticks, &element);
+    if (ret != ESP_OK) {
+        return ret;
     }
 
     vbuf->flags     = 0;
