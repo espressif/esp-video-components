@@ -3,6 +3,10 @@
 - Fixed ISP driver compatibility when `ESP_VIDEO_DISABLE_ISP_ERROR_INTERRUPT` is enabled
 - Fixed unclear error codes returned by some functions
 - Fixed compilation warning in ISP video device
+- Improved compatibility with different versions of the MIPI-CSI driver
+    - If the esp-idf version does not support MIPI-CSI error events, the commands VIDIOC_SUBSCRIBE_EVENT, VIDIOC_UNSUBSCRIBE_EVENT, and VIDIOC_DQEVENT are not available.
+      Therefore, applications should avoid calling these commands or any related functions.
+    - In esp-idf v5.5.6 and certain earlier intermediate versions, the MIPI-CSI driver was refactored to add support for format transformation. As a result, the capability macro `ESP_VIDEO_CSI_DEVICE_CONV_FORMAT` should be enabled in these versions.
 
 ## 2.4.0
 

@@ -78,7 +78,7 @@ typedef struct web_cam_video {
 
     uint32_t support_control_jpeg_quality   : 1;
 
-#if EXAMPLE_ENABLE_MIPI_CSI_CAM_SENSOR
+#if ESP_VIDEO_CSI_DRIVER_HAS_EVENT && EXAMPLE_ENABLE_MIPI_CSI_CAM_SENSOR
     uint32_t video_event_initialized        : 1;
 #endif /* EXAMPLE_ENABLE_MIPI_CSI_CAM_SENSOR */
 } web_cam_video_t;
@@ -511,7 +511,7 @@ static esp_err_t init_web_cam_video(web_cam_video_t *video, const web_cam_video_
     fd = open(config->dev_name, O_RDWR);
     ESP_RETURN_ON_FALSE(fd >= 0, ESP_ERR_NOT_FOUND, TAG, "Open video device %s failed", config->dev_name);
 
-#if EXAMPLE_ENABLE_MIPI_CSI_CAM_SENSOR
+#if ESP_VIDEO_CSI_DRIVER_HAS_EVENT && EXAMPLE_ENABLE_MIPI_CSI_CAM_SENSOR
     bool video_event_initialized = false;
 
     if (strcmp(config->dev_name, ESP_VIDEO_MIPI_CSI_DEVICE_NAME) == 0) {
@@ -626,7 +626,7 @@ fail1:
         video->encoder_handle = NULL;
     }
 fail0:
-#if EXAMPLE_ENABLE_MIPI_CSI_CAM_SENSOR
+#if ESP_VIDEO_CSI_DRIVER_HAS_EVENT && EXAMPLE_ENABLE_MIPI_CSI_CAM_SENSOR
     if (video_event_initialized) {
         example_video_event_deinit(EXAMPLE_VIDEO_EVENT_TARGET_MIPI_CSI);
     }
@@ -648,7 +648,7 @@ static esp_err_t deinit_web_cam_video(web_cam_video_t *video)
         example_encoder_deinit(video->encoder_handle);
     }
 
-#if EXAMPLE_ENABLE_MIPI_CSI_CAM_SENSOR
+#if ESP_VIDEO_CSI_DRIVER_HAS_EVENT && EXAMPLE_ENABLE_MIPI_CSI_CAM_SENSOR
     if (video->video_event_initialized) {
         example_video_event_deinit(EXAMPLE_VIDEO_EVENT_TARGET_MIPI_CSI);
     }

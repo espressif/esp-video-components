@@ -22,6 +22,7 @@
 #if CONFIG_ESP_VIDEO_ENABLE_SPI_VIDEO_DEVICE
 #include "esp_cam_ctlr_spi.h"
 #endif
+#include "esp_video_caps.h"
 #include "esp_cam_sensor_xclk.h"
 
 #ifdef __cplusplus

@@ -410,6 +410,7 @@ esp_err_t example_msc_storage_in_use_by_usb_host(example_storage_handle_t handle
  */
 esp_err_t example_storage_get_capacity(example_storage_handle_t handle, uint64_t *capacity);
 
+#if ESP_VIDEO_CSI_DRIVER_HAS_EVENT && EXAMPLE_ENABLE_MIPI_CSI_CAM_SENSOR
 /**
  * @brief Initialize the video event task
  *
@@ -428,6 +429,7 @@ esp_err_t example_video_event_init(example_video_event_target_t target, int fd);
  * @return ESP_OK on success, otherwise an error code
  */
 esp_err_t example_video_event_deinit(example_video_event_target_t target);
+#endif /* ESP_VIDEO_CSI_DRIVER_HAS_EVENT && EXAMPLE_ENABLE_MIPI_CSI_CAM_SENSOR */
 
 #ifdef __cplusplus
 }

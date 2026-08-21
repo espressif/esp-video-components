@@ -2448,10 +2448,16 @@ esp_err_t esp_video_unsubscribe_event(struct esp_video *video, struct v4l2_event
     memset(&video->event_sub, 0, sizeof(struct v4l2_event_subscription));
     memset(&video->event, 0, sizeof(struct v4l2_event));
 
+    if (xQueueReset(video->event_queue) != pdPASS) {
+        ESP_LOGE(TAG, "Failed to reset event queue");
+        return ESP_FAIL;
+    }
+
     struct v4l2_event event = {
         .type = V4L2_EVENT_ESP_VIDEO_EVENT_UNSUBSCRIBED,
     };
-    if (xQueueOverwrite(video->event_queue, &event) != pdPASS) {
+
+    if (xQueueSend(video->event_queue, &event, 0) != pdPASS) {
         ESP_LOGE(TAG, "Failed to send unsubscribed event");
         return ESP_FAIL;
     }

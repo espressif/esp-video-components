@@ -10,6 +10,7 @@
 #include <stdbool.h>
 #include "sdkconfig.h"
 #include "driver/isp.h"
+#include "esp_video_caps.h"
 #include <linux/v4l2-controls.h>
 
 #ifdef __cplusplus
