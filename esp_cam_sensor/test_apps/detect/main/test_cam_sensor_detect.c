@@ -98,6 +98,9 @@
 #elif CONFIG_CAMERA_SC2336
 #include "sc2336.h"
 #define SCCB0_CAM_DEVICE_ADDR SC2336_SCCB_ADDR
+#elif CONFIG_CAMERA_SC2337P
+#include "sc2337p.h"
+#define SCCB0_CAM_DEVICE_ADDR SC2337P_SCCB_ADDR
 #elif CONFIG_CAMERA_SP0A39
 #include "sp0a39.h"
 #define SCCB0_CAM_DEVICE_ADDR SP0A39_SCCB_ADDR
@@ -227,6 +230,8 @@ TEST_CASE("Camera sensor detect test", "[video]")
     cam0 = sc2331_detect(&cam0_config);
 #elif CONFIG_CAMERA_SC2336
     cam0 = sc2336_detect(&cam0_config);
+#elif CONFIG_CAMERA_SC2337P
+    cam0 = sc2337p_detect(&cam0_config);
 #elif CONFIG_CAMERA_SC1346
     cam0 = sc1346_detect(&cam0_config);
 #elif CONFIG_CAMERA_SP0A39
