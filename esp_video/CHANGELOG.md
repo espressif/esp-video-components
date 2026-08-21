@@ -1,4 +1,4 @@
-## Unreleased
+## 2.4.1
 
 - Fixed ISP driver compatibility when `ESP_VIDEO_DISABLE_ISP_ERROR_INTERRUPT` is enabled
 - Fixed unclear error codes returned by some functions
