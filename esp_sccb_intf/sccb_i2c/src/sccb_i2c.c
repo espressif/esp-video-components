@@ -27,11 +27,13 @@ static esp_err_t s_sccb_i2c_transmit_reg_a16v8(esp_sccb_io_t *io_handle, const u
 static esp_err_t s_sccb_i2c_transmit_reg_a8v16(esp_sccb_io_t *io_handle, const uint8_t *write_buffer, size_t write_size, int xfer_timeout_ms);
 static esp_err_t s_sccb_i2c_transmit_reg_a16v16(esp_sccb_io_t *io_handle, const uint8_t *write_buffer, size_t write_size, int xfer_timeout_ms);
 static esp_err_t s_sccb_i2c_transmit_reg_a16v32(esp_sccb_io_t *io_handle, const uint8_t *write_buffer, size_t write_size, int xfer_timeout_ms);
+static esp_err_t s_sccb_i2c_transmit_reg_a16(esp_sccb_io_t *io_handle, const uint8_t *write_buffer, size_t write_size, int xfer_timeout_ms);
 static esp_err_t s_sccb_i2c_transmit_receive_reg_a8v8(esp_sccb_io_t *io_handle, const uint8_t *write_buffer, size_t write_size, uint8_t *read_buffer, size_t read_size, int xfer_timeout_ms);
 static esp_err_t s_sccb_i2c_transmit_receive_reg_a16v8(esp_sccb_io_t *io_handle, const uint8_t *write_buffer, size_t write_size, uint8_t *read_buffer, size_t read_size, int xfer_timeout_ms);
 static esp_err_t s_sccb_i2c_transmit_receive_reg_a8v16(esp_sccb_io_t *io_handle, const uint8_t *write_buffer, size_t write_size, uint8_t *read_buffer, size_t read_size, int xfer_timeout_ms);
 static esp_err_t s_sccb_i2c_transmit_receive_reg_a16v16(esp_sccb_io_t *io_handle, const uint8_t *write_buffer, size_t write_size, uint8_t *read_buffer, size_t read_size, int xfer_timeout_ms);
 static esp_err_t s_sccb_i2c_transmit_receive_reg_a16v32(esp_sccb_io_t *io_handle, const uint8_t *write_buffer, size_t write_size, uint8_t *read_buffer, size_t read_size, int xfer_timeout_ms);
+static esp_err_t s_sccb_i2c_transmit_receive_reg_a16(esp_sccb_io_t *io_handle, const uint8_t *write_buffer, size_t write_size, uint8_t *read_buffer, size_t read_size, int xfer_timeout_ms);
 static esp_err_t s_sccb_i2c_transmit_v16(esp_sccb_io_t *io_handle, const uint8_t *write_buffer, size_t write_size, int xfer_timeout_ms);
 static esp_err_t s_sccb_i2c_receive_v16(esp_sccb_io_t *io_handle, uint8_t *read_buffer, size_t read_size, int xfer_timeout_ms);
 static esp_err_t s_sccb_i2c_destroy(esp_sccb_io_t *io_handle);
@@ -57,11 +59,13 @@ esp_err_t sccb_new_i2c_io(i2c_master_bus_handle_t bus_handle, const sccb_i2c_con
     io_i2c->base.transmit_reg_a8v16 = s_sccb_i2c_transmit_reg_a8v16;
     io_i2c->base.transmit_reg_a16v16 = s_sccb_i2c_transmit_reg_a16v16;
     io_i2c->base.transmit_reg_a16v32 = s_sccb_i2c_transmit_reg_a16v32;
+    io_i2c->base.transmit_reg_a16 = s_sccb_i2c_transmit_reg_a16;
     io_i2c->base.transmit_receive_reg_a8v8 = s_sccb_i2c_transmit_receive_reg_a8v8;
     io_i2c->base.transmit_receive_reg_a16v8 = s_sccb_i2c_transmit_receive_reg_a16v8;
     io_i2c->base.transmit_receive_reg_a8v16 = s_sccb_i2c_transmit_receive_reg_a8v16;
     io_i2c->base.transmit_receive_reg_a16v16 = s_sccb_i2c_transmit_receive_reg_a16v16;
     io_i2c->base.transmit_receive_reg_a16v32 = s_sccb_i2c_transmit_receive_reg_a16v32;
+    io_i2c->base.transmit_receive_reg_a16 = s_sccb_i2c_transmit_receive_reg_a16;
     io_i2c->base.transmit_v16 = s_sccb_i2c_transmit_v16;
     io_i2c->base.receive_v16 = s_sccb_i2c_receive_v16;
     io_i2c->base.del = s_sccb_i2c_destroy;
@@ -114,6 +118,14 @@ static esp_err_t s_sccb_i2c_transmit_reg_a16v32(esp_sccb_io_t *io_handle, const 
     return ESP_OK;
 }
 
+static esp_err_t s_sccb_i2c_transmit_reg_a16(esp_sccb_io_t *io_handle, const uint8_t *write_buffer, size_t write_size, int xfer_timeout_ms)
+{
+    sccb_io_i2c_t *io_i2c = __containerof(io_handle, sccb_io_i2c_t, base);
+    ESP_RETURN_ON_ERROR(i2c_master_transmit(io_i2c->i2c_device, write_buffer, write_size, xfer_timeout_ms), TAG, "failed to i2c transmit");
+
+    return ESP_OK;
+}
+
 static esp_err_t s_sccb_i2c_transmit_receive_reg_a8v8(esp_sccb_io_t *io_handle, const uint8_t *write_buffer, size_t write_size, uint8_t *read_buffer, size_t read_size, int xfer_timeout_ms)
 {
     sccb_io_i2c_t *io_i2c = __containerof(io_handle, sccb_io_i2c_t, base);
@@ -150,6 +162,14 @@ static esp_err_t s_sccb_i2c_transmit_receive_reg_a16v32(esp_sccb_io_t *io_handle
 {
     sccb_io_i2c_t *io_i2c = __containerof(io_handle, sccb_io_i2c_t, base);
     ESP_RETURN_ON_ERROR(i2c_master_transmit_receive(io_i2c->i2c_device, write_buffer, write_size, read_buffer, read_size, xfer_timeout_ms), TAG, "failed to transmit receive");
+
+    return ESP_OK;
+}
+
+static esp_err_t s_sccb_i2c_transmit_receive_reg_a16(esp_sccb_io_t *io_handle, const uint8_t *write_buffer, size_t write_size, uint8_t *read_buffer, size_t read_size, int xfer_timeout_ms)
+{
+    sccb_io_i2c_t *io_i2c = __containerof(io_handle, sccb_io_i2c_t, base);
+    ESP_RETURN_ON_ERROR(i2c_master_transmit_receive(io_i2c->i2c_device, write_buffer, write_size, read_buffer, read_size, xfer_timeout_ms), TAG, "faled to transmit receive");
 
     return ESP_OK;
 }
