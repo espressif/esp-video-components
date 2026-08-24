@@ -1973,3 +1973,75 @@ esp_err_t esp_video_isp_pipeline_get_agc_min_exposure(uint32_t *exposure_us)
 
     return ret;
 }
+
+/**
+ * @brief Get int32_t type IPA environment variable.
+ *
+ * @param name  Environment variable name
+ * @param val   Pointer to store int32_t type environment variable
+ *
+ * @return
+ *      - ESP_OK on success
+ *      - ESP_ERR_NOT_FOUND if the variable does not exist
+ *      - Others if failed
+ */
+esp_err_t esp_video_isp_pipeline_get_env_int32(const char *name, int32_t *val)
+{
+    esp_err_t ret = ESP_ERR_INVALID_STATE;
+
+    ESP_RETURN_ON_FALSE(name && val, ESP_ERR_INVALID_ARG, TAG, "invalid argument");
+
+    _lock_acquire(&s_isp_lock);
+    if (s_esp_video_isp && s_esp_video_isp->ipa_pipeline &&
+            s_esp_video_isp->ipa_pipeline->ipa_array) {
+        esp_ipa_t *ipa = s_esp_video_isp->ipa_pipeline->ipa_array[0];
+
+        if (!esp_ipa_has_var(ipa, name)) {
+            ret = ESP_ERR_NOT_FOUND;
+        } else {
+            *val = esp_ipa_get_int32(ipa, name);
+            ret = ESP_OK;
+        }
+    } else {
+        ESP_LOGD(TAG, "ISP controller is not initialized");
+    }
+    _lock_release(&s_isp_lock);
+
+    return ret;
+}
+
+/**
+ * @brief Get float type IPA environment variable.
+ *
+ * @param name  Environment variable name
+ * @param val   Pointer to store float type environment variable
+ *
+ * @return
+ *      - ESP_OK on success
+ *      - ESP_ERR_NOT_FOUND if the variable does not exist
+ *      - Others if failed
+ */
+esp_err_t esp_video_isp_pipeline_get_env_float(const char *name, float *val)
+{
+    esp_err_t ret = ESP_ERR_INVALID_STATE;
+
+    ESP_RETURN_ON_FALSE(name && val, ESP_ERR_INVALID_ARG, TAG, "invalid argument");
+
+    _lock_acquire(&s_isp_lock);
+    if (s_esp_video_isp && s_esp_video_isp->ipa_pipeline &&
+            s_esp_video_isp->ipa_pipeline->ipa_array) {
+        esp_ipa_t *ipa = s_esp_video_isp->ipa_pipeline->ipa_array[0];
+
+        if (!esp_ipa_has_var(ipa, name)) {
+            ret = ESP_ERR_NOT_FOUND;
+        } else {
+            *val = esp_ipa_get_float(ipa, name);
+            ret = ESP_OK;
+        }
+    } else {
+        ESP_LOGD(TAG, "ISP controller is not initialized");
+    }
+    _lock_release(&s_isp_lock);
+
+    return ret;
+}

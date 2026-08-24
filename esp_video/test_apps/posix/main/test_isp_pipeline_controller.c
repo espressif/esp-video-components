@@ -301,4 +301,66 @@ TEST_CASE("ISP pipeline set/get AGC max/min exposure", "[video][isp_pipeline]")
 
     TEST_ESP_OK(example_video_deinit());
 }
+
+TEST_CASE("ISP pipeline get IPA environment variables after stream on", "[video][isp_pipeline]")
+{
+    int fd;
+    int ret;
+    int type;
+    int32_t ct;
+    float env_luma_avg;
+    struct v4l2_buffer buf;
+    struct v4l2_requestbuffers req;
+
+    setUp();
+
+    TEST_ESP_OK(example_video_init());
+    TEST_ASSERT_TRUE(esp_video_isp_pipeline_is_initialized());
+
+    fd = open(TEST_APP_VIDEO_DEVICE, O_RDWR);
+    TEST_ASSERT_GREATER_OR_EQUAL(0, fd);
+
+    memset(&req, 0, sizeof(req));
+    req.type   = V4L2_BUF_TYPE_VIDEO_CAPTURE;
+    req.memory = V4L2_MEMORY_MMAP;
+    req.count  = TEST_VIDEO_BUFFER_COUNT;
+    ret = ioctl(fd, VIDIOC_REQBUFS, &req);
+    TEST_ESP_OK(ret);
+
+    for (int i = 0; i < TEST_VIDEO_BUFFER_COUNT; i++) {
+        memset(&buf, 0, sizeof(buf));
+        buf.type   = V4L2_BUF_TYPE_VIDEO_CAPTURE;
+        buf.memory = V4L2_MEMORY_MMAP;
+        buf.index  = i;
+        ret = ioctl(fd, VIDIOC_QUERYBUF, &buf);
+        TEST_ESP_OK(ret);
+
+        ret = ioctl(fd, VIDIOC_QBUF, &buf);
+        TEST_ESP_OK(ret);
+    }
+
+    type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
+    ret = ioctl(fd, VIDIOC_STREAMON, &type);
+    TEST_ESP_OK(ret);
+
+    vTaskDelay(pdMS_TO_TICKS(1000));
+
+    TEST_ESP_OK(esp_video_isp_pipeline_get_env_int32("ct", &ct));
+    TEST_ESP_OK(esp_video_isp_pipeline_get_env_float("env.luma.avg", &env_luma_avg));
+    printf("IPA env: ct=%" PRId32 ", env.luma.avg=%f\n", ct, env_luma_avg);
+
+    /* Non-existent variable should fail */
+    TEST_ESP_ERR(ESP_ERR_NOT_FOUND, esp_video_isp_pipeline_get_env_int32("ct_not_exist", &ct));
+    TEST_ESP_ERR(ESP_ERR_NOT_FOUND, esp_video_isp_pipeline_get_env_float("env.luma.avg_not_exist", &env_luma_avg));
+    TEST_ESP_ERR(ESP_ERR_INVALID_ARG, esp_video_isp_pipeline_get_env_int32(NULL, &ct));
+    TEST_ESP_ERR(ESP_ERR_INVALID_ARG, esp_video_isp_pipeline_get_env_float("env.luma.avg", NULL));
+
+    type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
+    ret = ioctl(fd, VIDIOC_STREAMOFF, &type);
+    TEST_ESP_OK(ret);
+
+    close(fd);
+
+    TEST_ESP_OK(example_video_deinit());
+}
 #endif /* CONFIG_ESP_VIDEO_ENABLE_ISP_PIPELINE_CONTROLLER && CONFIG_ESP_VIDEO_ENABLE_MIPI_CSI_VIDEO_DEVICE */
