@@ -277,6 +277,60 @@ menu "Example Video Initialization Configuration"
                 help
                     If select this option, MIPI-CSI video device will not initialize
                     the LDO and users should initialize the LDO in the application.
+
+            config EXAMPLE_ENABLE_MIPI_CSI_EVENT
+                bool "Enable MIPI-CSI Error Event Handling"
+                default y
+                help
+                    Enable MIPI-CSI host error event handling in the example.
+
+                    When enabled, the example subscribes to MIPI-CSI error events
+                    and runs a listener task to report PHY, packet, frame, CRC,
+                    and data ID errors.
+
+                    This feature requires ESP-IDF v5.5.6 or later in the v5.5.x
+                    series, or ESP-IDF v6.0.3 or later. On unsupported versions,
+                    enabling this option has no effect.
+
+                    Disable this option to skip event subscription and the
+                    listener task.
+
+            if EXAMPLE_ENABLE_MIPI_CSI_EVENT
+                config EXAMPLE_ENABLE_MIPI_CSI_ERROR_VIDEO_RESTART
+                    bool "Restart Video Pipeline on MIPI-CSI Error"
+                    default y
+                    help
+                        Restart the MIPI-CSI video pipeline when a host error event is
+                        received.
+
+                        When enabled, the example issues VIDIOC_RESTART after MIPI-CSI
+                        PHY, packet, frame, CRC, or data ID errors so capture can
+                        recover without stopping the application.
+
+                        Disable this option to only log the error and leave recovery
+                        to the application.
+
+                if EXAMPLE_ENABLE_MIPI_CSI_ERROR_VIDEO_RESTART
+                    config EXAMPLE_ENABLE_MIPI_CSI_ERROR_SENSOR_RESTART
+                        bool "Restart Camera Sensor with Video Pipeline"
+                        default y
+                        help
+                            Also restart the camera sensor when recovering from a MIPI-CSI
+                            error.
+
+                            When enabled, VIDIOC_RESTART stops and starts the sensor stream
+                            together with the video pipeline. When disabled, only the video
+                            hardware is restarted and the sensor keeps streaming.
+
+                            Software restart is not supported by all camera sensors. Confirm
+                            that your sensor can stop and start streaming by software before
+                            enabling this option.
+
+                            After a software restart, a small number of sensors may leave
+                            the receiver without a valid data stream. Disable this option
+                            if capture does not resume on your module.
+                endif
+            endif
         endif
 
         menuconfig EXAMPLE_ENABLE_DVP_CAM_SENSOR

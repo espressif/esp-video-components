@@ -22,7 +22,7 @@
 #include "esp_video_ioctl.h"
 #include "example_video_common.h"
 
-#if ESP_VIDEO_CSI_DRIVER_HAS_EVENT && EXAMPLE_ENABLE_MIPI_CSI_CAM_SENSOR
+#if CONFIG_EXAMPLE_ENABLE_MIPI_CSI_EVENT && ESP_VIDEO_CSI_DRIVER_HAS_EVENT && EXAMPLE_ENABLE_MIPI_CSI_CAM_SENSOR
 
 static const char *TAG = "video_event";
 
@@ -84,15 +84,21 @@ static void video_event_task(void *arg)
                 ESP_LOGI(TAG, "MIPI-CSI data ID error: unrecognized or unimplemented data type detected");
             }
 
+#if CONFIG_EXAMPLE_ENABLE_MIPI_CSI_ERROR_VIDEO_RESTART
             struct v4l2_restart_config config = {
                 .type = V4L2_BUF_TYPE_VIDEO_CAPTURE,
+#if CONFIG_EXAMPLE_ENABLE_MIPI_CSI_ERROR_SENSOR_RESTART
                 .restart_sensor = true,
+#else
+                .restart_sensor = false,
+#endif
             };
             if (ioctl(fd, VIDIOC_RESTART, &config) < 0) {
                 ESP_LOGE(TAG, "Failed to restart video");
             } else {
                 ESP_LOGI(TAG, "Restart video successfully");
             }
+#endif
 
             break;
         }
@@ -195,4 +201,4 @@ esp_err_t example_video_event_deinit(example_video_event_target_t target)
     return ESP_OK;
 }
 
-#endif /* ESP_VIDEO_CSI_DRIVER_HAS_EVENT && EXAMPLE_ENABLE_MIPI_CSI_CAM_SENSOR */
+#endif /* CONFIG_EXAMPLE_ENABLE_MIPI_CSI_EVENT && ESP_VIDEO_CSI_DRIVER_HAS_EVENT && EXAMPLE_ENABLE_MIPI_CSI_CAM_SENSOR */
