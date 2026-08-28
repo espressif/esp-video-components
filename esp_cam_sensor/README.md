@@ -29,11 +29,11 @@ It is highly recommended that users use it in the [esp-video](https://github.com
 
 | model   | max resolution | output interface | output format                                                | Len Size |
 | ------- | -------------- | ---------- | ------------------------------------------------------------ | -------- |
-| BF3901  | 240 x 320    | SPI | YCbCr422<br/>RGB565 | 1/13"     |
-| BF3925  | 1600 x 1200    | DVP | YCbCr422<br/>8bit Raw RGB data | 1/5"     |
-| BF3045  | 640 x 480    | DVP | YCbCr422<br/>8bit Raw RGB data | 1/5"     |
 | BF20A6  | 640 x 480    | DVP | Grayscale<br/>YCbCr422<br/>8bit Raw RGB data | 1/10"     |
 | BF3031  | 838 x 640    | DVP | YCbCr422<br/>8bit Raw RGB data | 1/3"     |
+| BF3045  | 640 x 480    | DVP | YCbCr422<br/>8bit Raw RGB data | 1/5"     |
+| BF3901  | 240 x 320    | SPI | YCbCr422<br/>RGB565 | 1/13"     |
+| BF3925  | 1600 x 1200    | DVP | YCbCr422<br/>8bit Raw RGB data | 1/5"     |
 | BF3A03  | 640 x 480    | DVP | YCbCr422<br/>RGB565<br/>8bit Raw RGB data | 1/4"     |
 | GC0308  | 640 x 480    | DVP | Grayscale<br/>YCbCr422<br/>RGB565 | 1/6.5"     |
 | GC2145  | 1600 x 1200    | MIPI & DVP | RGB565<br/>YCbCr422<br/>8bit Raw RGB data | 1/5"     |
@@ -53,12 +53,13 @@ It is highly recommended that users use it in the [esp-video](https://github.com
 | SC030IOT  | 640 x 480    | MIPI & DVP | YCbCr422<br/>8bit Raw RGB data | 1/6.5"     |
 | SC035HGS  | 640 x 480    | MIPI & DVP | Raw MONO<br/>Raw RGB data | 1/6"     |
 | SC101IOT  | 1280 x 720    | DVP | YCbCr422<br/>8/10-bit Raw RGB data | 1/4.2"     |
-| SC202CS(SC2356) | 1600 x 1200    | MIPI      | 8/10-bit Raw RGB data | 1/5.1"     |
+| SC121AT | 1304 x 984    | MIPI | YCbCr422 | 1/3.75"     |
+| SC132GS  | 1080 x 1280    | MIPI | 8/10-bit Raw RGB/MONO data | 1/4"     |
 | SC1346  | 1280 x 720    | MIPI      | 8/10-bit Raw RGB data | 1/4.5"     |
+| SC202CS(SC2356) | 1600 x 1200    | MIPI      | 8/10-bit Raw RGB data | 1/5.1"     |
 | SC2331  | 1920 x 1080    | MIPI      | 8/10-bit Raw RGB data | 1/3.2"     |
 | SC2336  | 1920 x 1080    | MIPI & DVP      | 8/10-bit Raw RGB data | 1/3"     |
-| SC2337P | 1080 x 1080    | MIPI            | 10-bit Raw RGB data   | 1/3"     |
-| SC121AT | 1304 x 984    | MIPI | YCbCr422 | 1/3.75"     |
+| SC2337P | 1920 x 1080    | MIPI      | 8/10-bit Raw RGB data | 1/3"     |
 | SP0A39  | 640 x 480    | SPI & DVP      | YCbCr422<br/>Grayscale | 1/10"     |
 | STI2250 | 800 x 600    | MIPI | 8/10-bit Raw Mono data | 1/5"     |
 | Arducam IMX500 | 1920 x 1080 | MIPI | Special module, parameters must be read from Arducam IMX500 Camera | custom |
