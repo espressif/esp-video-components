@@ -152,6 +152,7 @@ static void capture_frames(int fd, int frame_count)
     }
 }
 
+#if CONFIG_EXAMPLE_ENABLE_MIPI_CSI_EVENT
 TEST_CASE("V4L2 event init/deinit with listener task", "[video][event]")
 {
     int fd;
@@ -211,6 +212,7 @@ TEST_CASE("V4L2 event API invalid arguments", "[video][event]")
     close(fd);
     TEST_ESP_OK(example_video_deinit());
 }
+#endif /* CONFIG_EXAMPLE_ENABLE_MIPI_CSI_EVENT */
 
 TEST_CASE("V4L2 event callback captures INTERRUPT_DISABLE and restarts", "[video][event]")
 {
@@ -310,7 +312,11 @@ TEST_CASE("V4L2 event callback captures INTERRUPT_DISABLE and restarts", "[video
     /* Restart hardware after the error event is observed. */
     struct v4l2_restart_config restart_config = {
         .type = V4L2_BUF_TYPE_VIDEO_CAPTURE,
+#if CONFIG_EXAMPLE_ENABLE_MIPI_CSI_ERROR_SENSOR_RESTART
         .restart_sensor = true,
+#else
+        .restart_sensor = false,
+#endif
     };
     ret = ioctl(fd, VIDIOC_RESTART, &restart_config);
     TEST_ESP_OK(ret);

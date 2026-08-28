@@ -1,6 +1,7 @@
 ## Unreleased
 
 - Added functions to get IPA environment variables as int32_t or float
+- Added options to enable or disable MIPI-CSI event handling and configure the behavior for different targets
 
 ## 2.4.1
 

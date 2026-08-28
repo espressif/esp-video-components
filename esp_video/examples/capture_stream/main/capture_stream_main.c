@@ -189,7 +189,7 @@ static esp_err_t camera_capture_stream(void)
         return ESP_FAIL;
     }
 
-#if ESP_VIDEO_CSI_DRIVER_HAS_EVENT && EXAMPLE_ENABLE_MIPI_CSI_CAM_SENSOR
+#if CONFIG_EXAMPLE_ENABLE_MIPI_CSI_EVENT && ESP_VIDEO_CSI_DRIVER_HAS_EVENT && EXAMPLE_ENABLE_MIPI_CSI_CAM_SENSOR
     bool event_initialized = false;
 
     if (strcmp(EXAMPLE_CAM_DEV_PATH, ESP_VIDEO_MIPI_CSI_DEVICE_NAME) == 0) {
@@ -429,7 +429,7 @@ static esp_err_t camera_capture_stream(void)
     ret = ESP_OK;
 
 exit_0:
-#if ESP_VIDEO_CSI_DRIVER_HAS_EVENT && EXAMPLE_ENABLE_MIPI_CSI_CAM_SENSOR
+#if CONFIG_EXAMPLE_ENABLE_MIPI_CSI_EVENT && ESP_VIDEO_CSI_DRIVER_HAS_EVENT && EXAMPLE_ENABLE_MIPI_CSI_CAM_SENSOR
     if (event_initialized) {
         esp_err_t event_ret = example_video_event_deinit(EXAMPLE_VIDEO_EVENT_TARGET_MIPI_CSI);
         if (event_ret != ESP_OK) {
