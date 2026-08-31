@@ -293,6 +293,18 @@ static const esp_cam_sensor_isp_info_t os04c10_isp_info[] = {
             .bayer_type = ESP_CAM_SENSOR_BAYER_BGGR,
         }
     },
+    {
+        .isp_v1_info = {
+            .version = SENSOR_ISP_INFO_VERSION_DEFAULT,
+            .pclk = 101000000,
+            .vts = 3772, // 0x0ebc
+            .hts = 1070, // 0x042e
+            .tline_ns = 10570, // 10.57 us
+            .gain_def = 16,
+            .exp_def = 0x240,
+            .bayer_type = ESP_CAM_SENSOR_BAYER_BGGR,
+        }
+    }
 };
 
 static const esp_cam_sensor_format_t os04c10_format_info[] = {
@@ -336,6 +348,26 @@ static const esp_cam_sensor_format_t os04c10_format_info[] = {
         .reserved = NULL,
     },
 #endif
+#if CONFIG_CAMERA_OS04C10_MIPI_RAW10_1280X720_25FPS
+    {
+        .name = "MIPI_2lane_24Minput_RAW10_1280x720_25fps",
+        .format = ESP_CAM_SENSOR_PIXFORMAT_RAW10,
+        .port = ESP_CAM_SENSOR_MIPI_CSI,
+        .xclk = 24000000,
+        .width = 1280,
+        .height = 720,
+        .regs = os04c10_mipi_2lane_24Minput_1280x720_raw10_25fps,
+        .regs_size = ARRAY_SIZE(os04c10_mipi_2lane_24Minput_1280x720_raw10_25fps),
+        .fps = 25,
+        .isp_info = &os04c10_isp_info[1],
+        .mipi_info = {
+            .mipi_clk = 364000000,
+            .lane_num = 2,
+            .line_sync_en = false,
+        },
+        .reserved = NULL,
+    },
+#endif
 };
 
 #ifndef CONFIG_CAMERA_OS04C10_MIPI_IF_FORMAT_INDEX_DEFAULT
@@ -348,6 +380,9 @@ static const int os04c10_format_index[] = {
 #endif
 #if CONFIG_CAMERA_OS04C10_MIPI_RAW10_960X1280_30FPS
     1,
+#endif
+#if CONFIG_CAMERA_OS04C10_MIPI_RAW10_1280X720_25FPS
+    2,
 #endif
 };
 
