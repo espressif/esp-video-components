@@ -1,0 +1,86 @@
+menuconfig CAMERA_MIT245
+    bool "MIT245"
+    default n
+    depends on SOC_MIPI_CSI_SUPPORTED
+    help
+        Enable support for the MIT245 CMOS image sensor.
+
+if CAMERA_MIT245
+    menu "Auto detect MIT245"
+        config CAMERA_MIT245_AUTO_DETECT_MIPI_INTERFACE_SENSOR
+            bool "Detect for MIPI CSI interface sensor"
+            default y
+            depends on SOC_MIPI_CSI_SUPPORTED
+            help
+                Automatically detect and initialize MIT245 on the MIPI CSI interface.
+    endmenu
+
+    menu "Choose supported formats for MIPI CSI interface"
+        depends on SOC_MIPI_CSI_SUPPORTED
+
+        config CAMERA_MIT245_MIPI_RAW8_1920X1080_30FPS
+            bool "MIPI 2-lane, 24M input, 1920x1080 30fps, RAW8"
+            default y
+            help
+                RAW8 color format at 1920x1080 resolution with 30fps framerate.
+                Requires MIPI CSI-2 2-lane interface with 24MHz input clock.
+
+        config CAMERA_MIT245_MIPI_RAW10_1920X1080_30FPS
+            bool "MIPI 2-lane, 24M input, 1920x1080 30fps, RAW10"
+            default n
+            help
+                RAW10 color format at 1920x1080 resolution with 30fps framerate.
+                Requires MIPI CSI-2 2-lane interface with 24MHz input clock.
+    endmenu
+
+    choice CAMERA_MIT245_MIPI_DEFAULT_FMT
+        prompt "Select default output format for MIPI CSI interface"
+        default CAMERA_MIT245_MIPI_DEFAULT_FMT_RAW8_1920X1080_30FPS
+        depends on SOC_MIPI_CSI_SUPPORTED
+
+        config CAMERA_MIT245_MIPI_DEFAULT_FMT_RAW8_1920X1080_30FPS
+            bool "MIPI 2-lane, 24M input, 1920x1080 30fps, RAW8"
+            depends on CAMERA_MIT245_MIPI_RAW8_1920X1080_30FPS
+
+        config CAMERA_MIT245_MIPI_DEFAULT_FMT_RAW10_1920X1080_30FPS
+            bool "MIPI 2-lane, 24M input, 1920x1080 30fps, RAW10"
+            depends on CAMERA_MIT245_MIPI_RAW10_1920X1080_30FPS
+    endchoice
+
+    config CAMERA_MIT245_MIPI_IF_FORMAT_INDEX_DEFAULT
+        int
+        depends on SOC_MIPI_CSI_SUPPORTED
+        default 0 if CAMERA_MIT245_MIPI_DEFAULT_FMT_RAW8_1920X1080_30FPS
+        default 1 if CAMERA_MIT245_MIPI_DEFAULT_FMT_RAW10_1920X1080_30FPS
+        help
+            Sets the default configuration for the MIPI CSI interface.
+
+    config CAMERA_MIT245_ABSOLUTE_GAIN_LIMIT
+        int "Maximum absolute gain limit (x1000)"
+        default 20000
+        range 1000 26000
+        help
+            Maximum combined analog and digital gain multiplied by 1000.
+            MIT245 gain table currently covers up to 26x.
+
+    choice CAMERA_MIT245_IPA_JSON_CONFIGURATION_FILE
+        prompt "IPA Configuration File"
+        default CAMERA_MIT245_DEFAULT_IPA_JSON_CONFIGURATION_FILE
+
+        config CAMERA_MIT245_DEFAULT_IPA_JSON_CONFIGURATION_FILE
+            bool "Use default configuration"
+            help
+                Use the bundled provisional MIT245 IPA configuration.
+
+        config CAMERA_MIT245_CUSTOMIZED_IPA_JSON_CONFIGURATION_FILE
+            bool "Use custom configuration"
+            help
+                Use a calibrated MIT245 IPA JSON file supplied by the user.
+    endchoice
+
+    config CAMERA_MIT245_CUSTOMIZED_IPA_JSON_CONFIGURATION_FILE_PATH
+        string "Custom IPA configuration file path"
+        depends on CAMERA_MIT245_CUSTOMIZED_IPA_JSON_CONFIGURATION_FILE
+        help
+            Path relative to the project root.
+endif
