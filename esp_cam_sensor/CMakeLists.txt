@@ -1,4 +1,4 @@
-set(srcs "src/esp_cam_sensor.c" "src/esp_cam_sensor_xclk.c" "src/esp_cam_motor.c" "src/esp_cam_sensor_detect.c" "src/esp_cam_motor_detect.c")
+set(srcs "src/esp_cam_sensor.c" "src/esp_cam_sensor_xclk.c" "src/esp_cam_motor.c" "src/esp_cam_sensor_detect.c" "src/esp_cam_motor_detect.c" "src/esp_cam_ircut_detect.c" "src/esp_cam_ircut.c")
 
 if(CONFIG_CAMERA_SENSOR_MOTOR_DETECT_METHOD_DYNAMIC_LINK)
     set(ldfragments "linker.lf")
@@ -252,6 +252,11 @@ if(CONFIG_CAM_MOTOR_DW9714)
     list(APPEND srcs "motors/dw9714/dw9714.c")
     list(APPEND include_dirs "motors/dw9714/include")
     list(APPEND priv_include_dirs "motors/dw9714/private_include")
+endif()
+
+if(CONFIG_CAM_IRCUT_AP1511B)
+    list(APPEND srcs "ircuts/ap1511b/ap1511b.c")
+    list(APPEND include_dirs "ircuts/ap1511b/include")
 endif()
 
 if(CONFIG_CAMERA_PIVARIETY)

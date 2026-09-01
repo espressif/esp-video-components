@@ -12,6 +12,7 @@
 #include "esp_sccb_intf.h"
 #include "esp_sccb_i2c.h"
 #include "esp_cam_sensor.h"
+#include "esp_cam_ircut.h"
 
 #include "unity.h"
 #include "unity_test_utils.h"
@@ -135,12 +136,16 @@
 #define SCCB0_CAM_DEVICE_ADDR 0x01
 #endif
 
+#if CONFIG_CAM_IRCUT_AP1511B
+#include "ap1511b.h"
+#endif
+
 /* SCCB */
 #define SCCB0_SCL             CONFIG_SCCB0_SCL
 #define SCCB0_SDA             CONFIG_SCCB0_SDA
 #define SCCB0_FREQ_HZ         CONFIG_SCCB0_FREQUENCY
 #define SCCB0_PORT_NUM        I2C_NUM_0
-
+#define IRCUT_GPIO_FBC        14
 #define TEST_MEMORY_LEAK_THRESHOLD (-100)
 
 static size_t before_free_8bit;
@@ -279,6 +284,24 @@ TEST_CASE("Camera sensor detect test", "[video]")
     TEST_ESP_OK(esp_sccb_del_i2c_io(sccb_io));
 
     TEST_ESP_OK(i2c_del_master_bus(bus_handle));
+}
+
+TEST_CASE("Camera ircut detect test", "[video]")
+{
+    esp_cam_ircut_config_t ircut_config = {
+        .gpio_pwdn = -1,
+        .gpio_fbc = -1,
+        .gpio_en = -1,
+        .platform_data = NULL,
+    };
+    esp_cam_ircut_device_t *ircut = NULL;
+#if CONFIG_CAM_IRCUT_AP1511B
+    ircut_config.gpio_fbc = IRCUT_GPIO_FBC;
+    ircut = ap1511b_detect(&ircut_config);
+#endif
+
+    TEST_ASSERT_MESSAGE(ircut != NULL, "detect fail");
+    TEST_ESP_OK(esp_cam_ircut_del_dev(ircut));
 }
 
 void app_main(void)
