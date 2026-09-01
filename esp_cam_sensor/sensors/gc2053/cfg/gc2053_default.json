@@ -1,0 +1,512 @@
+{
+    "version": 1,
+    "GC2053":
+    {
+        "ext":
+        {
+            "hue": 0,
+            "brightness": 0,
+            "stats_region":
+            {
+                "left": 0,
+                "top": 0,
+                "width": 1919,
+                "height": 1079
+            }
+        },
+        "ian":
+        {
+            "luma":
+            {
+                "ae":
+                {
+                    "weight":
+                    [
+                        1, 1, 1, 1, 1,
+                        1, 1, 1, 1, 1,
+                        1, 1, 1, 1, 1,
+                        1, 1, 1, 1, 1,
+                        1, 1, 1, 1, 1
+                    ]
+                },
+                "env":
+                {
+                    "k": 60100,
+                    "speed_param":
+                    [
+                        -0.005463, -0.010018, 0.000000, 0.033241, 0.085583, 0.136704,  0.160734,  0.148777,
+                         0.148777,  0.160734, 0.136704, 0.085583, 0.033241, 0.000000, -0.010018, -0.005463
+                    ],
+                    "weight":
+                    [
+                        1, 1, 1, 1, 1,
+                        1, 1, 1, 1, 1,
+                        1, 1, 1, 1, 1,
+                        1, 1, 1, 1, 1,
+                        1, 1, 1, 1, 1
+                    ]
+                }
+            }
+        },
+        "awb":
+        {
+            "model": 2,
+            "min_red_gain_step": 0.05,
+            "min_blue_gain_step": 0.05,
+            "min_counted": 10,
+            "range":
+            {
+                "green": { "max": 208, "min": 18 },
+                "rg":    { "max": 0.97, "min": 0.32 },
+                "bg":    { "max": 0.80, "min": 0.22 }
+            },
+            "green_luma_env": "dummy_awb_luma",
+            "green_luma_init": 180,
+            "green_luma_step_ratio": 0.3,
+            "new_w": 0.3,
+            "prev_w": 0.7,
+            "red_gain_scale": 1.1,
+            "blue_gain_scale": 1.1,
+            "export_ct": true,
+            "outlier_rg": 0.08,
+            "outlier_bg": 0.08,
+            "type_counter_max": 2000,
+            "zones":
+            [
+                { "type": "uhct",  "rg": {"min": 0.30, "max": 0.52}, "bg": {"min": 0.57, "max": 0.80}, "enabled": true },
+                { "type": "hct",   "rg": {"min": 0.48, "max": 0.62}, "bg": {"min": 0.50, "max": 0.62}, "enabled": true },
+                { "type": "mct",   "rg": {"min": 0.59, "max": 0.73}, "bg": {"min": 0.42, "max": 0.53}, "enabled": true },
+                { "type": "lct",   "rg": {"min": 0.68, "max": 0.90}, "bg": {"min": 0.28, "max": 0.46}, "enabled": true },
+                { "type": "ulct",  "rg": {"min": 0.88, "max": 1.05}, "bg": {"min": 0.27, "max": 0.37}, "enabled": true }
+            ],
+            "ref_points":
+            [
+                { "ct": 2856, "rg": 0.9928, "bg": 0.3137, "radius": 0.03 },
+                { "ct": 3000, "rg": 0.9544, "bg": 0.3082, "radius": 0.03 },
+                { "ct": 3500, "rg": 0.8259, "bg": 0.3471, "radius": 0.03 },
+                { "ct": 4100, "rg": 0.7599, "bg": 0.4018, "radius": 0.03 },
+                { "ct": 5000, "rg": 0.6672, "bg": 0.4740, "radius": 0.03 },
+                { "ct": 6500, "rg": 0.5623, "bg": 0.5548, "radius": 0.03 }
+            ]
+        },
+        "agc":
+        {
+            "exposure":
+            {
+                "frame_delay": 3,
+                "adjust_delay": 0
+            },
+            "gain":
+            {
+                "min_step": 0.03,
+                "frame_delay": 3
+            },
+            "anti_flicker":
+            {
+                "mode": "none",
+                "ac_freq": 50
+            },
+            "f_n0": 0.32,
+            "f_m0": 0.42,
+            "luma_adjust":
+            {
+                "target_low": 48,
+                "target_high": 55,
+                "target": 52,
+                "low_threshold": 14,
+                "low_regions": 5,
+                "high_threshold": 228,
+                "high_regions": 3,
+                "weight":
+                [
+                    1, 1, 1, 1, 1,
+                    1, 2, 2, 2, 1,
+                    1, 2, 2, 2, 1,
+                    1, 2, 2, 2, 1,
+                    1, 1, 1, 1, 1
+                ]
+            },
+            "mode": "high_light_priority",
+            "high_light_priority":
+            {
+                "low_threshold": 109,
+                "high_threshold": 220,
+                "weight_offset": 5,
+                "luma_offset": -3
+            },
+            "low_light_priority":
+            {
+                "low_threshold": 44,
+                "high_threshold": 53,
+                "weight_offset": 5,
+                "luma_offset": 1
+            },
+            "light_threshold_priority_use_env_luma": true,
+            "light_threshold_priority":
+            [
+              {
+                "env_luma_threshold": 1,
+                "weight_offset": 0
+              }
+            ],
+            "luma_pwl":
+            {
+                "enable": true,
+                "table":
+                [
+                    {
+                        "env_luma": 10,
+                        "luma_shift": -30
+                    },
+                    {
+                        "env_luma": 50,
+                        "luma_shift": -20
+                    },
+                    {
+                        "env_luma": 100,
+                        "luma_shift": 0
+                    },
+                    {
+                        "env_luma": 2000,
+                        "luma_shift": 0
+                    },
+                    {
+                        "env_luma": 5000,
+                        "luma_shift": 5
+                    },
+                    {
+                        "env_luma": 10000,
+                        "luma_shift": 5
+                    },
+                    {
+                        "env_luma": 12000,
+                        "luma_shift": 0
+                    }
+                ]
+            }
+        },
+        "acc":
+        {
+            "blc": {
+                "model": 0,
+                "stretch": false,
+                "blc_table": [
+                    {
+                        "gain": 1,
+                        "blc_param": {
+                            "blc_top_left": 16,
+                            "blc_top_right": 16,
+                            "blc_bottom_left": 16,
+                            "blc_bottom_right": 16
+                        }
+                    }
+                ]
+            },
+            "saturation":
+            [
+                {
+                    "color_temp": 0,
+                    "value": 128
+                }
+            ],
+            "ccm": {
+                "low_luma":
+                {
+                    "luma_env": "ae.luma.avg",
+                    "threshold": 28,
+                    "matrix":
+                    [
+                        1.00,  0.00, 0.00,
+                        0.00,    1.00,  0.00,
+                        0.00,  0.00,  1.00
+                    ]
+                },
+                "table": [
+                  {
+                    "color_temp": 2856,
+                    "matrix": [
+                      1.5436, -0.5443, 0.0006,
+                      -0.7214, 2.1316, -0.4101,
+                      -0.0402, -1.2778, 2.3180
+                    ]
+                  },
+                  {
+                    "color_temp": 3000,
+                    "matrix": [
+                      1.5760, -0.5765, 0.0005,
+                      -0.7053, 1.9800, -0.2748,
+                      0.0002, -1.0618, 2.0616
+                    ]
+                  },
+                  {
+                    "color_temp": 3500,
+                    "matrix": [
+                      1.5489, -0.3175, -0.2314,
+                      -0.5288, 1.7166, -0.1878,
+                      -0.0184, -0.8163, 1.8347
+                    ]
+                  },
+                  {
+                    "color_temp": 4000,
+                    "matrix": [
+                      1.5247, -0.2541, -0.2707,
+                      -0.4902, 1.7467, -0.2566,
+                      -0.0302, -0.6463, 1.6765
+                    ]
+                  },
+                  {
+                    "color_temp": 5000,
+                    "matrix": [
+                      1.6470, -0.5602, -0.0868,
+                      -0.3920, 1.6996, -0.3076,
+                      0.0000, -0.7374, 1.7374
+                    ]
+                  },
+                  {
+                    "color_temp": 6500,
+                    "matrix": [
+                      1.4624, -0.1647, -0.2977,
+                      -0.3544, 1.6755, -0.3211,
+                      -0.0224, -0.6097, 1.6321
+                    ]
+                  }
+                ],
+                "gain_lut": {
+                  "enable": true,
+                  "table": [
+                      { "gain": 1.0,  "strength": 0.5 },
+                      { "gain": 1.2,  "strength": 0.4 },
+                      { "gain": 1.6,  "strength": 0.3 },
+                      { "gain": 2.0,  "strength": 0.0 }
+                  ]
+              }
+            }
+        },
+        "adn": {
+            "bf":
+            [
+                {
+                    "gain": 1,
+                    "param": {
+                        "level": 3,
+                        "matrix":
+                        [
+                            2, 4, 2,
+                            4, 5, 4,
+                            2, 4, 2
+                        ]
+                    }
+                },
+                {
+                    "gain": 4,
+                    "param": {
+                        "level": 3,
+                        "matrix":
+                        [
+                            1, 3, 1,
+                            3, 5, 3,
+                            1, 3, 1
+                        ]
+                    }
+                },
+                {
+                    "gain": 8,
+                    "param": {
+                        "level": 4,
+                        "matrix":
+                        [
+                            1, 3, 1,
+                            3, 4, 3,
+                            1, 3, 1
+                        ]
+                    }
+                },
+                {
+                    "gain": 16,
+                    "param": {
+                        "level": 5,
+                        "matrix":
+                        [
+                            1, 3, 1,
+                            3, 5, 3,
+                            1, 3, 1
+                        ]
+                    }
+                },
+                {
+                    "gain": 24,
+                    "param": {
+                        "level": 6,
+                        "matrix":
+                        [
+                            1, 2, 1,
+                            2, 3, 2,
+                            1, 2, 1
+                        ]
+                    }
+                },
+                {
+                    "gain": 32,
+                    "param": {
+                        "level": 7,
+                        "matrix":
+                        [
+                            1, 2, 1,
+                            2, 4, 2,
+                            1, 2, 1
+                        ]
+                    }
+                },
+                {
+                    "gain": 64,
+                    "param": {
+                        "level": 7,
+                        "matrix":
+                        [
+                            1, 2, 1,
+                            2, 2, 2,
+                            1, 2, 1
+                        ]
+                    }
+                }
+            ],
+            "demosaic":
+            [
+                {
+                    "gain": 1,
+                    "gradient_ratio": 1.5
+                },
+                {
+                    "gain": 4,
+                    "gradient_ratio": 1.25
+                },
+                {
+                    "gain": 8,
+                    "gradient_ratio": 1.05
+                },
+                {
+                    "gain": 12,
+                    "gradient_ratio": 1.0
+                }
+            ]
+        },
+        "aen":
+        {
+            "gamma":
+            {
+                "use_gamma_param": true,
+                "luma_env": "env.luma.avg",
+                "luma_min_step": 3.0,
+                "table":
+                [
+                    {
+                        "luma": 30.1,
+                        "gamma_param": 0.51,
+                        "y": 
+                        [
+                            0, 19, 35, 65, 107, 138, 160, 178, 192, 204, 213, 221, 228, 240, 248, 255
+                        ]
+                    },
+                    {
+                        "luma": 90.1,
+                        "gamma_param": 0.585,
+                        "y":
+                        [
+                            0, 18, 36, 55, 97, 128, 142, 168, 189, 200, 210, 220, 228, 240, 248, 255
+                        ]
+                    },
+                    {
+                        "luma": 360.1,
+                        "gamma_param": 0.605,
+                        "y":
+                        [
+                            0, 18, 36, 55, 97, 128, 142, 168, 189, 200, 210, 220, 228, 240, 248, 255
+                        ]
+                    }
+                ]
+            },        
+            "sharpen":
+            [
+                {
+                    "gain": 1,
+                    "param": {
+                        "h_thresh": 25,
+                        "l_thresh": 5,
+                        "h_coeff": 1.925,
+                        "m_coeff": 1.825,
+                        "matrix":
+                        [
+                            1, 2, 1,
+                            2, 2, 2,
+                            1, 2, 1
+                        ]
+                    }
+                },
+                {
+                    "gain": 8,
+                    "param": {
+                        "h_thresh": 20,
+                        "l_thresh": 5,
+                        "h_coeff": 1.825,
+                        "m_coeff": 1.425,
+                        "matrix":
+                        [
+                            2, 2, 2,
+                            2, 1, 2,
+                            2, 2, 2
+                        ]
+                    }
+                },
+                {
+                    "gain": 12,
+                    "param": {
+                        "h_thresh": 16,
+                        "l_thresh": 6,
+                        "h_coeff": 1.625,
+                        "m_coeff": 1.325,
+                        "matrix":
+                        [
+                            1, 1, 1,
+                            1, 1, 1,
+                            1, 1, 1
+                        ]
+                    }
+                },
+                {
+                    "gain": 65,
+                    "param": {
+                        "h_thresh": 20,
+                        "l_thresh": 5,
+                        "h_coeff": 1.625,
+                        "m_coeff": 1.225,
+                        "matrix":
+                        [
+                            1, 1, 1,
+                            1, 1, 1,
+                            1, 1, 1
+                        ]
+                    }
+                }
+            ],
+            "contrast":
+            [
+                {
+                    "gain": 1,
+                    "value": 132
+                },
+                {
+                    "gain": 16,
+                    "value": 130
+                },
+                {
+                    "gain": 24,
+                    "value": 128
+                },
+                {
+                    "gain": 65,
+                    "value": 126
+                }
+            ]
+        }
+    }
+}
