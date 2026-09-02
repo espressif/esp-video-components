@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2025 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2025-2026 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -512,9 +512,9 @@ static esp_err_t ov5640_power_on(esp_cam_sensor_device_t *dev)
 
         // carefully, logic is inverted compared to reset pin
         gpio_set_level(dev->pwdn_pin, 1);
-        delay_ms(10);
+        delay_ms(5);
         gpio_set_level(dev->pwdn_pin, 0);
-        delay_ms(10);
+        delay_ms(1);
     }
 
     if (dev->reset_pin >= 0) {
@@ -524,10 +524,11 @@ static esp_err_t ov5640_power_on(esp_cam_sensor_device_t *dev)
         ret = gpio_config(&conf);
 
         gpio_set_level(dev->reset_pin, 0);
-        delay_ms(10);
+        delay_ms(1);
         gpio_set_level(dev->reset_pin, 1);
-        delay_ms(10);
     }
+
+    esp_rom_delay_us(CONFIG_CAMERA_OV5640_POWER_ON_DELAY_US);
 
     return ret;
 }
@@ -541,15 +542,11 @@ static esp_err_t ov5640_power_off(esp_cam_sensor_device_t *dev)
     }
 
     if (dev->pwdn_pin >= 0) {
-        gpio_set_level(dev->pwdn_pin, 0);
-        delay_ms(10);
         gpio_set_level(dev->pwdn_pin, 1);
-        delay_ms(10);
+        delay_ms(5);
     }
 
     if (dev->reset_pin >= 0) {
-        gpio_set_level(dev->reset_pin, 1);
-        delay_ms(10);
         gpio_set_level(dev->reset_pin, 0);
         delay_ms(10);
     }

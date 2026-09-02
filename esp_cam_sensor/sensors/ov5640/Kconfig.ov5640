@@ -9,6 +9,7 @@ if CAMERA_OV5640
     menu "Auto detect OV5640"
         config CAMERA_OV5640_AUTO_DETECT_DVP_INTERFACE_SENSOR
             bool "Detect for DVP interface sensor"
+            default y if IDF_TARGET_ESP32S3
             default n
             depends on SOC_LCDCAM_CAM_SUPPORTED
             help
@@ -147,4 +148,13 @@ if CAMERA_OV5640
 
             Recommended: Keep enabled for reliable video capture unless specifically
             required to disable for compatibility with certain receivers.
+    
+    config CAMERA_OV5640_POWER_ON_DELAY_US
+        int "Power on delay (microseconds)"
+        range 1 20000
+        default 20000
+        help
+            After the Reset pin reaches a high level, there needs to be a delay before SCCB access can be performed. 
+            If precise delay control is required, you can provide a clock using the esp_xclk APIs at the application layer and directly manipulate the reset pin through the GPIO interface APIs.
+            Higher values increase initialization time but improve reliability.
 endif

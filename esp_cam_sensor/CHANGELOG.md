@@ -9,6 +9,7 @@
 - Added 720p bining mode support in OS04C10 driver.
 - Added gc2053 mipi driver.
 - Added TC358743 HDMI to MIPI-CSI bridge.
+- Add an option to control the delay when the OV5640 accesses the SCCB bus after power-on.
 
 ## 2.4.0
 - Added SC2331 MIPI RAW sensor driver.
