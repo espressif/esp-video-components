@@ -109,6 +109,18 @@ extern "C" {
 #define ESP_VIDEO_DVP_DEVICE_OUTPUT_COLOR 1 /*!< DVP video device supports output color type */
 #endif /* ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(6, 0, 0) */
 
+/**
+ * @brief DVP pixel format conversion (YUV422 YUYV to RGB565)
+ *
+ * @note Same IDF versions as DVP external XTAL: >= v5.5.1, or v5.4.x with x >= 3.
+ * @note Converted RGB565 is big-endian (``V4L2_PIX_FMT_RGB565X``), not little-endian (``V4L2_PIX_FMT_RGB565``).
+ * @note Conversion is supported only when the sensor output is YUV422 YUYV.
+ */
+#if (ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 5, 1)) || \
+    ((ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 4, 3)) && (ESP_IDF_VERSION < ESP_IDF_VERSION_VAL(5, 5, 0)))
+#define ESP_VIDEO_DVP_DEVICE_CONV_FORMAT 1 /*!< DVP video device supports convert frame format */
+#endif
+
 #ifdef __cplusplus
 }
 #endif
