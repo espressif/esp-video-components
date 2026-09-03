@@ -17,7 +17,7 @@ repos:
       - id: check-copyright
         args: ['--config', 'tools/ci/check_copyright_config.yaml']
 
-  - repo: https://github.com/igrr/astyle_py.git
+  - repo: https://github.com/espressif/astyle_py.git
     rev: v1.0.5
     hooks:
     -   id: astyle_py
