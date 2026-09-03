@@ -18,7 +18,15 @@ check_cam_sensor_detect:
 check_pre_commit:
   extends:
     - .pre_check_template
+  variables:
+    PRE_COMMIT_HOME: "$CI_PROJECT_DIR/.cache/pre-commit"
+  cache:
+    key: pre-commit-cache-v1
+    paths:
+      - .cache/pre-commit
+    policy: pull-push
   before_script:
+    - git config --global url."http://ci.espressif.cn:3000/".insteadOf "https://github.com/"
     - pip install pre-commit
   script:
     - |
@@ -44,7 +52,6 @@ check_pre_commit:
       fi
     - MODIFIED_FILES=$(echo $GIT_DIFF_OUTPUT | xargs)
     - echo "MODIFIED_FILES=$MODIFIED_FILES" >> pipeline.env
-    - pre-commit install --allow-missing-config -t pre-commit -t commit-msg
     - pre-commit run --files $MODIFIED_FILES
   artifacts:
     reports:
