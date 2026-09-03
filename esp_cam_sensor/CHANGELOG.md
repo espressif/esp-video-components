@@ -1,15 +1,15 @@
 # Changelog
 
-## Unreleased
+## 2.5.0
 
 - Added SC2337P MIPI RAW sensor driver.
-- Added BF3031 DVP Global color sensor.
-- Added SC132GS MIPI driver.
-- Modified the order of the camera sensors in the Kconfig and README.md files.
-- Added 720p bining mode support in OS04C10 driver.
-- Added gc2053 mipi driver.
-- Added TC358743 HDMI to MIPI-CSI bridge.
-- Add an option to control the delay when the OV5640 accesses the SCCB bus after power-on.
+- Added BF3031 DVP YUV sensor driver.
+- Added SC132GS MIPI RAW sensor driver.
+- Reordered camera sensors in Kconfig and README.md.
+- Added 720p binning mode support to the OS04C10 driver.
+- Added GC2053 MIPI RAW sensor driver.
+- Added TC358743 HDMI-to-MIPI-CSI bridge driver.
+- Added a Kconfig option to control the OV5640 SCCB access delay after power-on.
 
 ## 2.4.0
 - Added SC2331 MIPI RAW sensor driver.
