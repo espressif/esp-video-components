@@ -73,6 +73,7 @@ It is highly recommended that users use it in the [esp-video](https://github.com
 | model   | max resolution | input interface | output interface | output format                                                |
 | ------- | -------------- | ---------- | ---------- | ------------------------------------------------------------ |
 | LT6911  | 1920 x 1080    | HDMI-1.4 | MIPI | YCbCr422 |
+| TC358743| 1920 x 1080    | HDMI-1.4 | MIPI | RGB888<br/>YCbCr422 |
 
 - **Note 1**：Before using the LT6911, please burn the firmware from directory `esp_cam_sensor/sensors/lt6911/fw/LT6911D_v1_default.hex` to the LT6911 device.
 

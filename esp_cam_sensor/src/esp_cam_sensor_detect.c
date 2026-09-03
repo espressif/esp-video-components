@@ -120,6 +120,9 @@
 #if CONFIG_CAMERA_STI2250
 #include "sti2250.h"
 #endif
+#if CONFIG_CAMERA_TC358743
+#include "tc358743.h"
+#endif
 
 #define ESP_CAM_SENSOR_DETECT_ENTRY(f, i, j) \
     { .detect = __esp_cam_sensor_detect_fn_##f##_##i, .port = (i), .sccb_addr = (j) }
@@ -256,6 +259,9 @@ ESP_CAM_SENSOR_DETECT_DECLARE(sp0a39_detect, ESP_CAM_SENSOR_SPI);
 #if CONFIG_CAMERA_STI2250_AUTO_DETECT_MIPI_INTERFACE_SENSOR
 ESP_CAM_SENSOR_DETECT_DECLARE(sti2250_detect, ESP_CAM_SENSOR_MIPI_CSI);
 #endif
+#if CONFIG_CAMERA_TC358743_AUTO_DETECT_MIPI_INTERFACE_SENSOR
+ESP_CAM_SENSOR_DETECT_DECLARE(tc358743_detect, ESP_CAM_SENSOR_MIPI_CSI);
+#endif
 
 static const esp_cam_sensor_detect_fn_t __esp_cam_sensor_detect_fn_array_start[] = {
 #if CONFIG_CAMERA_ARDUCAM_IMX500_AUTO_DETECT_MIPI_INTERFACE_SENSOR
@@ -386,6 +392,9 @@ static const esp_cam_sensor_detect_fn_t __esp_cam_sensor_detect_fn_array_start[]
 #endif
 #if CONFIG_CAMERA_STI2250_AUTO_DETECT_MIPI_INTERFACE_SENSOR
     ESP_CAM_SENSOR_DETECT_ENTRY(sti2250_detect, ESP_CAM_SENSOR_MIPI_CSI, STI2250_SCCB_ADDR),
+#endif
+#if CONFIG_CAMERA_TC358743_AUTO_DETECT_MIPI_INTERFACE_SENSOR
+    ESP_CAM_SENSOR_DETECT_ENTRY(tc358743_detect, ESP_CAM_SENSOR_MIPI_CSI, TC358743_SCCB_ADDR),
 #endif
 };
 

@@ -1,0 +1,59 @@
+menuconfig CAMERA_TC358743
+    bool "TC358743"
+    default n
+    depends on SOC_MIPI_CSI_SUPPORTED
+    help
+        Enable support for the TC358743 HDMI To MIPI-CSI bridge sensor.
+
+if CAMERA_TC358743
+    menu "Auto detect TC358743"
+        config CAMERA_TC358743_AUTO_DETECT_MIPI_INTERFACE_SENSOR
+            bool "Detect for MIPI interface sensor"
+            default y
+            help
+                When enabled, the TC358743 sensor will be automatically detected
+                and initialized on the MIPI interface at startup without requiring
+                manual detection call(tc358743_detect) in your application.
+    endmenu
+    
+    menu "Choose supported formats for MIPI interface"
+        config CAMERA_TC358743_MIPI_RGB888_1920X1080_30FPS
+            bool "MIPI 2-lane, 27M input, 1920x1080 30fps, RGB888"
+            default y if IDF_TARGET_ESP32P4
+            default y
+            help
+                RGB888 color format at 1920x1080 resolution (1080p)
+                with 30fps framerate. Requires MIPI CSI-2 2-lane interface with 27MHz input clock.
+
+        config CAMERA_TC358743_MIPI_YUV422_1920X1080_30FPS
+            bool "MIPI 2-lane, 27M input, 1920x1080 30fps, YUV422"
+            default n
+            help
+                YUV422(UYVY) color format at 1920x1080 resolution (1080p)
+                with 30fps framerate. Requires MIPI CSI-2 2-lane interface with 27MHz input clock.
+    endmenu
+
+    choice CAMERA_TC358743_MIPI_DEFAULT_FMT
+        prompt "Select default output format for MIPI interface"
+        default CAMERA_TC358743_MIPI_DEFAULT_FMT_RGB888_1920X1080_30FPS
+        help
+            This is an internal choice that ensures only one format can be selected as default.
+            It is automatically controlled by the "Set as default format" options above.
+
+        config CAMERA_TC358743_MIPI_DEFAULT_FMT_RGB888_1920X1080_30FPS
+            bool "MIPI 2-lane, 27M input, 1920x1080 30fps, RGB888"
+            depends on CAMERA_TC358743_MIPI_RGB888_1920X1080_30FPS
+
+        config CAMERA_TC358743_MIPI_DEFAULT_FMT_YUV422_1920X1080_30FPS
+            bool "MIPI 2-lane, 27M input, 1920x1080 30fps, YUV422"
+            depends on CAMERA_TC358743_MIPI_YUV422_1920X1080_30FPS
+    endchoice # CAMERA_TC358743_MIPI_DEFAULT_FMT
+
+    config CAMERA_TC358743_MIPI_IF_FORMAT_INDEX_DEFAULT
+        int
+        default 0 if CAMERA_TC358743_MIPI_DEFAULT_FMT_RGB888_1920X1080_30FPS
+        default 1 if CAMERA_TC358743_MIPI_DEFAULT_FMT_YUV422_1920X1080_30FPS
+        help
+            Sets the default configuration for the MIPI interface.
+            Use query_support_formats() API to get more format options.
+endif
