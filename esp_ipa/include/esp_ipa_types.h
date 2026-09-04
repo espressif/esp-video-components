@@ -68,6 +68,7 @@ extern "C" {
 #define IPA_METADATA_FLAGS_FP       (1 << 18)   /*!< Meta data has focus position */
 #define IPA_METADATA_FLAGS_BLC      (1 << 19)   /*!< Meta data has BLC */
 #define IPA_METADATA_FLAGS_DPC      (1 << 20)   /*!< Meta data has DPC */
+#define IPA_METADATA_FLAGS_IR       (1 << 21)   /*!< Meta data has IR mode */
 
 
 #define IPA_GAMMA_FLAGS_RED         (1 << 0)   /*!< GAMMA red channel needs to update */
@@ -123,6 +124,13 @@ typedef enum esp_ipa_af_model {
 typedef enum esp_ipa_atc_model {
     ESP_IPA_ATC_MODEL_0 = 0,                     /*!< ATC data process model type 0 */
 } esp_ipa_atc_model_t;
+
+/**
+ * @brief IR data model type
+ */
+typedef enum esp_ipa_ir_model {
+    ESP_IPA_IR_MODEL_0 = 0,                     /*!< IR data process model type 0 */
+} esp_ipa_ir_model_t;
 
 /**
  * @brief GAMMA model type
@@ -197,6 +205,8 @@ typedef struct esp_ipa_sensor {
     uint32_t step_ae_target_level;          /*!< Step Sensor AE target level */
 
     esp_ipa_sensor_focus_t *focus_info;     /*!< Sensor focus information, if sensor does not support setting focus, set to NULL */
+
+    uint32_t cur_saturation;                /*!< Current saturation, used to restore after leaving IR mode */
 } esp_ipa_sensor_t;
 
 /**
@@ -443,6 +453,8 @@ typedef struct esp_ipa_metadata {
     uint32_t focus_pos;                     /*!< Focus position parameter */
 
     esp_ipa_dpc_t dpc;                      /*!< DPC dynamic correction parameters */
+
+    bool ir_enable;                         /*!< true: IR mode on; false: normal mode */
 } esp_ipa_metadata_t;
 
 /**
@@ -1087,6 +1099,41 @@ typedef struct esp_ipa_af_config {
 } esp_ipa_af_config_t;
 
 /**
+ * @brief IR day/night detect parameters for one working mode.
+ *
+ * Both environment luma and AWB G/R (`sum_g / sum_r`) are required.
+ * Bright only when luma > luma_threshold and G/R > awb_threshold;
+ * dark only when both are not greater than the thresholds.
+ * If either sample is missing or the two results disagree, this frame is skipped.
+ */
+typedef struct esp_ipa_ir_detect_config {
+    float luma_threshold;                       /*!< Environment luma threshold; bright when luma is greater */
+    float awb_threshold;                        /*!< AWB G/R threshold; bright when sum_g/sum_r is greater */
+    uint32_t hold_time_us;                      /*!< Consecutive detect duration in microseconds to switch mode */
+} esp_ipa_ir_detect_config_t;
+
+/**
+ * @brief IR algorithm configuration.
+ */
+typedef struct esp_ipa_ir_config {
+    esp_ipa_ir_model_t model;                   /*!< IR data model type */
+
+    const char *luma_env;                       /*!< Prefer this environment variable for luma; NULL to use AE statistics */
+    float k;                                    /*!< Env luma = ae_luma / (gain * exposure / k) */
+    uint8_t weight[ISP_AE_REGIONS];             /*!< AE region weights for environment luma */
+
+    float ir_factor;                            /*!< Multiply environment luma in IR mode */
+
+    uint32_t enter_delay_us;                    /*!< Idle time after entering IR mode, microseconds */
+    uint32_t exit_delay_us;                     /*!< Idle time after leaving IR mode, microseconds */
+
+    esp_ipa_ir_detect_config_t normal;          /*!< Detect parameters in normal mode */
+    esp_ipa_ir_detect_config_t ir_mode;         /*!< Detect parameters in IR mode */
+
+    bool enable_log;                            /*!< Enable IR algorithm log */
+} esp_ipa_ir_config_t;
+
+/**
  * @brief IPA initialize configuration
  */
 typedef struct esp_ipa_config {
@@ -1106,6 +1153,7 @@ typedef struct esp_ipa_config {
     const esp_ipa_af_config_t  *af;             /*!< Auto focus algorithm configuration */
     const esp_ipa_atc_config_t *atc;            /*!< Auto sensor AE target level control algorithm configuration */
     const esp_ipa_dpc_config_t *dpc;            /*!< Dead pixel correction algorithm configuration */
+    const esp_ipa_ir_config_t  *ir;             /*!< IR algorithm configuration */
 
     const esp_ipa_ext_config_t *ext;            /*!< Image extended configuration */
 } esp_ipa_config_t;

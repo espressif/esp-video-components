@@ -4,6 +4,7 @@
 - Added optional AWB model 2 `startup_zone` and `startup_hold_frames` to initialize gains and CT from a selected zone and hold startup WBG while AWB calculation continues; normal startup is preserved when omitted
 - Updated AWB model 2 reference counters with low white-point counts to reduce stale statistics that delay recovery after lens occlusion
 - Added support for the DPC (Defective Pixel Correction) control algorithm
+- Added day/night IR mode switching from environment luma and AWB G/R (both required and must agree), with hold time and enter/exit delay
 
 ## 2.4.0
 

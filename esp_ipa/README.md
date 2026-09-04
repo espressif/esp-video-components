@@ -14,6 +14,7 @@ Espressif image process algorithm component provides a suit of image process alg
 | Auto White Balance | Calculate red and blue channels' gain |
 | Image Analyze | Calculate image color temperature and luma |
 | Auto Sensor AE Target Control | This is added for the sensors supported AEG/AGC by themselves |
+| IR Control | Switch between normal and IR mode from environment luma and AWB G/R |
 
 ## 2. Pipeline Global Variable
 
@@ -1222,7 +1223,81 @@ Legacy single preset (still supported):
 
 ---
 
-#### 3.2.9 Extended Control
+#### 3.2.9 IR Control
+
+---
+
+```json
+"SC2336":
+{
+    "ir":
+    {
+        "normal": { "luma_threshold": 0.5, "awb_threshold": 1.0, "hold_time_us": 2000000 },
+        "ir_mode": { "luma_threshold": 0.8, "awb_threshold": 0.8, "hold_time_us": 3000000 }
+    }
+}
+```
+
+| Parameter | Type | Range | Description |
+|:-:|:-:|:-:|:-|
+| ir | Object | / | IR day/night switching configuration parameters |
+
+---
+
+```json
+"ir":
+{
+    "model": 0,
+    "luma_env": "env.luma.avg",
+    "k": 1000000,
+    "ir_factor": 10.0,
+    "enter_delay_us": 500000,
+    "exit_delay_us": 500000,
+    "weight":
+    [
+        1, 1, 1, 1, 1,
+        1, 1, 1, 1, 1,
+        1, 1, 1, 1, 1,
+        1, 1, 1, 1, 1,
+        1, 1, 1, 1, 1
+    ],
+    "normal":
+    {
+        "luma_threshold": 0.5,
+        "awb_threshold": 1.0,
+        "hold_time_us": 2000000
+    },
+    "ir_mode":
+    {
+        "luma_threshold": 0.8,
+        "awb_threshold": 0.8,
+        "hold_time_us": 3000000
+    }
+}
+```
+
+| Parameter | Type | Range | Description |
+|:-:|:-:|:-:|:-|
+| model | Integer | {0} | IR data process model |
+| luma_env | String | / | Prefer this pipeline variable for environment luma; omit to compute from AE statistics, gain and exposure |
+| k | Float | != 0 | Environment luma scale: `ae_luma / (gain * exposure / k)` |
+| ir_factor | Float | / | Multiply environment luma in IR mode before threshold compare |
+| enter_delay_us | Integer | >=0 | Idle time after entering IR mode, microseconds |
+| exit_delay_us | Integer | >=0 | Idle time after leaving IR mode, microseconds |
+| weight | Array | 25 | AE region weights for environment luma |
+| normal | Object | / | Detect parameters in normal mode |
+| ir_mode | Object | / | Detect parameters in IR mode |
+| luma_threshold | Float | / | Bright when environment luma is greater than this value |
+| awb_threshold | Float | / | Bright when AWB `sum_g / sum_r` is greater than this value |
+| hold_time_us | Integer | >=0 | Consecutive-detect duration (`esp_timer`) to switch mode; `normal` uses dark, `ir_mode` uses bright |
+
+Each frame needs both luma and AWB G/R. Bright only when both exceed the thresholds; dark only when both do not. Missing samples or disagreed results skip the frame. Normal mode turns IR on when every valid frame is dark for `normal.hold_time_us`. IR mode turns IR off when every valid frame is bright for `ir_mode.hold_time_us`. Switching publishes `metadata.ir_enable` (`IPA_METADATA_FLAGS_IR`) and pipeline variable `ir.enable`.
+
+**Note**: The IR module should be put the last node of the Json configuration file. 
+
+---
+
+#### 3.2.10 Extended Control
 
 ---
 

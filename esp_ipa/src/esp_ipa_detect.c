@@ -45,6 +45,9 @@ ESP_IPA_DETECT_DECLARE(esp_ipa_af);
 #if CONFIG_ESP_IPA_DPC_ALGORITHM
 ESP_IPA_DETECT_DECLARE(esp_ipa_dpc);
 #endif
+#if CONFIG_ESP_IPA_IR_ALGORITHM
+ESP_IPA_DETECT_DECLARE(esp_ipa_ir);
+#endif
 
 static const esp_ipa_detect_t __esp_ipa_detect_array_start[] = {
 #if CONFIG_ESP_IPA_IAN_ALGORITHM
@@ -76,6 +79,9 @@ static const esp_ipa_detect_t __esp_ipa_detect_array_start[] = {
 #endif
 #if CONFIG_ESP_IPA_DPC_ALGORITHM
     ESP_IPA_DETECT_ENTRY(esp_ipa_dpc, "esp_ipa_dpc"),
+#endif
+#if CONFIG_ESP_IPA_IR_ALGORITHM
+    ESP_IPA_DETECT_ENTRY(esp_ipa_ir, "esp_ipa_ir"),
 #endif
 };
 

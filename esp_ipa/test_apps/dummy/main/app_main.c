@@ -5,6 +5,7 @@
  */
 
 #include <string.h>
+#include <unistd.h>
 #include "esp_log.h"
 #include "esp_timer.h"
 #include "unity.h"
@@ -2599,6 +2600,207 @@ TEST_CASE("Auto sensor target control test", "[IPA]")
         TEST_ESP_OK(esp_ipa_pipeline_process(handle, &stats, &s_esp_ipa_sensor, &metadata));
         TEST_ASSERT_EQUAL_HEX32(0, metadata.flags & IPA_METADATA_FLAGS_AETL);
     }
+
+    TEST_ESP_OK(esp_ipa_pipeline_destroy(handle));
+}
+
+TEST_CASE("IR day/night switch", "[IPA][IR]")
+{
+    const esp_ipa_config_t *base = esp_ipa_pipeline_get_config(IPA_TARGET_NAME);
+    static esp_ipa_config_t cfg;
+    static esp_ipa_ir_config_t ir;
+    esp_ipa_pipeline_handle_t handle = NULL;
+    esp_ipa_metadata_t metadata = {0};
+    esp_ipa_stats_t stats = {0};
+    esp_ipa_sensor_t sensor = s_esp_ipa_sensor;
+
+    TEST_ASSERT_NOT_NULL(base);
+    TEST_ASSERT_NOT_NULL(base->ir);
+
+    memcpy(&cfg, base, sizeof(cfg));
+    memcpy(&ir, base->ir, sizeof(ir));
+    ir.luma_env = "ir_env_luma";
+    ir.ir_factor = 1.0f;
+    ir.enter_delay_us = 0;
+    ir.exit_delay_us = 0;
+    ir.normal.luma_threshold = 50.0f;
+    ir.normal.awb_threshold = 100.0f;
+    ir.normal.hold_time_us = 0;
+    ir.ir_mode.luma_threshold = 50.0f;
+    ir.ir_mode.awb_threshold = 100.0f;
+    ir.ir_mode.hold_time_us = 0;
+    cfg.ir = &ir;
+
+    TEST_ESP_OK(esp_ipa_pipeline_create(&cfg, &handle));
+    TEST_ESP_OK(esp_ipa_pipeline_init(handle, &sensor, &metadata));
+    TEST_ASSERT_EQUAL_HEX32(IPA_METADATA_FLAGS_IR, metadata.flags & IPA_METADATA_FLAGS_IR);
+    TEST_ASSERT_FALSE(metadata.ir_enable);
+    TEST_ASSERT_EQUAL_INT32(0, esp_ipa_get_int32(handle->ipa_array[0], "ir.enable"));
+
+    stats.flags = IPA_STATS_FLAGS_AWB;
+    stats.awb_stats[0].sum_b = 1000;
+    stats.awb_stats[0].counted = 100;
+
+    /* Both luma and AWB G/R dark: enter IR on the first frame when hold_time_us is 0 */
+    metadata.flags = 0;
+    stats.awb_stats[0].sum_g = 500;
+    stats.awb_stats[0].sum_r = 2000;
+    esp_ipa_set_float(handle->ipa_array[0], "ir_env_luma", 10.0f);
+    TEST_ESP_OK(esp_ipa_pipeline_process(handle, &stats, &sensor, &metadata));
+    TEST_ASSERT_EQUAL_HEX32(IPA_METADATA_FLAGS_IR, metadata.flags & IPA_METADATA_FLAGS_IR);
+    TEST_ASSERT_TRUE(metadata.ir_enable);
+    TEST_ASSERT_EQUAL_INT32(1, esp_ipa_get_int32(handle->ipa_array[0], "ir.enable"));
+
+    /* Both luma and AWB G/R bright: leave IR on the next frame (enter_delay_us is 0) */
+    metadata.flags = 0;
+    stats.awb_stats[0].sum_g = 200000;
+    stats.awb_stats[0].sum_r = 1000;
+    esp_ipa_set_float(handle->ipa_array[0], "ir_env_luma", 80.0f);
+    TEST_ESP_OK(esp_ipa_pipeline_process(handle, &stats, &sensor, &metadata));
+    TEST_ASSERT_EQUAL_HEX32(IPA_METADATA_FLAGS_IR, metadata.flags & IPA_METADATA_FLAGS_IR);
+    TEST_ASSERT_FALSE(metadata.ir_enable);
+    TEST_ASSERT_EQUAL_INT32(0, esp_ipa_get_int32(handle->ipa_array[0], "ir.enable"));
+
+    /* After exit delay 0, both dark can enter IR again */
+    metadata.flags = 0;
+    stats.awb_stats[0].sum_g = 500;
+    stats.awb_stats[0].sum_r = 2000;
+    esp_ipa_set_float(handle->ipa_array[0], "ir_env_luma", 10.0f);
+    TEST_ESP_OK(esp_ipa_pipeline_process(handle, &stats, &sensor, &metadata));
+    TEST_ASSERT_TRUE(metadata.ir_enable);
+
+    TEST_ESP_OK(esp_ipa_pipeline_destroy(handle));
+}
+
+TEST_CASE("IR AWB G/R and enter delay", "[IPA][IR]")
+{
+    const esp_ipa_config_t *base = esp_ipa_pipeline_get_config(IPA_TARGET_NAME);
+    static esp_ipa_config_t cfg;
+    static esp_ipa_ir_config_t ir;
+    esp_ipa_pipeline_handle_t handle = NULL;
+    esp_ipa_metadata_t metadata = {0};
+    esp_ipa_stats_t stats = {0};
+    esp_ipa_sensor_t sensor = s_esp_ipa_sensor;
+
+    TEST_ASSERT_NOT_NULL(base);
+    TEST_ASSERT_NOT_NULL(base->ir);
+
+    memcpy(&cfg, base, sizeof(cfg));
+    memcpy(&ir, base->ir, sizeof(ir));
+    ir.luma_env = "ir_env_luma";
+    ir.ir_factor = 1.0f;
+    ir.enter_delay_us = 80000;
+    ir.exit_delay_us = 0;
+    ir.normal.luma_threshold = 50.0f;
+    ir.normal.awb_threshold = 1.0f;
+    ir.normal.hold_time_us = 0;
+    ir.ir_mode.luma_threshold = 50.0f;
+    ir.ir_mode.awb_threshold = 1.0f;
+    ir.ir_mode.hold_time_us = 0;
+    cfg.ir = &ir;
+
+    TEST_ESP_OK(esp_ipa_pipeline_create(&cfg, &handle));
+    TEST_ESP_OK(esp_ipa_pipeline_init(handle, &sensor, &metadata));
+
+    /* Missing AWB: skip and stay in normal mode */
+    stats.flags = 0;
+    esp_ipa_set_float(handle->ipa_array[0], "ir_env_luma", 10.0f);
+    metadata.flags = 0;
+    TEST_ESP_OK(esp_ipa_pipeline_process(handle, &stats, &sensor, &metadata));
+    TEST_ASSERT_EQUAL_HEX32(0, metadata.flags & IPA_METADATA_FLAGS_IR);
+    TEST_ASSERT_FALSE(metadata.ir_enable);
+
+    /* Luma is dark but AWB G/R is bright: disagreed, skip and stay in normal mode */
+    stats.flags = IPA_STATS_FLAGS_AWB;
+    stats.awb_stats[0].sum_g = 2000;
+    stats.awb_stats[0].sum_r = 1000;
+    stats.awb_stats[0].sum_b = 1000;
+    stats.awb_stats[0].counted = 100;
+    esp_ipa_set_float(handle->ipa_array[0], "ir_env_luma", 10.0f);
+    metadata.flags = 0;
+    TEST_ESP_OK(esp_ipa_pipeline_process(handle, &stats, &sensor, &metadata));
+    TEST_ASSERT_EQUAL_HEX32(0, metadata.flags & IPA_METADATA_FLAGS_IR);
+
+    /* Both luma and AWB G/R are dark: enter IR */
+    stats.awb_stats[0].sum_g = 500;
+    stats.awb_stats[0].sum_r = 2000;
+    metadata.flags = 0;
+    TEST_ESP_OK(esp_ipa_pipeline_process(handle, &stats, &sensor, &metadata));
+    TEST_ASSERT_TRUE(metadata.ir_enable);
+
+    /* During enter delay, bright scene is ignored */
+    stats.awb_stats[0].sum_g = 2000;
+    stats.awb_stats[0].sum_r = 1000;
+    esp_ipa_set_float(handle->ipa_array[0], "ir_env_luma", 80.0f);
+    metadata.flags = 0;
+    TEST_ESP_OK(esp_ipa_pipeline_process(handle, &stats, &sensor, &metadata));
+    TEST_ASSERT_EQUAL_HEX32(0, metadata.flags & IPA_METADATA_FLAGS_IR);
+
+    usleep(ir.enter_delay_us + 20000);
+
+    metadata.flags = 0;
+    TEST_ESP_OK(esp_ipa_pipeline_process(handle, &stats, &sensor, &metadata));
+    TEST_ASSERT_FALSE(metadata.ir_enable);
+
+    TEST_ESP_OK(esp_ipa_pipeline_destroy(handle));
+}
+
+TEST_CASE("IR environment luma from AE statistics", "[IPA][IR]")
+{
+    const esp_ipa_config_t *base = esp_ipa_pipeline_get_config(IPA_TARGET_NAME);
+    static esp_ipa_config_t cfg;
+    static esp_ipa_ir_config_t ir;
+    esp_ipa_pipeline_handle_t handle = NULL;
+    esp_ipa_metadata_t metadata = {0};
+    esp_ipa_stats_t stats = {0};
+    esp_ipa_sensor_t sensor = s_esp_ipa_sensor;
+
+    TEST_ASSERT_NOT_NULL(base);
+    TEST_ASSERT_NOT_NULL(base->ir);
+
+    memcpy(&cfg, base, sizeof(cfg));
+    memcpy(&ir, base->ir, sizeof(ir));
+    ir.luma_env = NULL;
+    ir.k = 1000.0f;
+    ir.ir_factor = 1.0f;
+    ir.enter_delay_us = 0;
+    ir.exit_delay_us = 0;
+    ir.normal.luma_threshold = 50.0f;
+    ir.normal.awb_threshold = 100.0f;
+    ir.normal.hold_time_us = 0;
+    ir.ir_mode.luma_threshold = 50.0f;
+    ir.ir_mode.awb_threshold = 100.0f;
+    ir.ir_mode.hold_time_us = 0;
+    cfg.ir = &ir;
+
+    sensor.cur_gain = 1.0f;
+    sensor.cur_exposure = 1000;
+
+    stats.flags = IPA_STATS_FLAGS_AE | IPA_STATS_FLAGS_AWB;
+    stats.awb_stats[0].sum_b = 1000;
+    stats.awb_stats[0].counted = 100;
+    for (int i = 0; i < ISP_AE_REGIONS; i++) {
+        stats.ae_stats[i].luminance = 10;
+    }
+
+    TEST_ESP_OK(esp_ipa_pipeline_create(&cfg, &handle));
+    TEST_ESP_OK(esp_ipa_pipeline_init(handle, &sensor, &metadata));
+
+    /* luma = 10 * k / (gain * exposure) = 10, AWB G/R dark */
+    stats.awb_stats[0].sum_g = 500;
+    stats.awb_stats[0].sum_r = 2000;
+    metadata.flags = 0;
+    TEST_ESP_OK(esp_ipa_pipeline_process(handle, &stats, &sensor, &metadata));
+    TEST_ASSERT_TRUE(metadata.ir_enable);
+
+    for (int i = 0; i < ISP_AE_REGIONS; i++) {
+        stats.ae_stats[i].luminance = 80;
+    }
+    stats.awb_stats[0].sum_g = 200000;
+    stats.awb_stats[0].sum_r = 1000;
+    metadata.flags = 0;
+    TEST_ESP_OK(esp_ipa_pipeline_process(handle, &stats, &sensor, &metadata));
+    TEST_ASSERT_FALSE(metadata.ir_enable);
 
     TEST_ESP_OK(esp_ipa_pipeline_destroy(handle));
 }

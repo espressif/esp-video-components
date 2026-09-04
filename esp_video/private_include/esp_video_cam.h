@@ -9,6 +9,7 @@
 #include "esp_video.h"
 #include "esp_cam_sensor_types.h"
 #include "esp_cam_motor_types.h"
+#include "esp_cam_ircut_types.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -17,6 +18,7 @@ extern "C" {
 typedef struct esp_video_cam {
     esp_cam_sensor_device_t *sensor;
     esp_cam_motor_device_t *motor;
+    esp_cam_ircut_device_t *ircut;
 } esp_video_cam_t;
 
 /**

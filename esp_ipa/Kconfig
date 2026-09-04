@@ -40,6 +40,10 @@ menu "Espressif Image Process Algorithm Configuration"
         bool "Dead Pixel Correction Algorithm"
         default y
 
+    config ESP_IPA_IR_ALGORITHM
+        bool "IR Algorithm"
+        default y
+
     config ESP_IPA_EXT_CONFIG
         bool "Extended Configuration"
         default y
