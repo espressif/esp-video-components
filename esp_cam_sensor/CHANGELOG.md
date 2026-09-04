@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+- Added a Kconfig option to control the SC101 SCCB access delay after power-on.
+- Removed the unused Reset pin in the SC101 driver.
+
 ## 2.5.0
 
 - Added SC2337P MIPI RAW sensor driver.

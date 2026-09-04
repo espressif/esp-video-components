@@ -105,4 +105,13 @@ if CAMERA_SC101IOT
         help
             Sets the default configuration for the DVP interface.
             Use query_support_formats() API to get more format options.
+
+    config CAMERA_SC101IOT_POWER_ON_DELAY_US
+        int "Power on delay (microseconds)"
+        range 12000 20000
+        default 12000
+        help
+            Delay before SCCB access can be performed after power-on.
+            If precise delay control is required, you can provide a clock using the esp_xclk APIs at the application layer.
+            Higher values increase initialization time but improve reliability.
 endif
