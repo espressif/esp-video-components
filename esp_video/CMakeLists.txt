@@ -84,7 +84,7 @@ if(CONFIG_IDF_TARGET_ESP32P4)
     endif()
 
     if(CONFIG_ESP_VIDEO_ENABLE_H264_VIDEO_DEVICE)
-        idf_component_optional_requires(PRIVATE "esp_h264")
+        idf_component_optional_requires(PRIVATE "esp_h264" "espressif__esp_h264")
     endif()
 
     if(CONFIG_ESP_VIDEO_ENABLE_BITSCRAMBLER)

@@ -3,8 +3,10 @@
 - Added functions to get IPA environment variables as int32_t or float
 - Added options to enable or disable MIPI-CSI event handling and configure the behavior for different targets
 - Added automatic transformation of YUV sensor data to the target YUV format
+- Added an option to use a customized esp_h264 version instead of the version defined in `esp_video/idf_component.yml`
 
 - Update to use esp_cam_sensor v2.5.x
+- Update to use esp_h264 v1.4.x
 
 - Disabled MIPI-CSI event handling by default in the example_video_common component
     - Some sensors or video transform modules do not support stopping and restarting the stream, so this feature cannot be enabled by default. Unexpected events may restart these components and prevent some users from receiving images.
