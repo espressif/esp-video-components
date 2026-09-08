@@ -280,7 +280,7 @@ menu "Example Video Initialization Configuration"
 
             config EXAMPLE_ENABLE_MIPI_CSI_EVENT
                 bool "Enable MIPI-CSI Error Event Handling"
-                default y
+                default n
                 help
                     Enable MIPI-CSI host error event handling in the example.
 
@@ -298,7 +298,7 @@ menu "Example Video Initialization Configuration"
             if EXAMPLE_ENABLE_MIPI_CSI_EVENT
                 config EXAMPLE_ENABLE_MIPI_CSI_ERROR_VIDEO_RESTART
                     bool "Restart Video Pipeline on MIPI-CSI Error"
-                    default y
+                    default n
                     help
                         Restart the MIPI-CSI video pipeline when a host error event is
                         received.
@@ -313,7 +313,7 @@ menu "Example Video Initialization Configuration"
                 if EXAMPLE_ENABLE_MIPI_CSI_ERROR_VIDEO_RESTART
                     config EXAMPLE_ENABLE_MIPI_CSI_ERROR_SENSOR_RESTART
                         bool "Restart Camera Sensor with Video Pipeline"
-                        default y
+                        default n
                         help
                             Also restart the camera sensor when recovering from a MIPI-CSI
                             error.
