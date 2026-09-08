@@ -4,6 +4,10 @@
 - Added options to enable or disable MIPI-CSI event handling and configure the behavior for different targets
 - Update to use esp_cam_sensor v2.5.x
 
+- Disabled MIPI-CSI event handling by default in the example_video_common component
+    - Some sensors or video transform modules do not support stopping and restarting the stream, so this feature cannot be enabled by default. Unexpected events may restart these components and prevent some users from receiving images.
+    - If you use MIPI-CSI event handling, please enable the related options manually or add them to sdkconfig.defaults
+
 ## 2.4.1
 
 - Fixed ISP driver compatibility when `ESP_VIDEO_DISABLE_ISP_ERROR_INTERRUPT` is enabled
