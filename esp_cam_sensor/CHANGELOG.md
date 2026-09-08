@@ -4,6 +4,7 @@
 
 - Added a Kconfig option to control the SC101 SCCB access delay after power-on.
 - Removed the unused Reset pin in the SC101 driver.
+- Add a column for notes to the list of supported camera sensors.
 
 ## 2.5.0
 
