@@ -35,13 +35,9 @@ extern "C" {
  * @note These flags are used to initialize the video hardware and software with specific flags.
  *       They can be combined using bitwise OR operation.
  *       For example, to initialize MIPI CSI and DVP video devices, you can use:
- *       ```c
  *       esp_video_init_with_flags(config, ESP_VIDEO_INIT_FLAGS_MIPI_CSI | ESP_VIDEO_INIT_FLAGS_DVP);
- *       ```
  *       To initialize all video devices, you can use:
- *       ```c
  *       esp_video_init_with_flags(config, ESP_VIDEO_INIT_FLAGS_ALL);
- *       ```
  */
 #define ESP_VIDEO_INIT_FLAGS_MIPI_CSI       (1 << 0)
 #define ESP_VIDEO_INIT_FLAGS_DVP            (1 << 1)
@@ -64,7 +60,7 @@ extern "C" {
 #if CONFIG_ESP_VIDEO_ENABLE_MIPI_CSI_VIDEO_DEVICE || \
     CONFIG_ESP_VIDEO_ENABLE_DVP_VIDEO_DEVICE || \
     CONFIG_ESP_VIDEO_ENABLE_SPI_VIDEO_DEVICE
-#define ESP_VIDEO_ENABLE_SCCB_DEVICE 1
+#define ESP_VIDEO_ENABLE_SCCB_DEVICE 1 /*!< SCCB I2C device initialization flag */
 #endif
 
 /**
@@ -79,7 +75,7 @@ typedef struct esp_video_init_sccb_config {
             uint8_t port;                       /*!< SCCB I2C port */
             gpio_num_t scl_pin;                 /*!< SCCB I2C SCL pin */
             gpio_num_t sda_pin;                 /*!< SCCB I2C SDA pin */
-        } i2c_config;
+        } i2c_config;                           /*!< SCCB I2C configuration */
 
         i2c_master_bus_handle_t i2c_handle;     /*!< SCCB I2C handle */
     };
@@ -157,7 +153,7 @@ typedef struct esp_video_init_spi_config {
         ledc_timer_t timer;                     /*!< The timer source of channel */
         ledc_clk_cfg_t clk_cfg;                 /*!< LEDC source clock from ledc_clk_cfg_t */
         ledc_channel_t channel;                 /*!< LEDC channel used for XCLK */
-    } xclk_ledc_cfg;
+    } xclk_ledc_cfg;                            /*!< LEDC configuration for XCLK */
 #endif
 } esp_video_init_spi_config_t;
 #endif /* CONFIG_ESP_VIDEO_ENABLE_SPI_VIDEO_DEVICE */
@@ -173,7 +169,7 @@ typedef struct esp_video_init_usb_uvc_config {
         uint32_t task_stack;                    /*!< USB UVC video device task stack size */
         uint8_t task_priority;                  /*!< USB UVC video device task priority */
         int task_affinity;                      /*!< USB UVC video device task affinity, -1 means no affinity */
-    } uvc;
+    } uvc;                                      /*!< USB UVC video device configuration */
 
     struct {
         bool init_usb_host_lib;                 /*!< Init USB Host Lib in esp_video */
@@ -182,7 +178,7 @@ typedef struct esp_video_init_usb_uvc_config {
         uint32_t task_stack;                    /*!< USB Host Lib task stack size */
         uint8_t task_priority;                  /*!< USB Host Lib task priority */
         int task_affinity;                      /*!< USB Host Lib task affinity, -1 means no affinity */
-    } usb;
+    } usb;                                      /*!< USB Host Lib configuration */
 } esp_video_init_usb_uvc_config_t;
 #endif /* CONFIG_ESP_VIDEO_ENABLE_USB_UVC_VIDEO_DEVICE */
 
@@ -264,6 +260,13 @@ typedef struct esp_video_init_config {
  *
  * @param config video hardware configuration
  * @param flags video device flags, which can be a combination of ESP_VIDEO_INIT_FLAGS_XXX
+ *
+ * @note These flags are used to initialize the video hardware and software with specific flags.
+ *       They can be combined using bitwise OR operation.
+ *       For example, to initialize MIPI CSI and DVP video devices, you can use:
+ *       esp_video_init_with_flags(config, ESP_VIDEO_INIT_FLAGS_MIPI_CSI | ESP_VIDEO_INIT_FLAGS_DVP);
+ *       To initialize all video devices, you can use:
+ *       esp_video_init_with_flags(config, ESP_VIDEO_INIT_FLAGS_ALL);
  *
  * @return
  *      - ESP_OK on success

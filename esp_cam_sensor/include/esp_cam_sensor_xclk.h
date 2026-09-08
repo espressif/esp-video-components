@@ -49,13 +49,13 @@ typedef struct esp_cam_sensor_xclk_config {
             ledc_channel_t channel;     ///< LEDC channel used for XCLK (0-7)
             uint32_t xclk_freq_hz;      ///< XCLK output frequency (Hz)
             gpio_num_t xclk_pin;        ///< the XCLK output gpio_num, if you want to use gpio16, xclk_pin = 16
-        } ledc_cfg;
+        } ledc_cfg;                     ///< LEDC configuration for XCLK
 #endif
 #if CONFIG_CAMERA_XCLK_USE_ESP_CLOCK_ROUTER
         struct {
             gpio_num_t xclk_pin;        ///< GPIO number to be mapped soc_root_clk signal source
             uint32_t xclk_freq_hz;      ///< XCLK output frequency (Hz)
-        } esp_clock_router_cfg;
+        } esp_clock_router_cfg;         ///< ESP Clock Router configuration for XCLK
 #endif
     };
 } esp_cam_sensor_xclk_config_t;

@@ -16,11 +16,11 @@ ESP-Video-Components 开发参考
 
 通过使用 ESP-Video-Components 中的组件，你可以高效地构建视觉应用。
 
-==================  ==================
-|快速入门|_           |相机传感器|_      
-------------------  ------------------
-`快速入门`_           `相机传感器`_      
-==================  ==================
+==================  ==================  ==========================================
+|快速入门|_           |相机传感器|_         |视频应用开发指南|_
+------------------  ------------------  ------------------------------------------
+`快速入门`_           `相机传感器`_         `视频应用开发指南`_
+==================  ==================  ==========================================
 
 .. |快速入门| image:: ../_static/get-started.png
 .. _快速入门: Get_Started/index.html
@@ -28,11 +28,15 @@ ESP-Video-Components 开发参考
 .. |相机传感器| image:: ../_static/sensors.png
 .. _相机传感器: ESP_Camera_Sensor/index.html
 
+.. |视频应用开发指南| image:: ../_static/esp_video.png
+.. _视频应用开发指南: ESP_Video/index.html
+
 .. toctree::
    :hidden:
 
    快速入门 <Get_Started/index>
    乐鑫相机外设开发与调试指南 <ESP_Camera_Sensor/index>
+   乐鑫视频应用开发指南 <ESP_Video/index>
    缩写词索引 <index_of_abbreviations>
    技术选型 <Technology_Selection>
    特别声明 <disclaimer>

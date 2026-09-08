@@ -1,0 +1,199 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1480" height="1020" viewBox="0 0 1480 1020" role="img" aria-label="ESP Video Components layered architecture">
+  <defs>
+    <style type="text/css"><![CDATA[
+      .title { font-family: DejaVu Sans, Noto Sans, Arial, Helvetica, sans-serif; font-size: 15px; font-weight: 700; fill: #111; }
+      .layer-label { font-family: DejaVu Sans, Noto Sans, Arial, Helvetica, sans-serif; font-size: 13px; font-weight: 700; fill: #222; }
+      .box-text { font-family: DejaVu Sans, Noto Sans, Arial, Helvetica, sans-serif; font-size: 12px; font-weight: 600; fill: #222; }
+      .box-text-sm { font-family: DejaVu Sans, Noto Sans, Arial, Helvetica, sans-serif; font-size: 11px; font-weight: 600; fill: #222; }
+      .path-text { font-family: DejaVu Sans Mono, Consolas, monospace; font-size: 10px; font-weight: 400; fill: #444; }
+      .section-title { font-family: DejaVu Sans, Noto Sans, Arial, Helvetica, sans-serif; font-size: 12px; font-weight: 700; fill: #222; }
+      .legend { font-family: DejaVu Sans, Noto Sans, Arial, Helvetica, sans-serif; font-size: 12px; font-weight: 400; fill: #333; }
+      .footer { font-family: DejaVu Sans, Noto Sans, Arial, Helvetica, sans-serif; font-size: 11px; font-weight: 400; fill: #666; }
+      .hdr { font-family: DejaVu Sans, Noto Sans, Arial, Helvetica, sans-serif; font-size: 16px; font-weight: 700; fill: #1a1a1a; }
+    ]]></style>
+  </defs>
+
+  <rect width="1480" height="1020" fill="#ffffff"/>
+
+  <!-- Legend -->
+  <g transform="translate(1188, 28)">
+    <rect x="0" y="0" width="16" height="16" rx="2" fill="#d0e8d0" stroke="#7a9a7a" stroke-width="1"/>
+    <text x="24" y="8" class="legend" dominant-baseline="central">Released Features</text>
+    <rect x="0" y="26" width="16" height="16" rx="2" fill="#f8f0c8" stroke="#c0b070" stroke-width="1"/>
+    <text x="24" y="34" class="legend" dominant-baseline="central">Platform Dependent</text>
+  </g>
+
+  <!-- Layer 1: Application & Tools -->
+  <g id="application-tools">
+    <rect x="40" y="20" width="1120" height="100" rx="10" fill="#ffffff" stroke="#333" stroke-width="1.5"/>
+    <text x="56" y="42" class="layer-label" dominant-baseline="central">Application &amp; Tools</text>
+    <!-- pills horizontally centered as a group in content area -->
+    <rect x="72" y="58" width="430" height="44" rx="10" fill="#b0d8f0" stroke="#6a98b0" stroke-width="1"/>
+    <text x="287" y="80" class="box-text" text-anchor="middle" dominant-baseline="central">Applications (V4L2 / WebRTC / ESP-DL / ...)</text>
+    <rect x="522" y="58" width="250" height="44" rx="10" fill="#d0e8d0" stroke="#7a9a7a" stroke-width="1"/>
+    <text x="647" y="80" class="box-text" text-anchor="middle" dominant-baseline="central">ISP Tuning Tool</text>
+    <rect x="792" y="58" width="300" height="44" rx="10" fill="#d0e8d0" stroke="#7a9a7a" stroke-width="1"/>
+    <text x="942" y="80" class="box-text" text-anchor="middle" dominant-baseline="central">v4l2-ctl / Examples</text>
+  </g>
+
+  <!-- Layer 2: ESP Video Framework -->
+  <g id="esp-video-framework">
+    <rect x="40" y="140" width="1400" height="300" rx="12" fill="#d0e8d0" stroke="#6a8a6a" stroke-width="1.5"/>
+    <path d="M40,160 v-8 a12,12 0 0 1 12,-12 h1376 a12,12 0 0 1 12,12 v8 z" fill="#b8d8b8"/>
+    <rect x="40" y="160" width="1400" height="20" fill="#b8d8b8"/>
+    <text x="740" y="160" class="hdr" text-anchor="middle" dominant-baseline="central">ESP Video Framework (esp_video)</text>
+
+    <rect x="60" y="196" width="1360" height="40" rx="8" fill="#ffffff" stroke="#888" stroke-width="1"/>
+    <text x="740" y="216" class="box-text" text-anchor="middle" dominant-baseline="central">
+      <tspan font-weight="700">VFS &#183; V4L2 API</tspan>
+      <tspan dx="18" font-weight="400">open / close / ioctl / mmap / QBUF / DQBUF / STREAMON</tspan>
+    </text>
+
+    <!-- Column 1 -->
+    <g transform="translate(60, 252)">
+      <rect x="0" y="0" width="420" height="172" rx="8" fill="#ffffff" stroke="#888" stroke-width="1"/>
+      <text x="210" y="22" class="section-title" text-anchor="middle" dominant-baseline="central">Video Buffer Controller</text>
+      <rect x="16" y="40" width="186" height="50" rx="6" fill="#f7faf7" stroke="#aaa" stroke-width="1"/>
+      <text x="109" y="65" class="box-text-sm" text-anchor="middle" dominant-baseline="central">MMAP</text>
+      <rect x="218" y="40" width="186" height="50" rx="6" fill="#f7faf7" stroke="#aaa" stroke-width="1"/>
+      <text x="311" y="65" class="box-text-sm" text-anchor="middle" dominant-baseline="central">USERPTR</text>
+      <rect x="16" y="106" width="186" height="50" rx="6" fill="#f7faf7" stroke="#aaa" stroke-width="1"/>
+      <text x="109" y="131" class="box-text-sm" text-anchor="middle" dominant-baseline="central">Multi-queue</text>
+      <rect x="218" y="106" width="186" height="50" rx="6" fill="#f7faf7" stroke="#aaa" stroke-width="1"/>
+      <text x="311" y="131" class="box-text-sm" text-anchor="middle" dominant-baseline="central">DQBUF Timeout</text>
+    </g>
+
+    <!-- Column 2 -->
+    <g transform="translate(500, 252)">
+      <rect x="0" y="0" width="480" height="172" rx="8" fill="#ffffff" stroke="#888" stroke-width="1"/>
+      <text x="240" y="22" class="section-title" text-anchor="middle" dominant-baseline="central">Video Core</text>
+      <rect x="14" y="40" width="144" height="50" rx="6" fill="#f7faf7" stroke="#aaa" stroke-width="1"/>
+      <text x="86" y="65" class="box-text-sm" text-anchor="middle" dominant-baseline="central">Device Mgmt</text>
+      <rect x="168" y="40" width="144" height="50" rx="6" fill="#f7faf7" stroke="#aaa" stroke-width="1"/>
+      <text x="240" y="65" class="box-text-sm" text-anchor="middle" dominant-baseline="central">Stream Control</text>
+      <rect x="322" y="40" width="144" height="50" rx="6" fill="#f7faf7" stroke="#aaa" stroke-width="1"/>
+      <text x="394" y="65" class="box-text-sm" text-anchor="middle" dominant-baseline="central">Format / Parm</text>
+      <rect x="14" y="106" width="144" height="50" rx="6" fill="#f7faf7" stroke="#aaa" stroke-width="1"/>
+      <text x="86" y="131" class="box-text-sm" text-anchor="middle" dominant-baseline="central">Ext Controls</text>
+      <rect x="168" y="106" width="144" height="50" rx="6" fill="#f7faf7" stroke="#aaa" stroke-width="1"/>
+      <text x="240" y="131" class="box-text-sm" text-anchor="middle" dominant-baseline="central">Event / Restart</text>
+      <rect x="322" y="106" width="144" height="50" rx="6" fill="#f7faf7" stroke="#aaa" stroke-width="1"/>
+      <text x="394" y="131" class="box-text-sm" text-anchor="middle" dominant-baseline="central">Owner Ref</text>
+    </g>
+
+    <!-- Column 3 -->
+    <g transform="translate(1000, 252)">
+      <rect x="0" y="0" width="400" height="172" rx="8" fill="#ffffff" stroke="#888" stroke-width="1"/>
+      <text x="200" y="22" class="section-title" text-anchor="middle" dominant-baseline="central">ISP Pipeline Ctrl</text>
+      <rect x="16" y="40" width="176" height="50" rx="6" fill="#f7faf7" stroke="#aaa" stroke-width="1"/>
+      <text x="104" y="65" class="box-text-sm" text-anchor="middle" dominant-baseline="central">3A</text>
+      <rect x="208" y="40" width="176" height="50" rx="6" fill="#f7faf7" stroke="#aaa" stroke-width="1"/>
+      <text x="296" y="65" class="box-text-sm" text-anchor="middle" dominant-baseline="central">LSC</text>
+      <rect x="16" y="106" width="176" height="50" rx="6" fill="#f7faf7" stroke="#aaa" stroke-width="1"/>
+      <text x="104" y="131" class="box-text-sm" text-anchor="middle" dominant-baseline="central">CCM</text>
+      <rect x="208" y="106" width="176" height="50" rx="6" fill="#f7faf7" stroke="#aaa" stroke-width="1"/>
+      <text x="296" y="131" class="box-text-sm" text-anchor="middle" dominant-baseline="central">Gamma</text>
+    </g>
+  </g>
+
+  <!-- Layer 3: Video Devices -->
+  <g id="video-devices">
+    <rect x="40" y="460" width="1400" height="130" rx="10" fill="#ffffff" stroke="#333" stroke-width="1.5"/>
+    <text x="56" y="480" class="layer-label" dominant-baseline="central">Video Devices</text>
+    <!-- Capture over boxes 0-3 center; M2M over boxes 4-7 center -->
+    <text x="394" y="502" class="section-title" text-anchor="middle" dominant-baseline="central">Capture</text>
+    <text x="1082" y="502" class="section-title" text-anchor="middle" dominant-baseline="central">M2M / Meta</text>
+
+    <rect x="56" y="516" width="160" height="56" rx="8" fill="#d0e8d0" stroke="#7a9a7a" stroke-width="1"/>
+    <text x="136" y="534" class="box-text-sm" text-anchor="middle" dominant-baseline="central">MIPI-CSI</text>
+    <text x="136" y="552" class="path-text" text-anchor="middle" dominant-baseline="central">/dev/video0</text>
+
+    <rect x="228" y="516" width="160" height="56" rx="8" fill="#d0e8d0" stroke="#7a9a7a" stroke-width="1"/>
+    <text x="308" y="534" class="box-text-sm" text-anchor="middle" dominant-baseline="central">DVP</text>
+    <text x="308" y="552" class="path-text" text-anchor="middle" dominant-baseline="central">/dev/video2</text>
+
+    <rect x="400" y="516" width="160" height="56" rx="8" fill="#d0e8d0" stroke="#7a9a7a" stroke-width="1"/>
+    <text x="480" y="534" class="box-text-sm" text-anchor="middle" dominant-baseline="central">SPI</text>
+    <text x="480" y="552" class="path-text" text-anchor="middle" dominant-baseline="central">/dev/video3~4</text>
+
+    <rect x="572" y="516" width="160" height="56" rx="8" fill="#d0e8d0" stroke="#7a9a7a" stroke-width="1"/>
+    <text x="652" y="534" class="box-text-sm" text-anchor="middle" dominant-baseline="central">USB UVC</text>
+    <text x="652" y="552" class="path-text" text-anchor="middle" dominant-baseline="central">/dev/video40~49</text>
+
+    <rect x="744" y="516" width="160" height="56" rx="8" fill="#d0e8d0" stroke="#7a9a7a" stroke-width="1"/>
+    <text x="824" y="534" class="box-text-sm" text-anchor="middle" dominant-baseline="central">JPEG Enc</text>
+    <text x="824" y="552" class="path-text" text-anchor="middle" dominant-baseline="central">/dev/video10</text>
+
+    <rect x="916" y="516" width="160" height="56" rx="8" fill="#f8f0c8" stroke="#c0b070" stroke-width="1"/>
+    <text x="996" y="534" class="box-text-sm" text-anchor="middle" dominant-baseline="central">H.264 Enc</text>
+    <text x="996" y="552" class="path-text" text-anchor="middle" dominant-baseline="central">/dev/video11</text>
+
+    <rect x="1088" y="516" width="160" height="56" rx="8" fill="#d0e8d0" stroke="#7a9a7a" stroke-width="1"/>
+    <text x="1168" y="534" class="box-text-sm" text-anchor="middle" dominant-baseline="central">JPEG Dec</text>
+    <text x="1168" y="552" class="path-text" text-anchor="middle" dominant-baseline="central">/dev/video12</text>
+
+    <rect x="1260" y="516" width="160" height="56" rx="8" fill="#d0e8d0" stroke="#7a9a7a" stroke-width="1"/>
+    <text x="1340" y="534" class="box-text-sm" text-anchor="middle" dominant-baseline="central">ISP Meta</text>
+    <text x="1340" y="552" class="path-text" text-anchor="middle" dominant-baseline="central">/dev/video20</text>
+  </g>
+
+  <!-- Layer 4: Device Components -->
+  <g id="device-components">
+    <rect x="40" y="610" width="1400" height="230" rx="10" fill="#ffffff" stroke="#333" stroke-width="1.5"/>
+    <text x="56" y="630" class="layer-label" dominant-baseline="central">Device Components</text>
+
+    <g transform="translate(56, 648)">
+      <rect x="0" y="0" width="330" height="172" rx="8" fill="#d0e8d0" stroke="#7a9a7a" stroke-width="1"/>
+      <text x="165" y="20" class="section-title" text-anchor="middle" dominant-baseline="central">esp_cam_sensor</text>
+      <rect x="14" y="38" width="302" height="28" rx="5" fill="#ffffff" stroke="#aaa" stroke-width="1"/>
+      <text x="165" y="52" class="box-text-sm" text-anchor="middle" dominant-baseline="central">MIPI / DVP / SPI Sensors</text>
+      <rect x="14" y="72" width="302" height="28" rx="5" fill="#ffffff" stroke="#aaa" stroke-width="1"/>
+      <text x="165" y="86" class="box-text-sm" text-anchor="middle" dominant-baseline="central">SCCB Probe</text>
+      <rect x="14" y="106" width="302" height="28" rx="5" fill="#ffffff" stroke="#aaa" stroke-width="1"/>
+      <text x="165" y="120" class="box-text-sm" text-anchor="middle" dominant-baseline="central">Format Tables</text>
+      <rect x="14" y="140" width="302" height="28" rx="5" fill="#ffffff" stroke="#aaa" stroke-width="1"/>
+      <text x="165" y="154" class="box-text-sm" text-anchor="middle" dominant-baseline="central">XCLK Helper</text>
+    </g>
+
+    <g transform="translate(402, 648)">
+      <rect x="0" y="0" width="330" height="172" rx="8" fill="#d0e8d0" stroke="#7a9a7a" stroke-width="1"/>
+      <text x="165" y="20" class="section-title" text-anchor="middle" dominant-baseline="central">esp_sccb_intf</text>
+      <text x="165" y="86" class="box-text" text-anchor="middle" dominant-baseline="central">I2C / SCCB Bus</text>
+      <text x="165" y="118" class="box-text" text-anchor="middle" dominant-baseline="central">Sensor &amp; Motor IO</text>
+    </g>
+
+    <g transform="translate(748, 648)">
+      <rect x="0" y="0" width="330" height="172" rx="8" fill="#d0e8d0" stroke="#7a9a7a" stroke-width="1"/>
+      <text x="165" y="20" class="section-title" text-anchor="middle" dominant-baseline="central">esp_ipa</text>
+      <rect x="14" y="40" width="146" height="54" rx="5" fill="#ffffff" stroke="#aaa" stroke-width="1"/>
+      <text x="87" y="67" class="box-text-sm" text-anchor="middle" dominant-baseline="central">3A Control</text>
+      <rect x="170" y="40" width="146" height="54" rx="5" fill="#ffffff" stroke="#aaa" stroke-width="1"/>
+      <text x="243" y="67" class="box-text-sm" text-anchor="middle" dominant-baseline="central">Color Enhance</text>
+      <rect x="14" y="106" width="146" height="54" rx="5" fill="#ffffff" stroke="#aaa" stroke-width="1"/>
+      <text x="87" y="133" class="box-text-sm" text-anchor="middle" dominant-baseline="central">Image Analyze</text>
+      <rect x="170" y="106" width="146" height="54" rx="5" fill="#ffffff" stroke="#aaa" stroke-width="1"/>
+      <text x="243" y="133" class="box-text-sm" text-anchor="middle" dominant-baseline="central">IQ Tuning</text>
+    </g>
+
+    <g transform="translate(1094, 648)">
+      <rect x="0" y="0" width="330" height="172" rx="8" fill="#f8f0c8" stroke="#c0b070" stroke-width="1"/>
+      <text x="165" y="20" class="section-title" text-anchor="middle" dominant-baseline="central">Codec Stack</text>
+      <rect x="14" y="42" width="302" height="36" rx="5" fill="#ffffff" stroke="#aaa" stroke-width="1"/>
+      <text x="165" y="60" class="box-text-sm" text-anchor="middle" dominant-baseline="central">esp_h264 (ESP32-P4)</text>
+      <rect x="14" y="86" width="302" height="36" rx="5" fill="#ffffff" stroke="#aaa" stroke-width="1"/>
+      <text x="165" y="104" class="box-text-sm" text-anchor="middle" dominant-baseline="central">JPEG HW (P4 / S31)</text>
+      <rect x="14" y="130" width="302" height="36" rx="5" fill="#ffffff" stroke="#aaa" stroke-width="1"/>
+      <text x="165" y="148" class="box-text-sm" text-anchor="middle" dominant-baseline="central">M2M Encode / Decode</text>
+    </g>
+  </g>
+
+  <!-- Layer 5: ESP-IDF -->
+  <g id="esp-idf">
+    <rect x="40" y="860" width="1400" height="56" rx="10" fill="#a8c0e8" stroke="#6a80b0" stroke-width="1.5"/>
+    <text x="740" y="888" class="hdr" text-anchor="middle" dominant-baseline="central">ESP-IDF &#183; Camera / ISP / USB / JPEG / H.264 Drivers &amp; OS</text>
+  </g>
+
+  <text x="740" y="950" class="footer" text-anchor="middle" dominant-baseline="central">Interfaces: MIPI-CSI &#183; DVP &#183; SPI &#183; USB UVC&#160;&#160;&#160;&#160;Codecs: JPEG Enc/Dec &#183; H.264 Enc (ESP32-P4 only)</text>
+  <text x="740" y="972" class="footer" text-anchor="middle" dominant-baseline="central">SoCs: ESP32-P4 &#183; ESP32-S31 &#183; ESP32-S3 &#183; ESP32-C3 / C5 / C6 / C61</text>
+</svg>

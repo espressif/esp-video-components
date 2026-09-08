@@ -23,7 +23,8 @@ PROJECT_NAME = "ESP-Video-Components Development Reference"
 INPUT = \
     $(PROJECT_PATH)/esp_cam_sensor/include/esp_cam_sensor.h \
     $(PROJECT_PATH)/esp_cam_sensor/include/esp_cam_motor.h \
-    $(PROJECT_PATH)/esp_cam_sensor/include/esp_cam_sensor_xclk.h
+    $(PROJECT_PATH)/esp_cam_sensor/include/esp_cam_sensor_xclk.h \
+    $(PROJECT_PATH)/esp_video/include/esp_video_init.h
 
 ## Get warnings for functions that have no documentation for their parameters or return value
 ##
@@ -45,7 +46,16 @@ PREDEFINED             = \
     configTHREAD_LOCAL_STORAGE_DELETE_CALLBACKS=1 \
     configNUM_THREAD_LOCAL_STORAGE_POINTERS=1 \
     configUSE_APPLICATION_TASK_TAG=1 \
-    configTASKLIST_INCLUDE_COREID=1
+    configTASKLIST_INCLUDE_COREID=1 \
+    CONFIG_ESP_VIDEO_ENABLE_MIPI_CSI_VIDEO_DEVICE=1 \
+    CONFIG_ESP_VIDEO_ENABLE_DVP_VIDEO_DEVICE=1 \
+    CONFIG_ESP_VIDEO_ENABLE_SPI_VIDEO_DEVICE=1 \
+    CONFIG_ESP_VIDEO_ENABLE_HW_JPEG_ENC_VIDEO_DEVICE=1 \
+    CONFIG_ESP_VIDEO_ENABLE_HW_JPEG_DEC_VIDEO_DEVICE=1 \
+    CONFIG_ESP_VIDEO_ENABLE_USB_UVC_VIDEO_DEVICE=1 \
+    CONFIG_ESP_VIDEO_ENABLE_CAMERA_MOTOR_CONTROLLER=1 \
+    CONFIG_CAMERA_XCLK_USE_LEDC=1 \
+    CONFIG_CAMERA_XCLK_USE_ESP_CLOCK_ROUTER=1
 
 ## Do not complain about not having dot
 ##
