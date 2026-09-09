@@ -397,4 +397,16 @@ menu "Espressif Camera Sensors Configurations"
                 This flag is automatically set when any IRCUT driver is enabled in the configuration. It is used
                 internally by the build system to include necessary IRCUT libraries and initialization code.
     endmenu
+
+    menu "Camera Ambient Light Sensor Control Configuration"
+        depends on SOC_ISP_SUPPORTED
+        
+        rsource "als/pt1411/Kconfig.pt1411"
+
+        config CAMERA_ALS_DEVICE_USED
+            bool
+            default n
+            help
+                Internal configuration flag indicating whether any camera ALS(Ambient light sensor) driver is enabled.
+    endmenu
 endmenu

@@ -119,6 +119,7 @@ typedef enum {
 #define ESP_CAM_SENSOR_CID_CLASS_LED                5   /*!< Camera sensor flash LED control ID class */
 #define ESP_CAM_SENSOR_CID_CLASS_MOTOR              6   /*!< Camera sensor (AF)motor control ID class */
 #define ESP_CAM_SENSOR_CID_CLASS_IRCUT              7   /*!< Camera sensor IRCUT control ID class */
+#define ESP_CAM_SENSOR_CID_CLASS_ALS                8   /*!< Camera sensor Ambient Light Sensor control ID class */
 
 /**
  * @brief Camera sensor default class's control ID

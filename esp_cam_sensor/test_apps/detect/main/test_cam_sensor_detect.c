@@ -8,11 +8,16 @@
 #include <esp_system.h>
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
-
 #include "esp_sccb_intf.h"
 #include "esp_sccb_i2c.h"
 #include "esp_cam_sensor.h"
 #include "esp_cam_ircut.h"
+#if CONFIG_SOC_ISP_SUPPORTED
+#include "esp_cam_als.h"
+#if CONFIG_CAM_ALS_PT1411
+#include "pt1411.h"
+#endif
+#endif
 
 #include "unity.h"
 #include "unity_test_utils.h"
@@ -303,6 +308,30 @@ TEST_CASE("Camera ircut detect test", "[video]")
     TEST_ASSERT_MESSAGE(ircut != NULL, "detect fail");
     TEST_ESP_OK(esp_cam_ircut_del_dev(ircut));
 }
+
+#if CONFIG_SOC_ISP_SUPPORTED
+TEST_CASE("Camera als detect test", "[video]")
+{
+    adc_oneshot_unit_handle_t adc1_handle;
+    adc_oneshot_unit_init_cfg_t init_config1 = {
+        .unit_id = ADC_UNIT_1, // Use ADC1
+    };
+    ESP_ERROR_CHECK(adc_oneshot_new_unit(&init_config1, &adc1_handle));
+    esp_cam_als_config_t als_config = {
+        .adc_handle = adc1_handle,
+        .channel = ADC_CHANNEL_0,
+        .cali_enable = true,
+        .platform_data = NULL,
+    };
+    esp_cam_als_device_t *als = NULL;
+#if CONFIG_CAM_ALS_PT1411
+    als = pt1411_detect(&als_config);
+#endif
+    TEST_ASSERT_MESSAGE(als != NULL, "detect fail");
+    TEST_ESP_OK(esp_cam_als_del_dev(als));
+    TEST_ESP_OK(adc_oneshot_del_unit(adc1_handle));
+}
+#endif
 
 void app_main(void)
 {

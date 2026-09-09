@@ -17,8 +17,12 @@ if(CONFIG_CAM_CTRL_DVP_ENABLE)
 endif()
 
 set(include_dirs "include")
-set(requires "esp_sccb_intf" "esp_driver_cam" "esp_driver_gpio" "esp_driver_ledc" "esp_driver_spi" "esp_driver_parlio")
+set(requires "esp_sccb_intf" "esp_driver_cam" "esp_driver_gpio" "esp_driver_ledc" "esp_driver_spi" "esp_driver_parlio" "esp_adc")
 set(priv_requires "esp_timer")
+
+if(CONFIG_SOC_ISP_SUPPORTED)
+    list(APPEND srcs "src/esp_cam_als_detect.c" "src/esp_cam_als.c")
+endif()
 
 if(CONFIG_CAMERA_OV2640)
     list(APPEND srcs "sensors/ov2640/ov2640.c")
@@ -257,6 +261,11 @@ endif()
 if(CONFIG_CAM_IRCUT_AP1511B)
     list(APPEND srcs "ircuts/ap1511b/ap1511b.c")
     list(APPEND include_dirs "ircuts/ap1511b/include")
+endif()
+
+if(CONFIG_CAM_ALS_PT1411)
+    list(APPEND srcs "als/pt1411/pt1411.c")
+    list(APPEND include_dirs "als/pt1411/include")
 endif()
 
 if(CONFIG_CAMERA_PIVARIETY)

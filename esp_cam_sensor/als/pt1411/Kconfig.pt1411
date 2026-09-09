@@ -1,0 +1,15 @@
+menuconfig CAM_ALS_PT1411
+    bool "PT1411"
+    default n
+    select CAMERA_ALS_DEVICE_USED
+    help
+        Enable support for the PT1411 IC.
+
+if CAM_ALS_PT1411        
+    config PT1411_DEFAULT_SAMPLE_RATE_MS
+        int "Default sampling rate (milliseconds)"
+        range 10 5000
+        default 500
+        help
+            Default sampling interval of the timer.
+endif
