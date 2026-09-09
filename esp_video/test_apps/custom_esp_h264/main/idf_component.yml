@@ -1,0 +1,3 @@
+dependencies:
+  esp_video_wrap:
+    override_path: "../components/esp_video_wrap"

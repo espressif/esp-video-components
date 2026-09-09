@@ -200,7 +200,7 @@ menu "Espressif Video Configuration"
                 Default is 10000ms (10 seconds).
     endif
 
-    config ESP_VIDEO_ENABLE_HW_H264_VIDEO_DEVICE
+    menuconfig ESP_VIDEO_ENABLE_HW_H264_VIDEO_DEVICE
         bool "Enable Hardware H.264 based Video Device"
         depends on IDF_TARGET_ESP32P4
         select ESP_VIDEO_ENABLE_H264_VIDEO_DEVICE
@@ -404,6 +404,17 @@ menu "Espressif Video Configuration"
 
             Required for camera modules with autofocus capabilities.
             Disable if using only fixed-focus lenses.
+
+    config ESP_VIDEO_USE_CUSTOMIZED_ESP_H264_VERSION
+        bool "Use Customized esp_h264 Version"
+        default n
+        help
+            When disabled, use the esp_h264 version defined in
+            esp_video/idf_component.yml.
+
+            When enabled, ignore the esp_h264 version in
+            esp_video/idf_component.yml, and use the esp_h264 version
+            defined in another component's or main's idf_component.yml.
 
     rsource "./src/data_reprocessing/Kconfig.data_reprocessing"
 endmenu
