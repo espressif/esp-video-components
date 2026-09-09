@@ -27,44 +27,44 @@ It is highly recommended that users use it in the [esp-video](https://github.com
 
 ## Supported Camera Sensors
 
-| model   | max resolution | output interface | output format                                                | Len Size |
-| ------- | -------------- | ---------- | ------------------------------------------------------------ | -------- |
-| BF20A6  | 640 x 480    | DVP | Grayscale<br/>YCbCr422<br/>8bit Raw RGB data | 1/10"     |
-| BF3031  | 838 x 640    | DVP | YCbCr422<br/>8bit Raw RGB data | 1/3"     |
-| BF3045  | 640 x 480    | DVP | YCbCr422<br/>8bit Raw RGB data | 1/5"     |
-| BF3901  | 240 x 320    | SPI | YCbCr422<br/>RGB565 | 1/13"     |
-| BF3925  | 1600 x 1200    | DVP | YCbCr422<br/>8bit Raw RGB data | 1/5"     |
-| BF3A03  | 640 x 480    | DVP | YCbCr422<br/>RGB565<br/>8bit Raw RGB data | 1/4"     |
-| GC0308  | 640 x 480    | DVP | Grayscale<br/>YCbCr422<br/>RGB565 | 1/6.5"     |
-| GC2053  | 1920 x 1080    | MIPI | 8/10-bit Raw RGB data | 1/2.9"     |
-| GC2145  | 1600 x 1200    | MIPI & DVP | RGB565<br/>YCbCr422<br/>8bit Raw RGB data | 1/5"     |
-| GC2607  | 1920 x 1080    | MIPI | 10bit Raw RGB data | 1/7.3"     |
-| Mira220 | 1600 x 1400    | MIPI      | 8/10/12-bit Raw MONO data | 1/2.7"     |
-| MT9D111 | 1600 x 1200    | DVP | RGB565<br/>YCbCr422<br/>8bit Raw RGB data | 1/3.2"     |
-| OS02N10 | 1920 x 1080    | MIPI | 8/10-bit Raw RGB data | 1/3.27"     |
-| OS04C10 | 2688 x 1520    | MIPI | 10/12-bit Raw RGB data | 1/3"     |
-| OV2640  | 1600 x 1200    | DVP | 8/10-bit Raw RGB data<br/>JPEG compression<br/>YUV/YCbCr422<br/>RGB565 | 1/4"     |
-| OV2710  | 1920 x 1080    | MIPI | Raw RGB data | 1/2.7"     |
-| OV3640  | 2048 x 1536    | DVP | JPEG compression<br/>YUV/YCbCr422<br/>RGB565 | 1/4"     |
-| OV3660  | 2048 x 1536    | DVP | 8/10-bit Raw RGB data<br/>JPEG compression<br/>YUV/YCbCr422<br/>RGB565 | 1/5"     |
-| OV5640  | 2592 x 1944    | MIPI & DVP     | RGB565<br/>YUV/YCbCr422 | 1/4"     |
-| OV5645  | 2592 x 1944    | MIPI      | 8/10-bit Raw RGB data<br/>RGB565<br/>YUV/YCbCr422<br/>YUV420 | 1/4"     |
-| OV5647  | 2592 x 1944    | MIPI & DVP      | 8/10-bit Raw RGB data | 1/4"     |
-| OV9281  | 1280 x 720    | MIPI      | 8-bit Raw MONO data | 1/4"     |
-| SC030IOT  | 640 x 480    | MIPI & DVP | YCbCr422<br/>8bit Raw RGB data | 1/6.5"     |
-| SC035HGS  | 640 x 480    | MIPI & DVP | Raw MONO<br/>Raw RGB data | 1/6"     |
-| SC101IOT  | 1280 x 720    | DVP | YCbCr422<br/>8/10-bit Raw RGB data | 1/4.2"     |
-| SC121AT | 1304 x 984    | MIPI | YCbCr422 | 1/3.75"     |
-| SC132GS  | 1080 x 1280    | MIPI | 8/10-bit Raw RGB/MONO data | 1/4"     |
-| SC1346  | 1280 x 720    | MIPI      | 8/10-bit Raw RGB data | 1/4.5"     |
-| SC202CS(SC2356) | 1600 x 1200    | MIPI      | 8/10-bit Raw RGB data | 1/5.1"     |
-| SC2331  | 1920 x 1080    | MIPI      | 8/10-bit Raw RGB data | 1/3.2"     |
-| SC2336  | 1920 x 1080    | MIPI & DVP      | 8/10-bit Raw RGB data | 1/3"     |
-| SC2337P | 1920 x 1080    | MIPI      | 8/10-bit Raw RGB data | 1/3"     |
-| SP0A39  | 640 x 480    | SPI & DVP      | YCbCr422<br/>Grayscale | 1/10"     |
-| STI2250 | 800 x 600    | MIPI | 8/10-bit Raw Mono data | 1/5"     |
-| Arducam IMX500 | 1920 x 1080 | MIPI | Special module, parameters must be read from Arducam IMX500 Camera | custom |
-| Arducam PIVARIETY | 1920x1080 | MIPI |Special module, parameters must be read from Arducam Pivariety Camera| custom|
+| model   | max resolution | output interface | output format                                                | Len Size | Notes |
+| ------- | -------------- | ---------- | ------------------------------------------------------------ | -------- |-------- |
+| BF20A6  | 640 x 480    | DVP | Grayscale<br/>YCbCr422<br/>8bit Raw RGB data | 1/10"     ||
+| BF3031  | 838 x 640    | DVP | YCbCr422<br/>8bit Raw RGB data | 1/3"     ||
+| BF3045  | 640 x 480    | DVP | YCbCr422<br/>8bit Raw RGB data | 1/5"     ||
+| BF3901  | 240 x 320    | SPI | YCbCr422<br/>RGB565 | 1/13"     ||
+| BF3925  | 1600 x 1200    | DVP | YCbCr422<br/>8bit Raw RGB data | 1/5"     ||
+| BF3A03  | 640 x 480    | DVP | YCbCr422<br/>RGB565<br/>8bit Raw RGB data | 1/4"     ||
+| GC0308  | 640 x 480    | DVP | Grayscale<br/>YCbCr422<br/>RGB565 | 1/6.5"     ||
+| GC2053  | 1920 x 1080    | MIPI | 8/10-bit Raw RGB data | 1/2.9"     ||
+| GC2145  | 1600 x 1200    | MIPI & DVP | RGB565<br/>YCbCr422<br/>8bit Raw RGB data | 1/5"     ||
+| GC2607  | 1920 x 1080    | MIPI | 10bit Raw RGB data | 1/7.3"     |It is recommended to add a PWDN pin to assist the host in managing power-up and shutdown.|
+| Mira220 | 1600 x 1400    | MIPI      | 8/10/12-bit Raw MONO data | 1/2.7"     ||
+| MT9D111 | 1600 x 1200    | DVP | RGB565<br/>YCbCr422<br/>8bit Raw RGB data | 1/3.2"     ||
+| OS02N10 | 1920 x 1080    | MIPI | 8/10-bit Raw RGB data | 1/3.27"     ||
+| OS04C10 | 2688 x 1520    | MIPI | 10/12-bit Raw RGB data | 1/3"     ||
+| OV2640  | 1600 x 1200    | DVP | 8/10-bit Raw RGB data<br/>JPEG compression<br/>YUV/YCbCr422<br/>RGB565 | 1/4"     ||
+| OV2710  | 1920 x 1080    | MIPI | Raw RGB data | 1/2.7"     |It has already been discontinued|
+| OV3640  | 2048 x 1536    | DVP | JPEG compression<br/>YUV/YCbCr422<br/>RGB565 | 1/4"     ||
+| OV3660  | 2048 x 1536    | DVP | 8/10-bit Raw RGB data<br/>JPEG compression<br/>YUV/YCbCr422<br/>RGB565 | 1/5"     |It has already been discontinued|
+| OV5640  | 2592 x 1944    | MIPI & DVP     | RGB565<br/>YUV/YCbCr422 | 1/4"     ||
+| OV5645  | 2592 x 1944    | MIPI      | 8/10-bit Raw RGB data<br/>RGB565<br/>YUV/YCbCr422<br/>YUV420 | 1/4"     ||
+| OV5647  | 2592 x 1944    | MIPI & DVP      | 8/10-bit Raw RGB data | 1/4"     |It has already been discontinued; the sensitivity in non-binning mode is relatively low, resulting in significant noise in low-light conditions.|
+| OV9281  | 1280 x 720    | MIPI      | 8-bit Raw MONO data | 1/4"     ||
+| SC030IOT  | 640 x 480    | MIPI & DVP | YCbCr422<br/>8bit Raw RGB data | 1/6.5"     ||
+| SC035HGS  | 640 x 480    | MIPI & DVP | Raw MONO<br/>Raw RGB data | 1/6"     ||
+| SC101IOT  | 1280 x 720    | DVP | YCbCr422<br/>8/10-bit Raw RGB data | 1/4.2"     ||
+| SC121AT | 1304 x 984    | MIPI | YCbCr422 | 1/3.75"     ||
+| SC132GS  | 1080 x 1280    | MIPI | 8/10-bit Raw RGB/MONO data | 1/4"     ||
+| SC1346  | 1280 x 720    | MIPI      | 8/10-bit Raw RGB data | 1/4.5"     ||
+| SC202CS(SC2356) | 1600 x 1200    | MIPI      | 8/10-bit Raw RGB data | 1/5.1"     ||
+| SC2331  | 1920 x 1080    | MIPI      | 8/10-bit Raw RGB data | 1/3.2"     ||
+| SC2336  | 1920 x 1080    | MIPI & DVP      | 8/10-bit Raw RGB data | 1/3"     ||
+| SC2337P | 1920 x 1080    | MIPI      | 8/10-bit Raw RGB data | 1/3"     ||
+| SP0A39  | 640 x 480    | SPI & DVP      | YCbCr422<br/>Grayscale | 1/10"     ||
+| STI2250 | 800 x 600    | MIPI | 8/10-bit Raw Mono data | 1/5"     ||
+| Arducam IMX500 | 1920 x 1080 | MIPI | Special module, parameters must be read from Arducam IMX500 Camera | custom ||
+| Arducam PIVARIETY | 1920x1080 | MIPI |Special module, parameters must be read from Arducam Pivariety Camera| custom||
 
 - **Note 1**：The effective pixel count of a camera does not represent the final output pixel size. Some camera sensors must operate in binning mode to output image data with a higher signal-to-noise ratio. For example, the OS04C10 has an effective pixel size of 2688x1520, and when operating in 2x2 binning mode, its output size is 1280x720.
 - **Note 2**: The camera sensor drivers located in the `sensors/arducam` directory are intended exclusively for Arducam-branded camera sensor modules and cannot be used with generic camera sensor modules.
