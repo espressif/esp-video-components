@@ -238,17 +238,6 @@ static esp_err_t sc101iot_set_test_pattern(esp_cam_sensor_device_t *dev, int ena
     return sc101iot_write_reg_bits_a16v8(dev->sccb_handle, 0x0100, 7, 1, enable ? 0x01 : 0x00);
 }
 
-static esp_err_t sc101iot_hw_reset(esp_cam_sensor_device_t *dev)
-{
-    if (dev->reset_pin >= 0) {
-        gpio_set_level(dev->reset_pin, 0);
-        delay_ms(10);
-        gpio_set_level(dev->reset_pin, 1);
-        delay_ms(10);
-    }
-    return ESP_OK;
-}
-
 static esp_err_t sc101iot_soft_reset(esp_cam_sensor_device_t *dev)
 {
     esp_err_t ret = sc101iot_write_reg_bits_a16v8(dev->sccb_handle, 0x3103, 0, 1, 0x01);
@@ -413,9 +402,6 @@ static esp_err_t sc101iot_priv_ioctl(esp_cam_sensor_device_t *dev, uint32_t cmd,
     SC101IOT_IO_MUX_LOCK(mux);
 
     switch (cmd) {
-    case ESP_CAM_SENSOR_IOC_HW_RESET:
-        ret = sc101iot_hw_reset(dev);
-        break;
     case ESP_CAM_SENSOR_IOC_SW_RESET:
         ret = sc101iot_soft_reset(dev);
         break;
@@ -459,26 +445,15 @@ static esp_err_t sc101iot_power_on(esp_cam_sensor_device_t *dev)
         gpio_config_t conf = { 0 };
         conf.pin_bit_mask = 1LL << dev->pwdn_pin;
         conf.mode = GPIO_MODE_OUTPUT;
-        gpio_config(&conf);
-
-        // carefully, logic is inverted compared to reset pin
-        gpio_set_level(dev->pwdn_pin, 1);
-        delay_ms(10);
-        gpio_set_level(dev->pwdn_pin, 0);
-        delay_ms(10);
+        ret = gpio_config(&conf);
+        if (ret != ESP_OK) {
+            ESP_LOGE(TAG, "Failed to configure GPIO for PWDN");
+            return ret;
+        }
+        ret = gpio_set_level(dev->pwdn_pin, 1);
     }
 
-    if (dev->reset_pin >= 0) {
-        gpio_config_t conf = { 0 };
-        conf.pin_bit_mask = 1LL << dev->reset_pin;
-        conf.mode = GPIO_MODE_OUTPUT;
-        gpio_config(&conf);
-
-        gpio_set_level(dev->reset_pin, 0);
-        delay_ms(10);
-        gpio_set_level(dev->reset_pin, 1);
-        delay_ms(10);
-    }
+    esp_rom_delay_us(CONFIG_CAMERA_SC101IOT_POWER_ON_DELAY_US);
 
     return ret;
 }
@@ -493,16 +468,6 @@ static esp_err_t sc101iot_power_off(esp_cam_sensor_device_t *dev)
 
     if (dev->pwdn_pin >= 0) {
         gpio_set_level(dev->pwdn_pin, 0);
-        delay_ms(10);
-        gpio_set_level(dev->pwdn_pin, 1);
-        delay_ms(10);
-    }
-
-    if (dev->reset_pin >= 0) {
-        gpio_set_level(dev->reset_pin, 1);
-        delay_ms(10);
-        gpio_set_level(dev->reset_pin, 0);
-        delay_ms(10);
     }
 
     return ret;
@@ -547,7 +512,7 @@ esp_cam_sensor_device_t *sc101iot_detect(esp_cam_sensor_config_t *config)
     dev->name = (char *)SC101IOT_SENSOR_NAME;
     dev->sccb_handle = config->sccb_handle;
     dev->xclk_pin = config->xclk_pin;
-    dev->reset_pin = config->reset_pin;
+    dev->reset_pin = -1; /* SC101IOT has no reset pin */
     dev->pwdn_pin = config->pwdn_pin;
     dev->sensor_port = config->sensor_port;
     dev->ops = &sc101iot_ops;
