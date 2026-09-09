@@ -2,6 +2,8 @@
 
 - Added functions to get IPA environment variables as int32_t or float
 - Added options to enable or disable MIPI-CSI event handling and configure the behavior for different targets
+- Added automatic transformation of YUV sensor data to the target YUV format
+
 - Update to use esp_cam_sensor v2.5.x
 
 - Disabled MIPI-CSI event handling by default in the example_video_common component
