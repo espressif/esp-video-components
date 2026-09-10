@@ -18,8 +18,10 @@ extern "C" {
 #define SC121AT_SOFT_POWER_DOWN_EN                 (0x01)
 #define SC121AT_OUTPUT_ENABLE_DEFAULT              (0)
 #define SC121AT_IDI_CLOCK_RATE_1280x800_25FPS      (59000000ULL)
+#define SC121AT_IDI_CLOCK_RATE_1280x960_30FPS      (59000000ULL)
 // Note, all clock configurations default to using 2 data lane mode, so use bitwidth divide by 2
 #define SC121AT_LINE_RATE_16BITS_1280x800_25FPS     (SC121AT_IDI_CLOCK_RATE_1280x800_25FPS * 8)
+#define SC121AT_LINE_RATE_16BITS_1280x960_30FPS     (SC121AT_IDI_CLOCK_RATE_1280x960_30FPS * 8)
 
 #if CONFIG_SOC_MIPI_CSI_SUPPORTED
 
@@ -42,6 +44,7 @@ static const sc121at_reginfo_t sc121at_mipi_stream_off[] = {
 };
 
 #include "sc121at_mipi_2lane_24Minput_1280x800_yuv422_uyvy_25fps.h"
+#include "sc121at_mipi_2lane_24Minput_1280x960_yuv422_uyvy_30fps.h"
 
 #endif
 

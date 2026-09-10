@@ -3,7 +3,7 @@ menuconfig CAMERA_SC121AT
     default n
     depends on SOC_MIPI_CSI_SUPPORTED || SOC_LCDCAM_CAM_SUPPORTED
     help
-        Enable support for the SC121AT CMOS image sensor. 
+        Enable support for the SC121AT CMOS image sensor.
 
 if CAMERA_SC121AT
     menu "Auto detect SC121AT"
@@ -33,12 +33,17 @@ if CAMERA_SC121AT
             default y
             help
                 YUV422(UYVY) color format at 1280x800 resolution with 25fps framerate.
+        config CAMERA_SC121AT_MIPI_YUV422_1280X960_30FPS
+            bool "MIPI 2-lane, 24M input, 1280x960  30fps, YUV422(UYVY)"
+            default y
+            help
+                YUV422(UYVY) color format at 1280x960 resolution with 30fps framerate.
     endmenu
 
     choice CAMERA_SC121AT_MIPI_DEFAULT_FMT
         prompt "Select default output format for MIPI CSI interface"
         depends on SOC_MIPI_CSI_SUPPORTED
-        default CAMERA_SC121AT_MIPI_DEFAULT_FMT_YUV422_1280X800_25FPS
+        default CAMERA_SC121AT_MIPI_DEFAULT_FMT_YUV422_1280X960_30FPS
         help
             This option allows you to select the default video format for the SC121AT sensor
             when it is initialized on the MIPI CSI interface. The selected format will be used
@@ -48,6 +53,9 @@ if CAMERA_SC121AT
         config CAMERA_SC121AT_MIPI_DEFAULT_FMT_YUV422_1280X800_25FPS
             bool "MIPI 2-lane, 24M input, 1280x800  25fps, YUV422(UYVY)"
             depends on CAMERA_SC121AT_MIPI_YUV422_1280X800_25FPS
+        config CAMERA_SC121AT_MIPI_DEFAULT_FMT_YUV422_1280X960_30FPS
+            bool "MIPI 2-lane, 24M input, 1280x960  30fps, YUV422(UYVY)"
+            depends on CAMERA_SC121AT_MIPI_YUV422_1280X960_30FPS
 
     endchoice # CAMERA_SC121AT_MIPI_DEFAULT_FMT
 
@@ -55,6 +63,7 @@ if CAMERA_SC121AT
         int
         depends on SOC_MIPI_CSI_SUPPORTED
         default 0 if CAMERA_SC121AT_MIPI_DEFAULT_FMT_YUV422_1280X800_25FPS
+        default 1 if CAMERA_SC121AT_MIPI_DEFAULT_FMT_YUV422_1280X960_30FPS
         help
             Sets the default configuration for the MIPI CSI interface.
             Use query_support_formats() API to get more format options.
