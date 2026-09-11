@@ -1,0 +1,115 @@
+menuconfig CAMERA_GC4053
+    bool "GC4053"
+    default n
+    depends on SOC_MIPI_CSI_SUPPORTED
+    help
+        Enable support for the GC4053 CMOS image sensor.
+
+if CAMERA_GC4053
+    menu "Auto detect GC4053"
+        config CAMERA_GC4053_AUTO_DETECT_MIPI_INTERFACE_SENSOR
+            bool "Detect for MIPI CSI interface sensor"
+            default y
+            depends on SOC_MIPI_CSI_SUPPORTED
+            help
+                When enabled, the GC4053 sensor will be automatically detected
+                and initialized on the MIPI CSI interface at startup without requiring
+                manual detection call(gc4053_detect) in your application.
+    endmenu
+
+    config CAMERA_GC4053_SID_HIGH
+        bool "Set SID pin to high"
+        default n
+        help
+            This option allows you to configure the sensor ID. When the SID pin uses a high level, 
+            the sensor ID will be configured as 0x10, otherwise, the sensor ID will be configured as 0x31.
+
+    menu "Choose supported formats for MIPI CSI interface"
+        config CAMERA_GC4053_MIPI_RAW10_1440X1440_25FPS
+            bool "MIPI 2-lane, 24M input, 1440x1440 25fps, RAW10"
+            default y
+            help
+                RAW10 color format at 1440x1440 resolution with 25fps framerate.
+                Requires MIPI CSI-2 2-lane interface with 24MHz input clock.
+    endmenu
+
+    choice CAMERA_GC4053_MIPI_DEFAULT_FMT
+        prompt "Select default output format for MIPI CSI interface"
+        default CAMERA_GC4053_MIPI_DEFAULT_FMT_RAW10_1440X1440_25FPS
+        help
+            This option allows you to select the default video format for the GC4053 sensor
+            when it is initialized on the MIPI CSI interface. The selected format will be used
+            when the sensor is detected and initialized, and can be changed later when the
+            sensor is in stream off state.
+
+        config CAMERA_GC4053_MIPI_DEFAULT_FMT_RAW10_1440X1440_25FPS
+            bool "MIPI 2-lane, 24M input, 1440x1440 25fps, RAW10"
+            depends on CAMERA_GC4053_MIPI_RAW10_1440X1440_25FPS
+    endchoice # CAMERA_GC4053_MIPI_DEFAULT_FMT
+
+    config CAMERA_GC4053_MIPI_IF_FORMAT_INDEX_DEFAULT
+        int
+        default 0 if CAMERA_GC4053_MIPI_DEFAULT_FMT_RAW10_1440X1440_25FPS
+        help
+            Sets the default configuration for the MIPI CSI interface.
+            Use query_support_formats() API to get more format options.
+
+    choice CAMERA_GC4053_IPA_JSON_CONFIGURATION_FILE
+        prompt "IPA Configuration File"
+        default CAMERA_GC4053_DEFAULT_IPA_JSON_CONFIGURATION_FILE
+        help
+            Select the Image Processing Algorithm (IPA) JSON configuration file
+            for the GC4053 sensor.
+
+        config CAMERA_GC4053_DEFAULT_IPA_JSON_CONFIGURATION_FILE
+            bool "Use default configuration"
+            help
+                Use the built-in default IPA configuration file:
+                "esp_cam_sensor/sensors/gc4053/cfg/gc4053_mono_default.json"
+
+                This configuration provides optimized settings for monochrome
+                machine vision applications and is recommended for most use cases.
+
+        config CAMERA_GC4053_CUSTOMIZED_IPA_JSON_CONFIGURATION_FILE
+            bool "Use custom configuration"
+            help
+                Use a custom IPA configuration file with your own optimized settings.
+
+                This option allows you to fine-tune sensor parameters for specific
+                lighting conditions, exposure requirements, or application needs.
+
+                You must specify the custom file path in the configuration below.
+    endchoice
+
+    config CAMERA_GC4053_CUSTOMIZED_IPA_JSON_CONFIGURATION_FILE_PATH
+        string "Custom IPA configuration file path"
+        depends on CAMERA_GC4053_CUSTOMIZED_IPA_JSON_CONFIGURATION_FILE
+        help
+            Specify the path to your custom GC4053 IPA JSON configuration file.
+
+            The path is relative to your project root directory.
+
+            Example: "components/my_camera_config/gc4053_custom.json"
+
+            Ensure the file exists and contains valid JSON configuration
+            parameters compatible with the GC4053 global shutter sensor.
+
+    config CAMERA_GC4053_ABSOLUTE_GAIN_LIMIT
+        int "Maximum absolute gain limit (x1000)"
+        default 32000
+        range 1000 64000
+        help
+            Set the maximum gain limit that can be applied by upper-level applications.
+
+            Value is gain multiplied by 1000 to avoid floating-point arithmetic:
+            - 1000 = 1x gain (minimum)
+            - 64000 = 64x gain (default)
+
+            Lower values reduce noise but may limit low-light performance.
+            Higher values improve low-light sensitivity but increase noise and
+            may cause sensor overheating.
+
+            Recommended values:
+            - 10000 (10x): Good balance for most applications
+            - 32000 (32x): Default sensitivity
+endif

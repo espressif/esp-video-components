@@ -110,6 +110,12 @@ if(CONFIG_CAMERA_GC2607)
     list(APPEND priv_include_dirs "sensors/gc2607/private_include")
 endif()
 
+if(CONFIG_CAMERA_GC4053)
+    list(APPEND srcs "sensors/gc4053/gc4053.c")
+    list(APPEND include_dirs "sensors/gc4053/include")
+    list(APPEND priv_include_dirs "sensors/gc4053/private_include")
+endif()
+
 if(CONFIG_CAMERA_LT6911)
     list(APPEND srcs "sensors/lt6911/lt6911.c")
     list(APPEND include_dirs "sensors/lt6911/include")
@@ -318,6 +324,10 @@ if(CONFIG_CAMERA_SENSOR_MOTOR_DETECT_METHOD_DYNAMIC_LINK)
         target_link_libraries(${COMPONENT_LIB} INTERFACE "-u gc2607_detect")
     endif()
 
+    if(CONFIG_CAMERA_GC4053_AUTO_DETECT_MIPI_INTERFACE_SENSOR)
+        target_link_libraries(${COMPONENT_LIB} INTERFACE "-u gc4053_detect")
+    endif()
+    
     if(CONFIG_CAMERA_LT6911_AUTO_DETECT_MIPI_INTERFACE_SENSOR)
         target_link_libraries(${COMPONENT_LIB} INTERFACE "-u lt6911_detect")
     endif()
