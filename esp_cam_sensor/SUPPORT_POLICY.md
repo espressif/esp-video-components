@@ -49,3 +49,23 @@ To expedite the initial assessment, please prepare the following information for
 | **Primary Use Case** | Main application (e.g., barcode scanning, facial authentication, video streaming, industrial inspection) |
 
 **Note**: Providing comprehensive and precise information will significantly enhance the efficiency and accuracy of our support proposal.
+
+## Image Quality (IQ) Tuning Preparation Guide
+
+To ensure a smooth and efficient Image Quality (IQ) tuning process, please prepare and confirm the following information before submitting your tuning request:
+
+### IQ Tuning Baseline Information Form
+
+| Information Category | Required Details & Specifications |
+| :--- | :--- |
+| **Lens Specifications** | Focal length, Field of View (FOV), F-number (Aperture), Chief Ray Angle (CRA) curve, and Infrared (IR) filter specifications (e.g., 650nm / 850nm / 940nm). |
+| **Illuminator / Supplemental Light (Optional)** | Light source type (White Light / 850nm IR / 940nm IR), driving method (PWM dimming / GPIO high-low level switch), maximum power, and beam angle. |
+| **Display Specifications (Optional)** | Display panel model, material/technology (OLED / LCD), screen Gamma curve, and supported color space standards (e.g., sRGB). |
+| **Ambient Light Sensor (Optional)** | The exact chip/part model of the ambient light sensor. |
+| **IR-CUT Mechanism (Optional)** | The part model of the IR-CUT driver IC, along with the hardware and software linkage mechanism between the IR-CUT and the supplemental light. |
+| **Focus Motor Specifications (Optional)** | The chip of the Auto-Focus (AF) motor. |
+
+### Submission Guidelines & Prerequisites
+
+* **Camera Module Verification**: Since optical characteristics have a decisive impact on final image quality, users must **fully define the camera module's FOV and focusing distance, and evaluate its baseline noise performance** prior to submitting a tuning request.
+* **Golden Sample Management**: To ensure that the tuned image quality maintains excellent compatibility and consistency during mass production, users are required to ship the designated **Golden Sample** to the Project Manager (PM). This sample will serve as the absolute benchmark for quality assurance (QA) across subsequent production batches.
