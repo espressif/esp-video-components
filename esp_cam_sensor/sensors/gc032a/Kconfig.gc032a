@@ -1,0 +1,60 @@
+menuconfig CAMERA_GC032A
+    bool "GC032A"
+    default n
+    depends on SOC_LCDCAM_CAM_SUPPORTED
+    help
+        Enable support for the GC032A CMOS image sensor.
+
+if CAMERA_GC032A
+    menu "Auto detect GC032A"
+        config CAMERA_GC032A_AUTO_DETECT_DVP_INTERFACE_SENSOR
+            bool "Detect for DVP interface sensor"
+            default y
+            help
+                When enabled, the GC032A sensor will be automatically detected
+                and initialized on the DVP interface at startup without requiring
+                manual detection call(gc032a_detect) in your application.
+    endmenu
+
+    menu "Choose supported formats for DVP interface"
+        config CAMERA_GC032A_DVP_YUV422_YUYV_640X480_7FPS
+            bool "DVP 8-bit, 20M input, 640x480 7fps, YUV422(YUYV)"
+            default n
+            help
+                YUV422(YUYV) color format at 640x480 resolution (VGA) with 7fps framerate.
+                Requires 8-bit DVP interface and 20MHz input clock.
+
+        config CAMERA_GC032A_DVP_RGB565_640X480_30FPS
+            bool "DVP 8-bit, 24M input, 640x480 30fps, RGB565"
+            default y
+            help
+                RGB565 color format at 640x480 resolution (VGA) with 30fps framerate.
+                Requires 8-bit DVP interface and 24MHz input clock.
+    endmenu
+
+    choice CAMERA_GC032A_DVP_DEFAULT_FMT
+        prompt "Select default output format for DVP interface"
+        default CAMERA_GC032A_DVP_DEFAULT_FMT_RGB565_640X480_30FPS
+        help
+            This option allows you to select the default video format for the GC032A sensor
+            when it is initialized on the DVP interface. The selected format will be used
+            when the sensor is detected and initialized, and can be changed later when the
+            sensor is in stream off state.
+
+        config CAMERA_GC032A_DVP_DEFAULT_FMT_YUV422_YUYV_640X480_7FPS
+            bool "DVP 8-bit, 20M input, 640x480 7fps, YUV422(YUYV)"
+            depends on CAMERA_GC032A_DVP_YUV422_YUYV_640X480_7FPS
+
+        config CAMERA_GC032A_DVP_DEFAULT_FMT_RGB565_640X480_30FPS
+            bool "DVP 8-bit, 24M input, 640x480 30fps, RGB565"
+            depends on CAMERA_GC032A_DVP_RGB565_640X480_30FPS
+    endchoice # CAMERA_GC032A_DVP_DEFAULT_FMT
+
+    config CAMERA_GC032A_DVP_IF_FORMAT_INDEX_DEFAULT
+        int
+        default 0 if CAMERA_GC032A_DVP_DEFAULT_FMT_YUV422_YUYV_640X480_7FPS
+        default 1 if CAMERA_GC032A_DVP_DEFAULT_FMT_RGB565_640X480_30FPS
+        help
+            Sets the default configuration for the DVP interface.
+            Use query_support_formats() API to get more format options.
+endif
