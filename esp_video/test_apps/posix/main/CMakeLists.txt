@@ -7,6 +7,10 @@ if (CONFIG_ESP_VIDEO_ENABLE_MIPI_CSI_VIDEO_DEVICE)
     list(APPEND requires "esp_hal_cam")
 endif()
 
+if (CONFIG_ESP_VIDEO_ENABLE_DVP_VIDEO_DEVICE)
+    list(APPEND srcs "test_dvp_format.c")
+endif()
+
 if (CONFIG_ESP_VIDEO_ENABLE_ISP_VIDEO_DEVICE)
     list(APPEND srcs "test_isp.c")
 endif()

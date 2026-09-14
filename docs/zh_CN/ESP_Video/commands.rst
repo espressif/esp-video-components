@@ -9,7 +9,7 @@
    - 示例侧重接口用法，未覆盖完整错误处理。产品代码须检查 ``ioctl`` 返回值。
    - 组件只实现当前芯片硬件能力范围内的 V4L2 功能。未列入下表的标准命令默认未实现；部分命令仅部分设备可用，或以编译宏为准。例如 ``VIDIOC_SUBSCRIBE_EVENT`` / ``VIDIOC_DQEVENT`` / ``VIDIOC_S_EVENT_CALLBACK`` 仅在 MIPI-CSI 驱动支持事件时可用（``ESP_VIDEO_CSI_DRIVER_HAS_EVENT``）。若当前 ESP-IDF 的 MIPI-CSI 驱动不含错误事件，应用程序不应调用这些命令。
    - Capture 设备使用 ``V4L2_BUF_TYPE_VIDEO_CAPTURE``。M2M 编解码设备（JPEG 编码 ``/dev/video10``、H.264 编码 ``/dev/video11``、JPEG 解码 ``/dev/video12``）须分别对 ``V4L2_BUF_TYPE_VIDEO_OUTPUT``（输入）和 ``V4L2_BUF_TYPE_VIDEO_CAPTURE``（输出）申请缓冲并 ``STREAMON`` / ``STREAMOFF``。
-   - 像素格式按字节序区分：YUV422 使用 ``V4L2_PIX_FMT_YUYV`` / ``V4L2_PIX_FMT_UYVY``；RGB565 使用 ``V4L2_PIX_FMT_RGB565``（小端）/ ``V4L2_PIX_FMT_RGB565X``（大端）。已不再使用 ``V4L2_PIX_FMT_YUV422P``。JPEG 解码器还支持 ``V4L2_PIX_FMT_BGR565``。
+   - 像素格式按字节序区分：YUV422 使用 ``V4L2_PIX_FMT_YUYV`` / ``V4L2_PIX_FMT_UYVY``；RGB565 使用 ``V4L2_PIX_FMT_RGB565``（小端）/ ``V4L2_PIX_FMT_RGB565X``（大端）。已不再使用 ``V4L2_PIX_FMT_YUV422P``。JPEG 解码器还支持 ``V4L2_PIX_FMT_BGR565``。DVP 在支持格式转换时，仅当传感器输出为 YUV422 YUYV 时可将数据转为 RGB565，转换结果是大端 ``V4L2_PIX_FMT_RGB565X``，不是小端 ``V4L2_PIX_FMT_RGB565``。传感器输出 UYVY 时不支持该转换。
 
 ioctl 调用顺序
 ~~~~~~~~~~~~~~~~~~~~~~

@@ -1,5 +1,8 @@
 ## Unreleased
 
+- Added DVP YUV422 YUYV to RGB565 format conversion via ``VIDIOC_ENUM_FMT`` / ``VIDIOC_S_FMT``
+    - Conversion is supported only when the sensor output is YUV422 YUYV, not UYVY
+    - Converted RGB565 is big-endian (``V4L2_PIX_FMT_RGB565X``), not little-endian (``V4L2_PIX_FMT_RGB565``)
 - Added functions to get IPA environment variables as int32_t or float
 - Added options to enable or disable MIPI-CSI event handling and configure the behavior for different targets
 - Added automatic transformation of YUV sensor data to the target YUV format

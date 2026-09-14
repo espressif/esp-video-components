@@ -33,7 +33,7 @@ if(CONFIG_ESP_VIDEO_ENABLE_MIPI_CSI_VIDEO_DEVICE)
 endif()
 
 if(CONFIG_ESP_VIDEO_ENABLE_DVP_VIDEO_DEVICE)
-    list(APPEND srcs "src/device/esp_video_dvp_device.c")
+    list(APPEND srcs "src/device/esp_video_dvp_device.c" "src/device/esp_video_dvp_format.c")
 endif()
 
 if(CONFIG_ESP_VIDEO_ENABLE_SPI_VIDEO_DEVICE)
