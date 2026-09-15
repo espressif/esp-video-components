@@ -55,6 +55,10 @@ struct csi_video {
     isp_color_range_t yuv_range;
     isp_yuv_conv_std_t yuv_std;
 
+    /* Filled by start_init_config, copied to the fields above by commit_init_config. */
+    esp_video_csi_isp_in_out_format_t pending_in_out_format;
+    color_raw_element_order_t pending_bayer_order;
+
     esp_ldo_channel_handle_t ldo_handle;
 
     isp_proc_handle_t isp_proc;
@@ -101,27 +105,51 @@ static esp_err_t csi_get_input_bayer_order(const esp_cam_sensor_isp_info_t *isp_
     return ret;
 }
 
-static esp_err_t csi_start_init_config(esp_video_device_common_t *common, esp_video_device_common_init_data_t *config)
+static esp_err_t csi_prepare_format(const esp_cam_sensor_format_t *sensor_fmt,
+                                    uint32_t *v4l2_format,
+                                    esp_video_csi_isp_in_out_format_t *in_out_format,
+                                    color_raw_element_order_t *bayer_order)
 {
-    const esp_cam_sensor_format_t *sensor_fmt = common->sensor_format;
-    struct csi_video *csi_video = (struct csi_video *)common->priv;
     uint32_t csi_output_v4l2_fmt = 0;
 
     if (sensor_fmt->isp_info) {
         csi_output_v4l2_fmt = V4L2_DEFAULT_OUT_COLOR;
     }
 
-    ESP_RETURN_ON_ERROR(esp_video_csi_check_format(sensor_fmt->format, csi_output_v4l2_fmt, &csi_video->in_out_format), TAG, "failed to check CSI format");
-    ESP_RETURN_ON_ERROR(csi_get_input_bayer_order(sensor_fmt->isp_info, &csi_video->bayer_order), TAG, "failed to get bayer order");
+    ESP_RETURN_ON_ERROR(esp_video_csi_check_format(sensor_fmt->format, csi_output_v4l2_fmt, in_out_format),
+                        TAG, "failed to check CSI format");
+    ESP_RETURN_ON_ERROR(csi_get_input_bayer_order(sensor_fmt->isp_info, bayer_order),
+                        TAG, "failed to get bayer order");
 
+    if (v4l2_format) {
+        *v4l2_format = csi_output_v4l2_fmt;
+    }
+    return ESP_OK;
+}
+
+static esp_err_t csi_start_init_config(esp_video_device_common_t *common, const esp_cam_sensor_format_t *sensor_fmt,
+                                       esp_video_device_common_init_data_t *config)
+{
+    struct csi_video *csi_video = (struct csi_video *)common->priv;
+
+    return csi_prepare_format(sensor_fmt, &config->v4l2_format,
+                              &csi_video->pending_in_out_format, &csi_video->pending_bayer_order);
+}
+
+static void csi_commit_init_config(esp_video_device_common_t *common, const esp_cam_sensor_format_t *sensor_fmt,
+                                   const esp_video_device_common_init_data_t *config)
+{
+    struct csi_video *csi_video = (struct csi_video *)common->priv;
+
+    (void)sensor_fmt;
+    (void)config;
+    csi_video->in_out_format = csi_video->pending_in_out_format;
+    csi_video->bayer_order = csi_video->pending_bayer_order;
     csi_video->yuv_range = ISP_COLOR_RANGE_FULL;
     csi_video->yuv_std = ISP_YUV_CONV_STD_BT601;
 #if ESP_VIDEO_ISP_DEVICE_CROP
     csi_video->set_crop = false;
 #endif
-
-    config->v4l2_format = csi_output_v4l2_fmt;
-    return ESP_OK;
 }
 
 static esp_err_t csi_video_init(esp_video_device_common_t *common)
@@ -567,6 +595,7 @@ static esp_err_t csi_video_unsubscribe_event(esp_video_device_common_t *common, 
 static const esp_video_device_intf_t s_csi_device_intf = {
     .init              = csi_video_init,
     .start_init_config = csi_start_init_config,
+    .commit_init_config = csi_commit_init_config,
     .deinit            = csi_video_deinit,
     .start             = csi_video_start,
     .stop              = csi_video_stop,

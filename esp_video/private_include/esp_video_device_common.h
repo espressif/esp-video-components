@@ -36,10 +36,24 @@ typedef struct esp_video_device_intf {
     esp_err_t (*init)(struct esp_video_device_common *common);
 
     /**
-     * Device inspects sensor_fmt, sets device-specific state, and
-     * returns config params (esp_video_device_common_init_data_t) for common.
+     * Validate sensor_fmt (the format being applied, not necessarily
+     * common->sensor_format yet) and fill config for the video buffer.
+     * Must not mutate common or adapter committed state; failures leave
+     * the device unchanged. Applied state is written by commit_init_config.
      */
-    esp_err_t (*start_init_config)(struct esp_video_device_common *common, esp_video_device_common_init_data_t *config);
+    esp_err_t (*start_init_config)(struct esp_video_device_common *common,
+                                   const esp_cam_sensor_format_t *sensor_fmt,
+                                   esp_video_device_common_init_data_t *config);
+
+    /**
+     * Commit adapter-private format state after common has accepted the
+     * prepared update (buffer config and in_color). Must not fail if
+     * start_init_config already succeeded for the same sensor_fmt.
+     * NULL → adapter has no private format state to commit.
+     */
+    void (*commit_init_config)(struct esp_video_device_common *common,
+                               const esp_cam_sensor_format_t *sensor_fmt,
+                               const esp_video_device_common_init_data_t *config);
 
     esp_err_t (*deinit)(struct esp_video_device_common *common);
     esp_err_t (*start)(struct esp_video_device_common *common, esp_cam_ctlr_handle_t *cam_ctrl_handle_ret);

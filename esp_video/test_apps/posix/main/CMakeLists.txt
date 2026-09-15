@@ -1,4 +1,4 @@
-set(srcs "test_app_main.c" "test_posix_v4l2.c" "test_storage.c")
+set(srcs "test_app_main.c" "test_posix_v4l2.c" "test_storage.c" "test_sensor_format.c")
 set(includes "." "../../../private_include")
 set(requires "unity" "test_utils" "esp_video" "esp_timer")
 

@@ -1,5 +1,8 @@
 ## Unreleased
 
+- Added ``VIDIOC_ENUM_SENSOR_FMT`` to enumerate camera sensor output formats
+    - Recommended flow: enumerate/set sensor format first, then use standard ``VIDIOC_ENUM_FMT`` / ``VIDIOC_S_FMT`` for device output formats and capture
+    - ``VIDIOC_S_SENSOR_FMT`` now fails with ``ESP_ERR_INVALID_STATE`` (``EBUSY``) if video buffers are allocated; free them with ``VIDIOC_REQBUFS`` count=0 first
 - Added DVP YUV422 YUYV to RGB565 format conversion via ``VIDIOC_ENUM_FMT`` / ``VIDIOC_S_FMT``
     - Conversion is supported only when the sensor output is YUV422 YUYV, not UYVY
     - Converted RGB565 is big-endian (``V4L2_PIX_FMT_RGB565X``), not little-endian (``V4L2_PIX_FMT_RGB565``)

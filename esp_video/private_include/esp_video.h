@@ -576,6 +576,7 @@ esp_err_t esp_video_m2m_process(struct esp_video *video, uint32_t src_type, uint
  *
  * @return
  *      - ESP_OK on success
+ *      - ESP_ERR_INVALID_STATE if video buffers are allocated; free them with VIDIOC_REQBUFS count=0 first
  *      - Others if failed
  */
 esp_err_t esp_video_set_sensor_format(struct esp_video *video, const esp_cam_sensor_format_t *format);
@@ -591,6 +592,18 @@ esp_err_t esp_video_set_sensor_format(struct esp_video *video, const esp_cam_sen
  *      - Others if failed
  */
 esp_err_t esp_video_get_sensor_format(struct esp_video *video, esp_cam_sensor_format_t *format);
+
+/**
+ * @brief Enumerate sensor format
+ *
+ * @param video     Video object
+ * @param enum_fmt  Sensor format enumeration pointer
+ *
+ * @return
+ *      - ESP_OK on success
+ *      - Others if failed
+ */
+esp_err_t esp_video_enum_sensor_format(struct esp_video *video, struct v4l2_sensor_format_enum *enum_fmt);
 
 /**
  * @brief Query menu value

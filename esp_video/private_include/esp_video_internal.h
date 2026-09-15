@@ -364,6 +364,10 @@ struct esp_video_ops {
 
     esp_err_t (*get_sensor_format)(struct esp_video *video, esp_cam_sensor_format_t *format);
 
+    /*!< Enumerate sensor format */
+
+    esp_err_t (*enum_sensor_format)(struct esp_video *video, struct v4l2_sensor_format_enum *enum_fmt);
+
     /*!< Query menu value */
 
     esp_err_t (*query_menu)(struct esp_video *video, struct v4l2_querymenu *qmenu);
