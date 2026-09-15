@@ -70,8 +70,8 @@ V4L2 命令
      - MIPI-CSI 裁剪
    * - ``VIDIOC_S_PARM`` / ``VIDIOC_G_PARM``
      - 采集帧间隔；H.264 设备可用于配置/查询 FPS（开流后也可设置）
-   * - ``VIDIOC_S_SENSOR_FMT`` / ``VIDIOC_G_SENSOR_FMT``
-     - 相机传感器输出格式
+   * - ``VIDIOC_S_SENSOR_FMT`` / ``VIDIOC_G_SENSOR_FMT`` / ``VIDIOC_ENUM_SENSOR_FMT``
+     - 相机传感器输出格式：设置 / 获取 / 枚举
    * - ``VIDIOC_S_MOTOR_FMT`` / ``VIDIOC_G_MOTOR_FMT``
      - 自动对焦电机（需使能电机控制器）
    * - ``VIDIOC_SET_OWNER``
@@ -1098,31 +1098,84 @@ M2M 编解码设备须分别对 OUTPUT 与 CAPTURE 调用本命令。USB UVC 在
    }
 
 
-设置/获取相机传感器输出格式
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+设置/获取/枚举相机传感器输出格式
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-- 命令（请求代码）：``VIDIOC_S_SENSOR_FMT`` / ``VIDIOC_G_SENSOR_FMT``
-- 命令参数：``esp_cam_sensor_format_t``
+- 命令（请求代码）：``VIDIOC_S_SENSOR_FMT`` / ``VIDIOC_G_SENSOR_FMT`` / ``VIDIOC_ENUM_SENSOR_FMT``
+- ``VIDIOC_S_SENSOR_FMT`` / ``VIDIOC_G_SENSOR_FMT`` 参数：``esp_cam_sensor_format_t``
+- ``VIDIOC_ENUM_SENSOR_FMT`` 参数：``struct v4l2_sensor_format_enum``
 
-字段说明见 ``esp_cam_sensor_format_t``。
+``esp_cam_sensor_format_t`` 字段说明见头文件定义。
+
+``struct v4l2_sensor_format_enum`` 主要字段：
+
+.. list-table::
+   :header-rows: 1
+   :width: 100%
+   :widths: auto
+
+   * - 字段
+     - 类型
+     - 用途
+   * - index
+     - uint32_t
+     - 由应用填写的格式序号，从 0 开始递增枚举
+   * - format
+     - esp_cam_sensor_format_t
+     - 驱动返回的传感器格式；其中指针字段指向驱动静态数据，可用于随后的 ``VIDIOC_S_SENSOR_FMT``
+
+推荐流程：先用 ``VIDIOC_ENUM_SENSOR_FMT`` 枚举并选择 sensor format，再调用标准
+``VIDIOC_ENUM_FMT`` / ``VIDIOC_ENUM_FRAMESIZES`` / ``VIDIOC_ENUM_FRAMEINTERVALS``
+查询当前 sensor 模式下设备支持的 V4L2 输出格式，最后 ``VIDIOC_S_FMT`` 并采集。
+
+``VIDIOC_S_SENSOR_FMT`` 须在未申请缓冲时调用。若已 ``VIDIOC_REQBUFS`` 且 ``count>0``，该命令返回失败（``errno`` 为 ``EBUSY``），需先 ``VIDIOC_REQBUFS`` 且 ``count=0`` 释放缓冲后再设置。
 
 **用法示例**：
 
 .. code-block:: c
 
-   static const esp_cam_sensor_format_t s_sensor_format = {
-       ......
-   };
-
-   void example_set_get_sensor_format(void)
+   void example_enum_set_sensor_format(void)
    {
        int fd = open("/dev/video0", O_RDWR);
+       struct v4l2_sensor_format_enum sensor_enum = {0};
+       struct v4l2_fmtdesc fmtdesc = {
+           .type = V4L2_BUF_TYPE_VIDEO_CAPTURE,
+       };
+       struct v4l2_format format = {
+           .type = V4L2_BUF_TYPE_VIDEO_CAPTURE,
+       };
 
-       ioctl(fd, VIDIOC_S_SENSOR_FMT, &s_sensor_format);
+       /* 1. 枚举 sensor format */
+       for (sensor_enum.index = 0;
+            ioctl(fd, VIDIOC_ENUM_SENSOR_FMT, &sensor_enum) == 0;
+            sensor_enum.index++) {
+           printf("[%u] %s %ux%u @%ufps\n",
+                  sensor_enum.index,
+                  sensor_enum.format.name,
+                  sensor_enum.format.width,
+                  sensor_enum.format.height,
+                  sensor_enum.format.fps);
+       }
 
-       esp_cam_sensor_format_t format = {0};
-       ioctl(fd, VIDIOC_G_SENSOR_FMT, &format);
-       printf("Sensor format: %s\n", format.name);
+       /* 2. 选择并配置 sensor format（这里以 index 0 为例） */
+       sensor_enum.index = 0;
+       ioctl(fd, VIDIOC_ENUM_SENSOR_FMT, &sensor_enum);
+       ioctl(fd, VIDIOC_S_SENSOR_FMT, &sensor_enum.format);
+
+       /* 3. 枚举当前模式下设备支持的 V4L2 输出格式 */
+       uint32_t selected_pixelformat = 0;
+       for (fmtdesc.index = 0; ioctl(fd, VIDIOC_ENUM_FMT, &fmtdesc) == 0; fmtdesc.index++) {
+           printf("V4L2 format[%u]: " V4L2_FMT_STR "\n",
+                  fmtdesc.index, V4L2_FMT_STR_ARG(fmtdesc.pixelformat));
+           if (fmtdesc.index == 0) {
+               selected_pixelformat = fmtdesc.pixelformat;
+           }
+       }
+
+       /* 4. 配置 V4L2 format 后即可 REQBUFS / STREAMON 抓图 */
+       ioctl(fd, VIDIOC_G_FMT, &format);
+       format.fmt.pix.pixelformat = selected_pixelformat;
+       ioctl(fd, VIDIOC_S_FMT, &format);
 
        close(fd);
    }

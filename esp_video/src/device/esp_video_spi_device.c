@@ -40,10 +40,11 @@ struct spi_video {
 
 static const char *TAG = "spi_video";
 
-static esp_err_t spi_start_init_config(esp_video_device_common_t *common, esp_video_device_common_init_data_t *config)
+static esp_err_t spi_start_init_config(esp_video_device_common_t *common, const esp_cam_sensor_format_t *sensor_fmt,
+                                       esp_video_device_common_init_data_t *config)
 {
-    // Note: No need to check common and config here, it will be checked in upper layer
-    const esp_cam_sensor_spi_info_t *spi_info = &common->sensor_format->spi_info;
+    /* Validate only: do not write common or adapter committed state. */
+    const esp_cam_sensor_spi_info_t *spi_info = &sensor_fmt->spi_info;
 
 #ifdef CONFIG_CAM_CTLR_SPI_ENABLE_PARLIO
     struct spi_video *spi_video = (struct spi_video *)common->priv;

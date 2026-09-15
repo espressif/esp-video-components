@@ -45,6 +45,19 @@ struct v4l2_event_callback {
                                         (uint8_t)(((fmt) >> 16) & 0xFF), \
                                         (uint8_t)(((fmt) >> 24) & 0xFF)
 
+/**
+ * @brief Enumerate camera sensor output formats.
+ *
+ * Applications set @c index starting from 0 and call this ioctl repeatedly
+ * until it fails. On success the driver fills @c format. Pointer fields inside
+ * @c format refer to sensor-driver static data and remain valid for a
+ * subsequent VIDIOC_S_SENSOR_FMT call.
+ */
+struct v4l2_sensor_format_enum {
+    uint32_t index;                     /*!< Format number, set by application */
+    esp_cam_sensor_format_t format;     /*!< Sensor format filled by driver */
+};
+
 #define VIDIOC_S_SENSOR_FMT _IOWR('V',  BASE_VIDIOC_PRIVATE + 1, esp_cam_sensor_format_t)
 #define VIDIOC_G_SENSOR_FMT _IOWR('V',  BASE_VIDIOC_PRIVATE + 2, esp_cam_sensor_format_t)
 
@@ -72,6 +85,13 @@ struct v4l2_event_callback {
  * @param callback  Event callback structure
  */
 #define VIDIOC_S_EVENT_CALLBACK  _IOW('V',  BASE_VIDIOC_PRIVATE + 9, struct v4l2_event_callback)
+
+/**
+ * @brief Enumerate camera sensor output formats
+ *
+ * @param enum_fmt  Pointer to struct v4l2_sensor_format_enum
+ */
+#define VIDIOC_ENUM_SENSOR_FMT  _IOWR('V',  BASE_VIDIOC_PRIVATE + 10, struct v4l2_sensor_format_enum)
 
 #define V4L2_CID_CAMERA_AE_LEVEL        (V4L2_CID_CAMERA_CLASS_BASE + 40)
 #define V4L2_CID_CAMERA_STATS           (V4L2_CID_CAMERA_CLASS_BASE + 41)

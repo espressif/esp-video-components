@@ -1754,6 +1754,11 @@ esp_err_t esp_video_set_sensor_format(struct esp_video *video, const esp_cam_sen
 
     CHECK_VIDEO_OBJ(video);
 
+    if (CAPTURE_VIDEO_STREAM(video) && CAPTURE_VIDEO_BUF_COUNT(video) > 0) {
+        ESP_LOGE(TAG, "Cannot set sensor format while buffers exist, please free buffers first (VIDIOC_REQBUFS count=0)");
+        return ESP_ERR_INVALID_STATE;
+    }
+
     if (video->ops->set_sensor_format) {
         ret = video->ops->set_sensor_format(video, format);
         if (ret != ESP_OK) {
@@ -1792,6 +1797,36 @@ esp_err_t esp_video_get_sensor_format(struct esp_video *video, esp_cam_sensor_fo
         }
     } else {
         ESP_LOGD(TAG, "video->ops->get_sensor_format=NULL");
+        return ESP_ERR_NOT_SUPPORTED;
+    }
+
+    return ESP_OK;
+}
+
+/**
+ * @brief Enumerate sensor format
+ *
+ * @param video     Video object
+ * @param enum_fmt  Sensor format enumeration pointer
+ *
+ * @return
+ *      - ESP_OK on success
+ *      - Others if failed
+ */
+esp_err_t esp_video_enum_sensor_format(struct esp_video *video, struct v4l2_sensor_format_enum *enum_fmt)
+{
+    esp_err_t ret;
+
+    CHECK_VIDEO_OBJ(video);
+
+    if (video->ops->enum_sensor_format) {
+        ret = video->ops->enum_sensor_format(video, enum_fmt);
+        if (ret != ESP_OK) {
+            ESP_LOGD(TAG, "video->ops->enum_sensor_format=%x", ret);
+            return ret;
+        }
+    } else {
+        ESP_LOGD(TAG, "video->ops->enum_sensor_format=NULL");
         return ESP_ERR_NOT_SUPPORTED;
     }
 

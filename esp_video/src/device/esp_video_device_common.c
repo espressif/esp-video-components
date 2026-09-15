@@ -86,38 +86,75 @@ static esp_err_t esp_video_device_common_get_input_frame_type(esp_cam_sensor_out
     return ESP_OK;
 }
 
-static esp_err_t update_format_config(esp_video_device_common_t *common, const esp_cam_sensor_format_t *set_fmt)
+typedef struct {
+    const esp_cam_sensor_format_t *sensor_fmt;
+    cam_ctlr_color_t in_color;
+    uint32_t v4l2_fmt;
+    esp_video_device_common_init_data_t config;
+} format_update_pending_t;
+
+/**
+ * Validate and compute the new format in pending state only.
+ * Does not write common->in_color or adapter committed state.
+ */
+static esp_err_t prepare_format_config(esp_video_device_common_t *common, const esp_cam_sensor_format_t *set_fmt,
+                                       format_update_pending_t *pending)
 {
-    uint32_t v4l2_fmt = 0;
-    struct esp_video *video = common->video;
-    const esp_cam_sensor_format_t *sensor_fmt = set_fmt ? set_fmt : common->sensor_format;
+    memset(pending, 0, sizeof(*pending));
+    pending->sensor_fmt = set_fmt ? set_fmt : common->sensor_format;
 
-    common->in_color = 0;
+    ESP_RETURN_ON_FALSE(pending->sensor_fmt, ESP_ERR_INVALID_ARG, TAG, "sensor format is NULL");
 
-    esp_video_device_common_init_data_t config = {0};
     if (common->intf->start_init_config) {
-        ESP_RETURN_ON_ERROR(common->intf->start_init_config(common, &config), TAG, "start_init_config failed");
+        ESP_RETURN_ON_ERROR(common->intf->start_init_config(common, pending->sensor_fmt, &pending->config),
+                            TAG, "start_init_config failed");
     }
 
-    if (config.v4l2_format) {
-        v4l2_fmt = config.v4l2_format;
+    if (pending->config.v4l2_format) {
+        pending->v4l2_fmt = pending->config.v4l2_format;
     } else {
-        ESP_RETURN_ON_ERROR(esp_video_device_common_get_input_frame_type(sensor_fmt->format, &common->in_color, &v4l2_fmt),
+        ESP_RETURN_ON_ERROR(esp_video_device_common_get_input_frame_type(pending->sensor_fmt->format,
+                            &pending->in_color, &pending->v4l2_fmt),
                             TAG, "failed to convert sensor format");
     }
 
+    return ESP_OK;
+}
+
+/**
+ * Commit a prepared format: stream buffer, then common->in_color, then adapter.
+ * esp_video_config_buffer does not mutate the stream on failure, so a failed
+ * commit leaves common and adapter as they were.
+ */
+static esp_err_t commit_format_config(esp_video_device_common_t *common, const format_update_pending_t *pending)
+{
     struct v4l2_format format = {
         .type = V4L2_BUF_TYPE_VIDEO_CAPTURE,
         .fmt.pix = {
-            .width = sensor_fmt->width,
-            .height = sensor_fmt->height,
-            .pixelformat = v4l2_fmt,
-            .sizeimage = config.sizeimage,
+            .width = pending->sensor_fmt->width,
+            .height = pending->sensor_fmt->height,
+            .pixelformat = pending->v4l2_fmt,
+            .sizeimage = pending->config.sizeimage,
         },
     };
-    ESP_RETURN_ON_ERROR(esp_video_config_buffer(video, &format, common->mem_caps), TAG, "failed to configure stream buffer");
+
+    ESP_RETURN_ON_ERROR(esp_video_config_buffer(common->video, &format, common->mem_caps),
+                        TAG, "failed to configure stream buffer");
+
+    common->in_color = pending->in_color;
+    if (common->intf->commit_init_config) {
+        common->intf->commit_init_config(common, pending->sensor_fmt, &pending->config);
+    }
 
     return ESP_OK;
+}
+
+static esp_err_t update_format_config(esp_video_device_common_t *common, const esp_cam_sensor_format_t *set_fmt)
+{
+    format_update_pending_t pending;
+
+    ESP_RETURN_ON_ERROR(prepare_format_config(common, set_fmt, &pending), TAG, "failed to prepare format");
+    return commit_format_config(common, &pending);
 }
 
 bool IRAM_ATTR esp_video_device_common_on_trans_finished(esp_cam_ctlr_handle_t handle,
@@ -592,16 +629,61 @@ static esp_err_t common_video_query_ext_ctrl(struct esp_video *video, struct v4l
     return esp_video_cam_query_ext_ctrls(&common->cam, qctrl);
 }
 
+static const esp_cam_sensor_format_t *resolve_sensor_format(esp_cam_sensor_device_t *sensor,
+        const esp_cam_sensor_format_t *format)
+{
+    esp_cam_sensor_format_array_t format_array = {0};
+
+    if (format == NULL || sensor == NULL) {
+        return format;
+    }
+
+    if (esp_cam_sensor_query_format(sensor, &format_array) != ESP_OK ||
+            format_array.format_array == NULL || format_array.count == 0) {
+        return format;
+    }
+
+    for (uint32_t i = 0; i < format_array.count; i++) {
+        const esp_cam_sensor_format_t *entry = &format_array.format_array[i];
+
+        /* Prefer regs pointer identity: preserved across ioctl copy of enum result. */
+        if (entry->regs == format->regs &&
+                entry->format == format->format &&
+                entry->width == format->width &&
+                entry->height == format->height &&
+                entry->fps == format->fps) {
+            return entry;
+        }
+    }
+
+    /* Custom format not in the sensor table (e.g. VIDIOC_S_SENSOR_FMT with static custom regs). */
+    return format;
+}
+
 static esp_err_t common_video_set_sensor_format(struct esp_video *video, const esp_cam_sensor_format_t *format)
 {
-    esp_err_t ret = ESP_OK;
+    esp_err_t ret;
+    format_update_pending_t pending;
     esp_video_device_common_t *common = VIDEO_DEVICE_COMMON(video);
+    const esp_cam_sensor_format_t *prev = common->sensor_format;
+    const esp_cam_sensor_format_t *resolved = resolve_sensor_format(common->cam.sensor, format);
 
-    ESP_RETURN_ON_ERROR(esp_cam_sensor_set_format(common->cam.sensor, format), TAG, "failed to set sensor format");
-    ESP_RETURN_ON_ERROR(update_format_config(common, format), TAG, "failed to initialize sensor format");
+    /* Validate adapter and compute common state before touching the sensor. */
+    ESP_RETURN_ON_ERROR(prepare_format_config(common, resolved, &pending), TAG, "failed to prepare format");
+
+    ESP_RETURN_ON_ERROR(esp_cam_sensor_set_format(common->cam.sensor, resolved), TAG, "failed to set sensor format");
+
+    ret = commit_format_config(common, &pending);
+    if (ret != ESP_OK) {
+        ESP_LOGE(TAG, "failed to initialize sensor format");
+        if (prev && esp_cam_sensor_set_format(common->cam.sensor, prev) != ESP_OK) {
+            ESP_LOGE(TAG, "failed to rollback sensor format");
+        }
+        return ret;
+    }
+
     common->sensor_format = common->cam.sensor->cur_format;
-
-    return ret;
+    return ESP_OK;
 }
 
 static esp_err_t common_video_get_sensor_format(struct esp_video *video, esp_cam_sensor_format_t *format)
@@ -611,6 +693,25 @@ static esp_err_t common_video_get_sensor_format(struct esp_video *video, esp_cam
     assert(format);
 
     return esp_cam_sensor_get_format(common->cam.sensor, format);
+}
+
+static esp_err_t common_video_enum_sensor_format(struct esp_video *video, struct v4l2_sensor_format_enum *enum_fmt)
+{
+    esp_video_device_common_t *common = VIDEO_DEVICE_COMMON(video);
+    esp_cam_sensor_format_array_t format_array = {0};
+
+    ESP_RETURN_ON_FALSE(enum_fmt, ESP_ERR_INVALID_ARG, TAG, "enum_fmt is NULL");
+    ESP_RETURN_ON_FALSE(common->cam.sensor, ESP_ERR_NOT_SUPPORTED, TAG, "sensor is NULL");
+    ESP_RETURN_ON_ERROR(esp_cam_sensor_query_format(common->cam.sensor, &format_array), TAG, "failed to query sensor format");
+    ESP_RETURN_ON_FALSE(format_array.format_array && format_array.count > 0, ESP_ERR_NOT_SUPPORTED, TAG, "no sensor format");
+
+    if (enum_fmt->index >= format_array.count) {
+        ESP_LOGD(TAG, "index=%" PRIu32 " is out of range", enum_fmt->index);
+        return ESP_ERR_INVALID_ARG;
+    }
+
+    enum_fmt->format = format_array.format_array[enum_fmt->index];
+    return ESP_OK;
 }
 
 static esp_err_t common_video_query_menu(struct esp_video *video, struct v4l2_querymenu *qmenu)
@@ -807,6 +908,7 @@ static const struct esp_video_ops s_common_video_ops = {
     .query_ext_ctrl     = common_video_query_ext_ctrl,
     .set_sensor_format  = common_video_set_sensor_format,
     .get_sensor_format  = common_video_get_sensor_format,
+    .enum_sensor_format = common_video_enum_sensor_format,
     .query_menu         = common_video_query_menu,
     .set_motor_format   = common_video_set_motor_format,
     .get_motor_format   = common_video_get_motor_format,

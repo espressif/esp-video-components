@@ -38,6 +38,8 @@ static struct {
     struct arg_str *dev;
     struct arg_str *set_ctrl;
     struct arg_lit *list_formats;
+    struct arg_lit *list_sensor_formats;
+    struct arg_int *set_sensor_format;
     struct arg_lit *list_devices;
     struct arg_str *set_fmt_video;
     struct arg_str *set_fmt_video_out;
@@ -382,6 +384,70 @@ static void list_dev_formats(const char *name)
 
 exit:
     close(fd);
+}
+
+static void list_sensor_formats(const char *name)
+{
+    int fd;
+    struct v4l2_sensor_format_enum sensor_enum = {0};
+
+    fd = open(name, O_RDWR);
+    if (fd < 0) {
+        ESP_LOGE(TAG, "failed to open device=%s", name);
+        return;
+    }
+
+    printf("ioctl: VIDIOC_ENUM_SENSOR_FMT\n\n");
+    while (ioctl(fd, VIDIOC_ENUM_SENSOR_FMT, &sensor_enum) == 0) {
+        printf("\t[%" PRIu32 "]: %s %ux%u @%ufps format=%d\n",
+               sensor_enum.index,
+               sensor_enum.format.name ? sensor_enum.format.name : "(null)",
+               sensor_enum.format.width,
+               sensor_enum.format.height,
+               sensor_enum.format.fps,
+               (int)sensor_enum.format.format);
+        sensor_enum.index++;
+    }
+
+    close(fd);
+}
+
+static int set_sensor_format_by_index(const char *name, uint32_t index)
+{
+    int fd;
+    struct v4l2_sensor_format_enum sensor_enum = {0};
+
+    fd = open(name, O_RDWR);
+    if (fd < 0) {
+        ESP_LOGE(TAG, "failed to open device=%s", name);
+        return -1;
+    }
+
+    sensor_enum.index = index;
+    if (ioctl(fd, VIDIOC_ENUM_SENSOR_FMT, &sensor_enum) != 0) {
+        ESP_LOGE(TAG, "sensor format index=%" PRIu32 " is invalid", index);
+        close(fd);
+        return -1;
+    }
+
+    if (ioctl(fd, VIDIOC_S_SENSOR_FMT, &sensor_enum.format) != 0) {
+        if (errno == EBUSY) {
+            ESP_LOGE(TAG, "failed to set sensor format: buffers exist, free them first (VIDIOC_REQBUFS count=0)");
+        } else {
+            ESP_LOGE(TAG, "failed to set sensor format index=%" PRIu32, index);
+        }
+        close(fd);
+        return -1;
+    }
+
+    printf("Set sensor format[%" PRIu32 "]: %s %ux%u @%ufps\n",
+           index,
+           sensor_enum.format.name ? sensor_enum.format.name : "(null)",
+           sensor_enum.format.width,
+           sensor_enum.format.height,
+           sensor_enum.format.fps);
+    close(fd);
+    return 0;
 }
 
 static void list_devices(void)
@@ -856,10 +922,18 @@ static int v4l2_ctl_main(int argc, char **argv)
         }
     }
 
+    if (v4l2_ctl_main_arg.set_sensor_format->count) {
+        if (set_sensor_format_by_index(dev_name, v4l2_ctl_main_arg.set_sensor_format->ival[0]) != 0) {
+            return -1;
+        }
+    }
+
     if (v4l2_ctl_main_arg.all->count) {
         dump_dev_info(dev_name);
     } else if (v4l2_ctl_main_arg.set_ctrl->count) {
         set_dev_ctrl(dev_name, v4l2_ctl_main_arg.set_ctrl->sval[0]);
+    } else if (v4l2_ctl_main_arg.list_sensor_formats->count) {
+        list_sensor_formats(dev_name);
     } else if (v4l2_ctl_main_arg.list_formats->count) {
         list_dev_formats(dev_name);
     } else if (v4l2_ctl_main_arg.list_devices->count) {
@@ -883,6 +957,8 @@ void v4l2_cmd_ctl_register(void)
     v4l2_ctl_main_arg.all = arg_lit0(NULL, "all", "display all information available");
     v4l2_ctl_main_arg.set_ctrl = arg_str0("c", "set-ctrl", "<ctrl>=<val>[,<ctrl>=<val>...]", "set the value of the controls");
     v4l2_ctl_main_arg.list_formats = arg_lit0(NULL, "list-formats", "display supported video formats");
+    v4l2_ctl_main_arg.list_sensor_formats = arg_lit0(NULL, "list-sensor-formats", "display supported camera sensor formats");
+    v4l2_ctl_main_arg.set_sensor_format = arg_int0(NULL, "set-sensor-format", "<index>", "set camera sensor format by index from --list-sensor-formats");
     v4l2_ctl_main_arg.list_devices = arg_lit0(NULL, "list-devices", "list all v4l2 video devices");
     v4l2_ctl_main_arg.set_fmt_video = arg_str0(NULL, "set-fmt-video", "width=<w>,height=<h>,pixelformat=<pf>", "set the video capture format, pixelformat is either the format index as reported by --list-formats, or the fourcc value as a string");
     v4l2_ctl_main_arg.set_fmt_video_out = arg_str0(NULL, "set-fmt-video-out", "width=<w>,height=<h>,pixelformat=<pf>", "set the video output format, pixelformat is either the format index as reported by --list-formats, or the fourcc value as a string");
@@ -892,7 +968,7 @@ void v4l2_cmd_ctl_register(void)
     v4l2_ctl_main_arg.stream_from = arg_str0(NULL, "stream-from", "<file>", "stream from this <file>");
     v4l2_ctl_main_arg.stream_count = arg_int0(NULL, "stream-count", "<count>", "capture <count> frames");
     v4l2_ctl_main_arg.dev = arg_str0("d", "device", "<dev>", "use device <dev> instead of /dev/video0, if <dev> starts with a digit, then /dev/video<dev> is used");
-    v4l2_ctl_main_arg.end = arg_end(10);
+    v4l2_ctl_main_arg.end = arg_end(12);
 
     const esp_console_cmd_t cmd = {
         .command = "v4l2-ctl",

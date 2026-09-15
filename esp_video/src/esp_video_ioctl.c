@@ -261,6 +261,11 @@ static inline esp_err_t esp_video_ioctl_get_sensor_format(struct esp_video *vide
     return esp_video_get_sensor_format(video, format);
 }
 
+static inline esp_err_t esp_video_ioctl_enum_sensor_format(struct esp_video *video, struct v4l2_sensor_format_enum *enum_fmt)
+{
+    return esp_video_enum_sensor_format(video, enum_fmt);
+}
+
 static inline esp_err_t esp_video_ioctl_query_menu(struct esp_video *video, struct v4l2_querymenu *qmenu)
 {
     return esp_video_query_menu(video, qmenu);
@@ -388,6 +393,9 @@ esp_err_t esp_video_ioctl(struct esp_video *video, int cmd, va_list args)
         break;
     case VIDIOC_G_SENSOR_FMT:
         ret = esp_video_ioctl_get_sensor_format(video, (esp_cam_sensor_format_t *)arg_ptr);
+        break;
+    case VIDIOC_ENUM_SENSOR_FMT:
+        ret = esp_video_ioctl_enum_sensor_format(video, (struct v4l2_sensor_format_enum *)arg_ptr);
         break;
     case VIDIOC_QUERYMENU:
         ret = esp_video_ioctl_query_menu(video, (struct v4l2_querymenu *)arg_ptr);

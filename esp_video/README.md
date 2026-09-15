@@ -74,8 +74,9 @@ Please note that this class only supports "p_u8" and "size" fields of v4l2_ext_c
 
 | Command | Type | Description |
 |:-:|:-|:-|
-| VIDIOC_S_SENSOR_FMT | pointer of "esp_cam_sensor_format_t" | Set sensor output format |
+| VIDIOC_S_SENSOR_FMT | pointer of "esp_cam_sensor_format_t" | Set sensor output format. Fails with EBUSY if buffers are allocated; free them with VIDIOC_REQBUFS count=0 first |
 | VIDIOC_G_SENSOR_FMT | pointer of "esp_cam_sensor_format_t" | Get sensor output format |
+| VIDIOC_ENUM_SENSOR_FMT | pointer of "struct v4l2_sensor_format_enum" | Enumerate sensor output formats |
 | VIDIOC_SET_OWNER | pointer of "int" | Increase video device reference when input value is not equal to 0 or decrease video device reference when input value is equal to 0  |
 | VIDIOC_S_MOTOR_FMT | pointer of "esp_cam_motor_format_t" | Set motor motion format |
 | VIDIOC_G_MOTOR_FMT | pointer of "esp_cam_motor_format_t" | Get motor motion format |

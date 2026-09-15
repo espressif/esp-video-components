@@ -17,7 +17,7 @@ This example provides a command-line interface for controlling V4L2 video device
 
 ### Supported Commands
 
-- **v4l2-ctl**: Main command for controlling V4L2 video devices (list devices, query info, set controls, capture frames, format conversion)
+- **v4l2-ctl**: Main command for controlling V4L2 video devices (list devices, query info, set controls, enumerate/set sensor formats, capture frames, format conversion)
 - **v4l2-bf**: Control Bayer filter (BF) for ISP devices
 - **v4l2-ccm**: Control color correction matrix (CCM) for ISP devices
 - **v4l2-gamma**: Control gamma correction for ISP devices
@@ -96,11 +96,56 @@ v4l2-ctl --list-formats [OPTIONS]
 - Lists all pixel formats supported by the device
 - For memory-to-memory (M2M) devices, shows both capture and output formats
 - Format information includes pixel format fourcc codes
+- The listed formats depend on the **current sensor format**. Use `--list-sensor-formats` / `--set-sensor-format` first when you need another sensor mode
 
 **Example:**
 ```
 v4l2-ctl --list-formats
 v4l2-ctl --list-formats -d /dev/video0
+```
+
+#### 3.1 --list-sensor-formats
+
+Display all camera sensor output formats supported by the driver.
+
+**Syntax:**
+```
+v4l2-ctl --list-sensor-formats [OPTIONS]
+```
+
+**Options:**
+- `-d, --device <dev>`: Specify the device to query. Default: `/dev/video0`
+
+**Description:**
+- Lists sensor register modes (`esp_cam_sensor_format_t`), including name, resolution and FPS
+- This is independent from `--list-formats`, which lists device/V4L2 output formats for the current sensor mode
+
+**Example:**
+```
+v4l2-ctl --list-sensor-formats
+```
+
+#### 3.2 --set-sensor-format
+
+Select a camera sensor output format by index from `--list-sensor-formats`.
+
+**Syntax:**
+```
+v4l2-ctl --set-sensor-format=<index> [OPTIONS]
+```
+
+**Options:**
+- `-d, --device <dev>`: Specify the device to control. Default: `/dev/video0`
+
+**Description:**
+- Sets the sensor format before enumerating/configuring V4L2 formats
+- Can be combined with `--list-formats` or capture options such as `--stream-to`
+- Fails if capture buffers are already allocated; free them first with `VIDIOC_REQBUFS` count=0
+
+**Examples:**
+```
+v4l2-ctl --set-sensor-format=0 --list-formats
+v4l2-ctl --set-sensor-format=1 --set-fmt-video=width=1280,height=720,pixelformat=RGBP --stream-mmap=2 --stream-count=1 --stream-to=/sdcard/frame.raw
 ```
 
 #### 4. -c/--set-ctrl
@@ -475,7 +520,14 @@ Controls
 #### List Supported Formats
 
 ```
-video:> v4l2-ctl --list-formats
+video:> v4l2-ctl --list-sensor-formats
+ioctl: VIDIOC_ENUM_SENSOR_FMT
+
+	[0]: MIPI_2lane_24Minput_RAW10_1280x720_30fps 1280x720 @30fps format=10
+	[1]: MIPI_2lane_24Minput_RAW10_1920x1080_30fps 1920x1080 @30fps format=10
+
+video:> v4l2-ctl --set-sensor-format=0 --list-formats
+Set sensor format[0]: MIPI_2lane_24Minput_RAW10_1280x720_30fps 1280x720 @30fps
 ioctl: VIDIOC_ENUM_FMT
 	Type : Video Capture
 

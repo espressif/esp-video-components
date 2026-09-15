@@ -62,18 +62,20 @@ struct dvp_video {
 static const char *TAG = "dvp_video";
 
 #if ESP_VIDEO_DVP_DEVICE_CONV_FORMAT
-static esp_err_t dvp_start_init_config(esp_video_device_common_t *common, esp_video_device_common_init_data_t *config)
+static void dvp_commit_init_config(esp_video_device_common_t *common, const esp_cam_sensor_format_t *sensor_fmt,
+                                   const esp_video_device_common_init_data_t *config)
 {
     struct dvp_video *dvp_video = (struct dvp_video *)common->priv;
 
     /*
-     * update_format_config() / VIDIOC_S_SENSOR_FMT reconfigures capture to the
-     * sensor native format. Drop any previously committed conversion state so
-     * STREAMON cannot reuse a stale RGB565X conversion against a new input.
+     * VIDIOC_S_SENSOR_FMT reconfigures capture to the sensor native format.
+     * Drop any previously committed conversion state so STREAMON cannot reuse
+     * a stale RGB565X conversion against a new input. Applied only after the
+     * format update is fully accepted.
      */
     dvp_video->out_valid = false;
+    (void)sensor_fmt;
     (void)config;
-    return ESP_OK;
 }
 #endif
 
@@ -318,7 +320,7 @@ static esp_err_t dvp_video_start(esp_video_device_common_t *common, esp_cam_ctlr
 
 static const esp_video_device_intf_t s_dvp_device_intf = {
 #if ESP_VIDEO_DVP_DEVICE_CONV_FORMAT
-    .start_init_config = dvp_start_init_config,
+    .commit_init_config = dvp_commit_init_config,
 #endif
     .start             = dvp_video_start,
     .enum_format       = dvp_enum_format,
