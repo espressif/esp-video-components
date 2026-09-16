@@ -6,6 +6,7 @@
 - Removed the unused Reset pin in the SC101 driver.
 - Add a column for notes to the list of supported camera sensors.
 - Added GC4053 MIPI RAW sensor driver.
+- Added MIT245 MIPI RAW sensor driver.
 
 ## 2.5.0
 
