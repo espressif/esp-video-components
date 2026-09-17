@@ -1,5 +1,19 @@
 ## 2.5.0
 
+- USB UVC: open the stream with the format V4L2 selected instead of the camera's first frame
+  descriptor.
+- USB UVC: added camera-side encoder controls for the H.264 passthrough path, over the UVC
+  H.264 payload specification's Extension Unit and the Camera Terminal. They are exposed as
+  standard V4L2 controls.
+- The bitrate range reported by `VIDIOC_QUERY_EXT_CTRL` is read from the camera once a stream is open.
+  Bitrate, rate-control mode and QP limits are changed mid-stream through the payload
+  specification's runtime controls (`UVCX_BITRATE_LAYERS`, `UVCX_RATE_CONTROL_MODE`,
+  `UVCX_QP_STEPS_LAYERS`) where the camera implements them, so no stream restart is needed.
+  New options `ESP_VIDEO_UVC_H264_BITRATE_BPS` and `ESP_VIDEO_UVC_H264_GOP_SIZE` set the
+  initial value of two of these controls and both default to 0, meaning the camera's own
+  settings are left alone.
+- Updated to use usb_host_uvc v2.6.x
+
 - Added ISP pipeline APIs to enumerate and switch IPA JSON configurations at runtime
     - ``esp_video_isp_pipeline_enum_ipa_configs()`` enumerates configurations of the same sensor
     - ``esp_video_isp_pipeline_set_ipa_config()`` rebuilds the live IPA pipeline from a new configuration
