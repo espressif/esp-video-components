@@ -7,6 +7,10 @@ set(COMPONENTS main)
 include($ENV{IDF_PATH}/tools/cmake/project.cmake)
 idf_build_set_property(ESP_IPA_JSON_CONFIG_FILE_PATH "test_apps_dummy.json" APPEND)
 idf_build_set_property(ESP_IPA_JSON_CONFIG_FILE_PATH "test_apps_dummy_2.json" APPEND)
+idf_build_set_property(ESP_IPA_JSON_CONFIG_FILE_PATH "test_apps_dummy_3.json" APPEND)
+idf_build_set_property(ESP_IPA_JSON_CONFIG_FILE_PATH "test_apps_dummy_alt.json" APPEND)
+idf_build_set_property(ESP_IPA_JSON_CONFIG_FILE_PATH "test_apps_dummy_day.json" APPEND)
+idf_build_set_property(ESP_IPA_JSON_CONFIG_FILE_PATH "test_apps_dummy_night.json" APPEND)
 
 project(esp_ipa_test)
 

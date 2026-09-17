@@ -37,6 +37,8 @@
 #define TEST_ISP_STATS_DUMP_COUNT       30
 #define TEST_ISP_STATS_DUMP_TIMEOUT_MS  1000
 #define TEST_VIDEO_BUFFER_COUNT         3
+#define TEST_IPA_LUMA_WAIT_MS           8000
+#define TEST_IPA_LUMA_POLL_MS           1000
 
 void setUp(void);
 
@@ -361,6 +363,132 @@ TEST_CASE("ISP pipeline get IPA environment variables after stream on", "[video]
 
     close(fd);
 
+    TEST_ESP_OK(example_video_deinit());
+}
+
+static int test_stream_on(int *out_fd)
+{
+    int fd;
+    int ret;
+    int type;
+    struct v4l2_buffer buf;
+    struct v4l2_requestbuffers req;
+
+    fd = open(TEST_APP_VIDEO_DEVICE, O_RDWR);
+    TEST_ASSERT_GREATER_OR_EQUAL(0, fd);
+
+    memset(&req, 0, sizeof(req));
+    req.type   = V4L2_BUF_TYPE_VIDEO_CAPTURE;
+    req.memory = V4L2_MEMORY_MMAP;
+    req.count  = TEST_VIDEO_BUFFER_COUNT;
+    ret = ioctl(fd, VIDIOC_REQBUFS, &req);
+    TEST_ESP_OK(ret);
+
+    for (int i = 0; i < TEST_VIDEO_BUFFER_COUNT; i++) {
+        memset(&buf, 0, sizeof(buf));
+        buf.type   = V4L2_BUF_TYPE_VIDEO_CAPTURE;
+        buf.memory = V4L2_MEMORY_MMAP;
+        buf.index  = i;
+        ret = ioctl(fd, VIDIOC_QUERYBUF, &buf);
+        TEST_ESP_OK(ret);
+
+        ret = ioctl(fd, VIDIOC_QBUF, &buf);
+        TEST_ESP_OK(ret);
+    }
+
+    type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
+    ret = ioctl(fd, VIDIOC_STREAMON, &type);
+    TEST_ESP_OK(ret);
+
+    *out_fd = fd;
+    return fd;
+}
+
+static void test_stream_off(int fd)
+{
+    int type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
+    int ret = ioctl(fd, VIDIOC_STREAMOFF, &type);
+    TEST_ESP_OK(ret);
+    close(fd);
+}
+
+static const esp_ipa_config_t *find_ipa_config_by_description(const char *sensor_name, const char *description)
+{
+    for (int i = 0; ; i++) {
+        const esp_ipa_config_t *cfg = esp_video_isp_pipeline_enum_ipa_configs(sensor_name, i);
+
+        if (!cfg) {
+            break;
+        }
+        if (cfg->description && !strcmp(cfg->description, description)) {
+            return cfg;
+        }
+    }
+
+    return NULL;
+}
+
+static float wait_env_luma(const char *prompt, uint32_t wait_ms)
+{
+    float luma = 0;
+    uint32_t elapsed = 0;
+
+    printf(">>> %s\n", prompt);
+    fflush(stdout);
+
+    while (elapsed < wait_ms) {
+        vTaskDelay(pdMS_TO_TICKS(TEST_IPA_LUMA_POLL_MS));
+        elapsed += TEST_IPA_LUMA_POLL_MS;
+        TEST_ESP_OK(esp_video_isp_pipeline_get_env_float("env.luma.avg", &luma));
+        printf("    env.luma.avg=%f (%" PRIu32 " ms)\n", luma, elapsed);
+        fflush(stdout);
+    }
+
+    return luma;
+}
+
+TEST_CASE("ISP pipeline switch IPA JSON by environment luma", "[video][isp_pipeline]")
+{
+    int fd;
+    float luma_before;
+    float luma_dark;
+    float luma_bright;
+    const esp_ipa_config_t *bright_cfg;
+    const esp_ipa_config_t *dark_cfg;
+
+    setUp();
+
+    TEST_ESP_OK(example_video_init());
+    TEST_ASSERT_TRUE(esp_video_isp_pipeline_is_initialized());
+
+    TEST_ESP_ERR(ESP_ERR_INVALID_ARG, esp_video_isp_pipeline_set_ipa_config(NULL));
+    TEST_ASSERT_NULL(esp_video_isp_pipeline_enum_ipa_configs(NULL, 0));
+    TEST_ASSERT_NULL(esp_video_isp_pipeline_enum_ipa_configs("not_exist_sensor", 0));
+
+    bright_cfg = find_ipa_config_by_description("test_json", "bright");
+    dark_cfg = find_ipa_config_by_description("test_json", "dark");
+    if (!bright_cfg || !dark_cfg) {
+        TEST_ESP_OK(example_video_deinit());
+        TEST_IGNORE_MESSAGE("SC2336 bright/dark IPA JSON is not available");
+    }
+
+    TEST_ESP_OK(esp_video_isp_pipeline_set_ipa_config(bright_cfg));
+
+    test_stream_on(&fd);
+    vTaskDelay(pdMS_TO_TICKS(1000));
+
+    TEST_ESP_OK(esp_video_isp_pipeline_get_env_float("env.luma.avg", &luma_before));
+    printf("Current env.luma.avg=%f, IPA JSON description=%s\n", luma_before, bright_cfg->description);
+
+    luma_dark = wait_env_luma("Please decrease the ambient brightness", TEST_IPA_LUMA_WAIT_MS);
+    printf("After decreasing brightness: env.luma.avg=%f, switch to dark IPA JSON\n", luma_dark);
+    TEST_ESP_OK(esp_video_isp_pipeline_set_ipa_config(dark_cfg));
+
+    luma_bright = wait_env_luma("Please increase the ambient brightness", TEST_IPA_LUMA_WAIT_MS);
+    printf("After increasing brightness: env.luma.avg=%f, switch to bright IPA JSON\n", luma_bright);
+    TEST_ESP_OK(esp_video_isp_pipeline_set_ipa_config(bright_cfg));
+
+    test_stream_off(fd);
     TEST_ESP_OK(example_video_deinit());
 }
 #endif /* CONFIG_ESP_VIDEO_ENABLE_ISP_PIPELINE_CONTROLLER && CONFIG_ESP_VIDEO_ENABLE_MIPI_CSI_VIDEO_DEVICE */

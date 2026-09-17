@@ -473,13 +473,31 @@ typedef struct esp_ipa_acc_lsc_lut {
 } esp_ipa_acc_lsc_lut_t;
 
 /**
- * @brief Color temperature and lens shadow correction parameters mapping data in specific resolution for auto color correction algorithm
+ * @brief Sensor gain and LSC color-temperature table mapping for auto color correction algorithm
+ *
+ * Lookup order: select nearest gain node first, then nearest color temperature in that node.
+ * LSC parameters are taken directly from the selected table entry (no runtime generation).
+ */
+typedef struct esp_ipa_acc_lsc_gain_lut {
+    float gain;                                 /* Camera sensor gain */
+    const esp_ipa_acc_lsc_lut_t *ct_table;      /* Color temperature and LSC parameters mapping table */
+    uint32_t ct_table_size;                     /* Color temperature and LSC parameters mapping table size */
+} esp_ipa_acc_lsc_gain_lut_t;
+
+/**
+ * @brief LSC mapping data in specific resolution for auto color correction algorithm
+ *
+ * Compatibility:
+ * - Legacy: set `lsc_gain_table` / `lsc_gain_table_size` (CT → LSC), leave `gain_table` NULL
+ * - New: set `gain_table` / `gain_table_size` (gain → CT → LSC); preferred when non-NULL
  */
 typedef struct esp_ipa_acc_lsc {
     uint32_t width;                             /* Picture width */
     uint32_t height;                            /* Picture height */
-    const esp_ipa_acc_lsc_lut_t *lsc_gain_table;    /* Color temperature and lens shadow correction parameters mapping table */
-    uint32_t lsc_gain_table_size;               /* Color temperature and lens shadow correction parameters mapping table size */
+    const esp_ipa_acc_lsc_lut_t *lsc_gain_table;    /* Legacy CT and LSC parameters mapping table */
+    uint32_t lsc_gain_table_size;               /* Legacy CT and LSC parameters mapping table size */
+    const esp_ipa_acc_lsc_gain_lut_t *gain_table;   /* Sensor gain and LSC CT-table mapping table */
+    uint32_t gain_table_size;                   /* Sensor gain and LSC CT-table mapping table size */
 } esp_ipa_acc_lsc_t;
 
 /**
@@ -663,7 +681,8 @@ typedef struct esp_ipa_ian_config {
 typedef enum esp_ipa_awb_model {
     ESP_IPA_AWB_MODEL_0 = 0,                    /*!< Use gray world*/
     ESP_IPA_AWB_MODEL_1,                        /*!< Use color temperature indexing */
-    ESP_IPA_AWB_MODEL_2                         /*!< Zone classifier: per-subwindow CT-zone classification + temporal smoothing, with optional ref_point attraction / CT export */
+    ESP_IPA_AWB_MODEL_2,                        /*!< Zone classifier: per-subwindow CT-zone classification + temporal smoothing, with optional ref_point attraction / CT export */
+    ESP_IPA_AWB_MODEL_3                         /*!< Fixed CT: apply configured rg/bg as WBG and publish ct; no statistics */
 } esp_ipa_awb_model_t;
 
 /**
@@ -712,6 +731,39 @@ typedef struct esp_ipa_awb_ct_point {
     float bg;                                   /*!< Measured/calibrated B/G at this CT */
     float radius;                               /*!< Chroma-distance attraction radius; <=0 disables snapping */
 } esp_ipa_awb_ct_point_t;
+
+/**
+ * @brief One fixed-CT illuminant preset (model 3).
+ */
+typedef struct esp_ipa_awb_fixed {
+    uint32_t ct;                                /*!< Color temperature (Kelvin) */
+    float rg;                                   /*!< Chromaticity R/G (> 0) */
+    float bg;                                   /*!< Chromaticity B/G (> 0) */
+} esp_ipa_awb_fixed_t;
+
+/**
+ * @brief Fixed-CT preset table for AWB model 3.
+ *
+ * JSON:
+ * @code
+ * "fixed_ct": {
+ *     "default_ct": 5000,
+ *     "presets": [
+ *         { "ct": 3000, "rg": 0.52, "bg": 0.58 },
+ *         { "ct": 5000, "rg": 0.56, "bg": 0.54 }
+ *     ]
+ * }
+ * @endcode
+ *
+ * Legacy single entry (`fixed_ct { ct, rg, bg }`) is equivalent to one preset with
+ * `default_ct = ct`. Runtime CT is selected with esp_ipa_awb_set_fixed_ct(), which
+ * validates the preset and caches it; process applies the cached preset directly.
+ */
+typedef struct esp_ipa_awb_fixed_cfg {
+    uint32_t default_ct;                        /*!< Initial CT (Kelvin); 0 = first preset */
+    const esp_ipa_awb_fixed_t *presets;         /*!< Calibrated CT → rg/bg table */
+    uint32_t presets_count;                     /*!< Number of entries in ::presets */
+} esp_ipa_awb_fixed_cfg_t;
 
 /**
  * @brief Auto white balance algorithm configuration
@@ -764,6 +816,10 @@ typedef struct esp_ipa_awb_config {
     float zone_hysteresis_ratio;                /*!< Zone-switch hysteresis: new winning zone accepted only when its IIR weight >= prev_zone_iir * this ratio; <=0 disables, 1.0 = equal, >1 = sticky */
     uint32_t zone_switch_count;                 /*!< Zone-switch debounce: candidate zone must repeat this many frames before replacing previous zone; <=1 disables */
     uint32_t type_counter_max;                  /*!< Type-switch counter ceiling; reaching it clears other type counters and keeps this type at half ceiling */
+
+    /* Configuration parameters used in model_3 (fixed CT) */
+
+    esp_ipa_awb_fixed_cfg_t fixed_ct;           /*!< Preset table + default CT (JSON awb.fixed_ct { ... }) */
 } esp_ipa_awb_config_t;
 
 /**
@@ -807,8 +863,8 @@ typedef struct esp_ipa_acc_config {
 
     const esp_ipa_acc_ccm_config_t *ccm;        /*!< Auto color correct matrix configuration */
 
-    const esp_ipa_acc_lsc_t *lsc_table;         /* Lens shadow correction gain array, color temperature and resolution mapping table */
-    uint32_t lsc_table_size;                    /* Lens shadow correction gain array, color temperature and resolution mapping table size */
+    const esp_ipa_acc_lsc_t *lsc_table;         /* LSC resolution table; each entry maps gain then color temperature to LSC parameters */
+    uint32_t lsc_table_size;                    /* LSC resolution table size */
     float lsc_disable_gain;                     /*!< Disable LSC when sensor gain >= this value; <=0 means never disable by gain */
 
     const esp_ipa_acc_blc_config_t *blc;        /*!< Auto BLC configuration */
@@ -970,6 +1026,7 @@ typedef struct esp_ipa_config {
     bool enable_log;                            /*!< Enable Image process algorithm core function log */
 
     uint32_t version;                           /*!< Image process algorithm configuration parameters version */
+    const char *description;                    /*!< Configuration identifier from JSON description; required and unique per sensor when that sensor has multiple JSON files */
     const esp_ipa_ian_config_t *ian;            /*!< Image analyze configuration */
     const esp_ipa_agc_config_t *agc;            /*!< Auto gain control algorithm configuration */
     const esp_ipa_awb_config_t *awb;            /*!< Auto white balance algorithm configuration */
@@ -1020,8 +1077,19 @@ typedef struct esp_ipa_ops {
     esp_err_t (*ioctl)(struct esp_ipa *ipa, uint32_t cmd, void *data);
 
     /**
-     * @brief Free all resource allocated by IAP detect function.
+     * @brief Free all resources allocated by IPA.
+     *
+     * Called for both detect-only objects (e.g. a later detect failed before
+     * `ipa->pipeline` is bound) and after init. Free only resources that were
+     * actually allocated by detect or by init.
+     *
+     * Detect-only cleanup: `ipa->pipeline` is NULL. Do not access the pipeline
+     * directly or indirectly here — including `esp_ipa_has_var` /
+     * `esp_ipa_get_*` / `esp_ipa_set_*`, which require a bound pipeline
+     * (`esp_ipa_get_*` / `esp_ipa_set_*` dereference `ipa->pipeline->map`
+     * unconditionally).
      */
+
     void (*destroy)(struct esp_ipa *ipa);
 } esp_ipa_ops_t;
 
@@ -1031,7 +1099,7 @@ typedef struct esp_ipa_ops {
 typedef struct esp_ipa {
     const char *name;                       /*!< IPA name */
     const esp_ipa_ops_t *ops;               /*!< IPA operations */
-    struct esp_ipa_pipeline *pipeline;      /*!< IPA pipeline */
+    struct esp_ipa_pipeline *pipeline;      /*!< Owning pipeline; NULL until create binds it (after all detects succeed) */
     void *priv;                             /*!< IPA private data */
 } esp_ipa_t;
 

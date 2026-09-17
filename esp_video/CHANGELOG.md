@@ -1,5 +1,8 @@
 ## Unreleased
 
+- Added ISP pipeline APIs to enumerate and switch IPA JSON configurations at runtime
+    - ``esp_video_isp_pipeline_enum_ipa_configs()`` enumerates configurations of the same sensor
+    - ``esp_video_isp_pipeline_set_ipa_config()`` rebuilds the live IPA pipeline from a new configuration
 - Added ``VIDIOC_ENUM_SENSOR_FMT`` to enumerate camera sensor output formats
     - Recommended flow: enumerate/set sensor format first, then use standard ``VIDIOC_ENUM_FMT`` / ``VIDIOC_S_FMT`` for device output formats and capture
     - ``VIDIOC_S_SENSOR_FMT`` now fails with ``ESP_ERR_INVALID_STATE`` (``EBUSY``) if video buffers are allocated; free them with ``VIDIOC_REQBUFS`` count=0 first

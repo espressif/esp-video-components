@@ -1,3 +1,13 @@
+## Unreleased
+
+- Added `esp_ipa_pipeline_set_config(handle, config, sensor, metadata)` to rebuild IPA modules from a new `esp_ipa_config_t` (not thread-safe): create a temporary pipeline (IPA + map), run `init` into `metadata`, swap `ipa_array`/`map`/`config` into the caller's handle, then destroy the temporary pipeline (which now owns the old modules); on failure destroy the temporary pipeline and leave the handle unchanged
+- Supported multiple JSON configuration files for the same sensor; those files must each set a unique `description` (other sensors may reuse the same value)
+- Added AWB model 3 (fixed CT): JSON `fixed_ct { default_ct, presets:[{ct,rg,bg},...] }`; runtime `esp_ipa_awb_set_fixed_ct(handle, K)` (exact preset match, else `ESP_ERR_INVALID_ARG`); process applied active CT preset; published pipeline `ct` for ACC
+- Added IAN: JSON `ian.color_temp.disable`; when `true`, kept the `color_temp` block but did not generate IAN CT (`config->ct` stays NULL, so `cal_ct` does not overwrite `ct`)
+- Updated AGC: `luma_low`/`luma_high` hold band followed the PWL/meter-shifted target so gain did not hunt inside the band
+- Added JSON global `writable`: when `true`, stripped `const` from that file's generated IPA config data so parameters are runtime-writable
+- Updated ACC LSC: gain nodes may omit nested `table` and set `scale` (optional `base_gain`) so config generation blended the base LSC arrays toward 1.0 (`out = 1 + (base - 1) * scale`) into static tables for that gain
+
 ## 2.3.0
 
 - AEN: add backlight enhancement mode — detect backlight from histogram low/high ratios and env luma thresholds, debounce with `detect_count_threshold` / optional `detect_count_margin` (defaults to `detect_count_threshold`), smooth degree with `hist_ratio_filter`, then select a dedicated GAMMA table by backlight degree

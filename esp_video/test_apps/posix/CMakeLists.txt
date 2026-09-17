@@ -12,6 +12,9 @@ endif()
 
 include($ENV{IDF_PATH}/tools/cmake/project.cmake)
 
+idf_build_set_property(ESP_IPA_JSON_CONFIG_FILE_PATH "${CMAKE_CURRENT_LIST_DIR}/cfg/test_json_bright.json" APPEND)
+idf_build_set_property(ESP_IPA_JSON_CONFIG_FILE_PATH "${CMAKE_CURRENT_LIST_DIR}/cfg/test_json_dark.json" APPEND)
+
 # (Not part of the boilerplate)
 # This example uses extra components for the following -
 # 1. Check sd card pins info

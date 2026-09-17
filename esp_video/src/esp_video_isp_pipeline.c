@@ -1056,14 +1056,16 @@ static void isp_task(void *p)
         }
         print_stats_info(&isp->ipa_stats);
 
+        _lock_acquire(&s_isp_lock);
         isp->metadata.flags = 0;
         ret = esp_ipa_pipeline_process(isp->ipa_pipeline, &isp->ipa_stats, &isp->sensor, &isp->metadata);
+        if (ret == ESP_OK) {
+            config_isp_and_camera(isp, &isp->metadata);
+        }
+        _lock_release(&s_isp_lock);
         if (ret != ESP_OK) {
             ESP_LOGE(TAG, "failed to process image algorithm");
-            continue;
         }
-
-        config_isp_and_camera(isp, &isp->metadata);
     }
 
     vTaskDelete(NULL);
@@ -2037,6 +2039,58 @@ esp_err_t esp_video_isp_pipeline_get_env_float(const char *name, float *val)
         } else {
             *val = esp_ipa_get_float(ipa, name);
             ret = ESP_OK;
+        }
+    } else {
+        ESP_LOGD(TAG, "ISP controller is not initialized");
+    }
+    _lock_release(&s_isp_lock);
+
+    return ret;
+}
+
+/**
+ * @brief Enumerate IPA configurations of the same sensor.
+ *
+ * @param sensor_name Sensor name
+ * @param index       Zero-based index among configurations of this sensor
+ *
+ * @return IPA configuration pointer if found, or NULL if sensor is not supported or index is out of range
+ */
+const esp_ipa_config_t *esp_video_isp_pipeline_enum_ipa_configs(const char *sensor_name, int index)
+{
+    return esp_ipa_pipeline_enum_configs(sensor_name, index);
+}
+
+/**
+ * @brief Rebuild IPA modules from a new configuration and apply init metadata to ISP/camera.
+ *
+ * @note This function serializes with the ISP pipeline task. `config->nums` and
+ *       `config->names[i]` must match the modules loaded at create time.
+ * @note ESP_OK only means the JSON configuration was switched and parameters were
+ *       issued to hardware. Whether the hardware is correctly programmed with the
+ *       new parameters must be confirmed from runtime logs.
+ *
+ * @param config New IPA configuration
+ *
+ * @return
+ *      - ESP_OK if JSON was switched and parameters were issued to hardware
+ *      - Others if failed
+ */
+esp_err_t esp_video_isp_pipeline_set_ipa_config(const esp_ipa_config_t *config)
+{
+    esp_err_t ret = ESP_ERR_INVALID_STATE;
+    esp_ipa_metadata_t metadata = {0};
+
+    ESP_RETURN_ON_FALSE(config, ESP_ERR_INVALID_ARG, TAG, "config is NULL");
+
+    _lock_acquire(&s_isp_lock);
+    if (s_esp_video_isp && s_esp_video_isp->ipa_pipeline) {
+        ret = esp_ipa_pipeline_set_config(s_esp_video_isp->ipa_pipeline, config,
+                                          &s_esp_video_isp->sensor, &metadata);
+        if (ret == ESP_OK) {
+            config_isp_and_camera(s_esp_video_isp, &metadata);
+            ESP_LOGD(TAG, "switched IPA config description=%s",
+                     config->description ? config->description : "");
         }
     } else {
         ESP_LOGD(TAG, "ISP controller is not initialized");

@@ -1,0 +1,19 @@
+{
+    "version": 1,
+    "description": "2",
+    "test_apps_dummy":
+    {
+        "ext":
+        {
+            "hue": 30,
+            "brightness": 5,
+            "stats_region":
+            {
+                "left": 8,
+                "top": 9,
+                "width": 10,
+                "height": 11
+            }
+        }
+    }
+}

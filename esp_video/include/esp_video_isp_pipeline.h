@@ -11,6 +11,9 @@
 #include "sdkconfig.h"
 #include "esp_err.h"
 #include "esp_video_isp_ioctl.h"
+#if CONFIG_ESP_VIDEO_ENABLE_ISP_PIPELINE_CONTROLLER
+#include "esp_ipa.h"
+#endif
 
 #ifdef __cplusplus
 extern "C" {
@@ -185,6 +188,33 @@ esp_err_t esp_video_isp_pipeline_get_env_int32(const char *name, int32_t *val);
  *      - Others if failed
  */
 esp_err_t esp_video_isp_pipeline_get_env_float(const char *name, float *val);
+
+/**
+ * @brief Enumerate IPA configurations of the same sensor.
+ *
+ * @param sensor_name Sensor name
+ * @param index       Zero-based index among configurations of this sensor
+ *
+ * @return IPA configuration pointer if found, or NULL if sensor is not supported or index is out of range
+ */
+const esp_ipa_config_t *esp_video_isp_pipeline_enum_ipa_configs(const char *sensor_name, int index);
+
+/**
+ * @brief Rebuild IPA modules from a new configuration and apply init metadata to ISP/camera.
+ *
+ * @note This function serializes with the ISP pipeline task. `config->nums` and
+ *       `config->names[i]` must match the modules loaded at create time.
+ * @note ESP_OK only means the JSON configuration was switched and parameters were
+ *       issued to hardware. Whether the hardware is correctly programmed with the
+ *       new parameters must be confirmed from runtime logs.
+ *
+ * @param config New IPA configuration
+ *
+ * @return
+ *      - ESP_OK if JSON was switched and parameters were issued to hardware
+ *      - Others if failed
+ */
+esp_err_t esp_video_isp_pipeline_set_ipa_config(const esp_ipa_config_t *config);
 #endif /* CONFIG_ESP_VIDEO_ENABLE_ISP_PIPELINE_CONTROLLER */
 
 #ifdef __cplusplus
