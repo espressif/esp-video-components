@@ -12,6 +12,7 @@
  * Two layers live here:
  *   - The H.264 Extension Unit of the UVC H.264 payload specification, which is where the
  *     camera's own encoder is configured.
+ *   - The Camera Terminal, which is UVC core and sits upstream of any encoder.
  */
 
 #include <stdbool.h>
@@ -22,6 +23,13 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+/**
+ * @brief Camera Terminal Auto-Exposure Priority, bit position in bmControls
+ *
+ * @see USB UVC specification ver 1.5, table 3-6, D2
+ */
+#define ESP_VIDEO_UVC_CT_AE_PRIORITY_BIT      2
 
 /**
  * @brief Rate-control mode, matching bRateControlMode of the H.264 payload specification
@@ -200,6 +208,38 @@ esp_err_t esp_video_uvc_h264_xu_set_qp(uvc_host_stream_hdl_t stream_hdl,
  */
 esp_err_t esp_video_uvc_h264_xu_request_idr(uvc_host_stream_hdl_t stream_hdl,
                                             const esp_video_uvc_h264_xu_t *xu);
+
+/**
+ * @brief Choose whether auto-exposure may lower the sensor frame rate
+ *
+ * The UVC Camera Terminal's Auto-Exposure Priority control, and the only place the frame rate
+ * versus picture trade can be made for the sensor. Nothing to do with the encoder: the
+ * extension unit decides how a bitrate is spent, this decides how many frames the sensor
+ * produces in the first place.
+ *
+ * @param[in]  stream_hdl Open UVC stream
+ * @param[in]  priority   0 to hold the frame rate constant and accept a darker, noisier picture;
+ *                        1 to let auto-exposure win and the frame rate fall (the UVC default)
+ * @param[out] committed  If non-NULL, the value read back afterwards
+ * @return
+ *     - ESP_OK: written and read back
+ *     - ESP_ERR_NOT_SUPPORTED: the Camera Terminal does not claim the control
+ *     - ESP_ERR_NOT_FOUND: no Camera Terminal at all
+ */
+esp_err_t esp_video_uvc_camera_set_ae_priority(uvc_host_stream_hdl_t stream_hdl, uint8_t priority,
+                                               uint8_t *committed);
+
+/**
+ * @brief Read the Camera Terminal's Auto-Exposure Priority
+ *
+ * @param[in]  stream_hdl Open UVC stream
+ * @param[out] priority   Receives the current value
+ * @return
+ *     - ESP_OK on success
+ *     - ESP_ERR_NOT_SUPPORTED: the Camera Terminal does not claim the control
+ *     - ESP_ERR_NOT_FOUND: no Camera Terminal at all
+ */
+esp_err_t esp_video_uvc_camera_get_ae_priority(uvc_host_stream_hdl_t stream_hdl, uint8_t *priority);
 
 #ifdef __cplusplus
 }

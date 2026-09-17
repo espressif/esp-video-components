@@ -42,7 +42,8 @@ endif()
 
 if(CONFIG_ESP_VIDEO_ENABLE_USB_UVC_VIDEO_DEVICE)
     list(APPEND srcs "src/device/esp_video_usb_uvc_device.c"
-                     "src/device/esp_video_uvc_h264_xu.c")
+                     "src/device/esp_video_uvc_h264_xu.c"
+                     "src/device/esp_video_uvc_camera_terminal.c")
 endif()
 
 if(CONFIG_ESP_VIDEO_ENABLE_H264_VIDEO_DEVICE)
