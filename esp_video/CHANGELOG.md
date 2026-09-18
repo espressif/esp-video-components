@@ -1,4 +1,4 @@
-## Unreleased
+## 2.5.0
 
 - Added ISP pipeline APIs to enumerate and switch IPA JSON configurations at runtime
     - ``esp_video_isp_pipeline_enum_ipa_configs()`` enumerates configurations of the same sensor
@@ -9,13 +9,15 @@
 - Added DVP YUV422 YUYV to RGB565 format conversion via ``VIDIOC_ENUM_FMT`` / ``VIDIOC_S_FMT``
     - Conversion is supported only when the sensor output is YUV422 YUYV, not UYVY
     - Converted RGB565 is big-endian (``V4L2_PIX_FMT_RGB565X``), not little-endian (``V4L2_PIX_FMT_RGB565``)
+    - The feature is disabled if the `CAM_CTRL_DVP_ENABLE` option is selected and ESP-IDF version >= 5.5.2
 - Added functions to get IPA environment variables as int32_t or float
 - Added options to enable or disable MIPI-CSI event handling and configure the behavior for different targets
 - Added automatic transformation of YUV sensor data to the target YUV format
 - Added an option to use a customized esp_h264 version instead of the version defined in `esp_video/idf_component.yml`
 
-- Update to use esp_cam_sensor v2.5.x
-- Update to use esp_h264 v1.4.x
+- Updated to use esp_cam_sensor v2.6.x
+- Updated to use esp_ipa v2.4.x
+- Updated to use esp_h264 v1.4.x
 
 - Disabled MIPI-CSI event handling by default in the example_video_common component
     - Some sensors or video transform modules do not support stopping and restarting the stream, so this feature cannot be enabled by default. Unexpected events may restart these components and prevent some users from receiving images.

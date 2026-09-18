@@ -1,4 +1,4 @@
-## Unreleased
+## 2.4.0
 
 - Added `esp_ipa_pipeline_set_config(handle, config, sensor, metadata)` to rebuild IPA modules from a new `esp_ipa_config_t` (not thread-safe): create a temporary pipeline (IPA + map), run `init` into `metadata`, swap `ipa_array`/`map`/`config` into the caller's handle, then destroy the temporary pipeline (which now owns the old modules); on failure destroy the temporary pipeline and leave the handle unchanged
 - Supported multiple JSON configuration files for the same sensor; those files must each set a unique `description` (other sensors may reuse the same value)
