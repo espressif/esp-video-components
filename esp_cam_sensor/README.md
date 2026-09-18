@@ -36,6 +36,7 @@ It is highly recommended that users use it in the [esp-video](https://github.com
 | BF3925  | 1600 x 1200    | DVP | YCbCr422<br/>8bit Raw RGB data | 1/5"     ||
 | BF3A03  | 640 x 480    | DVP | YCbCr422<br/>RGB565<br/>8bit Raw RGB data | 1/4"     ||
 | GC0308  | 640 x 480    | DVP | Grayscale<br/>YCbCr422<br/>RGB565 | 1/6.5"     ||
+| GC032A  | 640 x 480    | DVP | YCbCr422<br/>RGB565 | 1/10"     ||
 | GC2053  | 1920 x 1080    | MIPI | 8/10-bit Raw RGB data | 1/2.9"     ||
 | GC2145  | 1600 x 1200    | MIPI & DVP | RGB565<br/>YCbCr422<br/>8bit Raw RGB data | 1/5"     ||
 | GC2607  | 1920 x 1080    | MIPI | 10bit Raw RGB data | 1/7.3"     |It is recommended to add a PWDN pin to assist the host in managing power-up and shutdown.|

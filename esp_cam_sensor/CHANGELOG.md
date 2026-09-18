@@ -8,6 +8,7 @@
 - Added GC4053 MIPI RAW sensor driver.
 - Added MIT245 MIPI RAW sensor driver.
 - Added 1280x960 format support in the driver of SC121AT.
+- Added GC032A DVP YUV sensor driver.
 
 ## 2.5.0
 
