@@ -18,6 +18,7 @@
 
 #define IPA_TARGET_NAME     "test_apps_dummy"
 #define IPA_TARGET_NAME_2   "test_apps_dummy_2"
+#define IPA_TARGET_NAME_3   "test_apps_dummy_3"
 
 static size_t before_free_8bit;
 static size_t before_free_32bit;
@@ -67,6 +68,180 @@ void tearDown(void)
     size_t after_free_32bit = heap_caps_get_free_size(MALLOC_CAP_32BIT);
     check_leak(before_free_8bit, after_free_8bit, "8BIT");
     check_leak(before_free_32bit, after_free_32bit, "32BIT");
+}
+
+TEST_CASE("enumerate IPA configs of the same sensor", "[IPA]")
+{
+    const esp_ipa_config_t *first = esp_ipa_pipeline_get_config(IPA_TARGET_NAME);
+    const esp_ipa_config_t *enum0 = esp_ipa_pipeline_enum_configs(IPA_TARGET_NAME, 0);
+    const esp_ipa_config_t *enum1 = esp_ipa_pipeline_enum_configs(IPA_TARGET_NAME, 1);
+    const esp_ipa_config_t *enum2 = esp_ipa_pipeline_enum_configs(IPA_TARGET_NAME, 2);
+    const esp_ipa_config_t *enum3 = esp_ipa_pipeline_enum_configs(IPA_TARGET_NAME, 3);
+    const esp_ipa_config_t *dummy2 = esp_ipa_pipeline_get_config(IPA_TARGET_NAME_2);
+
+    TEST_ASSERT_NOT_NULL(first);
+    TEST_ASSERT_EQUAL_PTR(first, enum0);
+    TEST_ASSERT_NOT_NULL(first->ext);
+    TEST_ASSERT_EQUAL(1, first->ext->hue);
+    TEST_ASSERT_EQUAL_STRING("0", first->description);
+
+    TEST_ASSERT_NOT_NULL(enum1);
+    TEST_ASSERT_NOT_EQUAL(first, enum1);
+    TEST_ASSERT_NOT_NULL(enum1->ext);
+    TEST_ASSERT_EQUAL(10, enum1->ext->hue);
+    TEST_ASSERT_EQUAL(20, enum1->ext->brightness);
+    TEST_ASSERT_EQUAL_STRING("alt", enum1->description);
+
+    TEST_ASSERT_NOT_NULL(enum2);
+    TEST_ASSERT_NOT_EQUAL(enum1, enum2);
+    TEST_ASSERT_NOT_NULL(enum2->ext);
+    TEST_ASSERT_EQUAL(40, enum2->ext->hue);
+    TEST_ASSERT_EQUAL(80, enum2->ext->brightness);
+    TEST_ASSERT_EQUAL(12, enum2->ext->stats_region.left);
+    TEST_ASSERT_EQUAL_STRING("10", enum2->description);
+
+    TEST_ASSERT_NOT_NULL(enum3);
+    TEST_ASSERT_NOT_EQUAL(enum2, enum3);
+    TEST_ASSERT_NOT_NULL(enum3->ext);
+    TEST_ASSERT_EQUAL(30, enum3->ext->hue);
+    TEST_ASSERT_EQUAL(5, enum3->ext->brightness);
+    TEST_ASSERT_EQUAL(8, enum3->ext->stats_region.left);
+    TEST_ASSERT_EQUAL_STRING("2", enum3->description);
+
+    TEST_ASSERT_NULL(esp_ipa_pipeline_enum_configs(IPA_TARGET_NAME, 4));
+    TEST_ASSERT_NULL(esp_ipa_pipeline_enum_configs(IPA_TARGET_NAME, -1));
+    TEST_ASSERT_NULL(esp_ipa_pipeline_enum_configs("not_exist_sensor", 0));
+
+    TEST_ASSERT_NOT_NULL(dummy2);
+    TEST_ASSERT_EQUAL_PTR(dummy2, esp_ipa_pipeline_enum_configs(IPA_TARGET_NAME_2, 0));
+    TEST_ASSERT_NULL(esp_ipa_pipeline_enum_configs(IPA_TARGET_NAME_2, 1));
+}
+
+TEST_CASE("set IPA pipeline config dynamically", "[IPA]")
+{
+    const esp_ipa_config_t *base = esp_ipa_pipeline_get_config(IPA_TARGET_NAME);
+    const esp_ipa_config_t *night = esp_ipa_pipeline_enum_configs(IPA_TARGET_NAME, 3);
+    const esp_ipa_config_t *day = esp_ipa_pipeline_enum_configs(IPA_TARGET_NAME, 2);
+    esp_ipa_pipeline_handle_t handle = NULL;
+    esp_ipa_metadata_t metadata = {0};
+    static esp_ipa_config_t cfg;
+
+    TEST_ASSERT_NOT_NULL(base);
+    TEST_ASSERT_NOT_NULL(night);
+    TEST_ASSERT_NOT_NULL(day);
+
+    TEST_ESP_OK(esp_ipa_pipeline_create(base, &handle));
+    TEST_ASSERT_EQUAL(ESP_ERR_INVALID_ARG, esp_ipa_pipeline_set_config(NULL, base, &s_esp_ipa_sensor, &metadata));
+    TEST_ASSERT_EQUAL(ESP_ERR_INVALID_ARG, esp_ipa_pipeline_set_config(handle, NULL, &s_esp_ipa_sensor, &metadata));
+    TEST_ASSERT_EQUAL(ESP_ERR_INVALID_ARG, esp_ipa_pipeline_set_config(handle, night, &s_esp_ipa_sensor, &metadata));
+    TEST_ASSERT_EQUAL(ESP_ERR_INVALID_ARG, esp_ipa_pipeline_set_config(handle, base, NULL, &metadata));
+    TEST_ASSERT_EQUAL(ESP_ERR_INVALID_ARG, esp_ipa_pipeline_set_config(handle, base, &s_esp_ipa_sensor, NULL));
+
+    {
+        static const char *bad_names[16];
+        memcpy(&cfg, base, sizeof(cfg));
+        TEST_ASSERT_TRUE(base->nums <= 16);
+        for (int i = 0; i < base->nums; i++) {
+            bad_names[i] = base->names[i];
+        }
+        bad_names[0] = strcmp(handle->ipa_array[0]->name, "esp_ipa_ext") ? "esp_ipa_ext" : "esp_ipa_ian";
+        cfg.names = bad_names;
+        TEST_ASSERT_EQUAL(ESP_ERR_INVALID_ARG, esp_ipa_pipeline_set_config(handle, &cfg, &s_esp_ipa_sensor, &metadata));
+
+        memcpy(&cfg, base, sizeof(cfg));
+        cfg.ext = NULL;
+        TEST_ASSERT_EQUAL(ESP_ERR_INVALID_ARG, esp_ipa_pipeline_set_config(handle, &cfg, &s_esp_ipa_sensor, &metadata));
+    }
+
+    /* Switch to night ext: handle pointer stays, inherits new IPA/map after init. */
+    {
+        esp_ipa_pipeline_handle_t same = handle;
+
+        memcpy(&cfg, base, sizeof(cfg));
+        cfg.ext = night->ext;
+        memset(&metadata, 0, sizeof(metadata));
+        TEST_ESP_OK(esp_ipa_pipeline_set_config(handle, &cfg, &s_esp_ipa_sensor, &metadata));
+        TEST_ASSERT_EQUAL_PTR(same, handle);
+        TEST_ASSERT_EQUAL_PTR(&cfg, handle->config);
+        TEST_ASSERT_EQUAL(30, metadata.hue);
+        TEST_ASSERT_EQUAL(5, metadata.brightness);
+    }
+    TEST_ESP_OK(esp_ipa_pipeline_destroy(handle));
+    handle = NULL;
+
+    /* Switch to day ext after a live pipeline is already initialized. */
+    TEST_ESP_OK(esp_ipa_pipeline_create(base, &handle));
+    memset(&metadata, 0, sizeof(metadata));
+    TEST_ESP_OK(esp_ipa_pipeline_init(handle, &s_esp_ipa_sensor, &metadata));
+    TEST_ASSERT_EQUAL(1, metadata.hue);
+
+    memcpy(&cfg, base, sizeof(cfg));
+    cfg.ext = day->ext;
+    memset(&metadata, 0, sizeof(metadata));
+    TEST_ESP_OK(esp_ipa_pipeline_set_config(handle, &cfg, &s_esp_ipa_sensor, &metadata));
+    TEST_ASSERT_EQUAL(40, metadata.hue);
+    TEST_ASSERT_EQUAL(80, metadata.brightness);
+    TEST_ESP_OK(esp_ipa_pipeline_destroy(handle));
+    handle = NULL;
+
+    /* no-env → env: swapped-in modules are already initialized. */
+    {
+        static esp_ipa_ian_config_t ian_no_env;
+        static esp_ipa_ian_luma_config_t luma_no_env;
+        esp_ipa_stats_t stats = {
+            .flags = IPA_STATS_FLAGS_AE,
+            .ae_stats = {
+                { 50 }, { 50 }, { 50 }, { 50 }, { 50 },
+                { 50 }, { 50 }, { 50 }, { 50 }, { 50 },
+                { 50 }, { 50 }, { 50 }, { 50 }, { 50 },
+                { 50 }, { 50 }, { 50 }, { 50 }, { 50 },
+                { 50 }, { 50 }, { 50 }, { 50 }, { 50 },
+            },
+        };
+
+        TEST_ASSERT_NOT_NULL(base->ian);
+        TEST_ASSERT_NOT_NULL(base->ian->luma);
+        TEST_ASSERT_NOT_NULL(base->ian->luma->env);
+
+        memcpy(&luma_no_env, base->ian->luma, sizeof(luma_no_env));
+        luma_no_env.env = NULL;
+        memcpy(&ian_no_env, base->ian, sizeof(ian_no_env));
+        ian_no_env.luma = &luma_no_env;
+        memcpy(&cfg, base, sizeof(cfg));
+        cfg.ian = &ian_no_env;
+
+        TEST_ESP_OK(esp_ipa_pipeline_create(&cfg, &handle));
+        TEST_ESP_OK(esp_ipa_pipeline_init(handle, &s_esp_ipa_sensor, &metadata));
+        memset(&metadata, 0, sizeof(metadata));
+        TEST_ESP_OK(esp_ipa_pipeline_set_config(handle, base, &s_esp_ipa_sensor, &metadata));
+        TEST_ESP_OK(esp_ipa_pipeline_process(handle, &stats, &s_esp_ipa_sensor, &metadata));
+        TEST_ESP_OK(esp_ipa_pipeline_destroy(handle));
+        handle = NULL;
+    }
+
+    /*
+     * Rebuild failure (missing submodule) must not change the live handle contents.
+     */
+    {
+        const esp_ipa_config_t *old_cfg;
+        esp_ipa_t *old_ext;
+
+        TEST_ESP_OK(esp_ipa_pipeline_create(base, &handle));
+        TEST_ESP_OK(esp_ipa_pipeline_init(handle, &s_esp_ipa_sensor, &metadata));
+        old_cfg = handle->config;
+        old_ext = handle->ipa_array[0];
+
+        memcpy(&cfg, base, sizeof(cfg));
+        cfg.awb = NULL;
+        TEST_ASSERT_EQUAL(ESP_ERR_INVALID_ARG,
+                          esp_ipa_pipeline_set_config(handle, &cfg, &s_esp_ipa_sensor, &metadata));
+        TEST_ASSERT_EQUAL_PTR(old_cfg, handle->config);
+        TEST_ASSERT_EQUAL_PTR(old_ext, handle->ipa_array[0]);
+        TEST_ASSERT_EQUAL(1, metadata.hue);
+
+        TEST_ESP_OK(esp_ipa_pipeline_destroy(handle));
+        handle = NULL;
+    }
 }
 
 TEST_CASE("detect IPAs", "[IPA]")
@@ -576,6 +751,71 @@ TEST_CASE("ACC CCM gain LUT blend test", "[IPA][ACC]")
     TEST_ASSERT_FLOAT_WITHIN(0.001f, base, metadata.ccm.matrix[0][0]);
 
     TEST_ESP_OK(esp_ipa_pipeline_destroy(handle));
+}
+
+TEST_CASE("ACC LSC gain and CT lookup test", "[IPA][ACC]")
+{
+    esp_ipa_pipeline_handle_t handle = NULL;
+    esp_ipa_metadata_t metadata = {0};
+    esp_ipa_stats_t stats = {0};
+    esp_ipa_sensor_t sensor = s_esp_ipa_sensor;
+    const esp_ipa_config_t *ipa_config = esp_ipa_pipeline_get_config(IPA_TARGET_NAME_3);
+    const esp_ipa_acc_lsc_t *lsc = &ipa_config->acc->lsc_table[0];
+
+    TEST_ASSERT_NOT_NULL(lsc->gain_table);
+    TEST_ASSERT_EQUAL(3, lsc->gain_table_size);
+    TEST_ASSERT_NULL(lsc->lsc_gain_table);
+    TEST_ASSERT_EQUAL(0, lsc->lsc_gain_table_size);
+    TEST_ASSERT_FLOAT_WITHIN(0.001f, 24.0f, ipa_config->acc->lsc_disable_gain);
+
+    static const struct {
+        float gain;
+        int ct;
+        uint32_t gain_r;
+        uint32_t gain_gr;
+        uint32_t gain_gb;
+        uint32_t gain_b;
+        bool expect_lsc;
+    } test_data[] = {
+        { 1.0f,  3000, 256, 384, 512, 640, true },
+        { 1.0f,  5000,  26,  77, 128, 205, true },
+        { 8.0f,  3000, 512, 640, 768, 896, true },
+        { 12.0f, 3000, 512, 640, 768, 896, true },
+        { 4.0f,  3000, 256, 384, 512, 640, true },
+        { 8.0f,  4500,  51, 102, 154, 230, true },
+        { 16.0f, 3000, 384, 448, 512, 576, true },
+        { 16.0f, 5000, 154, 179, 205, 243, true },
+        { 24.0f, 3000,   0,   0,   0,   0, false },
+    };
+
+    for (int i = 0; i < ARRAY_SIZE(test_data); i++) {
+        TEST_ESP_OK(esp_ipa_pipeline_create(ipa_config, &handle));
+        if (test_data[i].expect_lsc) {
+            sensor.cur_gain = test_data[i].gain;
+            TEST_ESP_OK(esp_ipa_pipeline_init(handle, &sensor, &metadata));
+        } else {
+            sensor.cur_gain = 1.0f;
+            TEST_ESP_OK(esp_ipa_pipeline_init(handle, &sensor, &metadata));
+            sensor.cur_gain = test_data[i].gain;
+        }
+        esp_ipa_set_int32(handle->ipa_array[0], "ct", test_data[i].ct);
+        metadata.flags = 0;
+        TEST_ESP_OK(esp_ipa_pipeline_process(handle, &stats, &sensor, &metadata));
+
+        if (test_data[i].expect_lsc) {
+            TEST_ASSERT_EQUAL_HEX32(IPA_METADATA_FLAGS_LSC, metadata.flags & IPA_METADATA_FLAGS_LSC);
+            TEST_ASSERT_TRUE(metadata.lsc.enable);
+            TEST_ASSERT_EQUAL_HEX32(test_data[i].gain_r,  metadata.lsc.gain_r[0].val);
+            TEST_ASSERT_EQUAL_HEX32(test_data[i].gain_gr, metadata.lsc.gain_gr[0].val);
+            TEST_ASSERT_EQUAL_HEX32(test_data[i].gain_gb, metadata.lsc.gain_gb[0].val);
+            TEST_ASSERT_EQUAL_HEX32(test_data[i].gain_b,  metadata.lsc.gain_b[0].val);
+        } else {
+            TEST_ASSERT_EQUAL_HEX32(IPA_METADATA_FLAGS_LSC, metadata.flags & IPA_METADATA_FLAGS_LSC);
+            TEST_ASSERT_FALSE(metadata.lsc.enable);
+        }
+
+        TEST_ESP_OK(esp_ipa_pipeline_destroy(handle));
+    }
 }
 
 TEST_CASE("Auto denoising test", "[IPA]")
@@ -1380,6 +1620,177 @@ TEST_CASE("AWB model_2 zone", "[IPA]")
     TEST_ESP_OK(esp_ipa_pipeline_process(handle, &stats, &s_esp_ipa_sensor, &metadata));
     TEST_ASSERT_NOT_EQUAL_HEX32(0, metadata.flags & (IPA_METADATA_FLAGS_RG | IPA_METADATA_FLAGS_BG));
     TEST_ESP_OK(esp_ipa_pipeline_destroy(handle));
+}
+
+TEST_CASE("AWB model_3 fixed CT", "[IPA]")
+{
+    const esp_ipa_config_t *base = esp_ipa_pipeline_get_config(IPA_TARGET_NAME);
+    static esp_ipa_config_t cfg;
+    static esp_ipa_awb_config_t awb;
+    static const esp_ipa_awb_fixed_t s_awb_fixed_presets[] = {
+        { .ct = 5000, .rg = 0.5f, .bg = 0.4f },
+        { .ct = 6500, .rg = 0.55f, .bg = 0.38f },
+    };
+    esp_ipa_pipeline_handle_t handle = NULL;
+    esp_ipa_metadata_t metadata = {0};
+    esp_ipa_stats_t stats = {0};
+
+    TEST_ASSERT_NOT_NULL(base);
+    TEST_ASSERT_NOT_NULL(base->awb);
+    memcpy(&cfg, base, sizeof(cfg));
+    memcpy(&awb, base->awb, sizeof(awb));
+    awb.model = ESP_IPA_AWB_MODEL_3;
+    awb.fixed_ct.default_ct = 5000;
+    awb.fixed_ct.presets = s_awb_fixed_presets;
+    awb.fixed_ct.presets_count = 2;
+    cfg.awb = &awb;
+
+    TEST_ESP_OK(esp_ipa_pipeline_create(&cfg, &handle));
+    TEST_ESP_OK(esp_ipa_pipeline_init(handle, &s_esp_ipa_sensor, &metadata));
+    TEST_ASSERT_EQUAL_HEX32(IPA_METADATA_FLAGS_RG, metadata.flags & IPA_METADATA_FLAGS_RG);
+    TEST_ASSERT_EQUAL_HEX32(IPA_METADATA_FLAGS_BG, metadata.flags & IPA_METADATA_FLAGS_BG);
+    TEST_ASSERT_EQUAL_FLOAT(2.0f, metadata.red_gain);
+    TEST_ASSERT_EQUAL_FLOAT(2.5f, metadata.blue_gain);
+    TEST_ASSERT_EQUAL_INT32(5000, esp_ipa_get_int32(handle->ipa_array[0], "ct"));
+
+    stats.flags = IPA_STATS_FLAGS_AWB;
+    stats.awb_stats[0].counted = awb.min_counted + 10;
+    stats.awb_stats[0].sum_r = 1000;
+    stats.awb_stats[0].sum_g = 4000;
+    stats.awb_stats[0].sum_b = 8000;
+    metadata.flags = 0;
+    TEST_ESP_OK(esp_ipa_pipeline_process(handle, &stats, &s_esp_ipa_sensor, &metadata));
+    TEST_ASSERT_EQUAL_HEX32(0, metadata.flags & (IPA_METADATA_FLAGS_RG | IPA_METADATA_FLAGS_BG));
+    TEST_ASSERT_EQUAL_INT32(5000, esp_ipa_get_int32(handle->ipa_array[0], "ct"));
+
+    esp_ipa_awb_set_fixed_ct(handle, 6500);
+    metadata.flags = 0;
+    TEST_ESP_OK(esp_ipa_pipeline_process(handle, &stats, &s_esp_ipa_sensor, &metadata));
+    TEST_ASSERT_EQUAL_HEX32(IPA_METADATA_FLAGS_RG | IPA_METADATA_FLAGS_BG,
+                            metadata.flags & (IPA_METADATA_FLAGS_RG | IPA_METADATA_FLAGS_BG));
+    TEST_ASSERT_EQUAL_FLOAT(1.0f / 0.55f, metadata.red_gain);
+    TEST_ASSERT_EQUAL_FLOAT(1.0f / 0.38f, metadata.blue_gain);
+    TEST_ASSERT_EQUAL_INT32(6500, esp_ipa_get_int32(handle->ipa_array[0], "ct"));
+
+    TEST_ASSERT_EQUAL(ESP_ERR_INVALID_ARG, esp_ipa_awb_set_fixed_ct(handle, 6200));
+
+    /* Rebuild with a new model-3 table: set_config init selects default_ct. */
+    {
+        static const esp_ipa_awb_fixed_t s_awb_fixed_presets_v2[] = {
+            { .ct = 5000, .rg = 0.6f, .bg = 0.5f },
+            { .ct = 6500, .rg = 0.7f, .bg = 0.45f },
+        };
+        static esp_ipa_awb_config_t awb2;
+        static esp_ipa_config_t cfg2;
+
+        memcpy(&awb2, &awb, sizeof(awb2));
+        awb2.fixed_ct.default_ct = 6500;
+        awb2.fixed_ct.presets = s_awb_fixed_presets_v2;
+        awb2.fixed_ct.presets_count = 2;
+        memcpy(&cfg2, &cfg, sizeof(cfg2));
+        cfg2.awb = &awb2;
+        memset(&metadata, 0, sizeof(metadata));
+        TEST_ESP_OK(esp_ipa_pipeline_set_config(handle, &cfg2, &s_esp_ipa_sensor, &metadata));
+        TEST_ASSERT_EQUAL_HEX32(IPA_METADATA_FLAGS_RG | IPA_METADATA_FLAGS_BG,
+                                metadata.flags & (IPA_METADATA_FLAGS_RG | IPA_METADATA_FLAGS_BG));
+        TEST_ASSERT_EQUAL_FLOAT(1.0f / 0.7f, metadata.red_gain);
+        TEST_ASSERT_EQUAL_FLOAT(1.0f / 0.45f, metadata.blue_gain);
+        TEST_ASSERT_EQUAL_INT32(6500, esp_ipa_get_int32(handle->ipa_array[0], "ct"));
+    }
+
+    TEST_ESP_OK(esp_ipa_pipeline_destroy(handle));
+    handle = NULL;
+
+    /* model 0 → model 3 via set_config applies default_ct in returned metadata. */
+    {
+        static esp_ipa_config_t cfg_m3;
+        static esp_ipa_awb_config_t awb_m3;
+        static const esp_ipa_awb_fixed_t presets_m3[] = {
+            { .ct = 5000, .rg = 0.5f, .bg = 0.4f },
+            { .ct = 6500, .rg = 0.55f, .bg = 0.38f },
+        };
+
+        TEST_ASSERT_EQUAL(ESP_IPA_AWB_MODEL_0, base->awb->model);
+        TEST_ESP_OK(esp_ipa_pipeline_create(base, &handle));
+        memset(&metadata, 0, sizeof(metadata));
+        TEST_ESP_OK(esp_ipa_pipeline_init(handle, &s_esp_ipa_sensor, &metadata));
+
+        memcpy(&awb_m3, base->awb, sizeof(awb_m3));
+        awb_m3.model = ESP_IPA_AWB_MODEL_3;
+        awb_m3.fixed_ct.default_ct = 6500;
+        awb_m3.fixed_ct.presets = presets_m3;
+        awb_m3.fixed_ct.presets_count = 2;
+        memcpy(&cfg_m3, base, sizeof(cfg_m3));
+        cfg_m3.awb = &awb_m3;
+        memset(&metadata, 0, sizeof(metadata));
+        TEST_ESP_OK(esp_ipa_pipeline_set_config(handle, &cfg_m3, &s_esp_ipa_sensor, &metadata));
+        TEST_ASSERT_EQUAL_HEX32(IPA_METADATA_FLAGS_RG | IPA_METADATA_FLAGS_BG,
+                                metadata.flags & (IPA_METADATA_FLAGS_RG | IPA_METADATA_FLAGS_BG));
+        TEST_ASSERT_EQUAL_FLOAT(1.0f / 0.55f, metadata.red_gain);
+        TEST_ASSERT_EQUAL_FLOAT(1.0f / 0.38f, metadata.blue_gain);
+        TEST_ASSERT_EQUAL_INT32(6500, esp_ipa_get_int32(handle->ipa_array[0], "ct"));
+
+        TEST_ESP_OK(esp_ipa_pipeline_destroy(handle));
+    }
+
+    /*
+     * Failed rebuild (missing submodule) must not replace modules or
+     * rewrite the user-selected CT.
+     */
+    {
+        static esp_ipa_config_t cfg_m3;
+        static esp_ipa_config_t cfg_fail;
+        static esp_ipa_awb_config_t awb_m3;
+        static const esp_ipa_awb_fixed_t presets_m3[] = {
+            { .ct = 5000, .rg = 0.5f, .bg = 0.4f },
+            { .ct = 6500, .rg = 0.55f, .bg = 0.38f },
+        };
+        esp_ipa_t *old_awb_ipa = NULL;
+        int awb_idx = -1;
+
+        memcpy(&awb_m3, base->awb, sizeof(awb_m3));
+        awb_m3.model = ESP_IPA_AWB_MODEL_3;
+        awb_m3.min_red_gain_step = 0.0f;
+        awb_m3.min_blue_gain_step = 0.0f;
+        awb_m3.fixed_ct.default_ct = 5000;
+        awb_m3.fixed_ct.presets = presets_m3;
+        awb_m3.fixed_ct.presets_count = 2;
+        memcpy(&cfg_m3, base, sizeof(cfg_m3));
+        cfg_m3.awb = &awb_m3;
+
+        TEST_ESP_OK(esp_ipa_pipeline_create(&cfg_m3, &handle));
+        memset(&metadata, 0, sizeof(metadata));
+        TEST_ESP_OK(esp_ipa_pipeline_init(handle, &s_esp_ipa_sensor, &metadata));
+        TEST_ESP_OK(esp_ipa_awb_set_fixed_ct(handle, 6500));
+        TEST_ASSERT_EQUAL_INT32(6500, esp_ipa_get_int32(handle->ipa_array[0], "ct"));
+        for (int i = 0; i < handle->config->nums; i++) {
+            if (!strcmp(handle->ipa_array[i]->name, "esp_ipa_awb")) {
+                awb_idx = i;
+                old_awb_ipa = handle->ipa_array[i];
+                break;
+            }
+        }
+        TEST_ASSERT_TRUE(awb_idx >= 0);
+        TEST_ASSERT_NOT_NULL(old_awb_ipa);
+
+        memcpy(&cfg_fail, &cfg_m3, sizeof(cfg_fail));
+        cfg_fail.awb = NULL;
+        TEST_ASSERT_EQUAL(ESP_ERR_INVALID_ARG,
+                          esp_ipa_pipeline_set_config(handle, &cfg_fail, &s_esp_ipa_sensor, &metadata));
+        TEST_ASSERT_EQUAL_PTR(old_awb_ipa, handle->ipa_array[awb_idx]);
+        TEST_ASSERT_EQUAL_INT32(6500, esp_ipa_get_int32(handle->ipa_array[0], "ct"));
+
+        memset(&stats, 0, sizeof(stats));
+        metadata.flags = 0;
+        TEST_ESP_OK(esp_ipa_pipeline_process(handle, &stats, &s_esp_ipa_sensor, &metadata));
+        TEST_ASSERT_EQUAL_HEX32(IPA_METADATA_FLAGS_RG | IPA_METADATA_FLAGS_BG,
+                                metadata.flags & (IPA_METADATA_FLAGS_RG | IPA_METADATA_FLAGS_BG));
+        TEST_ASSERT_EQUAL_FLOAT(1.0f / 0.55f, metadata.red_gain);
+        TEST_ASSERT_EQUAL_FLOAT(1.0f / 0.38f, metadata.blue_gain);
+        TEST_ASSERT_EQUAL_INT32(6500, esp_ipa_get_int32(handle->ipa_array[0], "ct"));
+
+        TEST_ESP_OK(esp_ipa_pipeline_destroy(handle));
+    }
 }
 
 TEST_CASE("Auto gain control test", "[IPA]")

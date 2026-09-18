@@ -176,12 +176,15 @@ class ipa_unit_ian_c(ipa_unit_c):
 
         ian_text = str()
         ian_obj_text = str()
-        if hasattr(obj,'color_temp'):
-            ian_text += ct_code(name, obj.color_temp)
-            ian_obj_text += cfmt_string(f'''
-                .ct = &s_esp_ipa_ian_ct_{name}_config,
-                '''
-            )
+        if hasattr(obj, 'color_temp'):
+            ct_obj = obj.color_temp
+            # Keep the JSON block but do not emit IAN CT when disable is true.
+            if not getattr(ct_obj, 'disable', False):
+                ian_text += ct_code(name, ct_obj)
+                ian_obj_text += cfmt_string(f'''
+                    .ct = &s_esp_ipa_ian_ct_{name}_config,
+                    '''
+                )
 
         if hasattr(obj, 'luma'):
             ian_text += luma_code(name, obj.luma)

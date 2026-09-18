@@ -162,6 +162,73 @@ def _awb_render_ref_points(name, pts):
     )
     return decl, f's_ipa_awb_{name}_ref_points', len(pts)
 
+def _awb_render_fixed_presets(name, presets):
+    if not presets:
+        return '', 'NULL', 0
+    items = []
+    for idx, p in enumerate(presets):
+        if not hasattr(p, 'ct') or not hasattr(p, 'rg') or not hasattr(p, 'bg'):
+            raise fatal_error(f'AWB fixed preset #{idx} in {name} missing ct/rg/bg')
+        items.append(
+            f'    {{ .ct = {int(p.ct)}, '
+            f'.rg = {float(p.rg):.6f}f, .bg = {float(p.bg):.6f}f }},'
+        )
+    decl = (
+        f'static const esp_ipa_awb_fixed_t s_ipa_awb_{name}_fixed_presets[] = {{\n'
+        + '\n'.join(items)
+        + '\n};\n'
+    )
+    return decl, f's_ipa_awb_{name}_fixed_presets', len(presets)
+
+def _awb_collect_fixed_cfg(name, obj, model_val, refs):
+    """
+    Return (presets_list, default_ct).
+    Supports:
+      fixed_ct { default_ct, presets: [ {ct,rg,bg}, ... ] }
+      fixed_ct { ct, rg, bg }  (legacy single preset)
+      fixed { ... }  (deprecated alias of fixed_ct)
+      ref_points[0] fallback for model 3 when fixed is absent
+    """
+    fixed_obj = getattr(obj, 'fixed_ct', None)
+    if fixed_obj is None:
+        # Deprecated JSON key "fixed" is still accepted as an alias of "fixed_ct".
+        fixed_obj = getattr(obj, 'fixed', None)
+    presets = []
+    default_ct = 0
+
+    if fixed_obj is not None:
+        if hasattr(fixed_obj, 'presets') and fixed_obj.presets is not None:
+            presets = list(fixed_obj.presets)
+            default_ct = int(getattr(fixed_obj, 'default_ct', 0))
+            if default_ct <= 0 and presets:
+                default_ct = int(presets[0].ct)
+        elif hasattr(fixed_obj, 'ct') and hasattr(fixed_obj, 'rg') and hasattr(fixed_obj, 'bg'):
+            presets = [fixed_obj]
+            default_ct = int(getattr(fixed_obj, 'default_ct', fixed_obj.ct))
+        elif hasattr(fixed_obj, 'default_ct'):
+            default_ct = int(fixed_obj.default_ct)
+
+    if not presets and model_val == 3 and refs:
+        p0 = refs[0]
+        if hasattr(p0, 'ct') and hasattr(p0, 'rg') and hasattr(p0, 'bg'):
+            presets = [p0]
+            default_ct = int(p0.ct)
+
+    if model_val == 3:
+        if not presets:
+            raise fatal_error(
+                f'AWB config {name} uses model 3 (fixed_ct) but needs '
+                f'awb.fixed_ct{{ default_ct, presets:[{{ct,rg,bg}},...] }} '
+                f'or legacy awb.fixed_ct{{ct,rg,bg}} / awb.fixed{{...}}.')
+        for idx, p in enumerate(presets):
+            if int(p.ct) <= 0 or float(p.rg) <= 0.0 or float(p.bg) <= 0.0:
+                raise fatal_error(
+                    f'AWB config {name} fixed preset #{idx} requires ct/rg/bg all > 0')
+        if default_ct <= 0:
+            default_ct = int(presets[0].ct)
+
+    return presets, default_ct
+
 def _awb_resolve_subwin_weight(name, obj):
     """Same layout as ian.luma.ae.weight: prefer awb.sub_win.weight (25 numbers, int or float)."""
     if hasattr(obj, 'sub_win') and obj.sub_win is not None:
@@ -215,6 +282,7 @@ class ipa_unit_awb_c(ipa_unit_c):
             0: 'ESP_IPA_AWB_MODEL_0',
             1: 'ESP_IPA_AWB_MODEL_1',
             2: 'ESP_IPA_AWB_MODEL_2',
+            3: 'ESP_IPA_AWB_MODEL_3',
         }
 
         # Accept string aliases too; 'zone'/'hybrid' both map to the new classifier (model 2).
@@ -225,16 +293,17 @@ class ipa_unit_awb_c(ipa_unit_c):
                 'gray_world': 0, 'model_0': 0, 'gw': 0,
                 'ct_index':   1, 'model_1': 1,
                 'zone': 2, 'model_2': 2, 'hybrid': 2, 'ct2': 2,
+                'fixed_ct': 3, 'fixed': 3, 'model_3': 3,
             }
             if alias not in str_to_int:
                 raise fatal_error(
                     f'AWB config {name} has unknown model string: "{obj.model}". '
-                    f'Expected int 0/1/2 or one of {list(str_to_int.keys())}.')
+                    f'Expected int 0/1/2/3 or one of {list(str_to_int.keys())}.')
             model_val = str_to_int[alias]
 
         if model_val not in model_dict:
             raise fatal_error(
-                f'AWB config {name} has invalid model value: {obj.model}. Expected 0, 1 or 2.')
+                f'AWB config {name} has invalid model value: {obj.model}. Expected 0, 1, 2 or 3.')
 
         subwin_table = _awb_resolve_subwin_weight(name, obj)
         min_subwin = _awb_resolve_min_subwin_counted(obj)
@@ -262,7 +331,12 @@ class ipa_unit_awb_c(ipa_unit_c):
                 f'AWB config {name} uses model 2 (zone) but no zones were provided '
                 f'(expected awb.zones[] or awb.hybrid.ct2.zones[]).')
 
-        prefix = (zones_decl + ('\n' if zones_decl else '') + refs_decl + ('\n' if refs_decl else ''))
+        fixed_presets, fixed_default_ct = _awb_collect_fixed_cfg(name, obj, model_val, refs)
+        fixed_decl, fixed_ptr, fixed_cnt = _awb_render_fixed_presets(name, fixed_presets)
+
+        prefix = (zones_decl + ('\n' if zones_decl else '')
+                  + refs_decl + ('\n' if refs_decl else '')
+                  + fixed_decl + ('\n' if fixed_decl else ''))
 
         config_text = cfmt_string(f'''
             {prefix}static const esp_ipa_awb_config_t s_ipa_awb_{name}_config = {{
@@ -303,7 +377,12 @@ class ipa_unit_awb_c(ipa_unit_c):
                 .outlier_bg = {float(obj.outlier_bg):.6f}f,
                 .zone_hysteresis_ratio = {float(obj.zone_hysteresis_ratio):.6f}f,
                 .zone_switch_count = {int(obj.zone_switch_count)},
-                .type_counter_max = {int(obj.type_counter_max)}
+                .type_counter_max = {int(obj.type_counter_max)},
+                .fixed_ct = {{
+                    .default_ct = {int(fixed_default_ct)},
+                    .presets = {fixed_ptr},
+                    .presets_count = {fixed_cnt}
+                }}
             }};
             ''')
 

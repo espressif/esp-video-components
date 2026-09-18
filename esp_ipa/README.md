@@ -57,6 +57,8 @@ Developers can refer to the configuration files in [esp_cam_sensor](https://gith
 ```json
 {
     "version": 1,
+    "writable": false,
+    "description": "0",
     "SC2336": {}
 }
 ```
@@ -64,6 +66,8 @@ Developers can refer to the configuration files in [esp_cam_sensor](https://gith
 | Parameter | Type | Range | Description |
 |:-:|:-:|:-:|:-|
 | version | Integer | >1 | JSON configuration version, this variable adds only when JSON configuration parameters change |
+| writable | Boolean | true/false | When `true`, generated IPA config data in this JSON file is non-`const` (writable at runtime); default / omitted is `false` (`const`) |
+| description | String | `[A-Za-z0-9_]+` | Per-file configuration identifier used in generated C symbols (`sensor_description_xxxx`) and stored in `esp_ipa_config_t.description`. Default / omitted is `"0"` when that sensor appears in only one JSON file. If the same sensor appears in multiple JSON files, each of those files must set `description` and the values must be unique for that sensor (different sensors may reuse the same `description`). Enumeration order follows the JSON input file list |
 | SC2336 | Object | / | Target sensor name, such as "SC2336", "OV5647" and so on |
 
 ---
@@ -111,7 +115,7 @@ Developers can refer to the configuration files in [esp_cam_sensor](https://gith
 | Parameter | Type | Range | Description |
 |:-:|:-:|:-:|:-|
 | awb | Object | / | Auto white balance configuration parameters |
-| model | Integer or String | `0` / `1` / `2` or aliases | **`0`**: gray world (default). **`1`**: color-temperature index. **`2`**: zone classifier (chromaticity zones + optional ref-point scan). String aliases: `gray_world`, `model_0`, `gw` → 0; `ct_index`, `model_1` → 1; `zone`, `model_2`, `hybrid`, `ct2` → 2 |
+| model | Integer or String | `0` / `1` / `2` / `3` or aliases | **`0`**: gray world (default). **`1`**: color-temperature index. **`2`**: zone classifier. **`3`**: fixed CT (`fixed_ct.presets[]`). String aliases: `gray_world`, `model_0`, `gw` → 0; `ct_index`, `model_1` → 1; `zone`, `model_2`, `hybrid`, `ct2` → 2; `fixed_ct`, `model_3` → 3 |
 |  min_counted | Integer | >0 | Minimum white points: Only when the white points number is larger than or equal to this does the auto white balance algorithm run |
 | min_red_gain_step | Float | >0 | Minimum red channel gain step: Only when the red channel gain step is larger than or equal to this is the gain set into the ISP |
 | min_blue_gain_step | Float | >0 | Minimum blue channel gain step: Only when the blue channel gain step is larger than or equal to this is the gain set into the ISP |
@@ -174,6 +178,39 @@ Developers can refer to the configuration files in [esp_cam_sensor](https://gith
 | outlier_rg | Float | ≥ 0 | Reject sub-window when \|R/G − prev\| exceeds this; `0` disables. |
 | outlier_bg | Float | ≥ 0 | Same for B/G. |
 | zone_hysteresis_ratio | Float | ≥ 0 | Zone-switch stickiness; `0` disables. |
+
+**AWB model 3 (fixed CT)** — set `model` to `3` or `"fixed_ct"`. Does not use AWB statistics. Applies the active preset from `fixed_ct.presets[]` (exact CT match only). **`fixed_ct.default_ct`** must exist in `presets[]` and is selected at init. Runtime switch: `esp_ipa_awb_set_fixed_ct(handle, <kelvin>)` then `esp_ipa_pipeline_process()`. Returns `ESP_ERR_INVALID_ARG` if CT is not in the preset table. KV **`ct`** is published for ACC CCM/LSC/SAT.
+
+```json
+"awb":
+{
+    "model": "fixed_ct",
+    "min_red_gain_step": 0.05,
+    "min_blue_gain_step": 0.05,
+    "red_gain_scale": 1.0,
+    "blue_gain_scale": 1.0,
+    "fixed_ct":
+    {
+        "default_ct": 5000,
+        "presets":
+        [
+            { "ct": 3000, "rg": 0.52, "bg": 0.58 },
+            { "ct": 5000, "rg": 0.5602, "bg": 0.5390 },
+            { "ct": 6500, "rg": 0.58, "bg": 0.52 }
+        ]
+    }
+}
+```
+
+Legacy single preset (still supported):
+
+```json
+"fixed_ct": { "ct": 5000, "rg": 0.5602, "bg": 0.5390 }
+```
+
+| Parameter | Type | Range | Description |
+|:-:|:-:|:-:|:-|
+| fixed_ct | Object | required for model 3 | **`esp_ipa_awb_fixed_cfg_t`**: **`default_ct`** (Kelvin, must match a preset), **`presets[]`** each with **`ct`/`rg`/`bg`** (>0). Runtime CT via **`esp_ipa_awb_set_fixed_ct()`** only (exact match). Legacy `{ ct, rg, bg }` = one preset. Deprecated JSON key **`fixed`** is still accepted by the generator. |
 
 ---
 
@@ -347,11 +384,22 @@ Developers can refer to the configuration files in [esp_cam_sensor](https://gith
     "table":
     [
         {
-            "ct": 3350,
-            "calibrations_r_tbl": [ 2.13310074, ... ],
-            "calibrations_gr_tbl": [ 1.92501747, ... ],
-            "calibrations_gb_tbl": [ 1.90096950, ... ],
-            "calibrations_b_tbl": [ 1.67257392, ... ],
+            "gain": 1.0,
+            "table":
+            [
+                {
+                    "ct": 3350,
+                    "calibrations_r_tbl": [ 2.13310074, ... ],
+                    "calibrations_gr_tbl": [ 1.92501747, ... ],
+                    "calibrations_gb_tbl": [ 1.90096950, ... ],
+                    "calibrations_b_tbl": [ 1.67257392, ... ]
+                },
+                ...
+            ]
+        },
+        {
+            "gain": 8.0,
+            "scale": 0.8
         },
         ...
     ]
@@ -364,8 +412,11 @@ Developers can refer to the configuration files in [esp_cam_sensor](https://gith
 | img_w | Integer | >0 | Image resolution width |
 | img_h | Integer | >0 | Image resolution height |
 | lsc_tbl_size | Integer | >0 | LSC data array size, different image resolution has different values, such as "lsc_tbl_size" of 1920x1080 resolution is 558 |
-| table | Array | / | The LSC array data and color temperature mapping table adopted the principle of nearest neighbor indexing |
-| ct | Integer | >0 | Color temperature value |
+| table | Array | / | LSC mapping table. Preferred: two-level nearest-neighbor index (sensor gain → color temperature). Legacy flat CT-only table `[{ct, ...}]` is still accepted and mapped to `lsc_gain_table`. Selected entry is used directly (no runtime LSC generation) |
+| gain | Float | >0 | Camera sensor gain of the outer index node (optional in legacy flat CT table) |
+| scale | Float | >=0 | Optional. When a gain node has no nested `table`, blend the base LSC arrays toward 1.0 at config generation time: `out = 1 + (base - 1) * scale` (stored as `round(out * 256)`). `scale=1` copies the base table; `scale=0` yields a flat 1.0 table. Optional `base_gain` selects the source node; otherwise the single base table node (or nearest lower-gain base) is used |
+| base_gain | Float | >0 | Optional. Source gain node for `scale` when multiple full `table` nodes exist |
+| ct | Integer | >0 | Color temperature value of the inner index node (or top-level node in legacy flat table) |
 | calibrations_r_tbl | Array[Float] | <div style="white-space: nowrap;">ESP32-P4: (-4,4)</div> | LSC data array for the red channel in RAW field |
 | calibrations_gr_tbl | Array[Float] | <div style="white-space: nowrap;">ESP32-P4: (-4,4)</div> | LSC data array for the red-green(RG) channel in RAW field |
 | calibrations_gb_tbl | Array[Float] | <div style="white-space: nowrap;">ESP32-P4: (-4,4)</div> | LSC data array for the blue-green(BG) channel in RAW field |
@@ -832,9 +883,9 @@ Developers can refer to the configuration files in [esp_cam_sensor](https://gith
 | Parameter | Type | Range | Description | 
 |:-:|:-:|:-:|:-|
 | luma_adjust | Object | / | Image brightness control configuration parameter |
-| target_low | Integer | (0,target) | Image brightness low threshold: if the image brightness is less than this value does the AGC algorithm calculate and set exposure and gain into the sensor |
-| target_high | Integer | (target,255) | Image brightness high threshold: if the image brightness is larger than this value does the AGC algorithm calculate and set exposure and gain into the sensor |
-| target | Integer | [3,252] | Image brightness target value: if the image brightness is larger than the "target_high" or lower than the "target_low" does the AGC algorithm calculate exposure and gain to make the image brightness nearest to this value |
+| target_low | Integer | (0,target) | Hold band low: if brightness is in [target_low, target_high] (shifted with PWL/meter target), AGC does not change exposure or gain |
+| target_high | Integer | (target,255) | Hold band high: same as target_low; brightness outside the band is driven toward target |
+| target | Integer | [3,252] | Image brightness target used when luma is outside the hold band |
 | low_threshold | Integer | [3,252] | Image brightness sampled data low threshold: if the image brightness sampled data is less than this value is the low threshold counter increased by 1 |
 | high_threshold | Integer | [3,252] | Image brightness sampled data high threshold: if the image brightness sampled data is higher than this value is the high threshold counter increased by 1 |
 | low_regions | Integer | <div style="white-space: nowrap;">ESP32-P4:(0,25)</div> | Image low threshold counter low regions number: if low threshold counter is less than this value will all sampled data which is less than "low_threshold" be dropped |
@@ -976,6 +1027,7 @@ Developers can refer to the configuration files in [esp_cam_sensor](https://gith
 
 * Note: `luma_pwl` must be sorted in ascending order of `env_luma`
 * Note: the effective `luma_target` = configured `target` + interpolated `luma_shift`
+* Note: the `target_low`/`target_high` hold band is shifted by the same amount, so AGC stays still when luma is already near the PWL target
 
 ---
 

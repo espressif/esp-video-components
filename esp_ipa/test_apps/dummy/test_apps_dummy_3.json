@@ -1,0 +1,925 @@
+{
+    "version": 1,
+    "test_apps_dummy_3": {
+        "ian": {
+            "color_temp": {
+                "bp": [
+                    {
+                        "a0": 10,
+                        "a1": 1
+                    },
+                    {
+                        "a0": 9,
+                        "a1": 2
+                    },
+                    {
+                        "a0": 8,
+                        "a1": 3
+                    },
+                    {
+                        "a0": 7,
+                        "a1": 4
+                    },
+                    {
+                        "a0": 6,
+                        "a1": 5
+                    },
+                    {
+                        "a0": 5,
+                        "a1": 6
+                    },
+                    {
+                        "a0": 4,
+                        "a1": 7
+                    },
+                    {
+                        "a0": 3,
+                        "a1": 8
+                    },
+                    {
+                        "a0": 2,
+                        "a1": 9
+                    },
+                    {
+                        "a0": 1,
+                        "a1": 10
+                    }
+                ],
+                "model": 0,
+                "m_0": {},
+                "m_1": {
+                    "a0": -1,
+                    "a1": 11
+                },
+                "m_2": {
+                    "a0": -1,
+                    "a1": 11,
+                    "a2": 10
+                },
+                "g": {
+                    "a0": -1,
+                    "a1": -1,
+                    "a2": [
+                        -1,
+                        1,
+                        -1,
+                        1
+                    ]
+                },
+                "f_n0": 1
+            },
+            "luma": {
+                "histogram": {
+                    "mean": [
+                        8,
+                        24,
+                        40,
+                        56,
+                        72,
+                        88,
+                        104,
+                        120,
+                        136,
+                        152,
+                        168,
+                        184,
+                        200,
+                        216,
+                        232,
+                        248
+                    ],
+                    "low_index": {
+                        "start": 0,
+                        "end": 1
+                    },
+                    "high_index": {
+                        "start": 14,
+                        "end": 15
+                    },
+                    "back_light_radio_threshold": 0.45
+                },
+                "ae": {
+                    "weight": [
+                        1,
+                        1,
+                        1,
+                        1,
+                        1,
+                        1,
+                        1,
+                        1,
+                        1,
+                        1,
+                        1,
+                        1,
+                        1,
+                        1,
+                        1,
+                        1,
+                        1,
+                        1,
+                        1,
+                        1,
+                        1,
+                        1,
+                        1,
+                        1,
+                        1
+                    ]
+                }
+            }
+        },
+        "awb": {
+            "min_counted": 1000,
+            "min_red_gain_step": 0.5,
+            "min_blue_gain_step": 0.5
+        },
+        "acc": {
+            "saturation": [
+                {
+                    "color_temp": 1000,
+                    "value": 1
+                },
+                {
+                    "color_temp": 2000,
+                    "value": 2
+                },
+                {
+                    "color_temp": 3000,
+                    "value": 3
+                },
+                {
+                    "color_temp": 4000,
+                    "value": 4
+                },
+                {
+                    "color_temp": 5000,
+                    "value": 5
+                }
+            ],
+            "ccm": {
+                "model": 1,
+                "low_luma": {
+                    "luma_env": "dummy_gamma_luma",
+                    "threshold": 15.5,
+                    "matrix": [
+                        1.0,
+                        0,
+                        0,
+                        0,
+                        1.0,
+                        0,
+                        0,
+                        0,
+                        1.0
+                    ]
+                },
+                "table": [
+                    {
+                        "color_temp": 1000,
+                        "matrix": [
+                            1.1,
+                            1.1,
+                            1.1,
+                            1.1,
+                            1.1,
+                            1.1,
+                            1.1,
+                            1.1,
+                            1.1
+                        ]
+                    },
+                    {
+                        "color_temp": 2000,
+                        "matrix": [
+                            1.2,
+                            1.2,
+                            1.2,
+                            1.2,
+                            1.2,
+                            1.2,
+                            1.2,
+                            1.2,
+                            1.2
+                        ]
+                    },
+                    {
+                        "color_temp": 3000,
+                        "matrix": [
+                            1.3,
+                            1.3,
+                            1.3,
+                            1.3,
+                            1.3,
+                            1.3,
+                            1.3,
+                            1.3,
+                            1.3
+                        ]
+                    },
+                    {
+                        "color_temp": 4000,
+                        "matrix": [
+                            1.4,
+                            1.4,
+                            1.4,
+                            1.4,
+                            1.4,
+                            1.4,
+                            1.4,
+                            1.4,
+                            1.4
+                        ]
+                    },
+                    {
+                        "color_temp": 5000,
+                        "matrix": [
+                            1.5,
+                            1.5,
+                            1.5,
+                            1.5,
+                            1.5,
+                            1.5,
+                            1.5,
+                            1.5,
+                            1.5
+                        ]
+                    }
+                ],
+                "min_ct_step": 500
+            },
+            "lsc": {
+                "model": 0,
+                "disable_gain": 24,
+                "img_w": 1080,
+                "img_h": 720,
+                "lsc_tbl_size": 1,
+                "table": [
+                    {
+                        "gain": 1.0,
+                        "table": [
+                            {
+                                "ct": 3000,
+                                "calibrations_r_tbl": [
+                                    1
+                                ],
+                                "calibrations_gr_tbl": [
+                                    1.5
+                                ],
+                                "calibrations_gb_tbl": [
+                                    2
+                                ],
+                                "calibrations_b_tbl": [
+                                    2.5
+                                ]
+                            },
+                            {
+                                "ct": 5000,
+                                "calibrations_r_tbl": [
+                                    0.1
+                                ],
+                                "calibrations_gr_tbl": [
+                                    0.3
+                                ],
+                                "calibrations_gb_tbl": [
+                                    0.5
+                                ],
+                                "calibrations_b_tbl": [
+                                    0.8
+                                ]
+                            }
+                        ]
+                    },
+                    {
+                        "gain": 8.0,
+                        "table": [
+                            {
+                                "ct": 3000,
+                                "calibrations_r_tbl": [
+                                    2
+                                ],
+                                "calibrations_gr_tbl": [
+                                    2.5
+                                ],
+                                "calibrations_gb_tbl": [
+                                    3
+                                ],
+                                "calibrations_b_tbl": [
+                                    3.5
+                                ]
+                            },
+                            {
+                                "ct": 5000,
+                                "calibrations_r_tbl": [
+                                    0.2
+                                ],
+                                "calibrations_gr_tbl": [
+                                    0.4
+                                ],
+                                "calibrations_gb_tbl": [
+                                    0.6
+                                ],
+                                "calibrations_b_tbl": [
+                                    0.9
+                                ]
+                            }
+                        ]
+                    },
+                    {
+                        "gain": 16.0,
+                        "scale": 0.5
+                    }
+                ]
+            }
+        },
+        "adn": {
+            "bf": [
+                {
+                    "gain": 1,
+                    "param": {
+                        "level": 1,
+                        "matrix": [
+                            1,
+                            1,
+                            1,
+                            1,
+                            1,
+                            1,
+                            1,
+                            1,
+                            1
+                        ]
+                    }
+                },
+                {
+                    "gain": 2,
+                    "param": {
+                        "level": 2,
+                        "matrix": [
+                            2,
+                            2,
+                            2,
+                            2,
+                            2,
+                            2,
+                            2,
+                            2,
+                            2
+                        ]
+                    }
+                },
+                {
+                    "gain": 3,
+                    "param": {
+                        "level": 3,
+                        "matrix": [
+                            3,
+                            3,
+                            3,
+                            3,
+                            3,
+                            3,
+                            3,
+                            3,
+                            3
+                        ]
+                    }
+                },
+                {
+                    "gain": 4,
+                    "param": {
+                        "level": 4,
+                        "matrix": [
+                            4,
+                            4,
+                            4,
+                            4,
+                            4,
+                            4,
+                            4,
+                            4,
+                            4
+                        ]
+                    }
+                },
+                {
+                    "gain": 5,
+                    "param": {
+                        "level": 5,
+                        "matrix": [
+                            5,
+                            5,
+                            5,
+                            5,
+                            5,
+                            5,
+                            5,
+                            5,
+                            5
+                        ]
+                    }
+                }
+            ],
+            "demosaic": [
+                {
+                    "gain": 1,
+                    "gradient_ratio": 1
+                },
+                {
+                    "gain": 2,
+                    "gradient_ratio": 2
+                },
+                {
+                    "gain": 3,
+                    "gradient_ratio": 3
+                },
+                {
+                    "gain": 4,
+                    "gradient_ratio": 4
+                },
+                {
+                    "gain": 5,
+                    "gradient_ratio": 5
+                }
+            ]
+        },
+        "aen": {
+            "gamma": {
+                "use_gamma_param": false,
+                "luma_env": "dummy_gamma_luma",
+                "luma_min_step": 3.0,
+                "table": [
+                    {
+                        "luma": 10.1,
+                        "gamma_param": 1.0,
+                        "x": [
+                            0,
+                            2,
+                            4,
+                            6,
+                            8,
+                            10,
+                            12,
+                            14,
+                            16,
+                            18,
+                            20,
+                            22,
+                            24,
+                            26,
+                            28,
+                            30
+                        ],
+                        "y": [
+                            0,
+                            16,
+                            32,
+                            48,
+                            64,
+                            80,
+                            96,
+                            112,
+                            128,
+                            144,
+                            160,
+                            176,
+                            192,
+                            208,
+                            224,
+                            255
+                        ]
+                    },
+                    {
+                        "luma": 20.1,
+                        "gamma_param": 1.3,
+                        "x": [
+                            0,
+                            4,
+                            8,
+                            12,
+                            16,
+                            20,
+                            24,
+                            28,
+                            32,
+                            36,
+                            40,
+                            44,
+                            48,
+                            52,
+                            56,
+                            60
+                        ],
+                        "y": [
+                            16,
+                            32,
+                            48,
+                            56,
+                            64,
+                            80,
+                            96,
+                            112,
+                            128,
+                            144,
+                            160,
+                            176,
+                            192,
+                            224,
+                            240,
+                            255
+                        ]
+                    },
+                    {
+                        "luma": 25.1,
+                        "gamma_param": 1.45,
+                        "red": {
+                            "x": [
+                                0,
+                                3,
+                                6,
+                                9,
+                                12,
+                                15,
+                                18,
+                                21,
+                                24,
+                                27,
+                                30,
+                                33,
+                                36,
+                                39,
+                                42,
+                                45
+                            ],
+                            "y": [
+                                0,
+                                20,
+                                40,
+                                60,
+                                80,
+                                100,
+                                120,
+                                140,
+                                160,
+                                180,
+                                200,
+                                215,
+                                230,
+                                240,
+                                248,
+                                255
+                            ]
+                        },
+                        "green": {
+                            "x": [
+                                0,
+                                4,
+                                8,
+                                12,
+                                16,
+                                20,
+                                24,
+                                28,
+                                32,
+                                36,
+                                40,
+                                44,
+                                48,
+                                52,
+                                56,
+                                60
+                            ],
+                            "y": [
+                                10,
+                                30,
+                                50,
+                                70,
+                                90,
+                                110,
+                                130,
+                                150,
+                                170,
+                                190,
+                                210,
+                                222,
+                                234,
+                                244,
+                                250,
+                                255
+                            ]
+                        },
+                        "blue": {
+                            "x": [
+                                0,
+                                5,
+                                10,
+                                15,
+                                20,
+                                25,
+                                30,
+                                35,
+                                40,
+                                45,
+                                50,
+                                55,
+                                60,
+                                65,
+                                70,
+                                75
+                            ],
+                            "y": [
+                                5,
+                                25,
+                                45,
+                                65,
+                                85,
+                                105,
+                                125,
+                                145,
+                                165,
+                                185,
+                                205,
+                                218,
+                                231,
+                                242,
+                                249,
+                                255
+                            ]
+                        }
+                    },
+                    {
+                        "luma": 30.1,
+                        "gamma_param": 1.6,
+                        "x": [
+                            0,
+                            8,
+                            16,
+                            24,
+                            32,
+                            40,
+                            48,
+                            56,
+                            64,
+                            72,
+                            80,
+                            88,
+                            96,
+                            104,
+                            112,
+                            120
+                        ],
+                        "y": [
+                            32,
+                            48,
+                            56,
+                            64,
+                            72,
+                            80,
+                            96,
+                            112,
+                            128,
+                            144,
+                            160,
+                            176,
+                            192,
+                            240,
+                            248,
+                            255
+                        ]
+                    }
+                ]
+            },
+            "sharpen": [
+                {
+                    "gain": 1,
+                    "param": {
+                        "h_thresh": 1,
+                        "l_thresh": 1,
+                        "h_coeff": 1,
+                        "m_coeff": 1,
+                        "matrix": [
+                            1,
+                            1,
+                            1,
+                            1,
+                            1,
+                            1,
+                            1,
+                            1,
+                            1
+                        ]
+                    }
+                },
+                {
+                    "gain": 2,
+                    "param": {
+                        "h_thresh": 2,
+                        "l_thresh": 2,
+                        "h_coeff": 2,
+                        "m_coeff": 2,
+                        "matrix": [
+                            2,
+                            2,
+                            2,
+                            2,
+                            2,
+                            2,
+                            2,
+                            2,
+                            2
+                        ]
+                    }
+                },
+                {
+                    "gain": 3,
+                    "param": {
+                        "h_thresh": 3,
+                        "l_thresh": 3,
+                        "h_coeff": 3,
+                        "m_coeff": 3,
+                        "matrix": [
+                            3,
+                            3,
+                            3,
+                            3,
+                            3,
+                            3,
+                            3,
+                            3,
+                            3
+                        ]
+                    }
+                },
+                {
+                    "gain": 4,
+                    "param": {
+                        "h_thresh": 4,
+                        "l_thresh": 4,
+                        "h_coeff": 4,
+                        "m_coeff": 4,
+                        "matrix": [
+                            4,
+                            4,
+                            4,
+                            4,
+                            4,
+                            4,
+                            4,
+                            4,
+                            4
+                        ]
+                    }
+                },
+                {
+                    "gain": 5,
+                    "param": {
+                        "h_thresh": 5,
+                        "l_thresh": 5,
+                        "h_coeff": 5,
+                        "m_coeff": 5,
+                        "matrix": [
+                            5,
+                            5,
+                            5,
+                            5,
+                            5,
+                            5,
+                            5,
+                            5,
+                            5
+                        ]
+                    }
+                }
+            ],
+            "contrast": [
+                {
+                    "gain": 1,
+                    "value": 1
+                },
+                {
+                    "gain": 2,
+                    "value": 2
+                },
+                {
+                    "gain": 3,
+                    "value": 3
+                },
+                {
+                    "gain": 4,
+                    "value": 4
+                },
+                {
+                    "gain": 5,
+                    "value": 5
+                }
+            ]
+        },
+        "agc": {
+            "exposure": {
+                "frame_delay": 2,
+                "adjust_delay": 0
+            },
+            "gain": {
+                "min_step": 0.0001,
+                "frame_delay": 2
+            },
+            "anti_flicker": {
+                "mode": "full",
+                "ac_freq": 50
+            },
+            "f_n0": 1,
+            "f_m0": 1,
+            "luma_adjust": {
+                "target_low": 50,
+                "target_high": 150,
+                "target": 100,
+                "low_threshold": 30,
+                "low_regions": 10,
+                "high_threshold": 220,
+                "high_regions": 10,
+                "weight": [
+                    1,
+                    1,
+                    1,
+                    1,
+                    1,
+                    1,
+                    1,
+                    1,
+                    1,
+                    1,
+                    1,
+                    1,
+                    1,
+                    1,
+                    1,
+                    1,
+                    1,
+                    1,
+                    1,
+                    1,
+                    1,
+                    1,
+                    1,
+                    1,
+                    1
+                ]
+            },
+            "mode": "high_light_priority",
+            "high_light_priority": {
+                "low_threshold": 120,
+                "high_threshold": 180,
+                "weight_offset": 5,
+                "luma_offset": 5
+            },
+            "low_light_priority": {
+                "low_threshold": 40,
+                "high_threshold": 80,
+                "weight_offset": 10,
+                "luma_offset": 10
+            },
+            "light_threshold_priority": [
+                {
+                    "luma_threshold": 60,
+                    "weight_offset": 5
+                },
+                {
+                    "luma_threshold": 80,
+                    "weight_offset": 10
+                },
+                {
+                    "luma_threshold": 100,
+                    "weight_offset": 15
+                },
+                {
+                    "luma_threshold": 120,
+                    "weight_offset": 20
+                },
+                {
+                    "luma_threshold": 140,
+                    "weight_offset": 25
+                }
+            ]
+        },
+        "af": {
+            "windows": [
+                {
+                    "left": 50,
+                    "top": 100,
+                    "width": 100,
+                    "height": 100,
+                    "weight": 1
+                }
+            ],
+            "edge_thresh": 12,
+            "definition_high_threshold_ratio": 1.6,
+            "definition_low_threshold_ratio": 0.6,
+            "luminance_high_threshold_ratio": 1.6,
+            "luminance_low_threshold_ratio": 0.6,
+            "l1_scan_points_num": 11,
+            "l2_scan_points_num": 12,
+            "max_pos": 500,
+            "max_change_time": 500
+        }
+    }
+}

@@ -113,65 +113,189 @@ class ipa_unit_acc_c(ipa_unit_c):
 
         def lsc_code(name, obj):
             lsc = obj.lsc
-            lsc_table_text = str()
             lsc_text = str()
 
-            for i in lsc.table:
-                lsc_text += cfmt_string(f'''
-                    static const isp_lsc_gain_t s_esp_ipa_acc_lsc_gain_r_{name}_{lsc.img_w}_x_{lsc.img_h}_ct_{i.ct}_config[] = {{
-                        {', '.join(f'{{.val = {round(u * 256)}}}' for u in i.calibrations_r_tbl)}
-                    }};
-                    ''')
+            def emit_ct_arrays(ct_nodes, gain_tag=None, scale=1.0):
+                nonlocal lsc_text
+                ct_table_text = str()
+                tag = f'_gain_{gain_tag}' if gain_tag is not None else ''
 
-                lsc_text += cfmt_string(f'''
-                    static const isp_lsc_gain_t s_esp_ipa_acc_lsc_gain_gr_{name}_{lsc.img_w}_x_{lsc.img_h}_ct_{i.ct}_config[] = {{
-                        {', '.join(f'{{.val = {round(u * 256)}}}' for u in i.calibrations_gr_tbl)}
-                    }};
-                    ''')
+                for i in ct_nodes:
+                    def scale_vals(vals):
+                        # Pull gain toward 1.0: (v - 1.0) * scale + 1.0
+                        return [round(((u - 1.0) * scale + 1.0) * 256) for u in vals]
 
-                lsc_text += cfmt_string(f'''
-                    static const isp_lsc_gain_t s_esp_ipa_acc_lsc_gain_gb_{name}_{lsc.img_w}_x_{lsc.img_h}_ct_{i.ct}_config[] = {{
-                        {', '.join(f'{{.val = {round(u * 256)}}}' for u in i.calibrations_gb_tbl)}
-                    }};
-                    ''')
+                    lsc_text += cfmt_string(f'''
+                        static const isp_lsc_gain_t s_esp_ipa_acc_lsc_gain_r_{name}_{lsc.img_w}_x_{lsc.img_h}{tag}_ct_{i.ct}_config[] = {{
+                            {', '.join(f'{{.val = {v}}}' for v in scale_vals(i.calibrations_r_tbl))}
+                        }};
+                        ''')
 
-                lsc_text += cfmt_string(f'''
-                    static const isp_lsc_gain_t s_esp_ipa_acc_lsc_gain_b_{name}_{lsc.img_w}_x_{lsc.img_h}_ct_{i.ct}_config[] = {{
-                        {', '.join(f'{{.val = {round(u * 256)}}}' for u in i.calibrations_b_tbl)}
-                    }};
-                    ''')
+                    lsc_text += cfmt_string(f'''
+                        static const isp_lsc_gain_t s_esp_ipa_acc_lsc_gain_gr_{name}_{lsc.img_w}_x_{lsc.img_h}{tag}_ct_{i.ct}_config[] = {{
+                            {', '.join(f'{{.val = {v}}}' for v in scale_vals(i.calibrations_gr_tbl))}
+                        }};
+                        ''')
 
-                lsc_table_text += cfmt_string(f'''
-                    {{
-                        .color_temp = {i.ct},
-                        .lsc = {{
-                            .gain_r  = s_esp_ipa_acc_lsc_gain_r_{name}_{lsc.img_w}_x_{lsc.img_h}_ct_{i.ct}_config,
-                            .gain_gr = s_esp_ipa_acc_lsc_gain_gr_{name}_{lsc.img_w}_x_{lsc.img_h}_ct_{i.ct}_config,
-                            .gain_gb = s_esp_ipa_acc_lsc_gain_gb_{name}_{lsc.img_w}_x_{lsc.img_h}_ct_{i.ct}_config,
-                            .gain_b  = s_esp_ipa_acc_lsc_gain_b_{name}_{lsc.img_w}_x_{lsc.img_h}_ct_{i.ct}_config,
-                            .lsc_gain_array_size = {lsc.lsc_tbl_size}
+                    lsc_text += cfmt_string(f'''
+                        static const isp_lsc_gain_t s_esp_ipa_acc_lsc_gain_gb_{name}_{lsc.img_w}_x_{lsc.img_h}{tag}_ct_{i.ct}_config[] = {{
+                            {', '.join(f'{{.val = {v}}}' for v in scale_vals(i.calibrations_gb_tbl))}
+                        }};
+                        ''')
+
+                    lsc_text += cfmt_string(f'''
+                        static const isp_lsc_gain_t s_esp_ipa_acc_lsc_gain_b_{name}_{lsc.img_w}_x_{lsc.img_h}{tag}_ct_{i.ct}_config[] = {{
+                            {', '.join(f'{{.val = {v}}}' for v in scale_vals(i.calibrations_b_tbl))}
+                        }};
+                        ''')
+
+                    ct_table_text += cfmt_string(f'''
+                        {{
+                            .color_temp = {i.ct},
+                            .lsc = {{
+                                .gain_r  = s_esp_ipa_acc_lsc_gain_r_{name}_{lsc.img_w}_x_{lsc.img_h}{tag}_ct_{i.ct}_config,
+                                .gain_gr = s_esp_ipa_acc_lsc_gain_gr_{name}_{lsc.img_w}_x_{lsc.img_h}{tag}_ct_{i.ct}_config,
+                                .gain_gb = s_esp_ipa_acc_lsc_gain_gb_{name}_{lsc.img_w}_x_{lsc.img_h}{tag}_ct_{i.ct}_config,
+                                .gain_b  = s_esp_ipa_acc_lsc_gain_b_{name}_{lsc.img_w}_x_{lsc.img_h}{tag}_ct_{i.ct}_config,
+                                .lsc_gain_array_size = {lsc.lsc_tbl_size}
+                            }},
                         }},
-                    }},
+                        ''')
+
+                return ct_table_text
+
+            def resolve_gain_base_table(node, base_nodes):
+                """Resolve CT table for a gain node: full table, or scale from a base node."""
+                has_table = hasattr(node, 'table') and node.table
+                has_scale = hasattr(node, 'scale')
+
+                if has_table and not has_scale:
+                    return node.table, 1.0
+
+                if has_table and has_scale:
+                    return node.table, float(node.scale)
+
+                if has_scale and not has_table:
+                    if not base_nodes:
+                        raise fatal_error(
+                            f'LSC gain={node.gain} uses "scale" but no base gain node with "table" exists'
+                        )
+
+                    base_gain = getattr(node, 'base_gain', None)
+                    if base_gain is not None:
+                        base = next((b for b in base_nodes if b.gain == base_gain), None)
+                        if base is None:
+                            raise fatal_error(
+                                f'LSC gain={node.gain}: base_gain={base_gain} not found among base table nodes'
+                            )
+                    elif len(base_nodes) == 1:
+                        base = base_nodes[0]
+                    else:
+                        lower = [b for b in base_nodes if b.gain <= node.gain]
+                        if lower:
+                            base = max(lower, key=lambda b: b.gain)
+                        else:
+                            base = min(base_nodes, key=lambda b: abs(b.gain - node.gain))
+
+                    return base.table, float(node.scale)
+
+                raise fatal_error(
+                    f'LSC gain node (gain={getattr(node, "gain", "?")}) must contain '
+                    f'"table" and/or "scale"'
+                )
+
+            if not lsc.table:
+                raise fatal_error('LSC table must not be empty')
+
+            first = lsc.table[0]
+            has_gain_node = hasattr(first, 'gain') and not hasattr(first, 'ct')
+            has_ct_node = hasattr(first, 'ct') and not hasattr(first, 'gain')
+
+            if has_ct_node:
+                for i in lsc.table:
+                    if not hasattr(i, 'ct'):
+                        raise fatal_error('Legacy LSC table entry must contain "ct"')
+
+                ct_table_text = emit_ct_arrays(lsc.table)
+                lsc_text += cfmt_string(f'''
+                    static const esp_ipa_acc_lsc_lut_t s_esp_ipa_acc_lsc_{name}_{lsc.img_w}_x_{lsc.img_h}_config[] = {{
+                        {ct_table_text}
+                    }};
                     ''')
 
-            lsc_text += cfmt_string(f'''
-                static const esp_ipa_acc_lsc_lut_t s_esp_ipa_acc_lsc_{name}_{lsc.img_w}_x_{lsc.img_h}_config[] = {{
-                    {lsc_table_text}
-                }};
-                ''')
+                lsc_text += cfmt_string(f'''
+                    static const esp_ipa_acc_lsc_t s_esp_ipa_acc_lsc_{name}_config[] = {{
+                        {{
+                            .width = {lsc.img_w},
+                            .height = {lsc.img_h},
+                            .lsc_gain_table = s_esp_ipa_acc_lsc_{name}_{lsc.img_w}_x_{lsc.img_h}_config,
+                            .lsc_gain_table_size = {len(lsc.table)}
+                        }}
+                    }};
+                    ''')
+                return lsc_text
 
-            lsc_text += cfmt_string(f'''
-                static const esp_ipa_acc_lsc_t s_esp_ipa_acc_lsc_{name}_config[] = {{
-                    {{
-                        .width = {lsc.img_w},
-                        .height = {lsc.img_h},
-                        .lsc_gain_table = s_esp_ipa_acc_lsc_{name}_{lsc.img_w}_x_{lsc.img_h}_config,
-                        .lsc_gain_table_size = {len(lsc.table)}
-                    }}
-                }};
-                ''')
+            if has_gain_node:
+                for g in lsc.table:
+                    if not hasattr(g, 'gain'):
+                        raise fatal_error('LSC gain-level entry must contain "gain"')
 
-            return lsc_text
+                base_nodes = [g for g in lsc.table if hasattr(g, 'table') and g.table]
+                if not base_nodes:
+                    raise fatal_error('LSC two-level table needs at least one gain node with full "table"')
+
+                for b in base_nodes:
+                    if not hasattr(b.table[0], 'ct'):
+                        raise fatal_error('LSC nested table entry must contain "ct"')
+
+                gain_table_text = str()
+                for g in lsc.table:
+                    ct_nodes, scale = resolve_gain_base_table(g, base_nodes)
+                    if scale < 0:
+                        raise fatal_error(f'LSC gain={g.gain}: scale must be >= 0, got {scale}')
+
+                    gain_tag = str(g.gain).replace('.', 'p').replace('-', 'm')
+                    if scale != 1.0:
+                        gain_tag = f'{gain_tag}_s{str(scale).replace(".", "p")}'
+
+                    ct_table_text = emit_ct_arrays(ct_nodes, gain_tag, scale)
+                    lsc_text += cfmt_string(f'''
+                        static const esp_ipa_acc_lsc_lut_t s_esp_ipa_acc_lsc_{name}_{lsc.img_w}_x_{lsc.img_h}_gain_{gain_tag}_ct_config[] = {{
+                            {ct_table_text}
+                        }};
+                        ''')
+
+                    gain_table_text += cfmt_string(f'''
+                        {{
+                            .gain = {g.gain},
+                            .ct_table = s_esp_ipa_acc_lsc_{name}_{lsc.img_w}_x_{lsc.img_h}_gain_{gain_tag}_ct_config,
+                            .ct_table_size = {len(ct_nodes)}
+                        }},
+                        ''')
+
+                lsc_text += cfmt_string(f'''
+                    static const esp_ipa_acc_lsc_gain_lut_t s_esp_ipa_acc_lsc_{name}_{lsc.img_w}_x_{lsc.img_h}_gain_config[] = {{
+                        {gain_table_text}
+                    }};
+                    ''')
+
+                lsc_text += cfmt_string(f'''
+                    static const esp_ipa_acc_lsc_t s_esp_ipa_acc_lsc_{name}_config[] = {{
+                        {{
+                            .width = {lsc.img_w},
+                            .height = {lsc.img_h},
+                            .gain_table = s_esp_ipa_acc_lsc_{name}_{lsc.img_w}_x_{lsc.img_h}_gain_config,
+                            .gain_table_size = {len(lsc.table)}
+                        }}
+                    }};
+                    ''')
+                return lsc_text
+
+            raise fatal_error(
+                'Unsupported LSC table format: use [{gain, table|scale, ...}] '
+                'or legacy flat [{ct,...}]'
+            )
+
 
         def blc_code(name, obj):
             blc = obj.blc
