@@ -19,6 +19,7 @@
 - Added `V4L2_CID_IRCUT_MODE` and IR-CUT initialization for MIPI-CSI and DVP video devices
     - `esp_video_init_ircut_config_t` supplies the IR-CUT chip and GPIO pins on CSI/DVP init
     - ISP pipeline applies IPA IR metadata to the camera through `V4L2_CID_IRCUT_MODE`
+- Updated the minimum camera exposure value in the `examples/v4l2_cmd/README.md`.
 
 ## 2.5.0
 
