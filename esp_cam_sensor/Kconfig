@@ -409,4 +409,16 @@ menu "Espressif Camera Sensors Configurations"
             help
                 Internal configuration flag indicating whether any camera ALS(Ambient light sensor) driver is enabled.
     endmenu
+
+    menu "Camera LED Control Configuration"
+        depends on SOC_ISP_SUPPORTED
+        
+        rsource "leds/ir2835/Kconfig.ir2835"
+
+        config CAMERA_LED_DEVICE_USED
+            bool
+            default n
+            help
+                Internal configuration flag indicating whether any camera LED driver is enabled.
+    endmenu
 endmenu

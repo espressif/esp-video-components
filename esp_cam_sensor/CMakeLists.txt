@@ -21,7 +21,7 @@ set(requires "esp_sccb_intf" "esp_driver_cam" "esp_driver_gpio" "esp_driver_ledc
 set(priv_requires "esp_timer")
 
 if(CONFIG_SOC_ISP_SUPPORTED)
-    list(APPEND srcs "src/esp_cam_als_detect.c" "src/esp_cam_als.c")
+    list(APPEND srcs "src/esp_cam_als_detect.c" "src/esp_cam_als.c" "src/esp_cam_led_detect.c" "src/esp_cam_led.c")
 endif()
 
 if(CONFIG_CAMERA_OV2640)
@@ -266,6 +266,11 @@ endif()
 if(CONFIG_CAM_ALS_PT1411)
     list(APPEND srcs "als/pt1411/pt1411.c")
     list(APPEND include_dirs "als/pt1411/include")
+endif()
+
+if(CONFIG_CAM_LED_IR2835)
+    list(APPEND srcs "leds/ir2835/ir2835.c")
+    list(APPEND include_dirs "leds/ir2835/include")
 endif()
 
 if(CONFIG_CAMERA_PIVARIETY)

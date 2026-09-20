@@ -14,10 +14,15 @@
 #include "esp_cam_ircut.h"
 #if CONFIG_SOC_ISP_SUPPORTED
 #include "esp_cam_als.h"
+#include "esp_cam_led.h"
 #if CONFIG_CAM_ALS_PT1411
 #include "pt1411.h"
 #endif
+
+#if CONFIG_CAM_LED_IR2835
+#include "ir2835.h"
 #endif
+#endif // CONFIG_SOC_ISP_SUPPORTED
 
 #include "unity.h"
 #include "unity_test_utils.h"
@@ -330,6 +335,22 @@ TEST_CASE("Camera als detect test", "[video]")
     TEST_ASSERT_MESSAGE(als != NULL, "detect fail");
     TEST_ESP_OK(esp_cam_als_del_dev(als));
     TEST_ESP_OK(adc_oneshot_del_unit(adc1_handle));
+}
+
+TEST_CASE("Camera led detect test", "[video]")
+{
+    esp_cam_led_config_t led_config = {
+        .type = ESP_CAM_LED_HW_TYPE_GPIO,
+        .gpio_ctrl = 14,
+        .gpio_en = -1,
+        .platform_data = NULL,
+    };
+    esp_cam_led_device_t *led = NULL;
+#if CONFIG_CAM_LED_IR2835
+    led = ir2835_detect(&led_config);
+#endif
+    TEST_ASSERT_MESSAGE(led != NULL, "detect fail");
+    TEST_ESP_OK(esp_cam_led_del_dev(led));
 }
 #endif
 
