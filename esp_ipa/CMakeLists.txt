@@ -17,13 +17,21 @@ idf_component_register(SRCS ${srcs}
 include(package_manager)
 cu_pkg_define_version(${CMAKE_CURRENT_LIST_DIR})
 
-set(lib_name "libesp_ipa.a")
+if (CONFIG_ESP32P4_SELECTS_REV_LESS_V3)
+    set(lib_name "libesp_ipa_p4_less_v3.a")
+else()
+    set(lib_name "libesp_ipa.a")
+endif()
 
 if("${IDF_VERSION_MAJOR}.${IDF_VERSION_MINOR}" VERSION_GREATER_EQUAL "6.0")
     set(ipa_lib_version "v6.0+")
 
     if (CONFIG_LIBC_NEWLIB)
-        set(lib_name "libesp_ipa_newlib.a")
+        if (CONFIG_ESP32P4_SELECTS_REV_LESS_V3)
+            set(lib_name "libesp_ipa_p4_less_v3_newlib.a")
+        else()
+            set(lib_name "libesp_ipa_newlib.a")
+        endif()
     endif()
 elseif("${IDF_VERSION_MAJOR}.${IDF_VERSION_MINOR}" VERSION_EQUAL "5.5")
     set(ipa_lib_version "v5.5")
