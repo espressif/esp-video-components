@@ -857,6 +857,62 @@ static void config_blc(esp_video_isp_t *isp, esp_ipa_metadata_t *metadata)
 }
 #endif
 
+#if ESP_VIDEO_ISP_DEVICE_DPC
+static void ipa_dpc_to_isp(const esp_ipa_dpc_t *ipa_dpc, esp_isp_dpc_dynamic_config_t *isp_dpc)
+{
+    memset(isp_dpc, 0, sizeof(*isp_dpc));
+    isp_dpc->method = (esp_isp_dpc_dynamic_method_t)ipa_dpc->method;
+
+    if (ipa_dpc->method == ESP_IPA_DPC_DYNAMIC_METHOD_1) {
+        isp_dpc->method_1.high_threshold = ipa_dpc->method_1.high_threshold;
+        isp_dpc->method_1.low_threshold = ipa_dpc->method_1.low_threshold;
+    } else {
+        uint32_t value;
+
+        value = ipa_dpc->method_2.first_stage_upper_ratio * ISP_DPC_RATIO_MAX;
+        if (value == 0) {
+            value = 1;
+        }
+        isp_dpc->method_2.first_stage_upper_ratio.val = MIN(value, ISP_DPC_RATIO_MAX);
+
+        value = ipa_dpc->method_2.first_stage_lower_ratio * ISP_DPC_RATIO_MAX;
+        if (value >= isp_dpc->method_2.first_stage_upper_ratio.val) {
+            value = isp_dpc->method_2.first_stage_upper_ratio.val - 1;
+        }
+        isp_dpc->method_2.first_stage_lower_ratio.val = MIN(value, ISP_DPC_RATIO_MAX);
+
+        value = ipa_dpc->method_2.bright_deviation_factor * ISP_DPC_DEVIATION_FACTOR_MAX;
+        isp_dpc->method_2.bright_deviation_factor.val = MIN(value, ISP_DPC_DEVIATION_FACTOR_MAX);
+
+        value = ipa_dpc->method_2.dark_deviation_factor * ISP_DPC_DEVIATION_FACTOR_MAX;
+        isp_dpc->method_2.dark_deviation_factor.val = MIN(value, ISP_DPC_DEVIATION_FACTOR_MAX);
+    }
+}
+
+static void config_dpc(esp_video_isp_t *isp, esp_ipa_metadata_t *metadata)
+{
+    if (metadata->flags & IPA_METADATA_FLAGS_DPC) {
+        struct v4l2_ext_controls controls;
+        struct v4l2_ext_control control[1];
+        esp_video_isp_dpc_dynamic_t dpc;
+
+        memset(&dpc, 0, sizeof(dpc));
+        dpc.enable = true;
+        ipa_dpc_to_isp(&metadata->dpc, &dpc.dynamic);
+
+        controls.ctrl_class = V4L2_CID_USER_CLASS;
+        controls.count      = 1;
+        controls.controls   = control;
+        control[0].id       = V4L2_CID_USER_ESP_ISP_DPC_DYNAMIC;
+        control[0].size     = sizeof(esp_video_isp_dpc_dynamic_t);
+        control[0].p_u8     = (uint8_t *)&dpc;
+        if (ioctl(isp->isp_fd, VIDIOC_S_EXT_CTRLS, &controls) != 0) {
+            ESP_LOGE(TAG, "failed to set DPC");
+        }
+    }
+}
+#endif
+
 static void config_isp_and_camera(esp_video_isp_t *isp, esp_ipa_metadata_t *metadata)
 {
     config_statistics_region(isp, metadata);
@@ -878,6 +934,9 @@ static void config_isp_and_camera(esp_video_isp_t *isp, esp_ipa_metadata_t *meta
     config_af(isp, metadata);
 #if ESP_VIDEO_ISP_DEVICE_BLC
     config_blc(isp, metadata);
+#endif
+#if ESP_VIDEO_ISP_DEVICE_DPC
+    config_dpc(isp, metadata);
 #endif
     config_sensor_ae_target_level(isp, metadata);
     config_exposure_and_gain(isp, metadata);

@@ -36,6 +36,10 @@ menu "Espressif Image Process Algorithm Configuration"
         bool "Auto Sensor AE Target Level Control Algorithm"
         default y
 
+    config ESP_IPA_DPC_ALGORITHM
+        bool "Dead Pixel Correction Algorithm"
+        default y
+
     config ESP_IPA_EXT_CONFIG
         bool "Extended Configuration"
         default y

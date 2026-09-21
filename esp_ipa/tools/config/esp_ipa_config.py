@@ -9,7 +9,7 @@ import re
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__)) + '/isp')
 
-import customized, agc, atc, af, ext, acc, aen, adn, ian, awb, common
+import customized, agc, atc, af, ext, acc, aen, adn, dpc, ian, awb, common
 
 JSON_GLOBAL_KEYS = ('version', 'writable', 'description')
 
@@ -72,6 +72,7 @@ class ipa_c(object):
             'acc': acc.ipa_unit_acc_c,
             'aen': aen.ipa_unit_aen_c,
             'adn': adn.ipa_unit_adn_c,
+            'dpc': dpc.ipa_unit_dpc_c,
             'agc': agc.ipa_unit_agc_c,
             'atc': atc.ipa_unit_atc_c,
             'ext': ext.ipa_unit_ext_c,

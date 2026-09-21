@@ -1,6 +1,9 @@
 ## Unreleased
 
 - Added ESP-IDF 6.0+ support for ESP32-P4 revisions below v3.0
+- Added optional AWB model 2 `startup_zone` and `startup_hold_frames` to initialize gains and CT from a selected zone and hold startup WBG while AWB calculation continues; normal startup is preserved when omitted
+- Updated AWB model 2 reference counters with low white-point counts to reduce stale statistics that delay recovery after lens occlusion
+- Added support for the DPC (Defective Pixel Correction) control algorithm
 
 ## 2.4.0
 

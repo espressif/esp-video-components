@@ -1007,6 +1007,248 @@ TEST_CASE("Auto denoising test", "[IPA]")
     TEST_ESP_OK(esp_ipa_pipeline_destroy(handle));
 }
 
+TEST_CASE("DPC model 0 nearest and debounce test", "[IPA][DPC]")
+{
+    const esp_ipa_config_t *base = esp_ipa_pipeline_get_config(IPA_TARGET_NAME);
+    static esp_ipa_config_t cfg;
+    static esp_ipa_dpc_config_t dpc_cfg;
+    static const esp_ipa_dpc_unit_t table[] = {
+        {
+            .gain = 1000,
+            .dpc = {
+                .method = ESP_IPA_DPC_DYNAMIC_METHOD_1,
+                .method_1 = {
+                    .high_threshold = 4,
+                    .low_threshold = 4,
+                },
+            },
+        },
+        {
+            .gain = 2000,
+            .dpc = {
+                .method = ESP_IPA_DPC_DYNAMIC_METHOD_1,
+                .method_1 = {
+                    .high_threshold = 8,
+                    .low_threshold = 8,
+                },
+            },
+        },
+        {
+            .gain = 8000,
+            .dpc = {
+                .method = ESP_IPA_DPC_DYNAMIC_METHOD_2,
+                .method_2 = {
+                    .first_stage_upper_ratio = 1.0f,
+                    .first_stage_lower_ratio = 0.5f,
+                    .bright_deviation_factor = 0.5f,
+                    .dark_deviation_factor = 0.5f,
+                },
+            },
+        },
+    };
+    esp_ipa_pipeline_handle_t handle = NULL;
+    esp_ipa_metadata_t metadata = {0};
+    esp_ipa_stats_t stats = {0};
+    esp_ipa_sensor_t sensor = s_esp_ipa_sensor;
+
+    TEST_ASSERT_NOT_NULL(base);
+    TEST_ASSERT_NOT_NULL(base->dpc);
+
+    memcpy(&cfg, base, sizeof(cfg));
+    dpc_cfg.model = ESP_IPA_DPC_MODEL_0;
+    dpc_cfg.debounce_gain = 0;
+    dpc_cfg.table = table;
+    dpc_cfg.table_size = ARRAY_SIZE(table);
+    cfg.dpc = &dpc_cfg;
+
+    TEST_ESP_OK(esp_ipa_pipeline_create(&cfg, &handle));
+    TEST_ESP_OK(esp_ipa_pipeline_init(handle, &sensor, &metadata));
+    TEST_ASSERT_EQUAL_HEX32(IPA_METADATA_FLAGS_DPC, metadata.flags & IPA_METADATA_FLAGS_DPC);
+    TEST_ASSERT_EQUAL_INT(ESP_IPA_DPC_DYNAMIC_METHOD_1, metadata.dpc.method);
+    TEST_ASSERT_EQUAL_UINT8(4, metadata.dpc.method_1.high_threshold);
+    TEST_ASSERT_EQUAL_UINT8(4, metadata.dpc.method_1.low_threshold);
+
+    static const struct {
+        float gain;
+        bool updated;
+        esp_ipa_dpc_dynamic_method_t method;
+        uint8_t high_threshold;
+        uint8_t low_threshold;
+    } nearest_cases[] = {
+        { .gain = 1.51f, .updated = true,  .method = ESP_IPA_DPC_DYNAMIC_METHOD_1, .high_threshold = 8, .low_threshold = 8 },
+        { .gain = 1.40f, .updated = true,  .method = ESP_IPA_DPC_DYNAMIC_METHOD_1, .high_threshold = 4, .low_threshold = 4 },
+        { .gain = 1.40f, .updated = false, .method = ESP_IPA_DPC_DYNAMIC_METHOD_1, .high_threshold = 4, .low_threshold = 4 },
+        { .gain = 0.50f, .updated = false, .method = ESP_IPA_DPC_DYNAMIC_METHOD_1, .high_threshold = 4, .low_threshold = 4 },
+        { .gain = 5.00f, .updated = true,  .method = ESP_IPA_DPC_DYNAMIC_METHOD_1, .high_threshold = 8, .low_threshold = 8 },
+        { .gain = 7.00f, .updated = true,  .method = ESP_IPA_DPC_DYNAMIC_METHOD_2, .high_threshold = 0, .low_threshold = 0 },
+        { .gain = 7.00f, .updated = false, .method = ESP_IPA_DPC_DYNAMIC_METHOD_2, .high_threshold = 0, .low_threshold = 0 },
+    };
+
+    for (int i = 0; i < ARRAY_SIZE(nearest_cases); i++) {
+        metadata.flags = 0;
+        sensor.cur_gain = nearest_cases[i].gain;
+        TEST_ESP_OK(esp_ipa_pipeline_process(handle, &stats, &sensor, &metadata));
+        if (nearest_cases[i].updated) {
+            TEST_ASSERT_EQUAL_HEX32(IPA_METADATA_FLAGS_DPC, metadata.flags & IPA_METADATA_FLAGS_DPC);
+            TEST_ASSERT_EQUAL_INT(nearest_cases[i].method, metadata.dpc.method);
+            if (nearest_cases[i].method == ESP_IPA_DPC_DYNAMIC_METHOD_1) {
+                TEST_ASSERT_EQUAL_UINT8(nearest_cases[i].high_threshold, metadata.dpc.method_1.high_threshold);
+                TEST_ASSERT_EQUAL_UINT8(nearest_cases[i].low_threshold, metadata.dpc.method_1.low_threshold);
+            } else {
+                TEST_ASSERT_FLOAT_WITHIN(0.001f, 1.0f, metadata.dpc.method_2.first_stage_upper_ratio);
+                TEST_ASSERT_FLOAT_WITHIN(0.001f, 0.5f, metadata.dpc.method_2.first_stage_lower_ratio);
+            }
+        } else {
+            TEST_ASSERT_EQUAL_HEX32(0, metadata.flags & IPA_METADATA_FLAGS_DPC);
+        }
+    }
+
+    TEST_ESP_OK(esp_ipa_pipeline_destroy(handle));
+
+    /* Debounce keeps the previous node until the candidate is closer by more than debounce_gain. */
+    dpc_cfg.debounce_gain = 200;
+    TEST_ESP_OK(esp_ipa_pipeline_create(&cfg, &handle));
+    TEST_ESP_OK(esp_ipa_pipeline_init(handle, &sensor, &metadata));
+
+    metadata.flags = 0;
+    sensor.cur_gain = 1.60f;
+    TEST_ESP_OK(esp_ipa_pipeline_process(handle, &stats, &sensor, &metadata));
+    TEST_ASSERT_EQUAL_HEX32(0, metadata.flags & IPA_METADATA_FLAGS_DPC);
+
+    metadata.flags = 0;
+    sensor.cur_gain = 1.80f;
+    TEST_ESP_OK(esp_ipa_pipeline_process(handle, &stats, &sensor, &metadata));
+    TEST_ASSERT_EQUAL_HEX32(IPA_METADATA_FLAGS_DPC, metadata.flags & IPA_METADATA_FLAGS_DPC);
+    TEST_ASSERT_EQUAL_UINT8(8, metadata.dpc.method_1.high_threshold);
+    TEST_ASSERT_EQUAL_UINT8(8, metadata.dpc.method_1.low_threshold);
+
+    TEST_ESP_OK(esp_ipa_pipeline_destroy(handle));
+}
+
+TEST_CASE("DPC model 1 linear interpolation test", "[IPA][DPC]")
+{
+    const esp_ipa_config_t *base = esp_ipa_pipeline_get_config(IPA_TARGET_NAME);
+    static esp_ipa_config_t cfg;
+    static esp_ipa_dpc_config_t dpc_cfg;
+    static const esp_ipa_dpc_unit_t table[] = {
+        {
+            .gain = 1000,
+            .dpc = {
+                .method = ESP_IPA_DPC_DYNAMIC_METHOD_1,
+                .method_1 = {
+                    .high_threshold = 4,
+                    .low_threshold = 4,
+                },
+            },
+        },
+        {
+            .gain = 3000,
+            .dpc = {
+                .method = ESP_IPA_DPC_DYNAMIC_METHOD_1,
+                .method_1 = {
+                    .high_threshold = 12,
+                    .low_threshold = 8,
+                },
+            },
+        },
+        {
+            .gain = 5000,
+            .dpc = {
+                .method = ESP_IPA_DPC_DYNAMIC_METHOD_2,
+                .method_2 = {
+                    .first_stage_upper_ratio = 1.0f,
+                    .first_stage_lower_ratio = 0.0f,
+                    .bright_deviation_factor = 0.0f,
+                    .dark_deviation_factor = 0.0f,
+                },
+            },
+        },
+        {
+            .gain = 7000,
+            .dpc = {
+                .method = ESP_IPA_DPC_DYNAMIC_METHOD_2,
+                .method_2 = {
+                    .first_stage_upper_ratio = 1.0f,
+                    .first_stage_lower_ratio = 0.8f,
+                    .bright_deviation_factor = 1.0f,
+                    .dark_deviation_factor = 1.0f,
+                },
+            },
+        },
+    };
+    esp_ipa_pipeline_handle_t handle = NULL;
+    esp_ipa_metadata_t metadata = {0};
+    esp_ipa_stats_t stats = {0};
+    esp_ipa_sensor_t sensor = s_esp_ipa_sensor;
+
+    TEST_ASSERT_NOT_NULL(base);
+    TEST_ASSERT_NOT_NULL(base->dpc);
+
+    memcpy(&cfg, base, sizeof(cfg));
+    dpc_cfg.model = ESP_IPA_DPC_MODEL_1;
+    dpc_cfg.debounce_gain = 0;
+    dpc_cfg.table = table;
+    dpc_cfg.table_size = ARRAY_SIZE(table);
+    cfg.dpc = &dpc_cfg;
+
+    TEST_ESP_OK(esp_ipa_pipeline_create(&cfg, &handle));
+    TEST_ESP_OK(esp_ipa_pipeline_init(handle, &sensor, &metadata));
+    TEST_ASSERT_EQUAL_HEX32(IPA_METADATA_FLAGS_DPC, metadata.flags & IPA_METADATA_FLAGS_DPC);
+    TEST_ASSERT_EQUAL_UINT8(4, metadata.dpc.method_1.high_threshold);
+
+    /* Midpoint between gain 1.0 and 3.0: thresholds lerp to 8 / 6. */
+    metadata.flags = 0;
+    sensor.cur_gain = 2.0f;
+    TEST_ESP_OK(esp_ipa_pipeline_process(handle, &stats, &sensor, &metadata));
+    TEST_ASSERT_EQUAL_HEX32(IPA_METADATA_FLAGS_DPC, metadata.flags & IPA_METADATA_FLAGS_DPC);
+    TEST_ASSERT_EQUAL_INT(ESP_IPA_DPC_DYNAMIC_METHOD_1, metadata.dpc.method);
+    TEST_ASSERT_EQUAL_UINT8(8, metadata.dpc.method_1.high_threshold);
+    TEST_ASSERT_EQUAL_UINT8(6, metadata.dpc.method_1.low_threshold);
+
+    /* Same interpolated result should not re-flag. */
+    metadata.flags = 0;
+    sensor.cur_gain = 2.0f;
+    TEST_ESP_OK(esp_ipa_pipeline_process(handle, &stats, &sensor, &metadata));
+    TEST_ASSERT_EQUAL_HEX32(0, metadata.flags & IPA_METADATA_FLAGS_DPC);
+
+    /* Clamp below first / above last node. */
+    metadata.flags = 0;
+    sensor.cur_gain = 0.5f;
+    TEST_ESP_OK(esp_ipa_pipeline_process(handle, &stats, &sensor, &metadata));
+    TEST_ASSERT_EQUAL_HEX32(IPA_METADATA_FLAGS_DPC, metadata.flags & IPA_METADATA_FLAGS_DPC);
+    TEST_ASSERT_EQUAL_UINT8(4, metadata.dpc.method_1.high_threshold);
+    TEST_ASSERT_EQUAL_UINT8(4, metadata.dpc.method_1.low_threshold);
+
+    metadata.flags = 0;
+    sensor.cur_gain = 9.0f;
+    TEST_ESP_OK(esp_ipa_pipeline_process(handle, &stats, &sensor, &metadata));
+    TEST_ASSERT_EQUAL_HEX32(IPA_METADATA_FLAGS_DPC, metadata.flags & IPA_METADATA_FLAGS_DPC);
+    TEST_ASSERT_EQUAL_INT(ESP_IPA_DPC_DYNAMIC_METHOD_2, metadata.dpc.method);
+    TEST_ASSERT_FLOAT_WITHIN(0.001f, 0.8f, metadata.dpc.method_2.first_stage_lower_ratio);
+    TEST_ASSERT_FLOAT_WITHIN(0.001f, 1.0f, metadata.dpc.method_2.bright_deviation_factor);
+
+    /* Different methods on adjacent nodes fall back to nearest. */
+    metadata.flags = 0;
+    sensor.cur_gain = 3.5f;
+    TEST_ESP_OK(esp_ipa_pipeline_process(handle, &stats, &sensor, &metadata));
+    TEST_ASSERT_EQUAL_HEX32(IPA_METADATA_FLAGS_DPC, metadata.flags & IPA_METADATA_FLAGS_DPC);
+    TEST_ASSERT_EQUAL_INT(ESP_IPA_DPC_DYNAMIC_METHOD_1, metadata.dpc.method);
+    TEST_ASSERT_EQUAL_UINT8(12, metadata.dpc.method_1.high_threshold);
+    TEST_ASSERT_EQUAL_UINT8(8, metadata.dpc.method_1.low_threshold);
+
+    /* Midpoint between two method-2 nodes. */
+    metadata.flags = 0;
+    sensor.cur_gain = 6.0f;
+    TEST_ESP_OK(esp_ipa_pipeline_process(handle, &stats, &sensor, &metadata));
+    TEST_ASSERT_EQUAL_HEX32(IPA_METADATA_FLAGS_DPC, metadata.flags & IPA_METADATA_FLAGS_DPC);
+    TEST_ASSERT_EQUAL_INT(ESP_IPA_DPC_DYNAMIC_METHOD_2, metadata.dpc.method);
+    TEST_ASSERT_FLOAT_WITHIN(0.001f, 0.4f, metadata.dpc.method_2.first_stage_lower_ratio);
+    TEST_ASSERT_FLOAT_WITHIN(0.001f, 0.5f, metadata.dpc.method_2.bright_deviation_factor);
+    TEST_ASSERT_FLOAT_WITHIN(0.001f, 0.5f, metadata.dpc.method_2.dark_deviation_factor);
+
+    TEST_ESP_OK(esp_ipa_pipeline_destroy(handle));
+}
+
 TEST_CASE("Auto enhancement test", "[IPA]")
 {
     esp_ipa_pipeline_handle_t handle = NULL;
@@ -1620,6 +1862,71 @@ TEST_CASE("AWB model_2 zone", "[IPA]")
     TEST_ESP_OK(esp_ipa_pipeline_process(handle, &stats, &s_esp_ipa_sensor, &metadata));
     TEST_ASSERT_NOT_EQUAL_HEX32(0, metadata.flags & (IPA_METADATA_FLAGS_RG | IPA_METADATA_FLAGS_BG));
     TEST_ESP_OK(esp_ipa_pipeline_destroy(handle));
+}
+
+TEST_CASE("AWB model_2 optional startup zone", "[IPA]")
+{
+    const esp_ipa_config_t *base = esp_ipa_pipeline_get_config(IPA_TARGET_NAME);
+    static esp_ipa_config_t cfg;
+    static esp_ipa_awb_config_t awb;
+
+    TEST_ASSERT_NOT_NULL(base);
+    TEST_ASSERT_NOT_NULL(base->awb);
+    memcpy(&cfg, base, sizeof(cfg));
+    memcpy(&awb, base->awb, sizeof(awb));
+    awb.model = ESP_IPA_AWB_MODEL_2;
+    awb.min_red_gain_step = 0.01f;
+    awb.min_blue_gain_step = 0.01f;
+    awb.red_gain_scale = 1.0f;
+    awb.blue_gain_scale = 1.0f;
+    cfg.awb = &awb;
+
+    for (int enabled = 0; enabled <= 1; enabled++) {
+        esp_ipa_pipeline_handle_t handle = NULL;
+        esp_ipa_metadata_t metadata = {0};
+        esp_ipa_stats_t stats = {0};
+        awb.startup_zone_enabled = enabled;
+        awb.startup_zone = ESP_IPA_AWB_ZONE_MCT;
+        TEST_ESP_OK(esp_ipa_pipeline_create(&cfg, &handle));
+        TEST_ESP_OK(esp_ipa_pipeline_init(handle, &s_esp_ipa_sensor, &metadata));
+        TEST_ASSERT_EQUAL_HEX32(enabled ? IPA_METADATA_FLAGS_RG | IPA_METADATA_FLAGS_BG : 0,
+                                metadata.flags & (IPA_METADATA_FLAGS_RG | IPA_METADATA_FLAGS_BG));
+        if (enabled) {
+            TEST_ASSERT_EQUAL_FLOAT(1.0f / awb.ref_points[0].rg, metadata.red_gain);
+            TEST_ASSERT_EQUAL_FLOAT(1.0f / awb.ref_points[0].bg, metadata.blue_gain);
+            TEST_ASSERT_EQUAL_INT32(awb.ref_points[0].ct, esp_ipa_get_int32(handle->ipa_array[0], "ct"));
+        }
+
+        /* No white points: keep initial gains (or leave them unset). */
+        stats.flags = IPA_STATS_FLAGS_AWB;
+        metadata.flags = 0;
+        TEST_ESP_OK(esp_ipa_pipeline_process(handle, &stats, &s_esp_ipa_sensor, &metadata));
+        TEST_ASSERT_EQUAL_HEX32(0, metadata.flags & (IPA_METADATA_FLAGS_RG | IPA_METADATA_FLAGS_BG));
+
+        /* Reinitialize to test the hold without counting the empty sample above. */
+        awb.startup_hold_frames = enabled ? 2 : 0;
+        metadata.flags = 0;
+        TEST_ESP_OK(esp_ipa_pipeline_init(handle, &s_esp_ipa_sensor, &metadata));
+
+        /* Both modes must still adapt to measured white points. */
+        stats.awb_stats[0].counted = awb.min_counted;
+        stats.awb_stats[0].sum_g = awb.min_counted * 200U;
+        stats.awb_stats[0].sum_r = awb.min_counted * 120U;
+        stats.awb_stats[0].sum_b = awb.min_counted * 100U;
+        for (uint32_t i = 0; i < awb.startup_hold_frames; i++) {
+            metadata.flags = 0;
+            TEST_ESP_OK(esp_ipa_pipeline_process(handle, &stats, &s_esp_ipa_sensor, &metadata));
+            TEST_ASSERT_EQUAL_HEX32(0, metadata.flags & (IPA_METADATA_FLAGS_RG | IPA_METADATA_FLAGS_BG));
+            TEST_ASSERT_NOT_EQUAL_HEX32(0, metadata.flags & IPA_METADATA_FLAGS_AWB);
+        }
+        metadata.flags = 0;
+        TEST_ESP_OK(esp_ipa_pipeline_process(handle, &stats, &s_esp_ipa_sensor, &metadata));
+        TEST_ASSERT_EQUAL_HEX32(IPA_METADATA_FLAGS_RG | IPA_METADATA_FLAGS_BG,
+                                metadata.flags & (IPA_METADATA_FLAGS_RG | IPA_METADATA_FLAGS_BG));
+        TEST_ASSERT_EQUAL_FLOAT(1.0f / 0.6f, metadata.red_gain);
+        TEST_ASSERT_EQUAL_FLOAT(2.0f, metadata.blue_gain);
+        TEST_ESP_OK(esp_ipa_pipeline_destroy(handle));
+    }
 }
 
 TEST_CASE("AWB model_3 fixed CT", "[IPA]")
