@@ -18,13 +18,14 @@
 extern "C" {
 #endif
 
-#define ALS_TIMER_CREATE(name, period, cb, arg) \
-    xTimerCreate(name, pdMS_TO_TICKS(period), pdTRUE, arg, cb)
+#define ALS_TIMER_CREATE(name, period_ticks, cb, arg) \
+    xTimerCreate(name, (TickType_t)(period_ticks), pdTRUE, arg, cb)
 #define ALS_TIMER_START(timer)      xTimerStart((TimerHandle_t)(timer), portMAX_DELAY)
 #define ALS_TIMER_STOP(timer)       xTimerStop((TimerHandle_t)(timer), portMAX_DELAY)
 #define ALS_TIMER_DELETE(timer)     xTimerDelete((TimerHandle_t)(timer), portMAX_DELAY)
-#define ALS_TIMER_CHANGE_PERIOD(timer, period) xTimerChangePeriod((TimerHandle_t)(timer), pdMS_TO_TICKS(period), portMAX_DELAY)
-#define ALS_DELAY_MS(ms)            vTaskDelay(((ms) > 0 && pdMS_TO_TICKS(ms) > 0) ? pdMS_TO_TICKS(ms) : 1)
+#define ALS_TIMER_CHANGE_PERIOD(timer, period_ticks) \
+    xTimerChangePeriod((TimerHandle_t)(timer), (TickType_t)(period_ticks), portMAX_DELAY)
+#define ALS_TIMER_IS_ACTIVE(timer)  xTimerIsTimerActive((TimerHandle_t)(timer))
 
 /**
  * @brief Ambient Light Sensor hardware type
@@ -62,8 +63,7 @@ typedef struct {
 /**
  * @brief Ambient Light Sensor error code
  */
-#define ESP_CAM_ALS_ERR_OFFSET                    0x2100 // todo, synchronize the IR-CUT and AF motor serial numbers to esp_cam_sensor_type.h.
-#define ESP_CAM_ALS_ERR_BASE                      ESP_CAM_SENSOR_ERR_BASE + ESP_CAM_ALS_ERR_OFFSET
+#define ESP_CAM_ALS_ERR_BASE                      (ESP_CAM_SENSOR_ERR_BASE + ESP_CAM_ALS_ERR_OFFSET)
 #define ESP_CAM_ALS_ERR_NOT_DETECTED             (ESP_CAM_ALS_ERR_BASE + 1)
 #define ESP_CAM_ALS_ERR_NOT_SUPPORTED            (ESP_CAM_ALS_ERR_BASE + 2)
 #define ESP_CAM_ALS_ERR_BUSY                     (ESP_CAM_ALS_ERR_BASE + 3)
@@ -71,12 +71,12 @@ typedef struct {
 /*
  * @brief Ambient Light Sensor command
  */
-#define ESP_CAM_ALS_IOC_NUM                      0x10
-#define ESP_CAM_ALS_IOC_BASE                     ESP_CAM_SENSOR_IOC_MAX + 0x30 // todo, synchronize the IR-CUT and AF motor serial numbers to esp_cam_sensor_type.h.
+#define ESP_CAM_ALS_IOC_NUM                      ESP_CAM_SUBDEV_IOC_NUM
+#define ESP_CAM_ALS_IOC_BASE                     (ESP_CAM_SENSOR_IOC_MAX + ESP_CAM_ALS_IOC_OFFSET)
 #define ESP_CAM_ALS_IOCTL_GET_RAW                ESP_CAM_SENSOR_IOC(ESP_CAM_ALS_IOC_BASE, sizeof(uint32_t)) /*!< Read raw raw ADC(mV)/LUX(x100) value（_IOR） */
 #define ESP_CAM_ALS_IOCTL_GET_RAW_FORCE_READ     ESP_CAM_SENSOR_IOC(ESP_CAM_ALS_IOC_BASE + 0x01, sizeof(uint32_t)) /*!< Force read raw ADC(mV)/LUX(x100) value（_IOR） */
-#define ESP_CAM_ALS_IOCTL_SET_SAMPLE_RATE        ESP_CAM_SENSOR_IOC(ESP_CAM_ALS_IOC_BASE + 0x02, sizeof(uint16_t)) /*!< Set sampling period(ms)（_IOW） */
-#define ESP_CAM_ALS_IOCTL_GET_SAMPLE_RATE        ESP_CAM_SENSOR_IOC(ESP_CAM_ALS_IOC_BASE + 0x03, sizeof(uint16_t)) /*!< Get sampling period(ms)（_IOR） */
+#define ESP_CAM_ALS_IOCTL_SET_SAMPLE_RATE        ESP_CAM_SENSOR_IOC(ESP_CAM_ALS_IOC_BASE + 0x02, sizeof(uint16_t)) /*!< Set sampling period (FreeRTOS ticks)（_IOW） */
+#define ESP_CAM_ALS_IOCTL_GET_SAMPLE_RATE        ESP_CAM_SENSOR_IOC(ESP_CAM_ALS_IOC_BASE + 0x03, sizeof(uint16_t)) /*!< Get sampling period (FreeRTOS ticks)（_IOR） */
 #define ESP_CAM_ALS_IOCTL_GET_INFO               ESP_CAM_SENSOR_IOC(ESP_CAM_ALS_IOC_BASE + 0x04, sizeof(esp_cam_als_dev_info_t)) /*!< Get device information（range/precision/type）（_IOR） */
 #define ESP_CAM_ALS_IOCTL_LOW_POWER_SWITCH       ESP_CAM_SENSOR_IOC(ESP_CAM_ALS_IOC_BASE + 0x05, sizeof(int)) /*!< Low power switch（_IOW） */
 #define ESP_CAM_ALS_IOC_MAX                      ESP_CAM_SENSOR_IOC(ESP_CAM_ALS_IOC_BASE + ESP_CAM_ALS_IOC_NUM, 0)
@@ -85,7 +85,7 @@ typedef struct {
  * @brief Ambient Light Sensor configuration
  */
 typedef struct {
-    uint16_t          sample_rate_ms;     /* Sampling rate(ms) */
+    uint16_t          sample_rate_ticks;  /* Sampling period (FreeRTOS ticks); 0 = driver default */
     union {
         struct {
             adc_unit_t unit;
@@ -113,7 +113,7 @@ typedef struct _esp_cam_als_ops esp_cam_als_ops_t;
 typedef struct {
     const char        *name;
     const esp_cam_als_dev_info_t *info;
-    uint16_t          sample_rate_ms;     /* Sampling rate(ms) */
+    uint16_t          sample_rate_ticks;  /* Sampling period (FreeRTOS ticks) */
     TimerHandle_t     timer;              /* Timer handle */
     union {
         struct {

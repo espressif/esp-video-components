@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2025 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2025-2026 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -15,8 +15,7 @@ extern "C" {
 /**
  * @brief Camera AF motor error code
  */
-#define ESP_CAM_MOTOR_ERR_OFFSET                    0x1000
-#define ESP_CAM_MOTOR_ERR_BASE                      ESP_CAM_SENSOR_ERR_BASE + ESP_CAM_MOTOR_ERR_OFFSET
+#define ESP_CAM_MOTOR_ERR_BASE                      (ESP_CAM_SENSOR_ERR_BASE + ESP_CAM_MOTOR_ERR_OFFSET)
 #define ESP_CAM_MOTOR_ERR_NOT_DETECTED             (ESP_CAM_MOTOR_ERR_BASE + 1)
 #define ESP_CAM_MOTOR_ERR_NOT_SUPPORTED            (ESP_CAM_MOTOR_ERR_BASE + 2)
 #define ESP_CAM_MOTOR_ERR_FAILED_SET_POS           (ESP_CAM_MOTOR_ERR_BASE + 3)
@@ -39,8 +38,8 @@ extern "C" {
 /**
  * @brief Camera AF motor command
  */
-#define ESP_CAM_MOTOR_IOC_NUM                      0x10
-#define ESP_CAM_MOTOR_IOC_BASE                     ESP_CAM_SENSOR_IOC_MAX + 0x01
+#define ESP_CAM_MOTOR_IOC_NUM                      ESP_CAM_SUBDEV_IOC_NUM
+#define ESP_CAM_MOTOR_IOC_BASE                     (ESP_CAM_SENSOR_IOC_MAX + ESP_CAM_MOTOR_IOC_OFFSET)
 #define ESP_CAM_MOTOR_IOC_HW_POWER_ON              ESP_CAM_SENSOR_IOC(ESP_CAM_MOTOR_IOC_BASE, sizeof(int))           /*!< Hardware power on */
 #define ESP_CAM_MOTOR_IOC_SW_STANDBY               ESP_CAM_SENSOR_IOC(ESP_CAM_MOTOR_IOC_BASE + 0x01, sizeof(int))    /*!< Software standby */
 #define ESP_CAM_MOTOR_IOC_S_REG                    ESP_CAM_SENSOR_IOC(ESP_CAM_MOTOR_IOC_BASE + 0x02, sizeof(esp_cam_motor_reg_val_t))

@@ -31,8 +31,7 @@ typedef enum {
 /**
  * @brief Camera IRCUT error code
  */
-#define ESP_CAM_IRCUT_ERR_OFFSET                    0x2000
-#define ESP_CAM_IRCUT_ERR_BASE                      ESP_CAM_SENSOR_ERR_BASE + ESP_CAM_IRCUT_ERR_OFFSET
+#define ESP_CAM_IRCUT_ERR_BASE                      (ESP_CAM_SENSOR_ERR_BASE + ESP_CAM_IRCUT_ERR_OFFSET)
 #define ESP_CAM_IRCUT_ERR_NOT_DETECTED             (ESP_CAM_IRCUT_ERR_BASE + 1)
 #define ESP_CAM_IRCUT_ERR_NOT_SUPPORTED            (ESP_CAM_IRCUT_ERR_BASE + 2)
 #define ESP_CAM_IRCUT_ERR_FAILED_RESET             (ESP_CAM_IRCUT_ERR_BASE + 3)
@@ -40,8 +39,8 @@ typedef enum {
 /*
  * @brief Camera IRCUT command
  */
-#define ESP_CAM_IRCUT_IOC_NUM                      0x10
-#define ESP_CAM_IRCUT_IOC_BASE                     ESP_CAM_SENSOR_IOC_MAX + 0x20
+#define ESP_CAM_IRCUT_IOC_NUM                      ESP_CAM_SUBDEV_IOC_NUM
+#define ESP_CAM_IRCUT_IOC_BASE                     (ESP_CAM_SENSOR_IOC_MAX + ESP_CAM_IRCUT_IOC_OFFSET)
 #define ESP_CAM_IRCUT_IOC_HW_POWER_ON              ESP_CAM_SENSOR_IOC(ESP_CAM_IRCUT_IOC_BASE, sizeof(int)) /*!< Hardware power on */
 #define ESP_CAM_IRCUT_IOC_SET_MODE                 ESP_CAM_SENSOR_IOC(ESP_CAM_IRCUT_IOC_BASE + 0x01, sizeof(esp_cam_ircut_mode_t)) /*!< Set IRCUT mode */
 #define ESP_CAM_IRCUT_IOC_GET_MODE                 ESP_CAM_SENSOR_IOC(ESP_CAM_IRCUT_IOC_BASE + 0x02, sizeof(esp_cam_ircut_mode_t)) /*!< Get IRCUT mode */

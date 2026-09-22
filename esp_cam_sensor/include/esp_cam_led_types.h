@@ -45,8 +45,7 @@ typedef struct {
 /**
  * @brief LED error code
  */
-#define ESP_CAM_LED_ERR_OFFSET                    0x2200 // todo, synchronize the IR-CUT and AF motor serial numbers to esp_cam_sensor_type.h.
-#define ESP_CAM_LED_ERR_BASE                      ESP_CAM_SENSOR_ERR_BASE + ESP_CAM_LED_ERR_OFFSET
+#define ESP_CAM_LED_ERR_BASE                      (ESP_CAM_SENSOR_ERR_BASE + ESP_CAM_LED_ERR_OFFSET)
 #define ESP_CAM_LED_ERR_NOT_DETECTED             (ESP_CAM_LED_ERR_BASE + 1)
 #define ESP_CAM_LED_ERR_NOT_SUPPORTED            (ESP_CAM_LED_ERR_BASE + 2)
 #define ESP_CAM_LED_ERR_BUSY                     (ESP_CAM_LED_ERR_BASE + 3)
@@ -54,8 +53,8 @@ typedef struct {
 /*
  * @brief LED command
  */
-#define ESP_CAM_LED_IOC_NUM                      0x10
-#define ESP_CAM_LED_IOC_BASE                     ESP_CAM_SENSOR_IOC_MAX + 0x40 // todo, synchronize the IR-CUT and AF motor serial numbers to esp_cam_sensor_type.h.
+#define ESP_CAM_LED_IOC_NUM                      ESP_CAM_SUBDEV_IOC_NUM
+#define ESP_CAM_LED_IOC_BASE                     (ESP_CAM_SENSOR_IOC_MAX + ESP_CAM_LED_IOC_OFFSET)
 #define ESP_CAM_LED_IOCTL_GET_BRIGHTNESS         ESP_CAM_SENSOR_IOC(ESP_CAM_LED_IOC_BASE, sizeof(uint32_t)) /*!< Read brightness value（_IOR） */
 #define ESP_CAM_LED_IOCTL_SET_BRIGHTNESS         ESP_CAM_SENSOR_IOC(ESP_CAM_LED_IOC_BASE + 0x01, sizeof(uint32_t)) /*!< Set brightness value（_IOW） */
 #define ESP_CAM_LED_IOCTL_GET_INFO               ESP_CAM_SENSOR_IOC(ESP_CAM_LED_IOC_BASE + 0x02, sizeof(esp_cam_led_dev_info_t)) /*!< Get device information（range/precision/type）（_IOR） */

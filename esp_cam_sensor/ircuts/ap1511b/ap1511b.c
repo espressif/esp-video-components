@@ -19,6 +19,30 @@
 
 static const char *TAG = "ap1511b";
 
+/* When gpio_pwdn is used, priv holds non-zero iff the IR-CUT supply is enabled. */
+static bool ap1511b_is_powered(const esp_cam_ircut_device_t *dev)
+{
+    if (dev->gpio_pwdn < 0) {
+        return true;
+    }
+    return dev->priv != NULL;
+}
+
+static void ap1511b_set_powered(esp_cam_ircut_device_t *dev, bool en)
+{
+    if (dev->gpio_pwdn < 0) {
+        return;
+    }
+    dev->priv = en ? (void *)1 : NULL;
+    if (!en) {
+        /*
+         * Without supply, FBC edges do not move the filter. Drop the cached mode
+         * so a later SET_MODE after power-on cannot skip the required pulse.
+         */
+        dev->current_mode = ESP_CAM_IRCUT_MODE_UNKNOWN;
+    }
+}
+
 static esp_err_t ap1511b_hw_power_on(esp_cam_ircut_device_t *dev, bool en)
 {
     esp_err_t ret = ESP_OK;
@@ -36,6 +60,9 @@ static esp_err_t ap1511b_hw_power_on(esp_cam_ircut_device_t *dev, bool en)
             gpio_set_level(dev->gpio_pwdn, 0);
         }
         delay_ms(20);
+        if (ret == ESP_OK) {
+            ap1511b_set_powered(dev, en);
+        }
     }
 
     return ret;
@@ -45,6 +72,11 @@ static esp_err_t ap1511b_hw_power_on(esp_cam_ircut_device_t *dev, bool en)
 static esp_err_t ap1511b_hw_switch_unlocked(esp_cam_ircut_device_t *dev, esp_cam_ircut_mode_t mode, bool force)
 {
     esp_err_t ret = ESP_OK;
+
+    if (!ap1511b_is_powered(dev)) {
+        ESP_LOGW(TAG, "IR-CUT powered off, refuse mode switch");
+        return ESP_ERR_INVALID_STATE;
+    }
 
     if (!force && dev->current_mode == mode) {
         return ESP_OK;

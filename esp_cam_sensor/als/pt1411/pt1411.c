@@ -7,11 +7,29 @@
 #include <string.h>
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>
+#include <freertos/semphr.h>
+#include <freertos/timers.h>
 #include "esp_log.h"
 #include "esp_cam_als.h"
 #include "pt1411.h"
 
 static const char *TAG = "pt1411";
+
+/*
+ * API-level sampling intent (not FreeRTOS timer active bit).
+ * xTimerStop/Start only enqueue commands; xTimerIsTimerActive() can lag.
+ * reserved != NULL  => LOW_POWER_SWITCH(1): keep timer stopped after period changes.
+ * reserved == NULL  => running (default after detect / LOW_POWER_SWITCH(0)).
+ */
+static bool pt1411_want_low_power(const esp_cam_als_device_t *dev)
+{
+    return dev->reserved != NULL;
+}
+
+static void pt1411_set_want_low_power(esp_cam_als_device_t *dev, bool enable)
+{
+    dev->reserved = enable ? (void *)1 : NULL;
+}
 
 static bool pt1411_adc_calibration_init(adc_unit_t unit, adc_channel_t channel,
                                         adc_atten_t atten, adc_bitwidth_t bitwidth,
@@ -129,13 +147,64 @@ static void pt1411_timer_callback(TimerHandle_t timer)
         return;
     }
 
-    /* Timer task context: do not block if the device is busy */
+    /* Timer task context: do not block if the device is busy / tearing down */
     if (pthread_mutex_trylock(&dev->lock) != 0) {
+        return;
+    }
+    if (dev->timer == NULL) {
+        pthread_mutex_unlock(&dev->lock);
         return;
     }
 
     pt1411_sample_update_raw(dev);
     pthread_mutex_unlock(&dev->lock);
+}
+
+/**
+ * @brief Runs on the FreeRTOS timer daemon after queued stop/delete commands.
+ *
+ * xTimerStop/xTimerDelete only enqueue work; their return value does not mean the
+ * command was handled or that an in-flight timer callback has returned. Pend this
+ * after stop/delete so the daemon executes it only once prior commands (and any
+ * callback that was already running on this same task) have finished.
+ */
+static void pt1411_timer_cmds_acked(void *param1, uint32_t param2)
+{
+    (void)param2;
+    xSemaphoreGive((SemaphoreHandle_t)param1);
+}
+
+/**
+ * @brief Stop and delete timer, then wait until the timer daemon has finished
+ *        processing those commands (and any in-flight callback).
+ *
+ * @note Caller must not free @p related device memory until this returns.
+ */
+static esp_err_t pt1411_timer_stop_join(TimerHandle_t timer)
+{
+    SemaphoreHandle_t acked;
+
+    if (timer == NULL) {
+        return ESP_OK;
+    }
+
+    acked = xSemaphoreCreateBinary();
+    if (acked == NULL) {
+        return ESP_ERR_NO_MEM;
+    }
+
+    ALS_TIMER_STOP(timer);
+    ALS_TIMER_DELETE(timer);
+
+    if (xTimerPendFunctionCall(pt1411_timer_cmds_acked, acked, 0, portMAX_DELAY) != pdPASS) {
+        vSemaphoreDelete(acked);
+        ESP_LOGE(TAG, "failed to pend timer drain after stop/delete");
+        return ESP_FAIL;
+    }
+
+    xSemaphoreTake(acked, portMAX_DELAY);
+    vSemaphoreDelete(acked);
+    return ESP_OK;
 }
 
 static esp_err_t pt1411_priv_ioctl(esp_cam_als_device_t *dev, uint32_t cmd, void *arg)
@@ -167,8 +236,11 @@ static esp_err_t pt1411_priv_ioctl(esp_cam_als_device_t *dev, uint32_t cmd, void
 
     case ESP_CAM_ALS_IOCTL_SET_SAMPLE_RATE: {
         ESP_CAM_SENSOR_NULL_POINTER_CHECK(TAG, arg);
-        uint16_t period_ms = *(uint16_t *)arg;
-        if (period_ms == 0) {
+        uint16_t period_ticks = *(uint16_t *)arg;
+        bool keep_stopped;
+
+        if (period_ticks == 0) {
+            ESP_LOGW(TAG, "sample period must be > 0 ticks");
             return ESP_ERR_INVALID_ARG;
         }
         if (pthread_mutex_lock(&dev->lock) != 0) {
@@ -178,14 +250,20 @@ static esp_err_t pt1411_priv_ioctl(esp_cam_als_device_t *dev, uint32_t cmd, void
             pthread_mutex_unlock(&dev->lock);
             return ESP_ERR_INVALID_STATE;
         }
-        ALS_TIMER_STOP(dev->timer);
-        if (ALS_TIMER_CHANGE_PERIOD(dev->timer, period_ms) != pdPASS) {
-            ALS_TIMER_START(dev->timer);
+        /*
+         * Use API low-power intent, not xTimerIsTimerActive(): stop/start may
+         * still be pending on the timer daemon. xTimerChangePeriod() starts a
+         * dormant timer, so re-stop when low-power is requested.
+         */
+        keep_stopped = pt1411_want_low_power(dev);
+        if (ALS_TIMER_CHANGE_PERIOD(dev->timer, period_ticks) != pdPASS) {
             pthread_mutex_unlock(&dev->lock);
             return ESP_FAIL;
         }
-        ALS_TIMER_START(dev->timer);
-        dev->sample_rate_ms = (uint16_t)period_ms;
+        if (keep_stopped) {
+            ALS_TIMER_STOP(dev->timer);
+        }
+        dev->sample_rate_ticks = period_ticks;
         pthread_mutex_unlock(&dev->lock);
         break;
     }
@@ -195,7 +273,7 @@ static esp_err_t pt1411_priv_ioctl(esp_cam_als_device_t *dev, uint32_t cmd, void
         if (pthread_mutex_lock(&dev->lock) != 0) {
             return ESP_ERR_INVALID_STATE;
         }
-        *(uint16_t *)arg = (uint16_t)dev->sample_rate_ms;
+        *(uint16_t *)arg = dev->sample_rate_ticks;
         pthread_mutex_unlock(&dev->lock);
         break;
 
@@ -214,6 +292,8 @@ static esp_err_t pt1411_priv_ioctl(esp_cam_als_device_t *dev, uint32_t cmd, void
             pthread_mutex_unlock(&dev->lock);
             return ESP_ERR_INVALID_STATE;
         }
+        /* Record intent before queueing stop/start (daemon may lag). */
+        pt1411_set_want_low_power(dev, enable != 0);
         if (enable) {
             ALS_TIMER_STOP(dev->timer);
         } else {
@@ -233,22 +313,58 @@ static esp_err_t pt1411_priv_ioctl(esp_cam_als_device_t *dev, uint32_t cmd, void
 
 static esp_err_t pt1411_delete(esp_cam_als_device_t *dev)
 {
+    TimerHandle_t timer;
+    SemaphoreHandle_t acked = NULL;
+
     ESP_LOGW(TAG, "del pt1411 (%p)", dev);
-    if (dev) {
-        if (dev->timer) {
-            ALS_TIMER_STOP(dev->timer);
-            ALS_TIMER_DELETE(dev->timer);
-            dev->timer = NULL;
-        }
-        if (dev->cali_enable) {
-            pt1411_adc_calibration_deinit(dev->cali_handle);
-            dev->cali_handle = NULL;
-            dev->cali_enable = false;
-        }
-        pthread_mutex_destroy(&dev->lock);
-        free(dev);
-        dev = NULL;
+    if (dev == NULL) {
+        return ESP_OK;
     }
+
+    /*
+     * Under lock: allocate drain sync, clear timer so in-flight callback can
+     * observe teardown, then leave the lock before blocking on the timer daemon
+     * (stop/delete/pend all run on that task; holding the mutex across the wait
+     * is unnecessary and would deadlock if a callback needed the lock).
+     */
+    if (pthread_mutex_lock(&dev->lock) != 0) {
+        return ESP_ERR_INVALID_STATE;
+    }
+    timer = dev->timer;
+    if (timer != NULL) {
+        acked = xSemaphoreCreateBinary();
+        if (acked == NULL) {
+            pthread_mutex_unlock(&dev->lock);
+            return ESP_ERR_NO_MEM;
+        }
+        dev->timer = NULL;
+    }
+    pthread_mutex_unlock(&dev->lock);
+
+    if (timer != NULL) {
+        ALS_TIMER_STOP(timer);
+        ALS_TIMER_DELETE(timer);
+        if (xTimerPendFunctionCall(pt1411_timer_cmds_acked, acked, 0, portMAX_DELAY) == pdPASS) {
+            xSemaphoreTake(acked, portMAX_DELAY);
+        } else {
+            ESP_LOGE(TAG, "failed to pend timer drain after stop/delete");
+        }
+        vSemaphoreDelete(acked);
+    }
+
+    /* Wait out any ioctl still holding the lock, then tear down. */
+    if (pthread_mutex_lock(&dev->lock) != 0) {
+        return ESP_ERR_INVALID_STATE;
+    }
+    if (dev->cali_enable) {
+        pt1411_adc_calibration_deinit(dev->cali_handle);
+        dev->cali_handle = NULL;
+        dev->cali_enable = false;
+    }
+    pthread_mutex_unlock(&dev->lock);
+
+    pthread_mutex_destroy(&dev->lock);
+    free(dev);
 
     return ESP_OK;
 }
@@ -267,13 +383,14 @@ static const esp_cam_als_dev_info_t pt1411_info = {
 esp_cam_als_device_t *pt1411_detect(const esp_cam_als_config_t *config)
 {
     esp_cam_als_device_t *dev = NULL;
-    uint16_t sample_rate_ms;
+    uint16_t sample_rate_ticks;
 
     if (config == NULL) {
         return NULL;
     }
 
-    sample_rate_ms = config->sample_rate_ms ? config->sample_rate_ms : CONFIG_PT1411_DEFAULT_SAMPLE_RATE_MS;
+    sample_rate_ticks = config->sample_rate_ticks ? config->sample_rate_ticks
+                        : CONFIG_PT1411_DEFAULT_SAMPLE_RATE_TICKS;
 
     dev = calloc(1, sizeof(esp_cam_als_device_t));
     if (dev == NULL) {
@@ -299,7 +416,7 @@ esp_cam_als_device_t *pt1411_detect(const esp_cam_als_config_t *config)
     dev->name = (char *)TAG;
     dev->ops = &pt1411_ops;
     dev->info = &pt1411_info;
-    dev->sample_rate_ms = sample_rate_ms;
+    dev->sample_rate_ticks = sample_rate_ticks;
     dev->adc_handle = config->adc_handle;
     dev->channel = config->channel;
     dev->cali_enable = false;
@@ -324,7 +441,7 @@ esp_cam_als_device_t *pt1411_detect(const esp_cam_als_config_t *config)
         pthread_mutex_unlock(&dev->lock);
     }
 
-    dev->timer = ALS_TIMER_CREATE("pt1411_tmr", sample_rate_ms, pt1411_timer_callback, dev);
+    dev->timer = ALS_TIMER_CREATE("pt1411_tmr", sample_rate_ticks, pt1411_timer_callback, dev);
     if (dev->timer == NULL) {
         ESP_LOGE(TAG, "failed to create ALS timer");
         goto err_free_handler;
@@ -334,16 +451,16 @@ esp_cam_als_device_t *pt1411_detect(const esp_cam_als_config_t *config)
         goto err_free_handler;
     }
 
-    ESP_LOGI(TAG, "Detected Cam ALS, sample_rate=%u ms, cali=%d",
-             sample_rate_ms, (int)dev->cali_enable);
+    ESP_LOGI(TAG, "Detected Cam ALS, sample_rate=%u ticks, cali=%d",
+             sample_rate_ticks, (int)dev->cali_enable);
 
     return dev;
 
 err_free_handler:
     if (dev->timer) {
-        ALS_TIMER_STOP(dev->timer);
-        ALS_TIMER_DELETE(dev->timer);
+        TimerHandle_t timer = dev->timer;
         dev->timer = NULL;
+        (void)pt1411_timer_stop_join(timer);
     }
     if (dev->cali_enable) {
         pt1411_adc_calibration_deinit(dev->cali_handle);
