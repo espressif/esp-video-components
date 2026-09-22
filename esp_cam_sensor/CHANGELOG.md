@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- Updated SC2336 default IPA JSON for ESP32-P4 ECO5 (`sc2336_default_p4_eco5.json`).
+
 ## 2.6.0
 
 - Added a Kconfig option to control the SC101 SCCB access delay after power-on.
