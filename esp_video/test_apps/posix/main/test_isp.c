@@ -183,6 +183,99 @@ TEST_CASE("V4L2 set/get GAMMA_EXT", "[video]")
     TEST_ESP_OK(example_video_deinit());
 }
 
+#if ESP_VIDEO_ISP_DEVICE_DPC
+TEST_CASE("V4L2 set/get DPC_DYNAMIC", "[video]")
+{
+    int fd;
+    int ret;
+    struct v4l2_ext_controls ctrls;
+    struct v4l2_ext_control ctrl[1];
+    esp_video_isp_dpc_dynamic_t dpc_set;
+    esp_video_isp_dpc_dynamic_t dpc_get;
+
+    setUp();
+
+    TEST_ESP_OK(example_video_init());
+
+    fd = open(ESP_VIDEO_ISP1_DEVICE_NAME, O_RDWR);
+    TEST_ASSERT_GREATER_OR_EQUAL(0, fd);
+
+    memset(&dpc_set, 0, sizeof(dpc_set));
+    dpc_set.enable = true;
+    dpc_set.dynamic.method = ESP_ISP_DPC_DYNAMIC_METHOD_1;
+    dpc_set.dynamic.method_1.high_threshold = 48;
+    dpc_set.dynamic.method_1.low_threshold = 32;
+
+    memset(&ctrls, 0, sizeof(ctrls));
+    ctrls.ctrl_class = V4L2_CID_USER_CLASS;
+    ctrls.count      = 1;
+    ctrls.controls   = ctrl;
+    ctrl[0].id       = V4L2_CID_USER_ESP_ISP_DPC_DYNAMIC;
+    ctrl[0].size     = sizeof(esp_video_isp_dpc_dynamic_t);
+    ctrl[0].p_u8     = (uint8_t *)&dpc_set;
+
+    ret = ioctl(fd, VIDIOC_S_EXT_CTRLS, &ctrls);
+    TEST_ESP_OK(ret);
+
+    memset(&dpc_get, 0, sizeof(dpc_get));
+    ctrl[0].p_u8 = (uint8_t *)&dpc_get;
+    ret = ioctl(fd, VIDIOC_G_EXT_CTRLS, &ctrls);
+    TEST_ESP_OK(ret);
+
+    TEST_ASSERT_TRUE(dpc_get.enable);
+    TEST_ASSERT_EQUAL(ESP_ISP_DPC_DYNAMIC_METHOD_1, dpc_get.dynamic.method);
+    TEST_ASSERT_EQUAL_UINT8(48, dpc_get.dynamic.method_1.high_threshold);
+    TEST_ASSERT_EQUAL_UINT8(32, dpc_get.dynamic.method_1.low_threshold);
+
+    memset(&dpc_set, 0, sizeof(dpc_set));
+    dpc_set.enable = true;
+    dpc_set.dynamic.method = ESP_ISP_DPC_DYNAMIC_METHOD_2;
+    dpc_set.dynamic.method_2.first_stage_upper_ratio.integer = 1;
+    dpc_set.dynamic.method_2.first_stage_upper_ratio.decimal = 0;
+    dpc_set.dynamic.method_2.first_stage_lower_ratio.integer = 0;
+    dpc_set.dynamic.method_2.first_stage_lower_ratio.decimal = 8;
+    dpc_set.dynamic.method_2.bright_deviation_factor.integer = 0;
+    dpc_set.dynamic.method_2.bright_deviation_factor.decimal = 16;
+    dpc_set.dynamic.method_2.dark_deviation_factor.integer = 0;
+    dpc_set.dynamic.method_2.dark_deviation_factor.decimal = 8;
+    ctrl[0].p_u8 = (uint8_t *)&dpc_set;
+
+    ret = ioctl(fd, VIDIOC_S_EXT_CTRLS, &ctrls);
+    TEST_ESP_OK(ret);
+
+    memset(&dpc_get, 0, sizeof(dpc_get));
+    ctrl[0].p_u8 = (uint8_t *)&dpc_get;
+    ret = ioctl(fd, VIDIOC_G_EXT_CTRLS, &ctrls);
+    TEST_ESP_OK(ret);
+
+    TEST_ASSERT_TRUE(dpc_get.enable);
+    TEST_ASSERT_EQUAL(ESP_ISP_DPC_DYNAMIC_METHOD_2, dpc_get.dynamic.method);
+    TEST_ASSERT_EQUAL_UINT32(dpc_set.dynamic.method_2.first_stage_upper_ratio.val,
+                             dpc_get.dynamic.method_2.first_stage_upper_ratio.val);
+    TEST_ASSERT_EQUAL_UINT32(dpc_set.dynamic.method_2.first_stage_lower_ratio.val,
+                             dpc_get.dynamic.method_2.first_stage_lower_ratio.val);
+    TEST_ASSERT_EQUAL_UINT32(dpc_set.dynamic.method_2.bright_deviation_factor.val,
+                             dpc_get.dynamic.method_2.bright_deviation_factor.val);
+    TEST_ASSERT_EQUAL_UINT32(dpc_set.dynamic.method_2.dark_deviation_factor.val,
+                             dpc_get.dynamic.method_2.dark_deviation_factor.val);
+
+    dpc_set.enable = false;
+    ctrl[0].p_u8 = (uint8_t *)&dpc_set;
+    ret = ioctl(fd, VIDIOC_S_EXT_CTRLS, &ctrls);
+    TEST_ESP_OK(ret);
+
+    memset(&dpc_get, 0, sizeof(dpc_get));
+    ctrl[0].p_u8 = (uint8_t *)&dpc_get;
+    ret = ioctl(fd, VIDIOC_G_EXT_CTRLS, &ctrls);
+    TEST_ESP_OK(ret);
+    TEST_ASSERT_FALSE(dpc_get.enable);
+
+    close(fd);
+
+    TEST_ESP_OK(example_video_deinit());
+}
+#endif /* ESP_VIDEO_ISP_DEVICE_DPC */
+
 TEST_CASE("V4L2 set/get AWB/AE/AF/HIST statistics windows", "[video]")
 {
     int fd;

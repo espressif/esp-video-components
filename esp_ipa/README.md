@@ -8,6 +8,7 @@ Espressif image process algorithm component provides a suit of image process alg
 |:-:|:-|
 | Auto Color Correction | Calculate lens shadow correction parameters, color correction matrix, and saturation value |
 | Auto Denoising | Calculate Bayer denoising parameters and demosaic parameters |
+| Dead Pixel Correction | Calculate ISP dynamic dead-pixel-correction parameters based on sensor gain |
 | Auto Enhancement | Calculate GAMMA table, sharpen parameters, and contrast value |
 | Auto Gain Control | Calculate exposure and gain |
 | Auto White Balance | Calculate red and blue channels' gain |
@@ -170,6 +171,8 @@ Developers can refer to the configuration files in [esp_cam_sensor](https://gith
 |:-:|:-:|:-:|:-|
 | zones | Array | non-empty for model 2 | Each entry: **`type`** (`uhct`, `hct`, `mct`, `lct`, `ulct`, `green`, `skin`), **`rg`**.min/max, **`bg`**.min/max (chromaticity bounds on **R/G** and **B/G**), **`enabled`** (optional, default true). First matching enabled neutral zone wins. |
 | ref_points | Array | ≥1 for model 2 | Each entry: **`ct`** (Kelvin), **`rg`**, **`bg`**, **`radius`** (attraction in chroma space; `0` disables snapping for that point). |
+| startup_zone | String | `uhct`, `hct`, `mct`, `lct`, `ulct` | Optional model-2 startup zone. Uses the first matching reference point for initial gains and CT, then continues automatic AWB. Omitted: preserve normal white-point scanning without a startup preset. |
+| startup_hold_frames | Integer | ≥ 0 | Hold startup WBG for this many calls carrying AWB statistics; requires `startup_zone`. AWB calculation, statistics scanning and CT export continue. Default `0`: no hold. |
 | new_w | Float | ≥ 0 | IIR weight for the new frame when smoothing chroma / CT. |
 | prev_w | Float | ≥ 0 | IIR weight for the previous frame; with **`new_w`**, both `0` disables smoothing on that path. |
 | export_ct | Boolean | true or false | If **true**, publish estimated CT to **`ct`**. |
@@ -178,6 +181,8 @@ Developers can refer to the configuration files in [esp_cam_sensor](https://gith
 | outlier_rg | Float | ≥ 0 | Reject sub-window when \|R/G − prev\| exceeds this; `0` disables. |
 | outlier_bg | Float | ≥ 0 | Same for B/G. |
 | zone_hysteresis_ratio | Float | ≥ 0 | Zone-switch stickiness; `0` disables. |
+
+**AWB model 2 startup white balance** — optionally set `startup_zone` to `uhct`, `hct`, `mct`, `lct`, or `ulct`. Initializes gains and CT from the first valid reference point in the selected enabled zone, then continues automatic AWB. Omitting this parameter preserves normal startup white-point scanning. Returns `ESP_ERR_INVALID_ARG` if no matching reference is available. Startup CT is published to **`ct`**; subsequent CT updates require `export_ct: true`.
 
 **AWB model 3 (fixed CT)** — set `model` to `3` or `"fixed_ct"`. Does not use AWB statistics. Applies the active preset from `fixed_ct.presets[]` (exact CT match only). **`fixed_ct.default_ct`** must exist in `presets[]` and is selected at init. Runtime switch: `esp_ipa_awb_set_fixed_ct(handle, <kelvin>)` then `esp_ipa_pipeline_process()`. Returns `ESP_ERR_INVALID_ARG` if CT is not in the preset table. KV **`ct`** is published for ACC CCM/LSC/SAT.
 
@@ -549,7 +554,77 @@ Legacy single preset (still supported):
 
 ---
 
-#### 3.2.4 Auto Enhancement
+#### 3.2.4 Dead Pixel Correction
+
+---
+
+```json
+"SC2336":
+{
+    "dpc": {}
+}
+```
+
+| Parameter | Type | Range | Description |
+|:-:|:-:|:-:|:-|
+| dpc | Object | / | Dead pixel correction configuration parameters |
+
+---
+
+```json
+"dpc":
+{
+    "model": 0,
+    "debounce_gain": 0.1,
+    "table":
+    [
+        {
+            "gain": 1.0,
+            "param":
+            {
+                "method": 1,
+                "high_threshold": 8,
+                "low_threshold": 8
+            }
+        },
+        {
+            "gain": 4.0,
+            "param":
+            {
+                "method": 2,
+                "first_stage_upper_ratio": 1.0,
+                "first_stage_lower_ratio": 0.5,
+                "bright_deviation_factor": 0.5,
+                "dark_deviation_factor": 0.5
+            }
+        },
+        ...
+    ]
+}
+```
+
+| Parameter | Type | Range | Description |
+|:-:|:-:|:-:|:-|
+| model | Integer | {0,1} | DPC gain mapping model: `0` selects the nearest gain node (with optional debounce); `1` linearly interpolates parameters between neighboring gain nodes |
+| debounce_gain | Float | ≥0 | Model 0 switch debounce threshold in sensor-gain units; `0` disables debounce. A candidate node is accepted only when it is closer than the current node by more than this value |
+| table | Array | ≥1 entries | DPC dynamic parameters and sensor gain mapping table |
+| gain | Float | >0 | Sensor gain |
+| param | Object | / | ISP dynamic DPC parameters for this gain node |
+| method | Integer | {1,2} | Dynamic correction method selected for this node; method 1 and method 2 can be mixed across nodes |
+| high_threshold | Integer | [0,255] | Method 1: a pixel above `max8 + high_threshold` is a bright dead-pixel candidate |
+| low_threshold | Integer | [0,255] | Method 1: a pixel below `min8 - low_threshold` is a dark dead-pixel candidate |
+| first_stage_upper_ratio | Float | [0,1] | Method 2: upper bound of the first-stage normal-pixel range; must be greater than `first_stage_lower_ratio` |
+| first_stage_lower_ratio | Float | [0,1] | Method 2: lower bound of the first-stage normal-pixel range |
+| bright_deviation_factor | Float | [0,1] | Method 2: second-stage bright-pixel sensitivity; a smaller value corrects bright pixels more aggressively |
+| dark_deviation_factor | Float | [0,1] | Method 2: second-stage dark-pixel sensitivity; a smaller value corrects dark pixels more aggressively |
+
+* Note: Model 0 uses nearest-neighbor indexing like ADN. Model 1 interpolates continuously between two nodes that share the same `method`; if adjacent nodes use different methods, model 1 falls back to the nearer node
+* Note: Method 1 / method 2 parameters are stored in `esp_ipa_dpc_t`. Method 2 ratios and deviation factors remain floating-point values in range [0, 1]
+* Note: Aliases `"nearest"` / `"linear"` (for `model`) and `"method_1"` / `"method_2"` (for `method`) are also accepted
+
+---
+
+#### 3.2.5 Auto Enhancement
 
 ---
 
@@ -742,7 +817,7 @@ Legacy single preset (still supported):
 
 ---
 
-#### 3.2.5 Auto Gain Control
+#### 3.2.6 Auto Gain Control
 
 ---
 
@@ -1031,7 +1106,7 @@ Legacy single preset (still supported):
 
 ---
 
-#### 3.2.6 Auto Sensor AE Target Control
+#### 3.2.7 Auto Sensor AE Target Control
 
 ---
 
@@ -1085,7 +1160,7 @@ Legacy single preset (still supported):
 | ae_value | Integer | >0 | AE target level value |
 ---
 
-#### 3.2.7 Auto Focus Control
+#### 3.2.8 Auto Focus Control
 
 ---
 
@@ -1147,7 +1222,7 @@ Legacy single preset (still supported):
 
 ---
 
-#### 3.2.8 Extended Control
+#### 3.2.9 Extended Control
 
 ---
 

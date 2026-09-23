@@ -36,6 +36,18 @@ extern "C" {
 #define ESP_VIDEO_ISP_DEVICE_BLC    1       /*!< ISP video device enable BLC */
 #endif /* CONFIG_SOC_ISP_BLC_SUPPORTED */
 
+/**
+ * @brief Enable DPC for ISP video device if ESP-IDF version is greater than or equal to v5.5.6 and less than v6.0.0,
+ *        or greater than or equal to v6.0.4 and less than v6.1.0, or greater than or equal to v6.1.1
+ *
+ * @note Hardware support starts from ESP32-P4 v3.0.
+ */
+#if (ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 5, 6) && ESP_IDF_VERSION < ESP_IDF_VERSION_VAL(6, 0, 0)) || \
+    (ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(6, 0, 4) && ESP_IDF_VERSION < ESP_IDF_VERSION_VAL(6, 1, 0)) || \
+    (ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(6, 1, 1))
+#define ESP_VIDEO_ISP_DEVICE_DPC 1 /*!< ISP video device supports DPC */
+#endif /* (ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 5, 6) && ESP_IDF_VERSION < ESP_IDF_VERSION_VAL(6, 0, 0)) || (ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(6, 0, 4) && ESP_IDF_VERSION < ESP_IDF_VERSION_VAL(6, 1, 0)) || (ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(6, 1, 1)) */
+
 #if CONFIG_SOC_ISP_CROP_SUPPORTED
 #define ESP_VIDEO_ISP_DEVICE_CROP   1       /*!< ISP video device enable crop */
 #endif /* CONFIG_SOC_ISP_CROP_SUPPORTED */

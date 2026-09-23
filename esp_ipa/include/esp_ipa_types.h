@@ -67,6 +67,7 @@ extern "C" {
 #define IPA_METADATA_FLAGS_AF       (1 << 17)   /*!< Meta data has AF */
 #define IPA_METADATA_FLAGS_FP       (1 << 18)   /*!< Meta data has focus position */
 #define IPA_METADATA_FLAGS_BLC      (1 << 19)   /*!< Meta data has BLC */
+#define IPA_METADATA_FLAGS_DPC      (1 << 20)   /*!< Meta data has DPC */
 
 
 #define IPA_GAMMA_FLAGS_RED         (1 << 0)   /*!< GAMMA red channel needs to update */
@@ -137,6 +138,24 @@ typedef enum esp_ipa_aen_gamma_model {
 typedef enum esp_ipa_acc_blc_model {
     ESP_IPA_ACC_BLC_MODEL_0 = 0,              /*!< BLC model type 0 */
 } esp_ipa_acc_blc_model_t;
+
+/**
+ * @brief DPC data model type
+ */
+typedef enum esp_ipa_dpc_model {
+    ESP_IPA_DPC_MODEL_0 = 0,                  /*!< Use parameters of the nearest gain node, with optional debounce */
+    ESP_IPA_DPC_MODEL_1,                      /*!< Linearly interpolate parameters between neighboring gain nodes */
+} esp_ipa_dpc_model_t;
+
+/**
+ * @brief DPC dynamic correction method
+ *
+ * Values match ISP `esp_isp_dpc_dynamic_method_t` so metadata can be applied without conversion.
+ */
+typedef enum esp_ipa_dpc_dynamic_method {
+    ESP_IPA_DPC_DYNAMIC_METHOD_1 = 0,         /*!< Detects a pixel outside [min8 - low_threshold, max8 + high_threshold] */
+    ESP_IPA_DPC_DYNAMIC_METHOD_2 = 1,         /*!< Applies ratio screening followed by an estimate-based adaptive threshold test */
+} esp_ipa_dpc_dynamic_method_t;
 
 struct esp_ipa;
 struct esp_ipa_pipeline;
@@ -361,6 +380,28 @@ typedef struct esp_ipa_af {
 } esp_ipa_af_t;
 
 /**
+ * @brief DPC(dynamic dead pixel correction) meta data.
+ *
+ * Each gain node may select method 1 or 2. Method 2 ratios and deviation
+ * factors are floating-point values in range [0, 1].
+ */
+typedef struct esp_ipa_dpc {
+    esp_ipa_dpc_dynamic_method_t method;            /*!< Dynamic correction method */
+    union {
+        struct {
+            uint8_t high_threshold;                 /*!< A pixel above max8 + high_threshold is a bright dead-pixel candidate (0-255) */
+            uint8_t low_threshold;                  /*!< A pixel below min8 - low_threshold is a dark dead-pixel candidate (0-255) */
+        } method_1;
+        struct {
+            float first_stage_upper_ratio;          /*!< Upper bound of the first-stage normal-pixel range, range [0, 1]; must be greater than first_stage_lower_ratio */
+            float first_stage_lower_ratio;          /*!< Lower bound of the first-stage normal-pixel range, range [0, 1] */
+            float bright_deviation_factor;          /*!< Second-stage bright-pixel sensitivity, range [0, 1] */
+            float dark_deviation_factor;            /*!< Second-stage dark-pixel sensitivity, range [0, 1] */
+        } method_2;
+    };
+} esp_ipa_dpc_t;
+
+/**
  * @brief IPA meta data, these data are calculated by IPA and configured to ISP hardware
  */
 typedef struct esp_ipa_metadata {
@@ -400,6 +441,8 @@ typedef struct esp_ipa_metadata {
     esp_ipa_af_t af;                        /*!< AF parameters */
 
     uint32_t focus_pos;                     /*!< Focus position parameter */
+
+    esp_ipa_dpc_t dpc;                      /*!< DPC dynamic correction parameters */
 } esp_ipa_metadata_t;
 
 /**
@@ -820,6 +863,11 @@ typedef struct esp_ipa_awb_config {
     /* Configuration parameters used in model_3 (fixed CT) */
 
     esp_ipa_awb_fixed_cfg_t fixed_ct;           /*!< Preset table + default CT (JSON awb.fixed_ct { ... }) */
+
+    /* Optional model_2 startup seed; automatic AWB continues after initialization. */
+    bool startup_zone_enabled;                /*!< False preserves startup without preset gains/CT */
+    esp_ipa_awb_zone_type_t startup_zone;       /*!< Neutral zone UHCT..ULCT; first matching ref_point supplies CT and gains */
+    uint32_t startup_hold_frames;              /*!< Hold startup WBG for this many AWB-stat calls; 0 disables */
 } esp_ipa_awb_config_t;
 
 /**
@@ -884,6 +932,28 @@ typedef struct esp_ipa_adn_config {
 
     bool enable_log;                            /*!< Enable auto denoising algorithm log */
 } esp_ipa_adn_config_t;
+
+/**
+ * @brief DPC parameter and gain mapping data
+ */
+typedef struct esp_ipa_dpc_unit {
+    uint32_t gain;                              /*!< Camera sensor gain, unit is 0.001 */
+    esp_ipa_dpc_t dpc;                          /*!< ISP DPC dynamic correction parameter */
+} esp_ipa_dpc_unit_t;
+
+/**
+ * @brief Dead pixel correction algorithm configuration
+ */
+typedef struct esp_ipa_dpc_config {
+    esp_ipa_dpc_model_t model;                  /*!< DPC data model type */
+
+    uint32_t debounce_gain;                     /*!< Model 0 switch debounce threshold, unit is 0.001; 0 disables */
+
+    const esp_ipa_dpc_unit_t *table;            /*!< DPC parameter and gain mapping table */
+    uint32_t table_size;                        /*!< DPC parameter and gain mapping table size */
+
+    bool enable_log;                            /*!< Enable DPC algorithm log */
+} esp_ipa_dpc_config_t;
 
 /**
  * @brief Auto enhancement algorithm configuration
@@ -1035,6 +1105,7 @@ typedef struct esp_ipa_config {
     const esp_ipa_aen_config_t *aen;            /*!< Auto enhancement algorithm configuration */
     const esp_ipa_af_config_t  *af;             /*!< Auto focus algorithm configuration */
     const esp_ipa_atc_config_t *atc;            /*!< Auto sensor AE target level control algorithm configuration */
+    const esp_ipa_dpc_config_t *dpc;            /*!< Dead pixel correction algorithm configuration */
 
     const esp_ipa_ext_config_t *ext;            /*!< Image extended configuration */
 } esp_ipa_config_t;

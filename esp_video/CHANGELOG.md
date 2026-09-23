@@ -1,3 +1,7 @@
+## Unreleased
+
+- Added `V4L2_CID_USER_ESP_ISP_DPC_DYNAMIC` and ISP pipeline control to apply IPA DPC metadata to hardware
+
 ## 2.5.0
 
 - Added ISP pipeline APIs to enumerate and switch IPA JSON configurations at runtime

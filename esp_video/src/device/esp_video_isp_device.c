@@ -149,6 +149,12 @@ struct isp_video {
     esp_video_isp_blc_t blc_config;
 #endif
 
+#if ESP_VIDEO_ISP_DEVICE_DPC
+    /* DPC dynamic Configuration */
+
+    esp_video_isp_dpc_dynamic_t dpc_config;
+#endif
+
     esp_video_isp_af_t af_config;
 
     esp_video_isp_ae_t ae_config;
@@ -189,6 +195,10 @@ struct isp_video {
 
 #if ESP_VIDEO_ISP_DEVICE_BLC
     uint8_t blc_started             : 1;
+#endif
+
+#if ESP_VIDEO_ISP_DEVICE_DPC
+    uint8_t dpc_started             : 1;
 #endif
 
     uint8_t af_started              : 1;
@@ -398,6 +408,19 @@ static const struct v4l2_query_ext_ctrl s_isp_qctrl[] = {
         .nr_of_dims = 1,
         .default_value = 0,
         .name = "BLC",
+    },
+#endif
+#if ESP_VIDEO_ISP_DEVICE_DPC
+    {
+        .id = V4L2_CID_USER_ESP_ISP_DPC_DYNAMIC,
+        .type = V4L2_CTRL_TYPE_U8,
+        .maximum = UINT8_MAX,
+        .minimum = 0,
+        .step = 1,
+        .elems = sizeof(esp_video_isp_dpc_dynamic_t),
+        .nr_of_dims = 1,
+        .default_value = 0,
+        .name = "DPC Dynamic",
     },
 #endif
     {
@@ -1393,6 +1416,50 @@ static esp_err_t isp_stop_blc(struct isp_video *isp_video)
 }
 #endif
 
+#if ESP_VIDEO_ISP_DEVICE_DPC
+static esp_err_t isp_start_dpc(struct isp_video *isp_video)
+{
+    if (isp_video->dpc_started) {
+        return ESP_OK;
+    }
+
+    ISP_CONFIGURE_HANDLE(esp_isp_dpc_dynamic_configure(isp_video->isp_proc, &isp_video->dpc_config.dynamic), "DPC dynamic");
+
+    esp_isp_dpc_config_t common_config = {0};
+#if ESP_VIDEO_ISP_DEVICE_ONCE_CONFIG
+    common_config.flags.update_once_configured = true;
+#endif
+    ISP_CONFIGURE_HANDLE(esp_isp_dpc_configure(isp_video->isp_proc, &common_config), "DPC");
+    ESP_RETURN_ON_ERROR(esp_isp_dpc_enable(isp_video->isp_proc), TAG, "failed to enable DPC");
+
+    isp_video->dpc_started = true;
+
+    return ESP_OK;
+}
+
+static esp_err_t isp_reconfigure_dpc(struct isp_video *isp_video)
+{
+    if (isp_video->dpc_started) {
+        ESP_RETURN_ON_ERROR(esp_isp_dpc_disable(isp_video->isp_proc), TAG, "failed to disable DPC");
+        isp_video->dpc_started = false;
+    }
+
+    return isp_start_dpc(isp_video);
+}
+
+static esp_err_t isp_stop_dpc(struct isp_video *isp_video)
+{
+    if (!isp_video->dpc_started) {
+        return ESP_OK;
+    }
+
+    ESP_RETURN_ON_ERROR(esp_isp_dpc_disable(isp_video->isp_proc), TAG, "failed to disable DPC");
+    isp_video->dpc_started = false;
+
+    return ESP_OK;
+}
+#endif
+
 static bool isp_af_stats_done(isp_af_ctlr_t af_ctlr, const esp_isp_af_env_detector_evt_data_t *edata, void *user_data)
 {
     esp_err_t ret;
@@ -1558,9 +1625,18 @@ static esp_err_t isp_start_pipeline(struct isp_video *isp_video)
     }
 #endif
 
+#if ESP_VIDEO_ISP_DEVICE_DPC
+    if (isp_video->dpc_config.enable) {
+        ESP_GOTO_ON_ERROR(isp_start_dpc(isp_video), fail_8, TAG, "failed to start DPC");
+    }
+#endif
+
     return ESP_OK;
 
 fail_8:
+#if ESP_VIDEO_ISP_DEVICE_DPC
+    isp_stop_dpc(isp_video);
+#endif
 #if ESP_VIDEO_ISP_DEVICE_BLC
     isp_stop_blc(isp_video);
 #endif
@@ -1603,6 +1679,10 @@ static esp_err_t isp_stop_pipeline(struct isp_video *isp_video)
 
 #if ESP_VIDEO_ISP_DEVICE_BLC
     ESP_RETURN_ON_ERROR(isp_stop_blc(isp_video), TAG, "failed to stop BLC");
+#endif
+
+#if ESP_VIDEO_ISP_DEVICE_DPC
+    ESP_RETURN_ON_ERROR(isp_stop_dpc(isp_video), TAG, "failed to stop DPC");
 #endif
 
     ESP_RETURN_ON_ERROR(isp_stop_af(isp_video), TAG, "failed to stop AF");
@@ -2034,6 +2114,23 @@ static esp_err_t isp_video_set_ext_ctrl(struct esp_video *video, const struct v4
             break;
         }
 #endif
+#if ESP_VIDEO_ISP_DEVICE_DPC
+        case V4L2_CID_USER_ESP_ISP_DPC_DYNAMIC: {
+            esp_video_isp_dpc_dynamic_t *dpc = (esp_video_isp_dpc_dynamic_t *)ctrl->p_u8;
+
+            isp_video->dpc_config = *dpc;
+            if (dpc->enable) {
+                if (ISP_STARTED(isp_video)) {
+                    ESP_GOTO_ON_ERROR(isp_reconfigure_dpc(isp_video), exit, TAG, "failed to reconfigure DPC");
+                }
+            } else {
+                if (ISP_STARTED(isp_video)) {
+                    ESP_GOTO_ON_ERROR(isp_stop_dpc(isp_video), exit, TAG, "failed to stop DPC");
+                }
+            }
+            break;
+        }
+#endif
         case V4L2_CID_USER_ESP_ISP_AF: {
             esp_video_isp_af_t *af = (esp_video_isp_af_t *)ctrl->p_u8;
 
@@ -2220,6 +2317,14 @@ static esp_err_t isp_video_get_ext_ctrl(struct esp_video *video, struct v4l2_ext
             esp_video_isp_blc_t *blc = (esp_video_isp_blc_t *)ctrl->p_u8;
 
             *blc = isp_video->blc_config;
+            break;
+        }
+#endif
+#if ESP_VIDEO_ISP_DEVICE_DPC
+        case V4L2_CID_USER_ESP_ISP_DPC_DYNAMIC: {
+            esp_video_isp_dpc_dynamic_t *dpc = (esp_video_isp_dpc_dynamic_t *)ctrl->p_u8;
+
+            *dpc = isp_video->dpc_config;
             break;
         }
 #endif

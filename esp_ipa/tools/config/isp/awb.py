@@ -102,6 +102,40 @@ def _awb_collect_ref_points(obj):
             return list(h.ref_points)
     return []
 
+def _awb_resolve_startup_zone(name, obj, model_val, zones, refs):
+    """Validate optional model-2 startup selection against the rendered zone/ref tables."""
+    if not hasattr(obj, 'startup_zone'):
+        return False, _ZONE_TYPE_C['mct']
+    zone = obj.startup_zone
+    neutral = ('uhct', 'hct', 'mct', 'lct', 'ulct')
+    if model_val != 2:
+        raise fatal_error(f'AWB config {name}: startup_zone requires model 2')
+    if not isinstance(zone, str) or zone.strip().lower() not in neutral:
+        raise fatal_error(f'AWB config {name}: startup_zone must be one of {neutral}')
+    zone_c = _ZONE_TYPE_C[zone.strip().lower()]
+    # Runtime uses array order / first neutral match and scans at most 64 refs.
+    # Match the six-decimal values emitted by the C renderer at zone boundaries.
+    rounded = lambda value: float(f'{float(value):.6f}')
+    for ref in refs[:64]:
+        rg, bg = rounded(ref.rg), rounded(ref.bg)
+        if rg <= 0 or bg <= 0:
+            continue
+        for z in zones:
+            if not getattr(z, 'enabled', True):
+                continue
+            ztype = _awb_zone_type_to_c(z.type)
+            if isinstance(z.type, int) and 0 <= z.type < len(neutral):
+                ztype = _ZONE_TYPE_C[neutral[z.type]]
+            if ztype not in [_ZONE_TYPE_C[t] for t in neutral]:
+                continue
+            if (rounded(z.rg.min) <= rg <= rounded(z.rg.max) and
+                    rounded(z.bg.min) <= bg <= rounded(z.bg.max)):
+                if ztype == zone_c:
+                    return True, zone_c
+                break
+    raise fatal_error(f'AWB config {name}: startup_zone "{zone}" has no matching enabled ref_point')
+
+
 def _awb_collect_smooth_weights(obj):
     """Return (new_w, prev_w). Prefer awb.new_w/prev_w; fall back to awb.hybrid.ct2.new_w/prev_w."""
     new_w, prev_w = obj.new_w, obj.prev_w
@@ -331,6 +365,14 @@ class ipa_unit_awb_c(ipa_unit_c):
                 f'AWB config {name} uses model 2 (zone) but no zones were provided '
                 f'(expected awb.zones[] or awb.hybrid.ct2.zones[]).')
 
+        startup_enabled, startup_zone = _awb_resolve_startup_zone(name, obj, model_val, zones, refs)
+        startup_hold_frames = getattr(obj, 'startup_hold_frames', 0)
+        if (type(startup_hold_frames) is not int or not 0 <= startup_hold_frames <= 0xFFFFFFFF):
+            raise fatal_error(f'AWB config {name}: startup_hold_frames must be a uint32 integer')
+        if startup_hold_frames and not startup_enabled:
+            raise fatal_error(f'AWB config {name}: startup_hold_frames requires startup_zone')
+
+
         fixed_presets, fixed_default_ct = _awb_collect_fixed_cfg(name, obj, model_val, refs)
         fixed_decl, fixed_ptr, fixed_cnt = _awb_render_fixed_presets(name, fixed_presets)
 
@@ -382,7 +424,10 @@ class ipa_unit_awb_c(ipa_unit_c):
                     .default_ct = {int(fixed_default_ct)},
                     .presets = {fixed_ptr},
                     .presets_count = {fixed_cnt}
-                }}
+                }},
+                .startup_zone_enabled = {str(startup_enabled).lower()},
+                .startup_zone = {startup_zone},
+                .startup_hold_frames = {startup_hold_frames}
             }};
             ''')
 

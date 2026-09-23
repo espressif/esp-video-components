@@ -62,6 +62,8 @@ extern "C" {
 #define V4L2_CID_USER_ESP_ISP_AE             (V4L2_CID_USER_ESP_ISP_BASE + 0x000c)   /*!< Auto exposure V4L2 controller ID */
 #define V4L2_CID_USER_ESP_ISP_HIST           (V4L2_CID_USER_ESP_ISP_BASE + 0x000d)   /*!< Histogram V4L2 controller ID */
 
+#define V4L2_CID_USER_ESP_ISP_DPC_DYNAMIC    (V4L2_CID_USER_ESP_ISP_BASE + 0x000e)   /*!< DPC dynamic configuration V4L2 controller ID */
+
 /**
  * @brief ESP32XXX ISP image statistics output, data type is "esp_ipa_stats_t"
  */
@@ -292,6 +294,20 @@ typedef struct esp_video_isp_hist {
 
     isp_window_t windows[ISP_HIST_WINDOW_NUM];  /*!< HIST statistics windows */
 } esp_video_isp_hist_t;
+
+#if ESP_VIDEO_ISP_DEVICE_DPC
+/**
+ * @brief DPC configuration.
+ *
+ * @note Maps to esp_isp_dpc_dynamic_configure() / esp_isp_dpc_configure() / esp_isp_dpc_enable().
+ *       Static DPC LUT is not covered by this command.
+ */
+typedef struct esp_video_isp_dpc_dynamic {
+    bool enable;                                /*!< true: enable DPC, false: disable DPC */
+
+    esp_isp_dpc_dynamic_config_t dynamic;       /*!< DPC dynamic configuration */
+} esp_video_isp_dpc_dynamic_t;
+#endif /* ESP_VIDEO_ISP_DEVICE_DPC */
 
 /**
  * @brief ISP statistics.

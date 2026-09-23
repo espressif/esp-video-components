@@ -555,6 +555,52 @@
                 }
             ]
         },
+        "dpc":
+        {
+            "model": 0,
+            "debounce_gain": 0,
+            "table":
+            [
+                {
+                    "gain": 1.0,
+                    "param":
+                    {
+                        "method": 1,
+                        "high_threshold": 4,
+                        "low_threshold": 4
+                    }
+                },
+                {
+                    "gain": 2.0,
+                    "param":
+                    {
+                        "method": 1,
+                        "high_threshold": 8,
+                        "low_threshold": 8
+                    }
+                },
+                {
+                    "gain": 4.0,
+                    "param":
+                    {
+                        "method": 1,
+                        "high_threshold": 16,
+                        "low_threshold": 12
+                    }
+                },
+                {
+                    "gain": 8.0,
+                    "param":
+                    {
+                        "method": 2,
+                        "first_stage_upper_ratio": 1.0,
+                        "first_stage_lower_ratio": 0.5,
+                        "bright_deviation_factor": 0.5,
+                        "dark_deviation_factor": 0.5
+                    }
+                }
+            ]
+        },
         "aen":
         {
             "gamma":
