@@ -183,6 +183,31 @@ menu "Espressif Video Configuration"
 
     if ESP_VIDEO_ENABLE_USB_UVC_VIDEO_DEVICE
 
+        config ESP_VIDEO_UVC_H264_BITRATE_BPS
+            int "Initial value of V4L2_CID_MPEG_VIDEO_BITRATE, in bps (0 = leave the camera alone)"
+            default 0
+            help
+                Starting value of the V4L2_CID_MPEG_VIDEO_BITRATE control on a UVC device,
+                applied through the UVC H.264 extension unit when an H.264 stream starts.
+
+                Leave it at 0 to use the camera default.
+
+                The value is absolute bits per second for whatever resolution the stream
+                negotiates so set accordingly.
+
+        config ESP_VIDEO_UVC_H264_GOP_SIZE
+            int "Initial value of V4L2_CID_MPEG_VIDEO_H264_I_PERIOD, in frames (0 = leave alone)"
+            default 0
+            help
+                Starting value of the V4L2_CID_MPEG_VIDEO_H264_I_PERIOD control on a UVC
+                device, in frames, converted to the extension unit's millisecond key-frame
+                period using the negotiated frame interval.
+
+                Every key frame carries the parameter sets a decoder needs to start, so a
+                camera's multi-second default leaves a joining viewer blank and makes loss
+                recovery unbounded. How short a period is worth its bitrate depends on the
+                application, so the default here is to change nothing.
+
         config USB_UVC_VIDEO_DEVICE_URB_SIZE
             int "USB UVC Video Device URB Size"
             default 10240
