@@ -422,7 +422,16 @@ static esp_err_t uvc_video_stop(struct esp_video *video, uint32_t type)
 
     ESP_RETURN_ON_FALSE(device->dev_addr, ESP_ERR_NOT_FOUND, TAG, "UVC device=%p is not connected", device);
 
-    ESP_RETURN_ON_ERROR(uvc_host_stream_stop(device->stream_hdl), TAG, "Failed to stop UVC stream");
+    /* An error here does not mean the stream is still running: usb_host_uvc pauses the stream
+     * before the SetInterface / endpoint step that can fail, so by the time it reports a
+     * failure the camera has stopped either way. Abandoning the teardown on it left the stream
+     * open while esp_video_stop_capture() kept the framework's `started` flag set, and the two
+     * layers then disagreed about whether anything was running. */
+    esp_err_t ret = uvc_host_stream_stop(device->stream_hdl);
+
+    if (ret != ESP_OK) {
+        ESP_LOGE(TAG, "Failed to stop UVC stream (%s) - closing it anyway", esp_err_to_name(ret));
+    }
 
     /**
      * Free all cached frames to avoid UVC stream stop failed
@@ -431,6 +440,9 @@ static esp_err_t uvc_video_stop(struct esp_video *video, uint32_t type)
         uvc_host_frame_return(device->stream_hdl, (uvc_host_frame_t *)element->priv_data);
     }
 
+    /* This one is still reported: it only fails while the application holds frames, and then
+     * the handle stays valid, so returning them and repeating STREAMOFF is the way out. The
+     * framework keeping the stream started is what makes that retry possible. */
     ESP_RETURN_ON_ERROR(uvc_host_stream_close(device->stream_hdl), TAG, "Failed to close UVC stream");
 
     /**
