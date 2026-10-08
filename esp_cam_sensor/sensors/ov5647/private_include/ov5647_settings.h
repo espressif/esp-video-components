@@ -29,7 +29,6 @@ extern "C" {
 #define OV5647_8BIT_MODE                           (0x18)
 #define OV5647_10BIT_MODE                          (0x1A)
 #define OV5647_MIPI_CTRL00_CLOCK_LANE_GATE         BIT(5)
-#define OV5647_MIPI_CTRL00_LINE_SYNC_ENABLE        BIT(4)
 #define OV5647_MIPI_CTRL00_BUS_IDLE                BIT(2)
 #define OV5647_MIPI_CTRL00_CLOCK_LANE_DISABLE      BIT(0)
 
