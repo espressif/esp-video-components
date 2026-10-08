@@ -8,6 +8,7 @@
 // #define LOG_LOCAL_LEVEL ESP_LOG_DEBUG
 
 #include <string.h>
+#include <inttypes.h>
 #include "esp_log.h"
 #include "esp_heap_caps.h"
 
@@ -23,6 +24,8 @@
 #include "esp_video_device.h"
 #include "esp_video_device_internal.h"
 #include "esp_video_ioctl.h"
+#include "esp_video_device_common.h"
+#include "esp_video_uvc_controls.h"
 
 #define UVC_NAME_PREFIX    "USB-UVC"
 
@@ -43,6 +46,30 @@
 
 #define UVC_INTERVAL_DENOMINATOR        (10 * 1000 * 1000)
 
+/* Camera-side encoder controls, as a V4L2 application sets them.
+ *
+ * Every field is a request rather than a live value, because a UVC camera only accepts most of
+ * them at particular moments: some during the pre-stream handshake, some only while running,
+ * and a camera that has just been unplugged accepts none. Keeping the request means a control
+ * set before STREAMON is still applied at STREAMON, and survives the stop/start in between. */
+struct uvc_h264_ctrls {
+    esp_video_uvc_h264_xu_t xu;     /*!< What this camera's extension unit can do; unit_id is 0 until a stream is opened */
+
+    uint32_t bitrate;               /*!< V4L2_CID_MPEG_VIDEO_BITRATE, 0 leaves the camera's own */
+    uint32_t peak_bitrate;          /*!< V4L2_CID_MPEG_VIDEO_BITRATE_PEAK, 0 means "same as bitrate" */
+    uint32_t gop_size;              /*!< V4L2_CID_MPEG_VIDEO_H264_I_PERIOD, in frames */
+    uint8_t min_qp;                 /*!< V4L2_CID_MPEG_VIDEO_H264_MIN_QP */
+    uint8_t max_qp;                 /*!< V4L2_CID_MPEG_VIDEO_H264_MAX_QP */
+    bool qp_set;                    /*!< Whether min_qp/max_qp carry a request at all */
+    bool fixed_frame_rate;          /*!< V4L2_CID_MPEG_VIDEO_FRAME_SKIP_MODE == DISABLED */
+    esp_video_uvc_h264_rc_mode_t rc_mode;   /*!< V4L2_CID_MPEG_VIDEO_BITRATE_MODE */
+
+    int8_t xu_probed;               /*!< 1 the camera has the H.264 XU, 0 it has none, -1 is not probed yet */
+
+    uint32_t committed_bitrate;     /*!< What the camera agreed to, and what G_EXT_CTRLS reports */
+    uint16_t committed_gop_ms;      /*!< wIFramePeriod the camera agreed to, 0 when unknown */
+};
+
 struct uvc_video {
     uvc_host_stream_hdl_t stream_hdl;
 
@@ -55,6 +82,15 @@ struct uvc_video {
     /* Current Configuration */
     enum uvc_host_stream_format uvc_stream_format;
     uint32_t interval;
+
+    /* Camera-side controls. Guarded by ctrl_mutex together with stream_hdl and streaming,
+     * because a control transfer cannot be issued under the core spinlock and must not race
+     * with the STREAMOFF that closes the stream out from under it. */
+    SemaphoreHandle_t ctrl_mutex;
+    bool streaming;
+    int8_t ae_priority;             /*!< V4L2_CID_EXPOSURE_AUTO_PRIORITY, -1 leaves the camera's own */
+    int8_t ae_priority_supported;   /*!< Whether the Camera Terminal claims it, -1 until a stream says */
+    struct uvc_h264_ctrls h264;
 
     SemaphoreHandle_t ready_sem;
 };
@@ -350,6 +386,783 @@ fail0:
     return ret;
 }
 
+/* Mapping between the V4L2 controls this device publishes and the camera's own encoder.
+ *
+ * The ranges are what a generic camera can be asked for; the H.264 extension unit reports the
+ * range this particular camera accepts and uvc_video_query_ext_ctrl() substitutes it once a
+ * stream has been opened. */
+#define UVC_H264_MIN_BITRATE        64000
+#define UVC_H264_MAX_BITRATE        20000000
+#define UVC_H264_BITRATE_STEP       1000
+#define UVC_H264_MIN_GOP            1
+#define UVC_H264_MAX_GOP            300
+#define UVC_H264_MIN_QP             0
+#define UVC_H264_MAX_QP             51
+
+/* The Kconfig options carry an internal "leave the camera alone" sentinel of zero, and zero is
+ * not something a V4L2 control may report: it falls outside the range the control itself
+ * advertises. What an application is told instead is a value it could have set - the camera's
+ * own default once the extension unit has reported it, and the bottom of the advertised range
+ * until then. */
+#if CONFIG_ESP_VIDEO_UVC_H264_BITRATE_BPS
+#define UVC_H264_DEF_BITRATE        CONFIG_ESP_VIDEO_UVC_H264_BITRATE_BPS
+_Static_assert(CONFIG_ESP_VIDEO_UVC_H264_BITRATE_BPS >= UVC_H264_MIN_BITRATE &&
+               CONFIG_ESP_VIDEO_UVC_H264_BITRATE_BPS <= UVC_H264_MAX_BITRATE,
+               "ESP_VIDEO_UVC_H264_BITRATE_BPS is outside the range V4L2_CID_MPEG_VIDEO_BITRATE advertises");
+#else
+#define UVC_H264_DEF_BITRATE        UVC_H264_MIN_BITRATE
+#endif
+
+#if CONFIG_ESP_VIDEO_UVC_H264_GOP_SIZE
+#define UVC_H264_DEF_GOP            CONFIG_ESP_VIDEO_UVC_H264_GOP_SIZE
+_Static_assert(CONFIG_ESP_VIDEO_UVC_H264_GOP_SIZE >= UVC_H264_MIN_GOP &&
+               CONFIG_ESP_VIDEO_UVC_H264_GOP_SIZE <= UVC_H264_MAX_GOP,
+               "ESP_VIDEO_UVC_H264_GOP_SIZE is outside the range V4L2_CID_MPEG_VIDEO_H264_I_PERIOD advertises");
+#else
+#define UVC_H264_DEF_GOP            UVC_H264_MIN_GOP
+#endif
+
+static const struct v4l2_query_ext_ctrl s_uvc_qctrl[] = {
+    {
+        .id = V4L2_CID_MPEG_VIDEO_BITRATE,
+        .type = V4L2_CTRL_TYPE_INTEGER,
+        .minimum = UVC_H264_MIN_BITRATE,
+        .maximum = UVC_H264_MAX_BITRATE,
+        .step = UVC_H264_BITRATE_STEP,
+        .default_value = UVC_H264_DEF_BITRATE,
+        .elems = 1,
+        .nr_of_dims = 0,
+        .name = "Video Bitrate",
+    },
+    {
+        .id = V4L2_CID_MPEG_VIDEO_BITRATE_PEAK,
+        .type = V4L2_CTRL_TYPE_INTEGER,
+        .minimum = UVC_H264_MIN_BITRATE,
+        .maximum = UVC_H264_MAX_BITRATE,
+        .step = UVC_H264_BITRATE_STEP,
+        .default_value = UVC_H264_DEF_BITRATE,
+        .elems = 1,
+        .nr_of_dims = 0,
+        .name = "Video Peak Bitrate",
+    },
+    {
+        .id = V4L2_CID_MPEG_VIDEO_BITRATE_MODE,
+        .type = V4L2_CTRL_TYPE_MENU,
+        .minimum = V4L2_MPEG_VIDEO_BITRATE_MODE_VBR,
+        .maximum = V4L2_MPEG_VIDEO_BITRATE_MODE_CQ,
+        .step = 1,
+        .default_value = V4L2_MPEG_VIDEO_BITRATE_MODE_VBR,
+        .elems = 1,
+        .nr_of_dims = 0,
+        .name = "Video Bitrate Mode",
+    },
+    {
+        .id = V4L2_CID_MPEG_VIDEO_FRAME_SKIP_MODE,
+        .type = V4L2_CTRL_TYPE_MENU,
+        .minimum = V4L2_MPEG_VIDEO_FRAME_SKIP_MODE_DISABLED,
+        .maximum = V4L2_MPEG_VIDEO_FRAME_SKIP_MODE_BUF_LIMIT,
+        .step = 1,
+        .default_value = V4L2_MPEG_VIDEO_FRAME_SKIP_MODE_BUF_LIMIT,
+        .elems = 1,
+        .nr_of_dims = 0,
+        .name = "Frame Skip Mode",
+    },
+    {
+        .id = V4L2_CID_MPEG_VIDEO_H264_I_PERIOD,
+        .type = V4L2_CTRL_TYPE_INTEGER,
+        .minimum = UVC_H264_MIN_GOP,
+        .maximum = UVC_H264_MAX_GOP,
+        .step = 1,
+        .default_value = UVC_H264_DEF_GOP,
+        .elems = 1,
+        .nr_of_dims = 0,
+        .name = "H264 I-Frame Period",
+    },
+    {
+        .id = V4L2_CID_MPEG_VIDEO_H264_MIN_QP,
+        .type = V4L2_CTRL_TYPE_INTEGER,
+        .minimum = UVC_H264_MIN_QP,
+        .maximum = UVC_H264_MAX_QP,
+        .step = 1,
+        .default_value = UVC_H264_MIN_QP,
+        .elems = 1,
+        .nr_of_dims = 0,
+        .name = "H264 Minimum QP Value",
+    },
+    {
+        .id = V4L2_CID_MPEG_VIDEO_H264_MAX_QP,
+        .type = V4L2_CTRL_TYPE_INTEGER,
+        .minimum = UVC_H264_MIN_QP,
+        .maximum = UVC_H264_MAX_QP,
+        .step = 1,
+        .default_value = UVC_H264_MAX_QP,
+        .elems = 1,
+        .nr_of_dims = 0,
+        .name = "H264 Maximum QP Value",
+    },
+    {
+        .id = V4L2_CID_MPEG_VIDEO_FORCE_KEY_FRAME,
+        .type = V4L2_CTRL_TYPE_BUTTON,
+        .minimum = 0,
+        .maximum = 0,
+        .step = 0,
+        .default_value = 0,
+        .elems = 1,
+        .nr_of_dims = 0,
+        .name = "Force Key Frame",
+    },
+    {
+        .id = V4L2_CID_EXPOSURE_AUTO_PRIORITY,
+        .type = V4L2_CTRL_TYPE_BOOLEAN,
+        .minimum = 0,
+        .maximum = 1,
+        .step = 1,
+        .default_value = 1,
+        .elems = 1,
+        .nr_of_dims = 0,
+        .name = "Auto Exposure, Priority",
+    },
+};
+
+/* The payload spec's wIFramePeriod is a duration; V4L2_CID_MPEG_VIDEO_H264_I_PERIOD is a frame
+ * count, the same as on the on-chip encoder device. The negotiated frame interval is what
+ * converts between them, which is also why the conversion happens at stream start rather than
+ * when the control is set. */
+static uint16_t uvc_gop_frames_to_ms(const struct uvc_video *device, uint32_t gop_frames)
+{
+    if (!gop_frames || !device->interval) {
+        return 0;
+    }
+
+    /* Rounded, not truncated. 30 frames at a 333333 (100 ns) interval is 999.999 ms, and
+     * truncation asks the camera for 999 - measured being refused outright by a camera that
+     * accepts 1000, which then rejects the whole probe and leaves the bitrate, the resolution
+     * and the GOP all unapplied. */
+    uint64_t ms = ((uint64_t)gop_frames * device->interval + 5000ULL) / 10000ULL;
+
+    if (ms == 0) {
+        ms = 1;
+    }
+    return (ms > UINT16_MAX) ? UINT16_MAX : (uint16_t)ms;
+}
+
+/* What to report for a bitrate control nothing has set yet. Never the internal zero sentinel:
+ * an application reading a control back has to get a value inside the range the same control
+ * advertises. */
+static uint32_t uvc_h264_bitrate_fallback(const struct uvc_video *device)
+{
+    const esp_video_uvc_h264_xu_t *xu = &device->h264.xu;
+
+    return (xu->bitrate_range_known && xu->bitrate_def) ? xu->bitrate_def : UVC_H264_DEF_BITRATE;
+}
+
+/* The range a bitrate control actually accepts: the camera's own once the extension unit has
+ * reported it, the generic one until then. */
+static void uvc_h264_bitrate_limits(const struct uvc_video *device, uint32_t *min, uint32_t *max)
+{
+    const esp_video_uvc_h264_xu_t *xu = &device->h264.xu;
+
+    if (xu->bitrate_range_known && xu->bitrate_min < xu->bitrate_max) {
+        *min = xu->bitrate_min;
+        *max = xu->bitrate_max;
+    } else {
+        *min = UVC_H264_MIN_BITRATE;
+        *max = UVC_H264_MAX_BITRATE;
+    }
+}
+
+/* The other direction, for reporting back what the camera committed to. A key-frame period
+ * shorter than one frame time rounds to a single frame rather than to none. */
+static uint32_t uvc_gop_ms_to_frames(const struct uvc_video *device, uint16_t gop_ms)
+{
+    if (!gop_ms || !device->interval) {
+        return 0;
+    }
+
+    uint32_t frames = (uint32_t)(((uint64_t)gop_ms * 10000ULL + device->interval / 2) / device->interval);
+
+    if (frames < UVC_H264_MIN_GOP) {
+        frames = UVC_H264_MIN_GOP;
+    }
+    return (frames > UVC_H264_MAX_GOP) ? UVC_H264_MAX_GOP : frames;
+}
+
+/* The bitrate the camera committed is what a rate controller has to work down from, so it is
+ * recorded whichever route the change took. */
+static esp_err_t uvc_h264_push_bitrate(struct uvc_video *device)
+{
+    struct uvc_h264_ctrls *h264 = &device->h264;
+    uint32_t committed = 0;
+
+    if (!h264->xu.unit_id) {
+        return ESP_ERR_NOT_SUPPORTED;
+    }
+    if (!h264->bitrate && !h264->peak_bitrate) {
+        return ESP_OK;
+    }
+    if (!h264->xu.can_set_bitrate_live) {
+        /* Only the average is deferred, and only because the probe/commit structure carries
+         * one. A peak never reaches here: the control is refused while this camera streams. */
+        ESP_LOGW(TAG, "camera has no UVCX_BITRATE_LAYERS - the bitrate will take effect at the "
+                 "next stream start");
+        return ESP_OK;
+    }
+
+    /* A zero average is not "no request": it means only the peak was asked for, and the
+     * transport keeps whatever average the camera is already encoding to. */
+    esp_err_t ret = esp_video_uvc_h264_xu_set_bitrate(device->stream_hdl, &h264->xu, h264->bitrate,
+                    h264->peak_bitrate, &committed);
+    if (ret == ESP_OK) {
+        h264->committed_bitrate = committed;
+    }
+    return ret;
+}
+
+static esp_err_t uvc_h264_push_rc_mode(struct uvc_video *device)
+{
+    struct uvc_h264_ctrls *h264 = &device->h264;
+
+    if (!h264->xu.unit_id) {
+        return ESP_ERR_NOT_SUPPORTED;
+    }
+    if (!h264->xu.can_set_rc_mode_live) {
+        ESP_LOGW(TAG, "camera has no UVCX_RATE_CONTROL_MODE - the rate-control mode will take "
+                 "effect at the next stream start");
+        return ESP_OK;
+    }
+    return esp_video_uvc_h264_xu_set_rc_mode(device->stream_hdl, &h264->xu, h264->rc_mode,
+            h264->fixed_frame_rate);
+}
+
+static esp_err_t uvc_h264_push_qp(struct uvc_video *device)
+{
+    struct uvc_h264_ctrls *h264 = &device->h264;
+
+    if (!h264->xu.unit_id) {
+        return ESP_ERR_NOT_SUPPORTED;
+    }
+    /* No deferral to fall back on: nothing in the probe/commit structure carries a QP limit,
+     * so esp_video_uvc_h264_xu_set_qp() refusing is the whole answer. */
+    return esp_video_uvc_h264_xu_set_qp(device->stream_hdl, &h264->xu, h264->min_qp, h264->max_qp);
+}
+
+/* Configure the camera's encoder for the stream about to start.
+ *
+ * Only ever called on an H.264 stream. Running the extension-unit handshake while the camera
+ * is streaming MJPEG would reconfigure an encoder nothing is reading, on a control whose
+ * resolution and frame interval have to match the format that was actually committed.
+ *
+ * Never fatal: a camera with no extension unit, or one that refuses the transaction, still
+ * streams - it just streams at whatever rate it chose for itself. */
+static void uvc_h264_configure_at_start(struct uvc_video *device)
+{
+    struct uvc_h264_ctrls *h264 = &device->h264;
+
+    h264->committed_bitrate = 0;
+    h264->committed_gop_ms = 0;
+
+    if (esp_video_uvc_h264_xu_probe(device->stream_hdl, &h264->xu) != ESP_OK) {
+        /* the controls that can only be reached through the extension unit are refused
+         * from here on rather than recorded for a stream start that can never apply them. */
+        h264->xu_probed = 0;
+        ESP_LOGD(TAG, "camera has no H.264 extension unit - its encoder is not configurable");
+        return;
+    }
+    h264->xu_probed = 1;
+
+    const esp_video_uvc_h264_config_t cfg = {
+        .bitrate_bps      = h264->bitrate,
+        .iframe_period_ms = uvc_gop_frames_to_ms(device, h264->gop_size),
+        .fixed_frame_rate = h264->fixed_frame_rate,
+        .rc_mode          = h264->rc_mode,
+    };
+    esp_video_uvc_h264_committed_t committed = {0};
+
+    if (esp_video_uvc_h264_xu_configure(device->stream_hdl, &h264->xu, &cfg, &committed) != ESP_OK) {
+        ESP_LOGW(TAG, "camera refused the H.264 configuration and kept its own");
+        return;
+    }
+    h264->committed_bitrate = committed.bitrate_bps;
+    h264->committed_gop_ms = committed.iframe_period_ms;
+}
+
+/* The payload specification's runtime controls, asserted once the stream is really running.
+ * Never fatal, for the same reason the handshake is not: the stream is already running. */
+static void uvc_h264_start_runtime_ctrls(struct uvc_video *device)
+{
+    struct uvc_h264_ctrls *h264 = &device->h264;
+
+    if (!h264->xu.unit_id) {
+        return;
+    }
+    if (h264->peak_bitrate) {
+        (void)uvc_h264_push_bitrate(device);
+    }
+    if (h264->qp_set) {
+        (void)uvc_h264_push_qp(device);
+    }
+}
+
+/* Which of the controls are only applicable for H.264 stream */
+static bool uvc_is_h264_encoder_ctrl(uint32_t id)
+{
+    switch (id) {
+    case V4L2_CID_MPEG_VIDEO_BITRATE:
+    case V4L2_CID_MPEG_VIDEO_BITRATE_PEAK:
+    case V4L2_CID_MPEG_VIDEO_BITRATE_MODE:
+    case V4L2_CID_MPEG_VIDEO_FRAME_SKIP_MODE:
+    case V4L2_CID_MPEG_VIDEO_H264_I_PERIOD:
+    case V4L2_CID_MPEG_VIDEO_H264_MIN_QP:
+    case V4L2_CID_MPEG_VIDEO_H264_MAX_QP:
+    case V4L2_CID_MPEG_VIDEO_FORCE_KEY_FRAME:
+        return true;
+    default:
+        return false;
+    }
+}
+
+/* controls which require the H.264 extension unit */
+static bool uvc_ctrl_needs_h264_xu(uint32_t id)
+{
+    return uvc_is_h264_encoder_ctrl(id) && id != V4L2_CID_MPEG_VIDEO_FORCE_KEY_FRAME;
+}
+
+/* Whether this camera can ever carry out the control. */
+static bool uvc_ctrl_supported_by_camera(const struct uvc_video *device, uint32_t id)
+{
+    const struct uvc_h264_ctrls *h264 = &device->h264;
+
+    /* decline a h264 control before the xu is probed */
+    if (h264->xu_probed == 0 && uvc_ctrl_needs_h264_xu(id)) {
+        return false;
+    }
+
+    switch (id) {
+    case V4L2_CID_MPEG_VIDEO_BITRATE_PEAK:
+        return h264->xu_probed == 1 ? h264->xu.can_set_bitrate_live : true;
+    case V4L2_CID_MPEG_VIDEO_H264_MIN_QP:
+    case V4L2_CID_MPEG_VIDEO_H264_MAX_QP:
+        return h264->xu_probed == 1 ? h264->xu.can_set_qp_live : true;
+    case V4L2_CID_EXPOSURE_AUTO_PRIORITY:
+        return device->ae_priority_supported != 0;
+    default:
+        return true;
+    }
+}
+
+/* Check if the control can be applied to current uvc stream */
+static esp_err_t uvc_ctrl_usable(const struct uvc_video *device, uint32_t id)
+{
+    /* Asked of every control, and asked first: what the camera cannot do it cannot do whatever
+     * is streaming, and VIDIOC_QUERY_EXT_CTRL already reports those as disabled. */
+    if (!uvc_ctrl_supported_by_camera(device, id)) {
+        ESP_LOGE(TAG, "id=%" PRIx32 " is not implemented by this camera", id);
+        return ESP_ERR_NOT_SUPPORTED;
+    }
+    /* Only then the format, which is a "not while this is running" rather than a "never". */
+    if (uvc_is_h264_encoder_ctrl(id) && device->streaming &&
+            device->uvc_stream_format != UVC_VS_FORMAT_H264) {
+        ESP_LOGE(TAG, "id=%" PRIx32 " is an H.264 encoder control and the running stream is not H.264", id);
+        return ESP_ERR_INVALID_STATE;
+    }
+    return ESP_OK;
+}
+
+static esp_err_t uvc_video_set_ext_ctrl(struct esp_video *video, const struct v4l2_ext_controls *ctrls)
+{
+    esp_err_t ret = ESP_OK;
+    struct uvc_video *device = VIDEO_PRIV_DATA(struct uvc_video *, video);
+    struct uvc_h264_ctrls *h264 = &device->h264;
+
+    ESP_RETURN_ON_FALSE(device->ctrl_mutex, ESP_ERR_INVALID_STATE, TAG, "UVC device is not installed");
+
+    /* Held across the whole loop, and taken by uvc_video_start()/uvc_video_stop() too: every
+     * branch below touches device->stream_hdl, and a concurrent STREAMOFF would otherwise be
+     * free to close it between the streaming check and the control transfer. */
+    xSemaphoreTake(device->ctrl_mutex, portMAX_DELAY);
+
+    const bool live = device->streaming;
+
+    for (int i = 0; i < ctrls->count; i++) {
+        struct v4l2_ext_control *ctrl = &ctrls->controls[i];
+
+        ret = uvc_ctrl_usable(device, ctrl->id);
+        if (ret != ESP_OK) {
+            break;
+        }
+
+        switch (ctrl->id) {
+        case V4L2_CID_MPEG_VIDEO_BITRATE: {
+            uint32_t min_bps, max_bps;
+
+            uvc_h264_bitrate_limits(device, &min_bps, &max_bps);
+            if (ctrl->value < (int32_t)min_bps || ctrl->value > (int32_t)max_bps) {
+                ESP_LOGE(TAG, "bitrate %" PRId32 " is outside the %" PRIu32 "..%" PRIu32
+                         " bps this camera accepts", ctrl->value, min_bps, max_bps);
+                ret = ESP_ERR_INVALID_ARG;
+                break;
+            }
+            h264->bitrate = ctrl->value;
+            if (live) {
+                ret = uvc_h264_push_bitrate(device);
+            }
+            break;
+        }
+        case V4L2_CID_MPEG_VIDEO_BITRATE_PEAK: {
+            uint32_t min_bps, max_bps;
+
+            uvc_h264_bitrate_limits(device, &min_bps, &max_bps);
+            if (ctrl->value < (int32_t)min_bps || ctrl->value > (int32_t)max_bps) {
+                ESP_LOGE(TAG, "peak bitrate %" PRId32 " is outside the %" PRIu32 "..%" PRIu32
+                         " bps this camera accepts", ctrl->value, min_bps, max_bps);
+                ret = ESP_ERR_INVALID_ARG;
+                break;
+            }
+            h264->peak_bitrate = ctrl->value;
+            if (live) {
+                ret = uvc_h264_push_bitrate(device);
+            }
+            break;
+        }
+        case V4L2_CID_MPEG_VIDEO_BITRATE_MODE:
+            switch (ctrl->value) {
+            case V4L2_MPEG_VIDEO_BITRATE_MODE_VBR:
+                h264->rc_mode = ESP_VIDEO_UVC_H264_RC_VBR;
+                break;
+            case V4L2_MPEG_VIDEO_BITRATE_MODE_CBR:
+                h264->rc_mode = ESP_VIDEO_UVC_H264_RC_CBR;
+                break;
+            case V4L2_MPEG_VIDEO_BITRATE_MODE_CQ:
+                h264->rc_mode = ESP_VIDEO_UVC_H264_RC_CONST_QP;
+                break;
+            default:
+                ESP_LOGE(TAG, "bitrate mode %" PRId32 " is not supported", ctrl->value);
+                ret = ESP_ERR_INVALID_ARG;
+                break;
+            }
+            if (ret == ESP_OK && live) {
+                ret = uvc_h264_push_rc_mode(device);
+            }
+            break;
+        case V4L2_CID_MPEG_VIDEO_FRAME_SKIP_MODE:
+            if (ctrl->value < V4L2_MPEG_VIDEO_FRAME_SKIP_MODE_DISABLED ||
+                    ctrl->value > V4L2_MPEG_VIDEO_FRAME_SKIP_MODE_BUF_LIMIT) {
+                ESP_LOGE(TAG, "frame skip mode %" PRId32 " is not supported", ctrl->value);
+                ret = ESP_ERR_INVALID_ARG;
+                break;
+            }
+            /* Forbidding frame skipping is what makes quality, rather than frame rate, absorb a
+             * bitrate the picture does not fit into. The payload spec has one flag for it, so
+             * the two "limit" modes are the same answer: skipping is allowed. */
+            h264->fixed_frame_rate = (ctrl->value == V4L2_MPEG_VIDEO_FRAME_SKIP_MODE_DISABLED);
+            if (live) {
+                ret = uvc_h264_push_rc_mode(device);
+            }
+            break;
+        case V4L2_CID_MPEG_VIDEO_H264_I_PERIOD:
+            if (ctrl->value < UVC_H264_MIN_GOP || ctrl->value > UVC_H264_MAX_GOP) {
+                ESP_LOGE(TAG, "GOP value is out of range");
+                ret = ESP_ERR_INVALID_ARG;
+                break;
+            }
+            h264->gop_size = ctrl->value;
+            if (live) {
+                /* wIFramePeriod lives only in the probe/commit structure, which is the
+                 * pre-stream negotiation. Ask for a key frame now if one is wanted sooner. */
+                ESP_LOGW(TAG, "the key-frame period takes effect at the next stream start");
+            }
+            break;
+        case V4L2_CID_MPEG_VIDEO_H264_MIN_QP:
+            if (ctrl->value < UVC_H264_MIN_QP || ctrl->value > UVC_H264_MAX_QP) {
+                ESP_LOGE(TAG, "min QP value is out of range");
+                ret = ESP_ERR_INVALID_ARG;
+                break;
+            }
+            if (h264->qp_set && ctrl->value > h264->max_qp) {
+                ESP_LOGE(TAG, "min QP %" PRId32 " exceeds max QP %u", ctrl->value, h264->max_qp);
+                ret = ESP_ERR_INVALID_ARG;
+                break;
+            }
+            h264->min_qp = (uint8_t)ctrl->value;
+            if (!h264->qp_set) {
+                h264->max_qp = UVC_H264_MAX_QP;
+                h264->qp_set = true;
+            }
+            if (live) {
+                ret = uvc_h264_push_qp(device);
+            }
+            break;
+        case V4L2_CID_MPEG_VIDEO_H264_MAX_QP:
+            if (ctrl->value < UVC_H264_MIN_QP || ctrl->value > UVC_H264_MAX_QP) {
+                ESP_LOGE(TAG, "max QP value is out of range");
+                ret = ESP_ERR_INVALID_ARG;
+                break;
+            }
+            if (h264->qp_set && ctrl->value < h264->min_qp) {
+                ESP_LOGE(TAG, "max QP %" PRId32 " is below min QP %u", ctrl->value, h264->min_qp);
+                ret = ESP_ERR_INVALID_ARG;
+                break;
+            }
+            h264->max_qp = (uint8_t)ctrl->value;
+            if (!h264->qp_set) {
+                h264->min_qp = UVC_H264_MIN_QP;
+                h264->qp_set = true;
+            }
+            if (live) {
+                ret = uvc_h264_push_qp(device);
+            }
+            break;
+        case V4L2_CID_MPEG_VIDEO_FORCE_KEY_FRAME:
+            if (!live) {
+                ESP_LOGE(TAG, "no stream is running");
+                ret = ESP_ERR_INVALID_STATE;
+                break;
+            }
+            ret = uvc_host_stream_request_key_frame(device->stream_hdl);
+            if (ret == ESP_ERR_NOT_SUPPORTED && h264->xu.can_set_picture_type) {
+                /* The camera does not implement the VideoStreaming control but does implement
+                 * the extension unit's own, which is the same request by another route. */
+                ret = esp_video_uvc_h264_xu_request_idr(device->stream_hdl, &h264->xu);
+            }
+            break;
+        case V4L2_CID_EXPOSURE_AUTO_PRIORITY:
+            if (ctrl->value < 0 || ctrl->value > 1) {
+                ESP_LOGE(TAG, "AE priority must be 0 or 1");
+                ret = ESP_ERR_INVALID_ARG;
+                break;
+            }
+            /* Recorded as well as applied: the camera resets it when the stream is closed, so
+             * uvc_video_start() has to re-assert it on every start. */
+            device->ae_priority = (int8_t)ctrl->value;
+            if (live) {
+                ret = esp_video_uvc_camera_set_ae_priority(device->stream_hdl, (uint8_t)ctrl->value, NULL);
+            }
+            break;
+        default:
+            ESP_LOGE(TAG, "id=%" PRIx32 " is not supported", ctrl->id);
+            ret = ESP_ERR_NOT_SUPPORTED;
+            break;
+        }
+
+        if (ret != ESP_OK) {
+            break;
+        }
+    }
+
+    xSemaphoreGive(device->ctrl_mutex);
+    return ret;
+}
+
+static esp_err_t uvc_video_get_ext_ctrl(struct esp_video *video, struct v4l2_ext_controls *ctrls)
+{
+    esp_err_t ret = ESP_OK;
+    struct uvc_video *device = VIDEO_PRIV_DATA(struct uvc_video *, video);
+    struct uvc_h264_ctrls *h264 = &device->h264;
+
+    ESP_RETURN_ON_FALSE(device->ctrl_mutex, ESP_ERR_INVALID_STATE, TAG, "UVC device is not installed");
+
+    xSemaphoreTake(device->ctrl_mutex, portMAX_DELAY);
+
+    for (int i = 0; i < ctrls->count; i++) {
+        struct v4l2_ext_control *ctrl = &ctrls->controls[i];
+
+        ret = uvc_ctrl_usable(device, ctrl->id);
+        if (ret != ESP_OK) {
+            break;
+        }
+
+        switch (ctrl->id) {
+        case V4L2_CID_MPEG_VIDEO_BITRATE:
+            /* What the camera committed, not what was asked for. The camera clamps freely, and
+             * a rate controller that reads back its own request will keep stepping away from a
+             * ceiling it never reached. */
+            if (h264->committed_bitrate) {
+                ctrl->value = h264->committed_bitrate;
+            } else if (h264->bitrate) {
+                ctrl->value = h264->bitrate;
+            } else {
+                ctrl->value = uvc_h264_bitrate_fallback(device);
+            }
+            break;
+        case V4L2_CID_MPEG_VIDEO_BITRATE_PEAK:
+            /* No peak of its own means the peak is the average, and the average may itself be
+             * nothing anyone has asked for yet. */
+            if (h264->peak_bitrate) {
+                ctrl->value = h264->peak_bitrate;
+            } else if (h264->committed_bitrate) {
+                ctrl->value = h264->committed_bitrate;
+            } else if (h264->bitrate) {
+                ctrl->value = h264->bitrate;
+            } else {
+                ctrl->value = uvc_h264_bitrate_fallback(device);
+            }
+            break;
+        case V4L2_CID_MPEG_VIDEO_BITRATE_MODE:
+            switch (h264->rc_mode) {
+            case ESP_VIDEO_UVC_H264_RC_CBR:
+                ctrl->value = V4L2_MPEG_VIDEO_BITRATE_MODE_CBR;
+                break;
+            case ESP_VIDEO_UVC_H264_RC_CONST_QP:
+                ctrl->value = V4L2_MPEG_VIDEO_BITRATE_MODE_CQ;
+                break;
+            default:
+                ctrl->value = V4L2_MPEG_VIDEO_BITRATE_MODE_VBR;
+                break;
+            }
+            break;
+        case V4L2_CID_MPEG_VIDEO_FRAME_SKIP_MODE:
+            ctrl->value = h264->fixed_frame_rate ? V4L2_MPEG_VIDEO_FRAME_SKIP_MODE_DISABLED
+                          : V4L2_MPEG_VIDEO_FRAME_SKIP_MODE_BUF_LIMIT;
+            break;
+        case V4L2_CID_MPEG_VIDEO_H264_I_PERIOD: {
+            const uint32_t committed_gop = uvc_gop_ms_to_frames(device, h264->committed_gop_ms);
+
+            if (h264->gop_size) {
+                ctrl->value = h264->gop_size;
+            } else if (committed_gop) {
+                ctrl->value = committed_gop;
+            } else {
+                ctrl->value = UVC_H264_DEF_GOP;
+            }
+            break;
+        }
+        case V4L2_CID_MPEG_VIDEO_H264_MIN_QP:
+            ctrl->value = h264->qp_set ? h264->min_qp : UVC_H264_MIN_QP;
+            break;
+        case V4L2_CID_MPEG_VIDEO_H264_MAX_QP:
+            ctrl->value = h264->qp_set ? h264->max_qp : UVC_H264_MAX_QP;
+            break;
+        case V4L2_CID_EXPOSURE_AUTO_PRIORITY: {
+            uint8_t priority = 0;
+
+            /* Ask the camera when one is streaming: this control is the camera's to refuse,
+             * and it is the only one here whose committed value can differ from the request
+             * without anything having gone wrong. */
+            if (device->streaming &&
+                    esp_video_uvc_camera_get_ae_priority(device->stream_hdl, &priority) == ESP_OK) {
+                ctrl->value = priority;
+            } else if (device->ae_priority >= 0) {
+                ctrl->value = device->ae_priority;
+            } else {
+                ctrl->value = 1;    /* The UVC default: exposure wins, frame rate falls */
+            }
+            break;
+        }
+        default:
+            ESP_LOGE(TAG, "id=%" PRIx32 " is not supported", ctrl->id);
+            ret = ESP_ERR_NOT_SUPPORTED;
+            break;
+        }
+
+        if (ret != ESP_OK) {
+            break;
+        }
+    }
+
+    xSemaphoreGive(device->ctrl_mutex);
+    return ret;
+}
+
+static esp_err_t uvc_video_query_ext_ctrl(struct esp_video *video, struct v4l2_query_ext_ctrl *qctrl)
+{
+    struct uvc_video *device = VIDEO_PRIV_DATA(struct uvc_video *, video);
+
+    ESP_RETURN_ON_FALSE(device->ctrl_mutex, ESP_ERR_INVALID_STATE, TAG, "UVC device is not installed");
+
+    ESP_RETURN_ON_ERROR(esp_video_device_common_query_ext_ctrl(s_uvc_qctrl, ARRAY_SIZE(s_uvc_qctrl), qctrl),
+                        TAG, "Failed to query control");
+
+    /* The static table is what a generic camera can be asked for. Once a stream has been opened
+     * the extension unit has told us what this camera actually accepts, and that is the range
+     * the application needs, not ours. */
+    xSemaphoreTake(device->ctrl_mutex, portMAX_DELAY);
+
+    const esp_video_uvc_h264_xu_t *xu = &device->h264.xu;
+
+    if (!uvc_ctrl_supported_by_camera(device, qctrl->id)) {
+        qctrl->flags |= V4L2_CTRL_FLAG_DISABLED;
+    }
+
+    if (qctrl->id == V4L2_CID_MPEG_VIDEO_BITRATE || qctrl->id == V4L2_CID_MPEG_VIDEO_BITRATE_PEAK) {
+        uint32_t min_bps, max_bps;
+
+        /* The same limits S_EXT_CTRLS validates against, from the same place. */
+        uvc_h264_bitrate_limits(device, &min_bps, &max_bps);
+        qctrl->minimum = min_bps;
+        qctrl->maximum = max_bps;
+        if (xu->bitrate_range_known && xu->bitrate_def) {
+            qctrl->default_value = xu->bitrate_def;
+        }
+        if (qctrl->default_value < (int64_t)min_bps || qctrl->default_value > (int64_t)max_bps) {
+            qctrl->default_value = min_bps;
+        }
+    }
+
+    /* The key-frame period has no GET_DEF of its own, so what the camera committed to when it
+     * was asked for nothing is the closest thing to its default - and it is what G_EXT_CTRLS
+     * reports, which the two should not disagree about. */
+    if (qctrl->id == V4L2_CID_MPEG_VIDEO_H264_I_PERIOD) {
+        const uint32_t committed_gop = uvc_gop_ms_to_frames(device, device->h264.committed_gop_ms);
+
+        if (committed_gop) {
+            qctrl->default_value = committed_gop;
+        }
+    }
+
+    xSemaphoreGive(device->ctrl_mutex);
+    return ESP_OK;
+}
+
+/* Both menu controls above map onto enumerations of the H.264 payload specification, and
+ * VIDIOC_QUERYMENU is the only way a generic V4L2 client learns which items exist. The names
+ * are the ones Linux uses for the same controls, so a client that matches on them keeps
+ * working across the two. */
+static esp_err_t uvc_video_query_menu(struct esp_video *video, struct v4l2_querymenu *qmenu)
+{
+    const char *name = NULL;
+
+    switch (qmenu->id) {
+    case V4L2_CID_MPEG_VIDEO_BITRATE_MODE:
+        switch (qmenu->index) {
+        case V4L2_MPEG_VIDEO_BITRATE_MODE_VBR:
+            name = "Variable Bitrate";
+            break;
+        case V4L2_MPEG_VIDEO_BITRATE_MODE_CBR:
+            name = "Constant Bitrate";
+            break;
+        case V4L2_MPEG_VIDEO_BITRATE_MODE_CQ:
+            name = "Constant Quality";
+            break;
+        }
+        break;
+    case V4L2_CID_MPEG_VIDEO_FRAME_SKIP_MODE:
+        switch (qmenu->index) {
+        case V4L2_MPEG_VIDEO_FRAME_SKIP_MODE_DISABLED:
+            name = "Disabled";
+            break;
+        case V4L2_MPEG_VIDEO_FRAME_SKIP_MODE_LEVEL_LIMIT:
+            name = "Level Limit";
+            break;
+        case V4L2_MPEG_VIDEO_FRAME_SKIP_MODE_BUF_LIMIT:
+            name = "VBV/CPB Limit";
+            break;
+        }
+        break;
+    default:
+        ESP_LOGD(TAG, "id=%" PRIx32 " is not a menu control", qmenu->id);
+        return ESP_ERR_NOT_SUPPORTED;
+    }
+
+    if (!name) {
+        ESP_LOGD(TAG, "menu index %" PRIu32 " is out of range for id=%" PRIx32, qmenu->index, qmenu->id);
+        return ESP_ERR_INVALID_ARG;
+    }
+
+    snprintf((char *)qmenu->name, sizeof(qmenu->name), "%s", name);
+
+    return ESP_OK;
+}
+
 static esp_err_t uvc_video_start(struct esp_video *video, uint32_t type)
 {
     esp_err_t ret = ESP_OK;
@@ -366,6 +1179,16 @@ static esp_err_t uvc_video_start(struct esp_video *video, uint32_t type)
         buffer_array[i] = buffer->element[i].buffer;
     }
 
+    /* The format the stream is opened with is what fixes the isochronous geometry:
+     * uvc_host_stream_open() probes the camera, learns dwMaxPayloadTransferSize and picks the
+     * alternate setting that matches it, then allocates the ISOC URBs from that endpoint. */
+    const uvc_host_stream_format_t vs_format_selected = {
+        .h_res = CAPTURE_VIDEO_GET_FORMAT_WIDTH(video),
+        .v_res = CAPTURE_VIDEO_GET_FORMAT_HEIGHT(video),
+        .fps = (float)UVC_INTERVAL_DENOMINATOR / (float)device->interval,
+        .format = device->uvc_stream_format,
+    };
+
     uvc_host_stream_config_t stream_config = {
         .event_cb = uvc_event_callback,
         .frame_cb = uvc_frame_callback,
@@ -376,12 +1199,7 @@ static esp_err_t uvc_video_start(struct esp_video *video, uint32_t type)
             .pid = UVC_HOST_ANY_PID,
             .uvc_stream_index = device->stream_index,
         },
-        .vs_format = {
-            .h_res = device->frame_info[0].h_res,
-            .v_res = device->frame_info[0].v_res,
-            .fps = (float)UVC_INTERVAL_DENOMINATOR / (float)device->frame_info[0].default_interval,
-            .format = device->frame_info[0].format,
-        },
+        .vs_format = vs_format_selected,
         .advanced = {
             .number_of_frame_buffers = info->count,
             .frame_size = info->size,
@@ -392,24 +1210,62 @@ static esp_err_t uvc_video_start(struct esp_video *video, uint32_t type)
         },
     };
 
+    xSemaphoreTake(device->ctrl_mutex, portMAX_DELAY);
+
     device->stream_hdl = NULL;
+    device->ae_priority_supported = -1;
+    memset(&device->h264.xu, 0, sizeof(device->h264.xu));
+    device->h264.xu_probed = -1;
+    device->h264.committed_bitrate = 0;
+    device->h264.committed_gop_ms = 0;
+
     ESP_GOTO_ON_ERROR(uvc_host_stream_open(&stream_config, 0, &device->stream_hdl), fail0, TAG, "Failed to open UVC stream");
 
-    uvc_host_stream_format_t uvc_format = {
-        .h_res = CAPTURE_VIDEO_GET_FORMAT_WIDTH(video),
-        .v_res = CAPTURE_VIDEO_GET_FORMAT_HEIGHT(video),
-        .fps = (float)UVC_INTERVAL_DENOMINATOR / (float)device->interval,
-        .format = device->uvc_stream_format,
-    };
+    uvc_host_stream_format_t uvc_format = vs_format_selected;
     ESP_GOTO_ON_ERROR(uvc_host_stream_format_select(device->stream_hdl, &uvc_format), fail1, TAG, "Failed to set UVC format");
+
+    /* A descriptor fact, like the extension unit's capabilities: read once here so a control
+     * this camera cannot carry out is refused rather than attempted. Left unknown when the
+     * descriptors cannot be read, which is not the same as the control being absent. */
+    bool ae_priority_supported = false;
+
+    if (esp_video_uvc_camera_has_ae_priority(device->stream_hdl, &ae_priority_supported) == ESP_OK) {
+        device->ae_priority_supported = ae_priority_supported ? 1 : 0;
+    }
+
+    /* Only on an H.264 stream. The extension unit configures the camera's H.264 encoder, and
+     * its configuration structure carries the resolution and frame interval the VideoStreaming
+     * interface committed to - running the handshake while the camera is sending MJPEG would
+     * reconfigure an encoder nothing is reading, against a format it was not asked for. */
+    if (device->uvc_stream_format == UVC_VS_FORMAT_H264) {
+        uvc_h264_configure_at_start(device);
+    }
+
     ESP_GOTO_ON_ERROR(uvc_host_stream_start(device->stream_hdl), fail1, TAG, "Failed to start UVC stream");
 
+    device->streaming = true;
+
+    if (device->uvc_stream_format == UVC_VS_FORMAT_H264) {
+        uvc_h264_start_runtime_ctrls(device);
+    }
+
+    /* After the start, because this is a live control rather than part of the setup handshake,
+     * and on every start because the camera forgets it when the stream closes. Failure is not
+     * fatal: a camera without AE Priority still streams, it just cannot be stopped from trading
+     * frame rate for exposure. */
+    if (device->ae_priority >= 0) {
+        (void)esp_video_uvc_camera_set_ae_priority(device->stream_hdl,
+                (uint8_t)device->ae_priority, NULL);
+    }
+
+    xSemaphoreGive(device->ctrl_mutex);
     return ESP_OK;
 
 fail1:
     uvc_host_stream_close(device->stream_hdl);
     device->stream_hdl = NULL;
 fail0:
+    xSemaphoreGive(device->ctrl_mutex);
     return ret;
 }
 
@@ -422,7 +1278,18 @@ static esp_err_t uvc_video_stop(struct esp_video *video, uint32_t type)
 
     ESP_RETURN_ON_FALSE(device->dev_addr, ESP_ERR_NOT_FOUND, TAG, "UVC device=%p is not connected", device);
 
-    ESP_RETURN_ON_ERROR(uvc_host_stream_stop(device->stream_hdl), TAG, "Failed to stop UVC stream");
+    /* Held across the close, and taken by the control paths too: a control transfer that
+     * already passed the streaming check would otherwise still be in flight on a handle this
+     * is about to free. */
+    xSemaphoreTake(device->ctrl_mutex, portMAX_DELAY);
+
+    esp_err_t ret = uvc_host_stream_stop(device->stream_hdl);
+
+    device->streaming = false;
+
+    if (ret != ESP_OK) {
+        ESP_LOGE(TAG, "Failed to stop UVC stream (%s) - closing it anyway", esp_err_to_name(ret));
+    }
 
     /**
      * Free all cached frames to avoid UVC stream stop failed
@@ -431,8 +1298,11 @@ static esp_err_t uvc_video_stop(struct esp_video *video, uint32_t type)
         uvc_host_frame_return(device->stream_hdl, (uvc_host_frame_t *)element->priv_data);
     }
 
-    ESP_RETURN_ON_ERROR(uvc_host_stream_close(device->stream_hdl), TAG, "Failed to close UVC stream");
-
+    ret = uvc_host_stream_close(device->stream_hdl);
+    if (ret != ESP_OK) {
+        ESP_LOGE(TAG, "Failed to close UVC stream");
+        goto out;
+    }
     /**
      * Clear the private data of the buffer elements, so will not be passed to the UVC stream in the function uvc_video_notify.
      */
@@ -440,7 +1310,26 @@ static esp_err_t uvc_video_stop(struct esp_video *video, uint32_t type)
         buffer->element[i].priv_data = NULL;
     }
 
-    return ESP_OK;
+    /* After the elements are cleared, because uvc_video_notify() reaches the handle through
+     * them and does not hold this mutex. */
+    device->stream_hdl = NULL;
+
+    /* The extension unit and the Camera Terminal were read from the stream that has just gone
+     * away, and what the camera committed belonged to it. All of it is re-established at the
+     * next start. */
+    device->ae_priority_supported = -1;
+    memset(&device->h264.xu, 0, sizeof(device->h264.xu));
+    device->h264.xu_probed = -1;
+    device->h264.committed_bitrate = 0;
+    device->h264.committed_gop_ms = 0;
+
+    /* A stop that failed has still left the camera stopped, so the framework is told the
+     * stream is down and every layer agrees. */
+    ret = ESP_OK;
+
+out:
+    xSemaphoreGive(device->ctrl_mutex);
+    return ret;
 }
 
 static esp_err_t uvc_video_deinit(struct esp_video *video)
@@ -675,6 +1564,10 @@ static const struct esp_video_ops s_uvc_video_ops = {
     .get_parm      = uvc_video_get_parm,
     .enum_framesizes = uvc_video_enum_framesizes,
     .enum_frameintervals = uvc_video_enum_frameintervals,
+    .set_ext_ctrl   = uvc_video_set_ext_ctrl,
+    .get_ext_ctrl   = uvc_video_get_ext_ctrl,
+    .query_ext_ctrl = uvc_video_query_ext_ctrl,
+    .query_menu     = uvc_video_query_menu,
 };
 
 esp_err_t esp_video_install_usb_uvc_driver(const esp_video_usb_uvc_device_config_t *cfg)
@@ -700,6 +1593,18 @@ esp_err_t esp_video_install_usb_uvc_driver(const esp_video_usb_uvc_device_config
         core->uvc_video[i].ready_sem = xSemaphoreCreateBinary();
         ESP_GOTO_ON_FALSE(core->uvc_video[i].ready_sem, ESP_ERR_NO_MEM, fail0, TAG, "Failed to create UVC device ready semaphore");
 
+        core->uvc_video[i].ctrl_mutex = xSemaphoreCreateMutex();
+        ESP_GOTO_ON_FALSE(core->uvc_video[i].ctrl_mutex, ESP_ERR_NO_MEM, fail0, TAG, "Failed to create UVC device control mutex");
+
+        /* Kconfig supplies the starting value of two V4L2 controls, nothing more. Both default
+         * to 0, which is "leave the camera's own encoder settings alone" - a camera framework
+         * has no business reconfiguring a camera nobody asked it to reconfigure. */
+        core->uvc_video[i].h264.bitrate = CONFIG_ESP_VIDEO_UVC_H264_BITRATE_BPS;
+        core->uvc_video[i].h264.gop_size = CONFIG_ESP_VIDEO_UVC_H264_GOP_SIZE;
+        core->uvc_video[i].ae_priority = -1;
+        core->uvc_video[i].ae_priority_supported = -1;
+        core->uvc_video[i].h264.xu_probed = -1;
+
         video[i] = esp_video_create(name, ESP_VIDEO_USB_UVC_DEVICE_ID(i), &s_uvc_video_ops, &core->uvc_video[i], caps, device_caps);
         ESP_GOTO_ON_FALSE(video[i], ESP_ERR_NO_MEM, fail0, TAG, "Failed to create esp_video");
     }
@@ -721,13 +1626,19 @@ esp_err_t esp_video_install_usb_uvc_driver(const esp_video_usb_uvc_device_config
     return ESP_OK;
 
 fail0:
+    /* Not gated on video[i]: the device whose creation failed still has the semaphores that
+     * were created for it a few lines earlier. */
     for (int i = 0; i < cfg->uvc_dev_num; i++) {
         if (video[i]) {
-            if (core->uvc_video[i].ready_sem) {
-                vSemaphoreDelete(core->uvc_video[i].ready_sem);
-            }
-
             esp_video_destroy(video[i]);
+        }
+
+        if (core->uvc_video[i].ready_sem) {
+            vSemaphoreDelete(core->uvc_video[i].ready_sem);
+        }
+
+        if (core->uvc_video[i].ctrl_mutex) {
+            vSemaphoreDelete(core->uvc_video[i].ctrl_mutex);
         }
     }
     free(core);
@@ -755,6 +1666,10 @@ esp_err_t esp_video_uninstall_usb_uvc_driver(void)
 
             if (core->uvc_video[i].ready_sem) {
                 vSemaphoreDelete(core->uvc_video[i].ready_sem);
+            }
+
+            if (core->uvc_video[i].ctrl_mutex) {
+                vSemaphoreDelete(core->uvc_video[i].ctrl_mutex);
             }
         }
 
