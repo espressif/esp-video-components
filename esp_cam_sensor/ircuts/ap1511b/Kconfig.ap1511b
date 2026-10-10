@@ -1,0 +1,17 @@
+menuconfig CAM_IRCUT_AP1511B
+    bool "AP1511B"
+    default n
+    select CAMERA_IRCUT_DEVICE_USED
+    help
+        Enable support for the AP1511B IRCUT driver IC.
+
+if CAM_IRCUT_AP1511B        
+    config CAM_IRCUT_AP1511B_SWITCH_DELAY_MS
+        int "Waiting time for stabilization after switching (milliseconds)"
+        range 100 5000
+        default 1000
+        help
+            Set the delay time after switching IRCUT.
+            This time is typically related to the size of the capacitor connected to the CE pin and can be affected by temperature and humidity.
+            If unsure about the delay time, increase it to ensure sufficient delay.
+endif

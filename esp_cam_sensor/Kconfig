@@ -384,4 +384,41 @@ menu "Espressif Camera Sensors Configurations"
                 With this mode, if detection functions or data are unused in your application, the linker will exclude
                 them from the final firmware, resulting in a smaller binary size.
     endchoice
+
+    menu "Camera IRCUT Control Configuration"
+        rsource "ircuts/ap1511b/Kconfig.ap1511b"
+
+        config CAMERA_IRCUT_DEVICE_USED
+            bool
+            default n
+            help
+                Internal configuration flag indicating whether any camera IRCUT driver is enabled.
+
+                This flag is automatically set when any IRCUT driver is enabled in the configuration. It is used
+                internally by the build system to include necessary IRCUT libraries and initialization code.
+    endmenu
+
+    menu "Camera Ambient Light Sensor Control Configuration"
+        depends on SOC_ISP_SUPPORTED
+        
+        rsource "als/pt1411/Kconfig.pt1411"
+
+        config CAMERA_ALS_DEVICE_USED
+            bool
+            default n
+            help
+                Internal configuration flag indicating whether any camera ALS(Ambient light sensor) driver is enabled.
+    endmenu
+
+    menu "Camera LED Control Configuration"
+        depends on SOC_ISP_SUPPORTED
+        
+        rsource "leds/ir2835/Kconfig.ir2835"
+
+        config CAMERA_LED_DEVICE_USED
+            bool
+            default n
+            help
+                Internal configuration flag indicating whether any camera LED driver is enabled.
+    endmenu
 endmenu

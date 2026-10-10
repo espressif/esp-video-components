@@ -98,6 +98,21 @@ typedef enum {
 #define ESP_CAM_SENSOR_ERR_FAILED_GET_REG           (ESP_CAM_SENSOR_ERR_BASE + 5)
 #define ESP_CAM_SENSOR_ERR_FAILED_RESET             (ESP_CAM_SENSOR_ERR_BASE + 6)
 
+/**
+ * @brief Camera sub-device error offsets (relative to ESP_CAM_SENSOR_ERR_BASE)
+ *
+ * Ranges must not overlap:
+ * - Sensor: 0x0000 ~
+ * - Motor:  0x1000 ~
+ * - IRCUT:  0x1020 ~
+ * - ALS:    0x1040 ~
+ * - LED:    0x1060 ~
+ */
+#define ESP_CAM_MOTOR_ERR_OFFSET                    0x1000
+#define ESP_CAM_IRCUT_ERR_OFFSET                    0x1020
+#define ESP_CAM_ALS_ERR_OFFSET                      0x1040
+#define ESP_CAM_LED_ERR_OFFSET                      0x1060
+
 #define SENSOR_ISP_INFO_VERSION_DEFAULT             (1)
 
 #define ESP_CAM_SENSOR_CLASS_SHIFT                  16  /*!< Camera sensor class left shift bits, and length of class is 8 bits */
@@ -118,6 +133,8 @@ typedef enum {
 #define ESP_CAM_SENSOR_CID_CLASS_LENS               4   /*!< Camera sensor lens control ID class */
 #define ESP_CAM_SENSOR_CID_CLASS_LED                5   /*!< Camera sensor flash LED control ID class */
 #define ESP_CAM_SENSOR_CID_CLASS_MOTOR              6   /*!< Camera sensor (AF)motor control ID class */
+#define ESP_CAM_SENSOR_CID_CLASS_IRCUT              7   /*!< Camera sensor IRCUT control ID class */
+#define ESP_CAM_SENSOR_CID_CLASS_ALS                8   /*!< Camera sensor Ambient Light Sensor control ID class */
 
 /**
  * @brief Camera sensor default class's control ID
@@ -196,6 +213,22 @@ typedef enum {
 #define ESP_CAM_SENSOR_IOC_G_REG                    ESP_CAM_SENSOR_IOC(0x08, sizeof(esp_cam_sensor_reg_val_t))
 #define ESP_CAM_SENSOR_IOC_S_GAIN                   ESP_CAM_SENSOR_IOC(0x09, sizeof(uint8_t))
 #define ESP_CAM_SENSOR_IOC_MAX                      ESP_CAM_SENSOR_IOC(0x20, 0)
+
+/**
+ * @brief Camera sub-device IOC command ID offsets (relative to ESP_CAM_SENSOR_IOC_MAX)
+ *
+ * Each sub-device reserves ESP_CAM_SUBDEV_IOC_NUM command IDs.
+ * Sensor IOC cmd IDs: 0x01 ~ 0x20 (ESP_CAM_SENSOR_IOC_MAX)
+ * - Motor:  +0x01 → base 0x21, range 0x21 ~ 0x30
+ * - IRCUT:  +0x20 → base 0x40, range 0x40 ~ 0x4F
+ * - ALS:    +0x30 → base 0x50, range 0x50 ~ 0x5F
+ * - LED:    +0x40 → base 0x60, range 0x60 ~ 0x6F
+ */
+#define ESP_CAM_SUBDEV_IOC_NUM                      (0x10)
+#define ESP_CAM_MOTOR_IOC_OFFSET                    (0x01)
+#define ESP_CAM_IRCUT_IOC_OFFSET                    (0x20)
+#define ESP_CAM_ALS_IOC_OFFSET                      (0x30)
+#define ESP_CAM_LED_IOC_OFFSET                      (0x40)
 
 /*
  * @biref Camera sensor parameter description

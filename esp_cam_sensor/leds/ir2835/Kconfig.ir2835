@@ -1,0 +1,6 @@
+menuconfig CAM_LED_IR2835
+    bool "IR2835"
+    default n
+    select CAMERA_LED_DEVICE_USED
+    help
+        Enable support for the IR2835 led.

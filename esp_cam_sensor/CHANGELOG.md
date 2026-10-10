@@ -3,6 +3,9 @@
 ## Unreleased
 
 - Updated SC2336 default IPA JSON for ESP32-P4 ECO5 (`sc2336_default_p4_eco5.json`).
+- Added AP1511B IR-CUT driver.
+- Added PT1411 ALS(Ambient Light Sensor) driver.
+- Added IR2835 LED driver.
 
 ## 2.6.0
 

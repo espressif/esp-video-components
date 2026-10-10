@@ -8,10 +8,21 @@
 #include <esp_system.h>
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
-
 #include "esp_sccb_intf.h"
 #include "esp_sccb_i2c.h"
 #include "esp_cam_sensor.h"
+#include "esp_cam_ircut.h"
+#if CONFIG_SOC_ISP_SUPPORTED
+#include "esp_cam_als.h"
+#include "esp_cam_led.h"
+#if CONFIG_CAM_ALS_PT1411
+#include "pt1411.h"
+#endif
+
+#if CONFIG_CAM_LED_IR2835
+#include "ir2835.h"
+#endif
+#endif // CONFIG_SOC_ISP_SUPPORTED
 
 #include "unity.h"
 #include "unity_test_utils.h"
@@ -135,12 +146,16 @@
 #define SCCB0_CAM_DEVICE_ADDR 0x01
 #endif
 
+#if CONFIG_CAM_IRCUT_AP1511B
+#include "ap1511b.h"
+#endif
+
 /* SCCB */
 #define SCCB0_SCL             CONFIG_SCCB0_SCL
 #define SCCB0_SDA             CONFIG_SCCB0_SDA
 #define SCCB0_FREQ_HZ         CONFIG_SCCB0_FREQUENCY
 #define SCCB0_PORT_NUM        I2C_NUM_0
-
+#define IRCUT_GPIO_FBC        14
 #define TEST_MEMORY_LEAK_THRESHOLD (-100)
 
 static size_t before_free_8bit;
@@ -280,6 +295,64 @@ TEST_CASE("Camera sensor detect test", "[video]")
 
     TEST_ESP_OK(i2c_del_master_bus(bus_handle));
 }
+
+TEST_CASE("Camera ircut detect test", "[video]")
+{
+    esp_cam_ircut_config_t ircut_config = {
+        .gpio_pwdn = -1,
+        .gpio_fbc = -1,
+        .gpio_en = -1,
+        .platform_data = NULL,
+    };
+    esp_cam_ircut_device_t *ircut = NULL;
+#if CONFIG_CAM_IRCUT_AP1511B
+    ircut_config.gpio_fbc = IRCUT_GPIO_FBC;
+    ircut = ap1511b_detect(&ircut_config);
+#endif
+
+    TEST_ASSERT_MESSAGE(ircut != NULL, "detect fail");
+    TEST_ESP_OK(esp_cam_ircut_del_dev(ircut));
+}
+
+#if CONFIG_SOC_ISP_SUPPORTED
+TEST_CASE("Camera als detect test", "[video]")
+{
+    adc_oneshot_unit_handle_t adc1_handle;
+    adc_oneshot_unit_init_cfg_t init_config1 = {
+        .unit_id = ADC_UNIT_1, // Use ADC1
+    };
+    ESP_ERROR_CHECK(adc_oneshot_new_unit(&init_config1, &adc1_handle));
+    esp_cam_als_config_t als_config = {
+        .adc_handle = adc1_handle,
+        .channel = ADC_CHANNEL_0,
+        .cali_enable = true,
+        .platform_data = NULL,
+    };
+    esp_cam_als_device_t *als = NULL;
+#if CONFIG_CAM_ALS_PT1411
+    als = pt1411_detect(&als_config);
+#endif
+    TEST_ASSERT_MESSAGE(als != NULL, "detect fail");
+    TEST_ESP_OK(esp_cam_als_del_dev(als));
+    TEST_ESP_OK(adc_oneshot_del_unit(adc1_handle));
+}
+
+TEST_CASE("Camera led detect test", "[video]")
+{
+    esp_cam_led_config_t led_config = {
+        .type = ESP_CAM_LED_HW_TYPE_GPIO,
+        .gpio_ctrl = 14,
+        .gpio_en = -1,
+        .platform_data = NULL,
+    };
+    esp_cam_led_device_t *led = NULL;
+#if CONFIG_CAM_LED_IR2835
+    led = ir2835_detect(&led_config);
+#endif
+    TEST_ASSERT_MESSAGE(led != NULL, "detect fail");
+    TEST_ESP_OK(esp_cam_led_del_dev(led));
+}
+#endif
 
 void app_main(void)
 {
