@@ -16,6 +16,9 @@
 - Updated to use usb_host_uvc v2.6.x
 - Fixed the USB UVC teardown abandoning the stream when `uvc_host_stream_stop()` reports an
   error, which left the framework and the driver disagreeing about whether the stream was running
+- Added `V4L2_CID_IRCUT_MODE` and IR-CUT initialization for MIPI-CSI and DVP video devices
+    - `esp_video_init_ircut_config_t` supplies the IR-CUT chip and GPIO pins on CSI/DVP init
+    - ISP pipeline applies IPA IR metadata to the camera through `V4L2_CID_IRCUT_MODE`
 
 ## 2.5.0
 

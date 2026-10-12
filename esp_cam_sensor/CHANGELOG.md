@@ -6,6 +6,8 @@
 - Added AP1511B IR-CUT driver.
 - Added PT1411 ALS(Ambient Light Sensor) driver.
 - Added IR2835 LED driver.
+- Added SC2337P IR control JSON file for esp_ipa.
+  - The control logic relies on IR-CUT hardware currently supported by this component.
 
 ## 2.6.0
 

@@ -165,6 +165,38 @@ menu "Example Video Initialization Configuration"
                         cause issues with some sensors or longer cable connections.
             endif
 
+            config EXAMPLE_ENABLE_MIPI_CSI_CAM_IRCUT
+                bool "Enable IR-Cut Control"
+                default n
+                depends on ESP_VIDEO_ENABLE_MIPI_CSI_IRCUT_SUPPORT
+                help
+                    Enable IR-Cut filter control for the MIPI-CSI camera sensor.
+
+                    When enabled, the example initializes the IR-Cut device and
+                    attaches it to the MIPI-CSI video device for day/night mode
+                    switching.
+
+                    Enable IR-Cut support in Espressif Video Configuration and
+                    select an IR-Cut driver before using this option.
+
+            if EXAMPLE_ENABLE_MIPI_CSI_CAM_IRCUT
+                config EXAMPLE_MIPI_CSI_CAM_IRCUT_FBC_PIN
+                    int "IR-Cut FBC Pin"
+                    default -1
+                    range -1 ENV_GPIO_RANGE_MAX
+                    help
+                        GPIO pin for IR-Cut FBC (forward/backward control).
+                        Set to -1 if not connected or not required.
+
+                config EXAMPLE_MIPI_CSI_CAM_IRCUT_EN_PIN
+                    int "IR-Cut EN Pin"
+                    default -1
+                    range -1 ENV_GPIO_RANGE_MAX
+                    help
+                        GPIO pin for IR-Cut EN (enable/disable control).
+                        Set to -1 if not connected or not required.
+            endif
+
             if EXAMPLE_SELECT_CUSTOMIZED_DEV_BOARD
                 config EXAMPLE_MIPI_CSI_SCCB_I2C_SCL_PIN
                     int "SCCB(I2C) SCL Pin"
@@ -380,6 +412,38 @@ menu "Example Video Initialization Configuration"
                     Common values:
                     - 20000000 Hz (20MHz): Standard for most DVP sensors
                     - 24000000 Hz (24MHz): Alternative for some sensors
+
+            config EXAMPLE_ENABLE_DVP_CAM_IRCUT
+                bool "Enable IR-Cut Control"
+                default n
+                depends on ESP_VIDEO_ENABLE_DVP_IRCUT_SUPPORT
+                help
+                    Enable IR-Cut filter control for the DVP camera sensor.
+
+                    When enabled, the example initializes the IR-Cut device and
+                    attaches it to the DVP video device for day/night mode
+                    switching.
+
+                    Enable IR-Cut support in Espressif Video Configuration and
+                    select an IR-Cut driver before using this option.
+
+            if EXAMPLE_ENABLE_DVP_CAM_IRCUT
+                config EXAMPLE_DVP_CAM_IRCUT_FBC_PIN
+                    int "IR-Cut FBC Pin"
+                    default -1
+                    range -1 ENV_GPIO_RANGE_MAX
+                    help
+                        GPIO pin for IR-Cut FBC (forward/backward control).
+                        Set to -1 if not connected or not required.
+
+                config EXAMPLE_DVP_CAM_IRCUT_EN_PIN
+                    int "IR-Cut EN Pin"
+                    default -1
+                    range -1 ENV_GPIO_RANGE_MAX
+                    help
+                        GPIO pin for IR-Cut EN (enable/disable control).
+                        Set to -1 if not connected or not required.
+            endif
 
             if EXAMPLE_SELECT_CUSTOMIZED_DEV_BOARD
                 config EXAMPLE_DVP_SCCB_I2C_SCL_PIN

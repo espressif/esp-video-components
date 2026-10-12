@@ -917,6 +917,35 @@
         "customized_ipa_1":
         {
             "name": "esp_ipa_customized_1"
+        },
+        "ir":
+        {
+            "model": 0,
+            "luma_env": "ir_env_luma",
+            "k": 1000,
+            "ir_factor": 10.0,
+            "enter_delay_us": 0,
+            "exit_delay_us": 0,
+            "weight":
+            [
+                1, 1, 1, 1, 1,
+                1, 1, 1, 1, 1,
+                1, 1, 1, 1, 1,
+                1, 1, 1, 1, 1,
+                1, 1, 1, 1, 1
+            ],
+            "normal":
+            {
+                "luma_threshold": 50.0,
+                "awb_threshold": 100.0,
+                "hold_time_us": 4294967295
+            },
+            "ir_mode":
+            {
+                "luma_threshold": 50.0,
+                "awb_threshold": 100.0,
+                "hold_time_us": 4294967295
+            }
         }
     }
 }

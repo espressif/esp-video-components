@@ -134,6 +134,19 @@ if CAMERA_SC2337P
                 This configuration provides optimized settings for general use cases
                 and is recommended for most applications.
 
+        config CAMERA_SC2337P_IR_IPA_JSON_CONFIGURATION_FILE
+            bool "Use IR control configuration"
+            help
+                Use the built-in IR control IPA configuration file:
+                "esp_cam_sensor/sensors/sc2337p/cfg/sc2337p_ir.json"
+
+                This configuration relies on IR-CUT hardware and a control strategy
+                based on it. Currently only the IR-CUT hardware provided by
+                esp_cam_sensor is supported.
+
+                It is mainly suitable for evaluation and testing, because the
+                parameters also depend on the infrared lighting devices and the scene.
+           
         config CAMERA_SC2337P_CUSTOMIZED_IPA_JSON_CONFIGURATION_FILE
             bool "Use custom configuration"
             help

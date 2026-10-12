@@ -6,8 +6,12 @@
 
 #include "esp_log.h"
 #include "esp_cam_sensor.h"
+#include <inttypes.h>
 #if CONFIG_ESP_VIDEO_ENABLE_CAMERA_MOTOR_CONTROLLER
 #include "esp_cam_motor.h"
+#endif
+#if CONFIG_ESP_VIDEO_ENABLE_IRCUT_SUPPORT
+#include "esp_cam_ircut.h"
 #endif
 #include "esp_video_ioctl.h"
 #include "esp_video_cam.h"
@@ -18,14 +22,507 @@ struct control_map {
     const char *name;
 };
 
-typedef enum cam_dev_type {
-    CAM_DEV_SENSOR = 0,
-#if CONFIG_ESP_VIDEO_ENABLE_CAMERA_MOTOR_CONTROLLER
-    CAM_DEV_MOTOR
-#endif
-} cam_dev_type_t;
+struct cam_ctrl_ops {
+    esp_err_t (*set)(esp_video_cam_t *cam, const struct control_map *map, struct v4l2_ext_control *ctrl);
+    esp_err_t (*get)(esp_video_cam_t *cam, const struct control_map *map, struct v4l2_ext_control *ctrl);
+    esp_err_t (*query)(esp_video_cam_t *cam, const struct control_map *map, struct v4l2_query_ext_ctrl *qctrl);
+    esp_err_t (*query_menu)(esp_video_cam_t *cam, const struct control_map *map, struct v4l2_querymenu *qmenu);
+    bool (*supported)(esp_video_cam_t *cam, const struct control_map *map);
+};
+
+struct cam_ctrl_subsys {
+    const struct control_map *table;
+    int size;
+    bool enumerable;
+    const struct cam_ctrl_ops *ops;
+};
 
 static const char *TAG = "esp_video_cam";
+
+static esp_err_t ctrl_buf_from_desc(const esp_cam_sensor_param_desc_t *qdesc, struct v4l2_ext_control *ctrl,
+                                    void **buf_ptr, size_t *buf_size)
+{
+    switch (qdesc->type) {
+    case ESP_CAM_SENSOR_PARAM_TYPE_NUMBER:
+    case ESP_CAM_SENSOR_PARAM_TYPE_ENUMERATION:
+    case ESP_CAM_SENSOR_PARAM_TYPE_BITMASK:
+        *buf_ptr = &ctrl->value;
+        *buf_size = sizeof(ctrl->value);
+        break;
+    case ESP_CAM_SENSOR_PARAM_TYPE_U8:
+        *buf_ptr = ctrl->p_u8;
+        *buf_size = ctrl->size;
+        break;
+    default:
+        ESP_LOGE(TAG, "sensor description type=%" PRIu32 " is not supported", qdesc->type);
+        return ESP_ERR_NOT_SUPPORTED;
+    }
+
+    return ESP_OK;
+}
+
+static esp_err_t check_ctrl_value(const struct v4l2_ext_control *ctrl, const esp_cam_sensor_param_desc_t *qdesc,
+                                  size_t value_size)
+{
+    int32_t value_buf = ctrl->value;
+
+    switch (qdesc->type) {
+    case ESP_CAM_SENSOR_PARAM_TYPE_NUMBER:
+        if ((value_buf > qdesc->number.maximum) || (value_buf < qdesc->number.minimum) ||
+                (value_buf % qdesc->number.step)) {
+            ESP_LOGE(TAG, "number: ctrl id=%" PRIx32 " value=%" PRIi32 " is out of range(max=%" PRIi32 ", min=%" PRIi32 ", step=%"PRIu32")",
+                     ctrl->id, value_buf, (int32_t)qdesc->number.maximum, (int32_t)qdesc->number.minimum,
+                     (uint32_t)qdesc->number.step);
+            return ESP_ERR_INVALID_ARG;
+        }
+        break;
+    case ESP_CAM_SENSOR_PARAM_TYPE_ENUMERATION:
+        if (value_buf < 0 || value_buf >= qdesc->enumeration.count) {
+            ESP_LOGE(TAG, "enum: ctrl id=%" PRIx32 " value=%" PRIu32 " is out of range(from 0 to %" PRIu32 ")",
+                     ctrl->id, value_buf, qdesc->enumeration.count);
+            return ESP_ERR_INVALID_ARG;
+        }
+        break;
+    case ESP_CAM_SENSOR_PARAM_TYPE_BITMASK:
+        if (value_buf & (~qdesc->bitmask.value)) {
+            ESP_LOGE(TAG, "mask: ctrl id=%" PRIx32 " value=%" PRIx32 " is out of range(%" PRIx32 ")",
+                     ctrl->id, value_buf, qdesc->bitmask.value);
+            return ESP_ERR_INVALID_ARG;
+        }
+        break;
+    case ESP_CAM_SENSOR_PARAM_TYPE_U8:
+        if (value_size != qdesc->u8.size) {
+            ESP_LOGE(TAG, "mask: ctrl id=%" PRIx32 " size=%zu is not equal to sensor data size(%" PRIu32 ")",
+                     ctrl->id, value_size, qdesc->u8.size);
+            return ESP_ERR_INVALID_ARG;
+        }
+        break;
+    case UINT32_MAX:
+        ESP_LOGD(TAG, "can't check ctrl id=%" PRIx32, ctrl->id);
+        break;
+    default:
+        ESP_LOGE(TAG, "sensor description type=%" PRIx32 " is not supported", qdesc->type);
+        return ESP_ERR_NOT_SUPPORTED;
+    }
+
+    return ESP_OK;
+}
+
+/**
+ * Todo: AEG-1095
+ */
+static esp_err_t fill_query_ext_ctrl(struct v4l2_query_ext_ctrl *qctrl, const char *name,
+                                     const esp_cam_sensor_param_desc_t *qdesc)
+{
+    int name_len = snprintf(qctrl->name, sizeof(qctrl->name), "%s", name);
+
+    if (name_len < 0) {
+        ESP_LOGE(TAG, "failed to fill name of cmd id=%" PRIx32, qctrl->id);
+        return ESP_FAIL;
+    } else if (name_len >= sizeof(qctrl->name)) {
+        ESP_LOGE(TAG, "name of cmd id=%" PRIx32 " is too long", qctrl->id);
+        return ESP_ERR_INVALID_ARG;
+    }
+
+    switch (qdesc->type) {
+    case ESP_CAM_SENSOR_PARAM_TYPE_NUMBER:
+        qctrl->type = V4L2_CTRL_TYPE_INTEGER;
+        qctrl->maximum = qdesc->number.maximum;
+        qctrl->minimum = qdesc->number.minimum;
+        qctrl->step = qdesc->number.step;
+        qctrl->elems = 1;
+        qctrl->nr_of_dims = 0;
+        qctrl->default_value = qdesc->default_value;
+        break;
+    case ESP_CAM_SENSOR_PARAM_TYPE_ENUMERATION:
+        qctrl->type = V4L2_CTRL_TYPE_INTEGER_MENU;
+        qctrl->maximum = qdesc->enumeration.count - 1;
+        qctrl->minimum = 0;
+        qctrl->step = 1;
+        qctrl->elem_size = sizeof(uint32_t);
+        qctrl->elems = 1;
+        qctrl->nr_of_dims = 0;
+        qctrl->dims[0] = qctrl->elem_size;
+        qctrl->default_value = qdesc->default_value;
+        break;
+    case ESP_CAM_SENSOR_PARAM_TYPE_BITMASK:
+        qctrl->type = V4L2_CTRL_TYPE_BITMASK;
+        qctrl->minimum = 0;
+        qctrl->maximum = qdesc->bitmask.value;
+        qctrl->step = 1;
+        qctrl->elems = 1;
+        qctrl->nr_of_dims = 0;
+        qctrl->default_value = qdesc->default_value;
+        break;
+    case ESP_CAM_SENSOR_PARAM_TYPE_U8:
+        qctrl->type = V4L2_CTRL_TYPE_U8;
+        qctrl->minimum = 0;
+        qctrl->maximum = UINT8_MAX;
+        qctrl->step = 1;
+        qctrl->elem_size = qdesc->u8.size;
+        qctrl->elems = 1;
+        qctrl->nr_of_dims = 0;
+        qctrl->dims[0] = 1;
+        qctrl->default_value = 0;
+        break;
+    default:
+        ESP_LOGD(TAG, "sensor type=%" PRIu32 " is not supported", qdesc->type);
+        return ESP_ERR_NOT_SUPPORTED;
+    }
+
+    return ESP_OK;
+}
+
+/* Parameter names must not match designated-initializer fields (.v4l2_id / .name). */
+#define CAM_CTRL_MAP(_priv_id, _v4l2_id, _ctrl_name) \
+    { \
+        .esp_cam_priv_id = (_priv_id), \
+        .v4l2_id = (_v4l2_id), \
+        .name = (_ctrl_name), \
+    },
+
+#define CAM_SUBSYS_ENTRY(prefix, enumerable_flag) \
+    { \
+        .table = s_##prefix##_table, \
+        .size = ARRAY_SIZE(s_##prefix##_table), \
+        .enumerable = (enumerable_flag), \
+        .ops = &s_##prefix##_ops, \
+    },
+
+/**
+ * Parameter subsystem: query/get/set para API.
+ * require_dev is 1 when the device pointer may be NULL (motor).
+ */
+#define CAM_PARA_SUBSYS_DEFINE(prefix, dev_member, query_fn, get_fn, set_fn, require_dev, map_table) \
+    static const struct control_map s_##prefix##_table[] = { \
+        map_table \
+    }; \
+    \
+    static bool prefix##_supported(esp_video_cam_t *cam, const struct control_map *map) \
+    { \
+        esp_cam_sensor_param_desc_t qdesc = { \
+            .id = map->esp_cam_priv_id, \
+        }; \
+        \
+        if ((require_dev) && !cam->dev_member) { \
+            return false; \
+        } \
+        \
+        return query_fn(cam->dev_member, &qdesc) == ESP_OK; \
+    } \
+    \
+    static esp_err_t prefix##_load(esp_video_cam_t *cam, const struct control_map *map, struct v4l2_ext_control *ctrl, \
+                                   esp_cam_sensor_param_desc_t *qdesc, void **buf_ptr, size_t *buf_size) \
+    { \
+        esp_err_t ret; \
+        \
+        if ((require_dev) && !cam->dev_member) { \
+            return ESP_ERR_NOT_SUPPORTED; \
+        } \
+        \
+        qdesc->id = map->esp_cam_priv_id; \
+        ret = query_fn(cam->dev_member, qdesc); \
+        if (ret == ESP_ERR_NOT_SUPPORTED) { \
+            ESP_LOGD(TAG, "sensor %s doesn't support to query parameter description", cam->dev_member->name); \
+            *buf_ptr = &ctrl->value; \
+            *buf_size = sizeof(ctrl->value); \
+            qdesc->type = UINT32_MAX; \
+            return ESP_OK; \
+        } \
+        if (ret != ESP_OK) { \
+            ESP_LOGE(TAG, "failed to query ctrl id=%" PRIx32, ctrl->id); \
+            return ret; \
+        } \
+        \
+        return ctrl_buf_from_desc(qdesc, ctrl, buf_ptr, buf_size); \
+    } \
+    \
+    static esp_err_t prefix##_set(esp_video_cam_t *cam, const struct control_map *map, struct v4l2_ext_control *ctrl) \
+    { \
+        esp_err_t ret; \
+        void *value_ptr; \
+        size_t value_size; \
+        esp_cam_sensor_param_desc_t qdesc; \
+        \
+        ret = prefix##_load(cam, map, ctrl, &qdesc, &value_ptr, &value_size); \
+        if (ret != ESP_OK) { \
+            return ret; \
+        } \
+        \
+        ret = check_ctrl_value(ctrl, &qdesc, value_size); \
+        if (ret != ESP_OK) { \
+            return ret; \
+        } \
+        \
+        ret = set_fn(cam->dev_member, qdesc.id, value_ptr, value_size); \
+        if (ret != ESP_OK) { \
+            ESP_LOGE(TAG, "failed to set ctrl id=%" PRIx32, ctrl->id); \
+        } \
+        return ret; \
+    } \
+    \
+    static esp_err_t prefix##_get(esp_video_cam_t *cam, const struct control_map *map, struct v4l2_ext_control *ctrl) \
+    { \
+        esp_err_t ret; \
+        void *value_ptr; \
+        size_t value_size; \
+        esp_cam_sensor_param_desc_t qdesc; \
+        \
+        ret = prefix##_load(cam, map, ctrl, &qdesc, &value_ptr, &value_size); \
+        if (ret != ESP_OK) { \
+            return ret; \
+        } \
+        \
+        ret = get_fn(cam->dev_member, qdesc.id, value_ptr, value_size); \
+        if (ret != ESP_OK) { \
+            ESP_LOGE(TAG, "failed to get ctrl id=%" PRIx32, ctrl->id); \
+        } \
+        return ret; \
+    } \
+    \
+    static esp_err_t prefix##_query(esp_video_cam_t *cam, const struct control_map *map, struct v4l2_query_ext_ctrl *qctrl) \
+    { \
+        esp_err_t ret; \
+        esp_cam_sensor_param_desc_t qdesc = { \
+            .id = map->esp_cam_priv_id, \
+        }; \
+        \
+        if ((require_dev) && !cam->dev_member) { \
+            return ESP_ERR_NOT_SUPPORTED; \
+        } \
+        \
+        ret = query_fn(cam->dev_member, &qdesc); \
+        if (ret != ESP_OK) { \
+            ESP_LOGD(TAG, "failed to query sensor id=%" PRIx32, qdesc.id); \
+            return ret; \
+        } \
+        \
+        return fill_query_ext_ctrl(qctrl, map->name, &qdesc); \
+    } \
+    \
+    static esp_err_t prefix##_query_menu(esp_video_cam_t *cam, const struct control_map *map, struct v4l2_querymenu *qmenu) \
+    { \
+        esp_err_t ret; \
+        esp_cam_sensor_param_desc_t qdesc = { \
+            .id = map->esp_cam_priv_id, \
+        }; \
+        \
+        if ((require_dev) && !cam->dev_member) { \
+            return ESP_ERR_NOT_SUPPORTED; \
+        } \
+        \
+        ret = query_fn(cam->dev_member, &qdesc); \
+        if (ret != ESP_OK) { \
+            ESP_LOGE(TAG, "failed to query sensor id=%" PRIx32, qdesc.id); \
+            return ret; \
+        } \
+        \
+        if (qdesc.type != ESP_CAM_SENSOR_PARAM_TYPE_ENUMERATION) { \
+            ESP_LOGE(TAG, "ctrl id=%" PRIx32 " is not menu type", qmenu->id); \
+            return ESP_ERR_INVALID_ARG; \
+        } \
+        \
+        if (qmenu->index >= qdesc.enumeration.count) { \
+            ESP_LOGE(TAG, "ctrl id=%" PRIx32 " is out of range(max=%" PRIx32 ")", qmenu->id, qdesc.enumeration.count - 1); \
+            return ESP_ERR_INVALID_ARG; \
+        } \
+        \
+        qmenu->value = qdesc.enumeration.elements[qmenu->index]; \
+        return ESP_OK; \
+    } \
+    \
+    static const struct cam_ctrl_ops s_##prefix##_ops = { \
+        .set = prefix##_set, \
+        .get = prefix##_get, \
+        .query = prefix##_query, \
+        .query_menu = prefix##_query_menu, \
+        .supported = prefix##_supported, \
+    };
+
+#define CAM_SENSOR_IOCTL_SUBSYS_DEFINE(map_table) \
+    static const struct control_map s_sensor_ioctl_table[] = { \
+        map_table \
+    }; \
+    \
+    static esp_err_t sensor_ioctl_exec(esp_video_cam_t *cam, uint32_t cmd, void *arg, uint32_t v4l2_id, bool is_set) \
+    { \
+        esp_err_t ret = esp_cam_sensor_ioctl(cam->sensor, cmd, arg); \
+        \
+        if (ret != ESP_OK) { \
+            if (is_set) { \
+                ESP_LOGE(TAG, "failed to set ioctl id=%" PRIx32, v4l2_id); \
+            } else { \
+                ESP_LOGE(TAG, "failed to get ioctl id=%" PRIx32, v4l2_id); \
+            } \
+        } \
+        return ret; \
+    } \
+    \
+    static esp_err_t sensor_class_ioctl(esp_video_cam_t *cam, struct v4l2_ext_control *ctrl, bool is_set) \
+    { \
+        return sensor_ioctl_exec(cam, ctrl->id, ctrl->p_u8, ctrl->id, is_set); \
+    } \
+    \
+    static esp_err_t sensor_ioctl_set(esp_video_cam_t *cam, const struct control_map *map, struct v4l2_ext_control *ctrl) \
+    { \
+        if (map->esp_cam_priv_id != ESP_CAM_SENSOR_IOC_S_TEST_PATTERN) { \
+            ESP_LOGE(TAG, "sensor command=%" PRIu32 " is not supported", map->esp_cam_priv_id); \
+            return ESP_ERR_NOT_SUPPORTED; \
+        } \
+        \
+        return sensor_ioctl_exec(cam, map->esp_cam_priv_id, &ctrl->value, ctrl->id, true); \
+    } \
+    \
+    static esp_err_t sensor_ioctl_get(esp_video_cam_t *cam, const struct control_map *map, struct v4l2_ext_control *ctrl) \
+    { \
+        if (map->esp_cam_priv_id != ESP_CAM_SENSOR_IOC_S_TEST_PATTERN) { \
+            ESP_LOGE(TAG, "sensor command=%" PRIu32 " is not supported", map->esp_cam_priv_id); \
+            return ESP_ERR_NOT_SUPPORTED; \
+        } \
+        \
+        return sensor_ioctl_exec(cam, map->esp_cam_priv_id, &ctrl->value, ctrl->id, false); \
+    } \
+    \
+    static esp_err_t sensor_ioctl_query(esp_video_cam_t *cam, const struct control_map *map, struct v4l2_query_ext_ctrl *qctrl) \
+    { \
+        esp_err_t ret; \
+        esp_cam_sensor_param_desc_t qdesc = { \
+            .id = map->esp_cam_priv_id, \
+        }; \
+        \
+        ret = esp_cam_sensor_query_para_desc(cam->sensor, &qdesc); \
+        if (ret != ESP_OK) { \
+            ESP_LOGD(TAG, "failed to query sensor id=%" PRIx32, qdesc.id); \
+            return ret; \
+        } \
+        \
+        return fill_query_ext_ctrl(qctrl, map->name, &qdesc); \
+    } \
+    \
+    static esp_err_t sensor_ioctl_query_menu(esp_video_cam_t *cam, const struct control_map *map, struct v4l2_querymenu *qmenu) \
+    { \
+        (void)cam; \
+        (void)map; \
+        \
+        ESP_LOGE(TAG, "ctrl id=%" PRIx32 " is ioctl type", qmenu->id); \
+        return ESP_ERR_NOT_SUPPORTED; \
+    } \
+    \
+    static const struct cam_ctrl_ops s_sensor_ioctl_ops = { \
+        .set = sensor_ioctl_set, \
+        .get = sensor_ioctl_get, \
+        .query = sensor_ioctl_query, \
+        .query_menu = sensor_ioctl_query_menu, \
+        .supported = NULL, \
+    };
+
+#define CAM_IRCUT_SUBSYS_DEFINE(map_table) \
+    static const struct control_map s_ircut_table[] = { \
+        map_table \
+    }; \
+    \
+    static bool ircut_supported(esp_video_cam_t *cam, const struct control_map *map) \
+    { \
+        (void)map; \
+        \
+        return cam->ircut != NULL; \
+    } \
+    \
+    static esp_err_t ircut_set(esp_video_cam_t *cam, const struct control_map *map, struct v4l2_ext_control *ctrl) \
+    { \
+        esp_err_t ret; \
+        \
+        if (map->esp_cam_priv_id != ESP_CAM_IRCUT_IOC_SET_MODE) { \
+            ESP_LOGE(TAG, "sensor command=%" PRIu32 " is not supported", map->esp_cam_priv_id); \
+            return ESP_ERR_NOT_SUPPORTED; \
+        } \
+        \
+        /* UNKNOWN is a readable status. Writable values are the QUERYMENU items. */ \
+        if (!ircut_mode_is_writable(ctrl->value)) { \
+            ESP_LOGE(TAG, "IRCUT mode=%" PRIi32 " is not writable", ctrl->value); \
+            return ESP_ERR_INVALID_ARG; \
+        } \
+        \
+        ret = esp_cam_ircut_ioctl(cam->ircut, map->esp_cam_priv_id, &ctrl->value); \
+        if (ret != ESP_OK) { \
+            ESP_LOGE(TAG, "failed to set ioctl id=%" PRIx32, ctrl->id); \
+        } \
+        return ret; \
+    } \
+    \
+    static esp_err_t ircut_get(esp_video_cam_t *cam, const struct control_map *map, struct v4l2_ext_control *ctrl) \
+    { \
+        esp_err_t ret; \
+        uint32_t cmd = map->esp_cam_priv_id; \
+        \
+        if (cmd != ESP_CAM_IRCUT_IOC_SET_MODE) { \
+            ESP_LOGE(TAG, "sensor command=%" PRIu32 " is not supported", cmd); \
+            return ESP_ERR_NOT_SUPPORTED; \
+        } \
+        \
+        /* V4L2_CID_IRCUT_MODE maps to SET_MODE. Read with GET_MODE so the current value is not applied. */ \
+        cmd = ESP_CAM_IRCUT_IOC_GET_MODE; \
+        ret = esp_cam_ircut_ioctl(cam->ircut, cmd, &ctrl->value); \
+        if (ret != ESP_OK) { \
+            ESP_LOGE(TAG, "failed to get ioctl id=%" PRIx32, ctrl->id); \
+        } \
+        return ret; \
+    } \
+    \
+    static esp_err_t ircut_query(esp_video_cam_t *cam, const struct control_map *map, struct v4l2_query_ext_ctrl *qctrl) \
+    { \
+        esp_err_t ret; \
+        /* min..max includes UNKNOWN so a fresh GET stays in range. MENU items are the writable values. */ \
+        esp_cam_sensor_param_desc_t qdesc = { \
+            .type = ESP_CAM_SENSOR_PARAM_TYPE_NUMBER, \
+            .number = { \
+                .minimum = ESP_CAM_IRCUT_MODE_UNKNOWN, \
+                .maximum = ESP_CAM_IRCUT_MODE_NIGHT, \
+                .step = 1, \
+            }, \
+            .default_value = ESP_CAM_IRCUT_MODE_DAY, \
+        }; \
+        \
+        if (!cam->ircut) { \
+            return ESP_ERR_NOT_SUPPORTED; \
+        } \
+        \
+        ret = fill_query_ext_ctrl(qctrl, map->name, &qdesc); \
+        if (ret != ESP_OK) { \
+            return ret; \
+        } \
+        qctrl->type = V4L2_CTRL_TYPE_MENU; \
+        return ESP_OK; \
+    } \
+    \
+    static esp_err_t ircut_query_menu(esp_video_cam_t *cam, const struct control_map *map, struct v4l2_querymenu *qmenu) \
+    { \
+        const char *menu_name; \
+        \
+        (void)map; \
+        \
+        if (!cam->ircut) { \
+            return ESP_ERR_NOT_SUPPORTED; \
+        } \
+        \
+        menu_name = ircut_mode_menu_name(qmenu->index); \
+        if (!menu_name) { \
+            return ESP_ERR_INVALID_ARG; \
+        } \
+        \
+        if (snprintf((char *)qmenu->name, sizeof(qmenu->name), "%s", menu_name) < 0) { \
+            return ESP_FAIL; \
+        } \
+        return ESP_OK; \
+    } \
+    \
+    static const struct cam_ctrl_ops s_ircut_ops = { \
+        .set = ircut_set, \
+        .get = ircut_get, \
+        .query = ircut_query, \
+        .query_menu = ircut_query_menu, \
+        .supported = ircut_supported, \
+    };
 
 /**
  * Todo: AEG-1094
@@ -35,123 +532,86 @@ static const char *TAG = "esp_video_cam";
  *       frequently used at the beginning of the table which can improve the performance of the
  *       control ID map pointer lookup.
  */
-static const struct control_map s_sensor_control_map_table[] = {
-    {
-        .esp_cam_priv_id = ESP_CAM_SENSOR_GAIN,
-        .v4l2_id = V4L2_CID_GAIN,
-        .name = "Gain",
-    },
-    {
-        .esp_cam_priv_id = ESP_CAM_SENSOR_EXPOSURE_VAL,
-        .v4l2_id = V4L2_CID_EXPOSURE,
-        .name = "Exposure",
-    },
-    {
-        .esp_cam_priv_id = ESP_CAM_SENSOR_STATS,
-        .v4l2_id = V4L2_CID_CAMERA_STATS,
-        .name = "Sensor Statistics",
-    },
-    {
-        .esp_cam_priv_id = ESP_CAM_SENSOR_AE_LEVEL,
-        .v4l2_id = V4L2_CID_CAMERA_AE_LEVEL,
-        .name = "AE Target Level",
-    },
-    {
-        .esp_cam_priv_id = ESP_CAM_SENSOR_GROUP_EXP_GAIN,
-        .v4l2_id = V4L2_CID_CAMERA_GROUP,
-        .name = "Group Operation",
-    },
-    {
-        .esp_cam_priv_id = ESP_CAM_SENSOR_EXPOSURE_US,
-        .v4l2_id = V4L2_CID_EXPOSURE_ABSOLUTE,
-        .name = "Exposure Time, Absolute",
-    },
-    {
-        .esp_cam_priv_id = ESP_CAM_SENSOR_JPEG_QUALITY,
-        .v4l2_id = V4L2_CID_JPEG_COMPRESSION_QUALITY,
-        .name = "Compression Quality",
-    },
-    {
-        .esp_cam_priv_id = ESP_CAM_SENSOR_3A_LOCK,
-        .v4l2_id = V4L2_CID_3A_LOCK,
-        .name = "3A Lock"
-    },
-    {
-        .esp_cam_priv_id = ESP_CAM_SENSOR_FLASH_LED,
-        .v4l2_id = V4L2_CID_FLASH_LED_MODE,
-        .name = "LED Mode",
-    },
-    {
-        .esp_cam_priv_id = ESP_CAM_SENSOR_VFLIP,
-        .v4l2_id = V4L2_CID_VFLIP,
-        .name = "Vertical Flip",
-    },
-    {
-        .esp_cam_priv_id = ESP_CAM_SENSOR_HMIRROR,
-        .v4l2_id = V4L2_CID_HFLIP,
-        .name = "Horizontal Flip",
-    },
-};
+#define SENSOR_PARA_LOOKUP_TABLE \
+    CAM_CTRL_MAP(ESP_CAM_SENSOR_GAIN, V4L2_CID_GAIN, "Gain") \
+    CAM_CTRL_MAP(ESP_CAM_SENSOR_EXPOSURE_VAL, V4L2_CID_EXPOSURE, "Exposure") \
+    CAM_CTRL_MAP(ESP_CAM_SENSOR_STATS, V4L2_CID_CAMERA_STATS, "Sensor Statistics") \
+    CAM_CTRL_MAP(ESP_CAM_SENSOR_AE_LEVEL, V4L2_CID_CAMERA_AE_LEVEL, "AE Target Level") \
+    CAM_CTRL_MAP(ESP_CAM_SENSOR_GROUP_EXP_GAIN, V4L2_CID_CAMERA_GROUP, "Group Operation") \
+    CAM_CTRL_MAP(ESP_CAM_SENSOR_EXPOSURE_US, V4L2_CID_EXPOSURE_ABSOLUTE, "Exposure Time, Absolute") \
+    CAM_CTRL_MAP(ESP_CAM_SENSOR_JPEG_QUALITY, V4L2_CID_JPEG_COMPRESSION_QUALITY, "Compression Quality") \
+    CAM_CTRL_MAP(ESP_CAM_SENSOR_3A_LOCK, V4L2_CID_3A_LOCK, "3A Lock") \
+    CAM_CTRL_MAP(ESP_CAM_SENSOR_FLASH_LED, V4L2_CID_FLASH_LED_MODE, "LED Mode") \
+    CAM_CTRL_MAP(ESP_CAM_SENSOR_VFLIP, V4L2_CID_VFLIP, "Vertical Flip") \
+    CAM_CTRL_MAP(ESP_CAM_SENSOR_HMIRROR, V4L2_CID_HFLIP, "Horizontal Flip")
 
-static const struct control_map s_sensor_control_ioctl_table[] = {
-    {
-        .esp_cam_priv_id = ESP_CAM_SENSOR_IOC_S_TEST_PATTERN,
-        .v4l2_id = V4L2_CID_TEST_PATTERN,
-        .name = "Test Pattern",
-    },
-};
+CAM_PARA_SUBSYS_DEFINE(sensor_para, sensor, esp_cam_sensor_query_para_desc, esp_cam_sensor_get_para_value,
+                       esp_cam_sensor_set_para_value, 0, SENSOR_PARA_LOOKUP_TABLE)
+
+#define SENSOR_IOCTL_LOOKUP_TABLE \
+    CAM_CTRL_MAP(ESP_CAM_SENSOR_IOC_S_TEST_PATTERN, V4L2_CID_TEST_PATTERN, "Test Pattern")
+
+CAM_SENSOR_IOCTL_SUBSYS_DEFINE(SENSOR_IOCTL_LOOKUP_TABLE)
 
 #if CONFIG_ESP_VIDEO_ENABLE_CAMERA_MOTOR_CONTROLLER
-static const struct control_map s_motor_control_map_table[] = {
-    {
-        .esp_cam_priv_id = ESP_CAM_MOTOR_POSITION_CODE,
-        .v4l2_id = V4L2_CID_FOCUS_ABSOLUTE,
-        .name = "Focus, Absolute",
-    },
-    {
-        .esp_cam_priv_id = ESP_CAM_MOTOR_MOVING_START_TIME,
-        .v4l2_id = V4L2_CID_MOTOR_START_TIME,
-        .name = "Motor Start Time",
-    }
-};
+#define MOTOR_PARA_LOOKUP_TABLE \
+    CAM_CTRL_MAP(ESP_CAM_MOTOR_POSITION_CODE, V4L2_CID_FOCUS_ABSOLUTE, "Focus, Absolute") \
+    CAM_CTRL_MAP(ESP_CAM_MOTOR_MOVING_START_TIME, V4L2_CID_MOTOR_START_TIME, "Motor Start Time")
+
+CAM_PARA_SUBSYS_DEFINE(motor_para, motor, esp_cam_motor_query_para_desc, esp_cam_motor_get_para_value,
+                       esp_cam_motor_set_para_value, 1, MOTOR_PARA_LOOKUP_TABLE)
+
+#define MOTOR_SUBSYS_ENTRY CAM_SUBSYS_ENTRY(motor_para, false)
+#else
+#define MOTOR_SUBSYS_ENTRY
 #endif
 
-/**
- * @brief Get control ID map pointer based on V4L2 control ID
- *
- * @param v4l2_id V4L2 control ID
- * @param ioctl   Camera device command type pointe, true: it is sensor ioctl command; false: it is sensor parameter ID command
- * @param type    Camera device type pointer
- *
- * @return
- *      - Control ID map pointer on success
- *      - NULL if failed
- */
-static const struct control_map *get_v4l2_ext_control_map(uint32_t v4l2_id, bool *ioctl, cam_dev_type_t *type)
+#if CONFIG_ESP_VIDEO_ENABLE_IRCUT_SUPPORT
+static bool ircut_mode_is_writable(int32_t mode)
 {
-    for (int i = 0; i < ARRAY_SIZE(s_sensor_control_map_table); i++) {
-        if (s_sensor_control_map_table[i].v4l2_id == v4l2_id) {
-            *ioctl = false;
-            *type = CAM_DEV_SENSOR;
-            return &s_sensor_control_map_table[i];
-        }
-    }
+    return mode == ESP_CAM_IRCUT_MODE_DAY || mode == ESP_CAM_IRCUT_MODE_NIGHT;
+}
 
-#if CONFIG_ESP_VIDEO_ENABLE_CAMERA_MOTOR_CONTROLLER
-    for (int i = 0; i < ARRAY_SIZE(s_motor_control_map_table); i++) {
-        if (s_motor_control_map_table[i].v4l2_id == v4l2_id) {
-            *ioctl = false;
-            *type = CAM_DEV_MOTOR;
-            return &s_motor_control_map_table[i];
-        }
+/* UNKNOWN is readable, not a menu item. Indices outside DAY..NIGHT are absent. */
+static const char *ircut_mode_menu_name(uint32_t index)
+{
+    switch (index) {
+    case ESP_CAM_IRCUT_MODE_DAY:
+        return "Day";
+    case ESP_CAM_IRCUT_MODE_NIGHT:
+        return "Night";
+    default:
+        return NULL;
     }
+}
+
+#define IRCUT_LOOKUP_TABLE \
+    CAM_CTRL_MAP(ESP_CAM_IRCUT_IOC_SET_MODE, V4L2_CID_IRCUT_MODE, "IRCUT Mode")
+
+CAM_IRCUT_SUBSYS_DEFINE(IRCUT_LOOKUP_TABLE)
+
+#define IRCUT_SUBSYS_ENTRY CAM_SUBSYS_ENTRY(ircut, true)
+#else
+#define IRCUT_SUBSYS_ENTRY
 #endif
 
-    for (int i = 0; i < ARRAY_SIZE(s_sensor_control_ioctl_table); i++) {
-        if (s_sensor_control_ioctl_table[i].v4l2_id == v4l2_id) {
-            *ioctl = true;
-            *type = CAM_DEV_SENSOR;
-            return &s_sensor_control_ioctl_table[i];
+static const struct cam_ctrl_subsys s_cam_subsys[] = {
+    CAM_SUBSYS_ENTRY(sensor_para, true)
+    MOTOR_SUBSYS_ENTRY
+    IRCUT_SUBSYS_ENTRY
+    CAM_SUBSYS_ENTRY(sensor_ioctl, false)
+};
+
+static const struct cam_ctrl_subsys *cam_ctrl_lookup(uint32_t v4l2_id, const struct control_map **map)
+{
+    for (int s = 0; s < ARRAY_SIZE(s_cam_subsys); s++) {
+        const struct cam_ctrl_subsys *subsys = &s_cam_subsys[s];
+
+        for (int i = 0; i < subsys->size; i++) {
+            if (subsys->table[i].v4l2_id == v4l2_id) {
+                *map = &subsys->table[i];
+                return subsys;
+            }
         }
     }
 
@@ -159,107 +619,37 @@ static const struct control_map *get_v4l2_ext_control_map(uint32_t v4l2_id, bool
 }
 
 /**
- * @brief Get control internal operation parameters
+ * @brief Find the next supported control, walking enumerable subsystem tables in order
  *
- * @param cam      Camera device pointer
- * @param controls V4L2 external control class pointer
- * @param ctrl     V4L2 external control pointer
- * @param qdesc    Camera sensor device query description pointer
- * @param buf_ptr  Actual data buffer pointer
- * @param buf_size Actual size buffer pointer
- * @param ioctl    Sensor command type pointe, true: it is sensor ioctl command; false: it is sensor parameter ID command
- * @param type     Camera device type pointer
+ * @param cam Camera device pointer
+ * @param id  In: previous control ID, 0 starts from the first control. Out: next control ID
  *
- * @return
- *      - ESP_OK on success
- *      - Others if failed
+ * @return true if a supported control was found
  */
-static esp_err_t get_opt_value_desc(esp_video_cam_t *cam, const struct v4l2_ext_controls *controls, struct v4l2_ext_control *ctrl,
-                                    esp_cam_sensor_param_desc_t *qdesc, void **buf_ptr, size_t *buf_size, bool *ioctl, cam_dev_type_t *dev_type)
+static bool find_next_supported_control(esp_video_cam_t *cam, uint32_t *id)
 {
-    esp_err_t ret;
-    const struct control_map *control_map;
+    bool matched = (*id == 0);
 
-    if (controls->ctrl_class == V4L2_CTRL_CLASS_ESP_CAM_IOCTL) {
-        *ioctl = true;
-        *dev_type = CAM_DEV_SENSOR;
+    for (int s = 0; s < ARRAY_SIZE(s_cam_subsys); s++) {
+        const struct cam_ctrl_subsys *subsys = &s_cam_subsys[s];
 
-        qdesc->id = ctrl->id;
-
-        *buf_ptr = ctrl->p_u8;
-        *buf_size = ctrl->size;
-
-        return ESP_OK;
-    } else {
-        control_map = get_v4l2_ext_control_map(ctrl->id, ioctl, dev_type);
-        if (!control_map) {
-            ESP_LOGE(TAG, "ctrl id=%" PRIx32 " is not supported", ctrl->id);
-            return ESP_ERR_NOT_SUPPORTED;
+        if (!subsys->enumerable) {
+            continue;
         }
 
-        qdesc->id = control_map->esp_cam_priv_id;
-    }
-
-    if (*ioctl == false) {
-        if (*dev_type == CAM_DEV_SENSOR) {
-            ret = esp_cam_sensor_query_para_desc(cam->sensor, qdesc);
-        } else {
-#if CONFIG_ESP_VIDEO_ENABLE_CAMERA_MOTOR_CONTROLLER
-            if (!cam->motor) {
-                return ESP_ERR_NOT_SUPPORTED;
+        for (int i = 0; i < subsys->size; i++) {
+            if (matched) {
+                if (subsys->ops->supported(cam, &subsys->table[i])) {
+                    *id = subsys->table[i].v4l2_id;
+                    return true;
+                }
+            } else if (subsys->table[i].v4l2_id == *id) {
+                matched = true;
             }
-            ret = esp_cam_motor_query_para_desc(cam->motor, qdesc);
-#else
-            ret = ESP_ERR_NOT_SUPPORTED;
-#endif
-        }
-        if (ret == ESP_ERR_NOT_SUPPORTED) {
-#if CONFIG_ESP_VIDEO_ENABLE_CAMERA_MOTOR_CONTROLLER
-            const char *name = *dev_type == CAM_DEV_SENSOR ? cam->sensor->name : cam->motor->name;
-#else
-            const char *name = cam->sensor->name;
-#endif
-            ESP_LOGD(TAG, "sensor %s doesn't support to query parameter description", name);
-
-            *buf_ptr = &ctrl->value;
-            *buf_size = sizeof(ctrl->value);
-
-            qdesc->type = UINT32_MAX;
-        } else if (ret == ESP_OK) {
-            switch (qdesc->type) {
-            case ESP_CAM_SENSOR_PARAM_TYPE_NUMBER:
-            case ESP_CAM_SENSOR_PARAM_TYPE_ENUMERATION:
-            case ESP_CAM_SENSOR_PARAM_TYPE_BITMASK:
-                *buf_ptr = &ctrl->value;
-                *buf_size = sizeof(ctrl->value);
-                break;
-            case ESP_CAM_SENSOR_PARAM_TYPE_U8:
-                *buf_ptr = ctrl->p_u8;
-                *buf_size = ctrl->size;
-                break;
-            default:
-                ESP_LOGE(TAG, "sensor description type=%" PRIu32 " is not supported", qdesc->type);
-                return ESP_ERR_NOT_SUPPORTED;
-            }
-        } else {
-            ESP_LOGE(TAG, "failed to query ctrl id=%" PRIx32, ctrl->id);
-            return ret;
-        }
-    } else {
-        switch (qdesc->id) {
-        case ESP_CAM_SENSOR_IOC_S_TEST_PATTERN: {
-            *buf_ptr = &ctrl->value;
-            *buf_size = sizeof(ctrl->value);
-            break;
-        }
-        default: {
-            ESP_LOGE(TAG, "sensor command=%" PRIu32 " is not supported", qdesc->id);
-            return ESP_ERR_NOT_SUPPORTED;
-        }
         }
     }
 
-    return ESP_OK;
+    return false;
 }
 
 /**
@@ -277,87 +667,24 @@ esp_err_t esp_video_cam_set_ext_ctrls(esp_video_cam_t *cam, const struct v4l2_ex
     esp_err_t ret = ESP_ERR_INVALID_ARG;
 
     for (int i = 0; i < controls->count; i++) {
-        bool ioctl;
-        void *value_ptr;
-        size_t value_size;
-        cam_dev_type_t dev_type;
-        esp_cam_sensor_param_desc_t qdesc;
+        const struct control_map *map;
+        const struct cam_ctrl_subsys *subsys;
         struct v4l2_ext_control *ctrl = &controls->controls[i];
 
-        ret = get_opt_value_desc(cam, controls, ctrl, &qdesc, &value_ptr, &value_size, &ioctl, &dev_type);
+        if (controls->ctrl_class == V4L2_CTRL_CLASS_ESP_CAM_IOCTL) {
+            ret = sensor_class_ioctl(cam, ctrl, true);
+        } else {
+            subsys = cam_ctrl_lookup(ctrl->id, &map);
+            if (!subsys) {
+                ESP_LOGE(TAG, "ctrl id=%" PRIx32 " is not supported", ctrl->id);
+                ret = ESP_ERR_NOT_SUPPORTED;
+                break;
+            }
+
+            ret = subsys->ops->set(cam, map, ctrl);
+        }
         if (ret != ESP_OK) {
             break;
-        }
-
-        if (ioctl) {
-            if (dev_type == CAM_DEV_SENSOR) {
-                ret = esp_cam_sensor_ioctl(cam->sensor, qdesc.id, value_ptr);
-            } else {
-#if CONFIG_ESP_VIDEO_ENABLE_CAMERA_MOTOR_CONTROLLER
-                ret = esp_cam_motor_ioctl(cam->motor, qdesc.id, value_ptr);
-#else
-                ret = ESP_ERR_NOT_SUPPORTED;
-#endif
-            }
-            if (ret != ESP_OK) {
-                ESP_LOGE(TAG, "failed to set ioctl id=%" PRIx32, ctrl->id);
-                break;
-            }
-        } else {
-            int32_t value_buf = ctrl->value;
-
-            switch (qdesc.type) {
-            case ESP_CAM_SENSOR_PARAM_TYPE_NUMBER:
-                if ((value_buf > qdesc.number.maximum) || (value_buf < qdesc.number.minimum) ||
-                        (value_buf % qdesc.number.step)) {
-                    ESP_LOGE(TAG, "number: ctrl id=%" PRIx32 " value=%" PRIi32 " is out of range(max=%" PRIi32 ", min=%" PRIi32 ", step=%"PRIu32")",
-                             ctrl->id, value_buf, (int32_t)qdesc.number.maximum, (int32_t)qdesc.number.minimum, (uint32_t)qdesc.number.step);
-                    return ESP_ERR_INVALID_ARG;
-                }
-                break;
-            case ESP_CAM_SENSOR_PARAM_TYPE_ENUMERATION: {
-                if (value_buf < 0 || value_buf >= qdesc.enumeration.count) {
-                    ESP_LOGE(TAG, "enum: ctrl id=%" PRIx32 " value=%" PRIu32 " is out of range(from 0 to %" PRIu32 ")",
-                             ctrl->id, value_buf, qdesc.enumeration.count);
-                    return ESP_ERR_INVALID_ARG;
-                }
-                break;
-            }
-            case ESP_CAM_SENSOR_PARAM_TYPE_BITMASK:
-                if (value_buf & (~qdesc.bitmask.value)) {
-                    ESP_LOGE(TAG, "mask: ctrl id=%" PRIx32 " value=%" PRIx32 " is out of range(%" PRIx32 ")",
-                             ctrl->id, value_buf, qdesc.bitmask.value);
-                    return ESP_ERR_INVALID_ARG;
-                }
-                break;
-            case ESP_CAM_SENSOR_PARAM_TYPE_U8:
-                if (value_size != qdesc.u8.size) {
-                    ESP_LOGE(TAG, "mask: ctrl id=%" PRIx32 " size=%zu is not equal to sensor data size(%" PRIu32 ")",
-                             ctrl->id, value_size, qdesc.u8.size);
-                    return ESP_ERR_INVALID_ARG;
-                }
-                break;
-            case UINT32_MAX:
-                ESP_LOGD(TAG, "can't check ctrl id=%" PRIx32, ctrl->id);
-                break;
-            default:
-                ESP_LOGE(TAG, "sensor description type=%" PRIx32 " is not supported", qdesc.type);
-                return ESP_ERR_NOT_SUPPORTED;
-            }
-
-            if (dev_type == CAM_DEV_SENSOR) {
-                ret = esp_cam_sensor_set_para_value(cam->sensor, qdesc.id, value_ptr, value_size);
-            } else {
-#if CONFIG_ESP_VIDEO_ENABLE_CAMERA_MOTOR_CONTROLLER
-                ret = esp_cam_motor_set_para_value(cam->motor, qdesc.id, value_ptr, value_size);
-#else
-                ret = ESP_ERR_NOT_SUPPORTED;
-#endif
-            }
-            if (ret != ESP_OK) {
-                ESP_LOGE(TAG, "failed to set ctrl id=%" PRIx32, ctrl->id);
-                break;
-            }
         }
     }
 
@@ -379,46 +706,24 @@ esp_err_t esp_video_cam_get_ext_ctrls(esp_video_cam_t *cam, struct v4l2_ext_cont
     esp_err_t ret = ESP_ERR_INVALID_ARG;
 
     for (int i = 0; i < controls->count; i++) {
-        bool ioctl;
-        void *value_ptr;
-        size_t value_size;
-        cam_dev_type_t dev_type;
-        esp_cam_sensor_param_desc_t qdesc;
+        const struct control_map *map;
+        const struct cam_ctrl_subsys *subsys;
         struct v4l2_ext_control *ctrl = &controls->controls[i];
 
-        ret = get_opt_value_desc(cam, controls, ctrl, &qdesc, &value_ptr, &value_size, &ioctl, &dev_type);
+        if (controls->ctrl_class == V4L2_CTRL_CLASS_ESP_CAM_IOCTL) {
+            ret = sensor_class_ioctl(cam, ctrl, false);
+        } else {
+            subsys = cam_ctrl_lookup(ctrl->id, &map);
+            if (!subsys) {
+                ESP_LOGE(TAG, "ctrl id=%" PRIx32 " is not supported", ctrl->id);
+                ret = ESP_ERR_NOT_SUPPORTED;
+                break;
+            }
+
+            ret = subsys->ops->get(cam, map, ctrl);
+        }
         if (ret != ESP_OK) {
             break;
-        }
-
-        if (ioctl) {
-            if (dev_type == CAM_DEV_SENSOR) {
-                ret = esp_cam_sensor_ioctl(cam->sensor, qdesc.id, value_ptr);
-            } else {
-#if CONFIG_ESP_VIDEO_ENABLE_CAMERA_MOTOR_CONTROLLER
-                ret = esp_cam_motor_ioctl(cam->motor, qdesc.id, value_ptr);
-#else
-                ret = ESP_ERR_NOT_SUPPORTED;
-#endif
-            }
-            if (ret != ESP_OK) {
-                ESP_LOGE(TAG, "failed to get ioctl id=%" PRIx32, ctrl->id);
-                break;
-            }
-        } else {
-            if (dev_type == CAM_DEV_SENSOR) {
-                ret = esp_cam_sensor_get_para_value(cam->sensor, qdesc.id, value_ptr, value_size);
-            } else {
-#if CONFIG_ESP_VIDEO_ENABLE_CAMERA_MOTOR_CONTROLLER
-                ret = esp_cam_motor_get_para_value(cam->motor, qdesc.id, value_ptr, value_size);
-#else
-                ret = ESP_ERR_NOT_SUPPORTED;
-#endif
-            }
-            if (ret != ESP_OK) {
-                ESP_LOGE(TAG, "failed to get ctrl id=%" PRIx32, ctrl->id);
-                break;
-            }
         }
     }
 
@@ -437,130 +742,29 @@ esp_err_t esp_video_cam_get_ext_ctrls(esp_video_cam_t *cam, struct v4l2_ext_cont
  */
 esp_err_t esp_video_cam_query_ext_ctrls(esp_video_cam_t *cam, struct v4l2_query_ext_ctrl *qctrl)
 {
-    bool ioctl;
-    esp_err_t ret;
-    cam_dev_type_t dev_type;
-    const struct control_map *control_map = NULL;
-    esp_cam_sensor_param_desc_t qdesc;
+    const struct control_map *map;
+    const struct cam_ctrl_subsys *subsys;
 
     if (qctrl->id & V4L2_CTRL_FLAG_NEXT_CTRL) {
-        bool matched = false;
-        bool found = false;
-        int map_size = ARRAY_SIZE(s_sensor_control_map_table);
+        uint32_t id;
 
-        /* Remove next flag */
+        /* Remove next flag. id 0 starts at the first supported control. */
         qctrl->id &= ~V4L2_CTRL_FLAG_NEXT_CTRL;
-
-        /* If this is the first time, using the first ID V4L2_CID_GAIN */
-        if (!qctrl->id) {
-            matched = true;
-        }
-
-        for (int i = 0; i < map_size; i++) {
-            if (matched) {
-                qctrl->id = s_sensor_control_map_table[i].v4l2_id;
-
-                qdesc.id = s_sensor_control_map_table[i].esp_cam_priv_id;
-                ret = esp_cam_sensor_query_para_desc(cam->sensor, &qdesc);
-                if (!ret) {
-                    found = true;
-                    break;
-                }
-            } else {
-                if (s_sensor_control_map_table[i].v4l2_id == qctrl->id) {
-                    matched = true;
-                }
-            }
-        }
-
-        if (!found) {
+        id = qctrl->id;
+        if (!find_next_supported_control(cam, &id)) {
             return ESP_ERR_INVALID_ARG;
         }
+
+        qctrl->id = id;
     }
 
-    control_map = get_v4l2_ext_control_map(qctrl->id, &ioctl, &dev_type);
-    if (!control_map) {
+    subsys = cam_ctrl_lookup(qctrl->id, &map);
+    if (!subsys) {
         ESP_LOGE(TAG, "ctrl id=%" PRIx32 " is not supported", qctrl->id);
         return ESP_ERR_NOT_SUPPORTED;
     }
 
-    qdesc.id = control_map->esp_cam_priv_id;
-    if (dev_type == CAM_DEV_SENSOR) {
-        ret = esp_cam_sensor_query_para_desc(cam->sensor, &qdesc);
-    } else {
-#if CONFIG_ESP_VIDEO_ENABLE_CAMERA_MOTOR_CONTROLLER
-        if (!cam->motor) {
-            return ESP_ERR_NOT_SUPPORTED;
-        }
-        ret = esp_cam_motor_query_para_desc(cam->motor, &qdesc);
-#else
-        ret = ESP_ERR_NOT_SUPPORTED;
-#endif
-    }
-    if (ret != ESP_OK) {
-        ESP_LOGD(TAG, "failed to query sensor id=%" PRIx32, qdesc.id);
-        return ret;
-    }
-
-    int name_len = snprintf(qctrl->name, sizeof(qctrl->name), "%s", control_map->name);
-    if (name_len < 0) {
-        ESP_LOGE(TAG, "failed to fill name of cmd id=%" PRIx32, qctrl->id);
-        return ESP_FAIL;
-    } else if (name_len >= sizeof(qctrl->name)) {
-        ESP_LOGE(TAG, "name of cmd id=%" PRIx32 " is too long", qctrl->id);
-        return ESP_ERR_INVALID_ARG;
-    }
-
-    /**
-     * Todo: AEG-1095
-     */
-    switch (qdesc.type) {
-    case ESP_CAM_SENSOR_PARAM_TYPE_NUMBER:
-        qctrl->type = V4L2_CTRL_TYPE_INTEGER;
-        qctrl->maximum = qdesc.number.maximum;
-        qctrl->minimum = qdesc.number.minimum;
-        qctrl->step = qdesc.number.step;;
-        qctrl->elems = 1;
-        qctrl->nr_of_dims = 0;
-        qctrl->default_value = qdesc.default_value;
-        break;
-    case ESP_CAM_SENSOR_PARAM_TYPE_ENUMERATION:
-        qctrl->type = V4L2_CTRL_TYPE_INTEGER_MENU;
-        qctrl->maximum = qdesc.enumeration.count - 1;
-        qctrl->minimum = 0;
-        qctrl->step = 1;
-        qctrl->elem_size = sizeof(uint32_t);
-        qctrl->elems = 1;
-        qctrl->nr_of_dims = 0;
-        qctrl->dims[0] = qctrl->elem_size;
-        qctrl->default_value = qdesc.default_value;
-        break;
-    case ESP_CAM_SENSOR_PARAM_TYPE_BITMASK:
-        qctrl->type = V4L2_CTRL_TYPE_BITMASK;
-        qctrl->minimum = 0;
-        qctrl->maximum = qdesc.bitmask.value;
-        qctrl->step = 1;
-        qctrl->elems = 1;
-        qctrl->nr_of_dims = 0;
-        qctrl->default_value = qdesc.default_value;
-        break;
-    case ESP_CAM_SENSOR_PARAM_TYPE_U8:
-        qctrl->type = V4L2_CTRL_TYPE_U8;
-        qctrl->minimum = 0;
-        qctrl->maximum = UINT8_MAX;
-        qctrl->step = 1;
-        qctrl->elem_size = qdesc.u8.size;
-        qctrl->elems = 1;
-        qctrl->nr_of_dims = 0;
-        qctrl->dims[0] = 1;
-        qctrl->default_value = 0;
-        break;
-    default:
-        ESP_LOGD(TAG, "sensor type=%" PRIu32 " is not supported", qdesc.type);
-        return ESP_ERR_NOT_SUPPORTED;
-    }
-
-    return ESP_OK;
+    return subsys->ops->query(cam, map, qctrl);
 }
 
 /**
@@ -575,52 +779,14 @@ esp_err_t esp_video_cam_query_ext_ctrls(esp_video_cam_t *cam, struct v4l2_query_
  */
 esp_err_t esp_video_cam_query_menu(esp_video_cam_t *cam, struct v4l2_querymenu *qmenu)
 {
-    bool ioctl;
-    esp_err_t ret;
-    cam_dev_type_t dev_type;
-    const struct control_map *control_map;
-    esp_cam_sensor_param_desc_t qdesc;
+    const struct control_map *map;
+    const struct cam_ctrl_subsys *subsys;
 
-    control_map = get_v4l2_ext_control_map(qmenu->id, &ioctl, &dev_type);
-    if (!control_map) {
+    subsys = cam_ctrl_lookup(qmenu->id, &map);
+    if (!subsys) {
         ESP_LOGE(TAG, "ctrl id=%" PRIx32 " is not supported", qmenu->id);
         return ESP_ERR_NOT_SUPPORTED;
     }
 
-    if (ioctl) {
-        ESP_LOGE(TAG, "ctrl id=%" PRIx32 " is ioctl type", qmenu->id);
-        return ESP_ERR_NOT_SUPPORTED;
-    }
-
-    qdesc.id = control_map->esp_cam_priv_id;
-    if (dev_type == CAM_DEV_SENSOR) {
-        ret = esp_cam_sensor_query_para_desc(cam->sensor, &qdesc);
-    } else {
-#if CONFIG_ESP_VIDEO_ENABLE_CAMERA_MOTOR_CONTROLLER
-        if (!cam->motor) {
-            return ESP_ERR_NOT_SUPPORTED;
-        }
-        ret = esp_cam_motor_query_para_desc(cam->motor, &qdesc);
-#else
-        ret = ESP_ERR_NOT_SUPPORTED;
-#endif
-    }
-    if (ret != ESP_OK) {
-        ESP_LOGE(TAG, "failed to query sensor id=%" PRIx32, qdesc.id);
-        return ret;
-    }
-
-    if (qdesc.type != ESP_CAM_SENSOR_PARAM_TYPE_ENUMERATION) {
-        ESP_LOGE(TAG, "ctrl id=%" PRIx32 " is not menu type", qmenu->id);
-        return ESP_ERR_INVALID_ARG;
-    }
-
-    if (qmenu->index >= qdesc.enumeration.count) {
-        ESP_LOGE(TAG, "ctrl id=%" PRIx32 " is out of range(max=" PRIx32 ")", qdesc.enumeration.count - 1);
-        return ESP_ERR_INVALID_ARG;
-    }
-
-    qmenu->value = qdesc.enumeration.elements[qmenu->index];
-
-    return ESP_OK;
+    return subsys->ops->query_menu(cam, map, qmenu);
 }

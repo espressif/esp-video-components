@@ -27,6 +27,10 @@ if (CONFIG_ESP_VIDEO_ENABLE_SWAP_BYTE_RISCV)
     list(APPEND srcs "test_data_reprocessing.c")
 endif()
 
+if (CONFIG_ESP_VIDEO_ENABLE_IRCUT_SUPPORT)
+    list(APPEND srcs "test_ircut_ctrl.c")
+endif()
+
 idf_component_register(SRCS ${srcs}
                        INCLUDE_DIRS ${includes}
                        REQUIRES ${requires}

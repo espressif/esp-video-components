@@ -450,6 +450,8 @@ static void config_color(esp_video_isp_t *isp, esp_ipa_metadata_t *metadata)
         control[0].value    = metadata->saturation;
         if (ioctl(isp->isp_fd, VIDIOC_S_EXT_CTRLS, &controls) != 0) {
             ESP_LOGE(TAG, "failed to set saturation");
+        } else {
+            isp->sensor.cur_saturation = metadata->saturation;
         }
     }
 
@@ -913,6 +915,28 @@ static void config_dpc(esp_video_isp_t *isp, esp_ipa_metadata_t *metadata)
 }
 #endif
 
+#if CONFIG_ESP_VIDEO_ENABLE_IRCUT_SUPPORT
+static void config_ir_cut(esp_video_isp_t *isp, esp_ipa_metadata_t *metadata)
+{
+    if (metadata->flags & IPA_METADATA_FLAGS_IR) {
+        struct v4l2_ext_controls controls;
+        struct v4l2_ext_control control[1];
+
+        memset(&controls, 0, sizeof(controls));
+        memset(&control, 0, sizeof(control));
+        controls.count = 1;
+        controls.controls = control;
+        control[0].id = V4L2_CID_IRCUT_MODE;
+        control[0].value = metadata->ir_enable ? ESP_CAM_IRCUT_MODE_NIGHT : ESP_CAM_IRCUT_MODE_DAY;
+        if (ioctl(isp->cam_fd, VIDIOC_S_EXT_CTRLS, &controls) != 0) {
+            ESP_LOGE(TAG, "failed to set IR-Cut mode");
+        } else {
+            ESP_LOGD(TAG, "IR-CUT set to mode %s", metadata->ir_enable ? "Night" : "Day");
+        }
+    }
+}
+#endif
+
 static void config_isp_and_camera(esp_video_isp_t *isp, esp_ipa_metadata_t *metadata)
 {
     config_statistics_region(isp, metadata);
@@ -942,6 +966,9 @@ static void config_isp_and_camera(esp_video_isp_t *isp, esp_ipa_metadata_t *meta
     config_exposure_and_gain(isp, metadata);
 #if CONFIG_ESP_VIDEO_ISP_PIPELINE_CONTROL_CAMERA_MOTOR
     config_motor_position(isp, metadata);
+#endif
+#if CONFIG_ESP_VIDEO_ENABLE_IRCUT_SUPPORT
+    config_ir_cut(isp, metadata);
 #endif
 }
 
@@ -1390,6 +1417,23 @@ static esp_err_t init_isp_dev(const esp_video_isp_config_t *config, esp_video_is
     fd = open(config->isp_dev, O_RDWR);
     ESP_RETURN_ON_FALSE(fd > 0, ESP_ERR_INVALID_ARG, TAG, "failed to open %s", config->isp_dev);
     print_dev_info(fd);
+
+#if CONFIG_ESP_VIDEO_ENABLE_IRCUT_SUPPORT
+    {
+        struct v4l2_ext_controls controls;
+        struct v4l2_ext_control control[1];
+
+        memset(&controls, 0, sizeof(controls));
+        memset(&control, 0, sizeof(control));
+        controls.ctrl_class = V4L2_CID_USER_CLASS;
+        controls.count = 1;
+        controls.controls = control;
+        control[0].id = V4L2_CID_SATURATION;
+        ret = ioctl(fd, VIDIOC_G_EXT_CTRLS, &controls);
+        ESP_GOTO_ON_FALSE(ret == 0, ESP_FAIL, fail_0, TAG, "failed to get saturation");
+        isp->sensor.cur_saturation = control[0].value;
+    }
+#endif
 
     memset(&req, 0, sizeof(req));
     req.count  = ISP_METADATA_BUFFER_COUNT;

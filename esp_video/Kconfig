@@ -24,6 +24,10 @@ menu "Espressif Video Configuration"
     config ESP_VIDEO_ENABLE_DATA_PREPROCESSING
         bool
         default n
+    
+    config ESP_VIDEO_ENABLE_IRCUT_SUPPORT
+        bool
+        default n
 
     config ESP_VIDEO_CHECK_PARAMETERS
         bool "Check Video Function Parameters"
@@ -81,9 +85,28 @@ menu "Espressif Video Configuration"
                 - Video buffer count must be greater than 1
 
                 Recommended: Keep enabled unless the application has to setup only one video buffer.
+
+        config ESP_VIDEO_ENABLE_MIPI_CSI_IRCUT_SUPPORT
+            bool "Enable MIPI-CSI IR-Cut Support"
+            default n
+            depends on CAMERA_IRCUT_DEVICE_USED
+            select ESP_VIDEO_ENABLE_IRCUT_SUPPORT
+            help
+                Enable IR-Cut control on the MIPI-CSI video device.
+
+                When enabled, the MIPI-CSI video device exposes ioctl commands
+                to switch the IR-Cut filter between day (visible light) and
+                night (infrared) modes.
+
+                Features:
+                - IR-Cut day/night mode switching via MIPI-CSI video device ioctl
+
+                Requirements:
+                - Fill the IR-Cut chip ID and GPIO pins in the esp_video_init
+                  configuration so the driver can probe the corresponding IR-Cut device.
     endif
 
-    config ESP_VIDEO_ENABLE_DVP_VIDEO_DEVICE
+    menuconfig ESP_VIDEO_ENABLE_DVP_VIDEO_DEVICE
         bool "Enable DVP based Video Device"
         depends on SOC_LCDCAM_CAM_SUPPORTED
         default y
@@ -102,6 +125,28 @@ menu "Espressif Video Configuration"
 
             Suitable for moderate resolution sensors and applications
             where MIPI-CSI is not available.
+
+    if ESP_VIDEO_ENABLE_DVP_VIDEO_DEVICE
+
+        config ESP_VIDEO_ENABLE_DVP_IRCUT_SUPPORT
+            bool "Enable DVP IR-Cut Support"
+            default n
+            depends on CAMERA_IRCUT_DEVICE_USED
+            select ESP_VIDEO_ENABLE_IRCUT_SUPPORT
+            help
+                Enable IR-Cut control on the DVP video device.
+
+                When enabled, the DVP video device exposes ioctl commands
+                to switch the IR-Cut filter between day (visible light) and
+                night (infrared) modes.
+
+                Features:
+                - IR-Cut day/night mode switching via DVP video device ioctl
+
+                Requirements:
+                - Fill the IR-Cut chip ID and GPIO pins in the esp_video_init
+                  configuration so the driver can probe the corresponding IR-Cut device.
+    endif
 
     menuconfig ESP_VIDEO_ENABLE_SPI_VIDEO_DEVICE
         bool "Enable SPI based Video Device"

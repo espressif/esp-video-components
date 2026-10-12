@@ -64,6 +64,17 @@ extern "C" {
 #endif
 
 /**
+ * @brief IR-Cut initialization configuration
+ */
+#if CONFIG_ESP_VIDEO_ENABLE_IRCUT_SUPPORT
+typedef struct esp_video_init_ircut_config {
+    uint8_t ircut_chip_id;                      /*!< IR-Cut chip ID, if hardware has no IR-Cut chip, set ircut_chip_id to be -1 */
+    gpio_num_t fbc_pin;                         /*!< FBC (Filter Block Control) pin, if hardware has no FBC pin, set fbc_pin to be -1 */
+    gpio_num_t en_pin;                          /*!< EN (Enable) pin, if hardware has no EN pin, set en_pin to be -1 */
+} esp_video_init_ircut_config_t;
+#endif /* CONFIG_ESP_VIDEO_ENABLE_IRCUT_SUPPORT */
+
+/**
  * @brief SCCB initialization configuration
  */
 #if ESP_VIDEO_ENABLE_SCCB_DEVICE
@@ -91,6 +102,10 @@ typedef struct esp_video_init_sccb_config {
 typedef struct esp_video_init_csi_config {
     esp_video_init_sccb_config_t sccb_config;   /*!< Camera sensor SCCB configuration */
 
+#if CONFIG_ESP_VIDEO_ENABLE_MIPI_CSI_IRCUT_SUPPORT
+    esp_video_init_ircut_config_t *ircut_config; /*!< IR-Cut initialization configuration, if hardware has no IR-Cut chip, set ircut_config to be NULL */
+#endif
+
     gpio_num_t  reset_pin;                      /*!< Camera sensor reset pin, if hardware has no reset pin, set reset_pin to be -1 */
     gpio_num_t  pwdn_pin;                       /*!< Camera sensor power down pin, if hardware has no power down pin, set pwdn_pin to be -1 */
 
@@ -104,6 +119,10 @@ typedef struct esp_video_init_csi_config {
 #if CONFIG_ESP_VIDEO_ENABLE_DVP_VIDEO_DEVICE
 typedef struct esp_video_init_dvp_config {
     esp_video_init_sccb_config_t sccb_config;   /*!< Camera sensor SCCB configuration */
+
+#if CONFIG_ESP_VIDEO_ENABLE_DVP_IRCUT_SUPPORT
+    esp_video_init_ircut_config_t *ircut_config; /*!< IR-Cut initialization configuration, if hardware has no IR-Cut chip, set ircut_config to be NULL */
+#endif
 
     gpio_num_t  reset_pin;                      /*!< Camera sensor reset pin, if hardware has no reset pin, set reset_pin to be -1 */
     gpio_num_t  pwdn_pin;                       /*!< Camera sensor power down pin, if hardware has no power down pin, set pwdn_pin to be -1 */

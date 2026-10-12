@@ -697,6 +697,38 @@ esp_err_t esp_video_csi_video_device_add_motor(esp_cam_motor_device_t *motor_dev
     return ESP_OK;
 }
 
+#if CONFIG_ESP_VIDEO_ENABLE_MIPI_CSI_IRCUT_SUPPORT
+/**
+ * @brief Add IR-Cut device to MIPI-CSI video device
+ *
+ * @param ircut_dev IR-Cut device
+ *
+ * @return
+ *      - ESP_OK on success
+ *      - Others if failed
+ */
+esp_err_t esp_video_csi_video_device_add_ircut(esp_cam_ircut_device_t *ircut_dev)
+{
+    struct esp_video *video;
+    esp_video_device_common_t *common;
+
+    video = esp_video_device_get_object(CSI_NAME);
+    if (!video) {
+        return ESP_ERR_NOT_FOUND;
+    }
+
+    common = VIDEO_PRIV_DATA(esp_video_device_common_t *, video);
+
+    if (common->cam.ircut) {
+        return ESP_ERR_INVALID_STATE;
+    }
+
+    common->cam.ircut = ircut_dev;
+
+    return ESP_OK;
+}
+#endif
+
 /**
  * @brief Destroy MIPI-CSI video device
  *

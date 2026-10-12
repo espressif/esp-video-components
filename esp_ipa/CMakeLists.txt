@@ -89,6 +89,10 @@ if(CONFIG_ESP_IPA_DETECT_METHOD_DYNAMIC_LINK)
     if(CONFIG_ESP_IPA_DPC_ALGORITHM)
         target_link_libraries(${COMPONENT_LIB} INTERFACE "-u __esp_ipa_detect_fn_esp_ipa_dpc")
     endif()
+
+    if(CONFIG_ESP_IPA_IR_ALGORITHM)
+        target_link_libraries(${COMPONENT_LIB} INTERFACE "-u __esp_ipa_detect_fn_esp_ipa_ir")
+    endif()
 endif()
 
 idf_build_get_property(python PYTHON)
