@@ -17,19 +17,19 @@ extern "C" {
  */
 
 /**
- * @brief SCCB(I2C) pre-initialized port configuration
+ * @brief SCCB pre-initialized port configuration
  */
-#if CONFIG_EXAMPLE_SCCB_I2C_INIT_BY_APP
-#define EXAMPLE_SCCB_I2C_SCL_PIN_INIT_BY_APP            13
-#define EXAMPLE_SCCB_I2C_SDA_PIN_INIT_BY_APP            14
-#endif /* CONFIG_EXAMPLE_SCCB_I2C_INIT_BY_APP */
+#if CONFIG_EXAMPLE_SCCB_INIT_BY_APP
+#define EXAMPLE_SCCB_SCL_PIN_INIT_BY_APP            13
+#define EXAMPLE_SCCB_SDA_PIN_INIT_BY_APP            14
+#endif /* CONFIG_EXAMPLE_SCCB_INIT_BY_APP */
 
 #if CONFIG_EXAMPLE_ENABLE_MIPI_CSI_CAM_SENSOR
 /**
  * @brief MIPI-CSI camera sensor configuration
  */
-#define EXAMPLE_MIPI_CSI_SCCB_I2C_SCL_PIN               13
-#define EXAMPLE_MIPI_CSI_SCCB_I2C_SDA_PIN               14
+#define EXAMPLE_MIPI_CSI_SCCB_SCL_PIN               13
+#define EXAMPLE_MIPI_CSI_SCCB_SDA_PIN               14
 
 #define EXAMPLE_MIPI_CSI_CAM_SENSOR_RESET_PIN           26
 #define EXAMPLE_MIPI_CSI_CAM_SENSOR_PWDN_PIN            12

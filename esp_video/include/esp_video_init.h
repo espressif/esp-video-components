@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2024-2025 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2024-2026 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: ESPRESSIF MIT
  */
@@ -9,7 +9,11 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include "esp_err.h"
+#include "soc/soc_caps.h"
 #include "driver/i2c_master.h"
+#if ESP_SCCB_I3C_SUPPORTED
+#include "driver/i3c_master.h"
+#endif
 #if CONFIG_ESP_VIDEO_ENABLE_DVP_VIDEO_DEVICE
 #include "esp_cam_ctlr_dvp.h"
 #endif
@@ -75,12 +79,24 @@ typedef struct esp_video_init_ircut_config {
 #endif /* CONFIG_ESP_VIDEO_ENABLE_IRCUT_SUPPORT */
 
 /**
+ * @brief SCCB bus implementation
+ *
+ * @note Zero means I2C, so existing initializers keep using the I2C master.
+ */
+#if ESP_VIDEO_ENABLE_SCCB_DEVICE && ESP_SCCB_I3C_SUPPORTED
+typedef enum {
+    ESP_VIDEO_SCCB_BUS_I2C = 0,                 /*!< I2C master */
+    ESP_VIDEO_SCCB_BUS_I3C,                     /*!< I3C master, legacy I2C device mode */
+} esp_video_sccb_bus_type_t;
+#endif
+
+/**
  * @brief SCCB initialization configuration
  */
 #if ESP_VIDEO_ENABLE_SCCB_DEVICE
 typedef struct esp_video_init_sccb_config {
-    bool init_sccb;                             /*!< true:  SCCB I2C is not initialized and esp_video_init function will initialize SCCB I2C with given parameters i2c_config.
-                                                     false: SCCB I2C is initialized and esp_video_init function can use i2c_handle directly */
+    bool init_sccb;                             /*!< true:  SCCB bus is not initialized and esp_video_init function will initialize it with i2c_config or i3c_config.
+                                                     false: SCCB bus is initialized and esp_video_init function uses i2c_handle or i3c_handle directly */
     union {
         struct {
             uint8_t port;                       /*!< SCCB I2C port */
@@ -89,9 +105,20 @@ typedef struct esp_video_init_sccb_config {
         } i2c_config;                           /*!< SCCB I2C configuration */
 
         i2c_master_bus_handle_t i2c_handle;     /*!< SCCB I2C handle */
+#if ESP_SCCB_I3C_SUPPORTED
+        struct {
+            gpio_num_t scl_pin;                 /*!< SCCB I3C SCL pin */
+            gpio_num_t sda_pin;                 /*!< SCCB I3C SDA pin */
+        } i3c_config;                           /*!< SCCB I3C configuration. I3C has no port number. */
+
+        i3c_master_bus_handle_t i3c_handle;     /*!< SCCB I3C handle */
+#endif
     };
 
-    uint32_t freq;                              /*!< SCCB I2C frequency */
+    uint32_t freq;                              /*!< SCCB clock frequency, in Hz */
+#if ESP_SCCB_I3C_SUPPORTED
+    esp_video_sccb_bus_type_t bus_type;         /*!< SCCB bus implementation. Leave zero to use I2C. */
+#endif
 } esp_video_init_sccb_config_t;
 #endif /* ESP_VIDEO_ENABLE_SCCB_DEVICE */
 

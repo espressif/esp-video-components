@@ -192,6 +192,28 @@ esp_err_t esp_sccb_receive_v16(esp_sccb_io_handle_t io_handle, uint16_t *val);
  */
 esp_err_t esp_sccb_del_i2c_io(esp_sccb_io_handle_t io_handle);
 
+/**
+ * @brief Delete an SCCB IO handle created by sccb_new_i3c_io()
+ *
+ * Thread-safety contract (external serialization with IO):
+ * - Concurrent transmit/receive on the same handle are serialized internally.
+ * - This delete must not run concurrently with any IO on `io_handle`.
+ * - Every other thread must have returned from transmit/receive before delete
+ *   is called, and no thread may start IO on `io_handle` until delete returns.
+ * - Do not use `io_handle` after this function returns.
+ *
+ * Object-local reference counting cannot close the window where one thread has
+ * entered an IO call but not yet taken the internal lock while another thread
+ * frees the object; callers must uphold the contract above.
+ *
+ * @param[in] io_handle SCCB IO handle
+ * @return
+ *        - ESP_OK: If controller is successfully deleted.
+ *        - ESP_ERR_INVALID_ARG: io_handle is NULL.
+ *        - ESP_ERR_NOT_SUPPORTED: delete function is not implemented.
+ */
+esp_err_t esp_sccb_del_i3c_io(esp_sccb_io_handle_t io_handle);
+
 #ifdef __cplusplus
 }
 #endif

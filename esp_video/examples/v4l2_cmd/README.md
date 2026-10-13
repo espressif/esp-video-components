@@ -390,10 +390,10 @@ Navigate to **Espressif Camera Sensors Configurations**:
    
    ```
    Example Video Initialization Configuration  --->
-       [*] Use Pre-initialized SCCB(I2C) Bus for All Camera Sensors And Motors
-           (0) SCCB(I2C) Port Number
-           (8) SCCB(I2C) SCL Pin
-           (7) SCCB(I2C) SDA Pin
+       [*] Use Pre-initialized SCCB Bus for All Camera Sensors And Motors
+           (0) SCCB Port Number
+           (8) SCCB SCL Pin
+           (7) SCCB SDA Pin
    ```
 
 4. **Select target camera sensors:**
@@ -448,7 +448,7 @@ When running this example, you should see output similar to this in the serial m
 I (1241) main_task: Started on CPU0
 I (1251) esp_psram: Reserving pool of 32K of internal memory for DMA/internal allocations
 I (1251) main_task: Calling app_main()
-I (1251) example_init_video: MIPI-CSI camera sensor I2C port=0, scl_pin=8, sda_pin=7, freq=100000
+I (1251) example_init_video: MIPI-CSI camera sensor SCCB port=0, scl_pin=8, sda_pin=7, freq=100000
 I (1251) sc2336: Detected Camera sensor PID=0xcb3a
 
 Type 'help' to get the list of commands.

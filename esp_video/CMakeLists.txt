@@ -12,6 +12,11 @@ set(priv_include_dirs "private_include")
 set(priv_requires "vfs"  "esp_timer")
 set(requires "esp_driver_cam" "esp_cam_sensor" "lwip")
 
+# esp_driver_i3c is available starting with ESP-IDF v6.1.0, same gate as ESP_SCCB_I3C_SUPPORTED.
+if(CONFIG_SOC_I3C_MASTER_SUPPORTED AND "${IDF_VERSION_MAJOR}.${IDF_VERSION_MINOR}.${IDF_VERSION_PATCH}" VERSION_GREATER_EQUAL "6.1.0")
+    list(APPEND requires "esp_driver_i3c")
+endif()
+
 if(CONFIG_IDF_TARGET_ESP32P4)
     list(APPEND priv_requires "esp_hal_cam")
 endif()

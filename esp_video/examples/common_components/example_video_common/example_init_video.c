@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2025 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2025-2026 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: ESPRESSIF MIT
  */
@@ -9,6 +9,91 @@
 #include "esp_check.h"
 #include "example_video_common.h"
 #include "esp_cam_sensor_xclk.h"
+#if CONFIG_EXAMPLE_SCCB_USE_I3C && ESP_SCCB_I3C_SUPPORTED
+#include "driver/i3c_master.h"
+#endif
+
+#if CONFIG_EXAMPLE_SCCB_USE_I3C && ESP_SCCB_I3C_SUPPORTED
+#if EXAMPLE_ENABLE_MIPI_CSI_CAM_SENSOR && EXAMPLE_MIPI_CSI_SCCB_PORT > 0
+#error "MIPI-CSI SCCB port must be 0 when I3C is selected"
+#endif
+#if EXAMPLE_ENABLE_MIPI_CSI_CAM_MOTOR && EXAMPLE_MIPI_CSI_CAM_MOTOR_SCCB_PORT > 0
+#error "Motor SCCB port must be 0 when I3C is selected"
+#endif
+#if EXAMPLE_ENABLE_DVP_CAM_SENSOR && EXAMPLE_DVP_SCCB_PORT > 0
+#error "DVP SCCB port must be 0 when I3C is selected"
+#endif
+#if EXAMPLE_ENABLE_SPI_CAM_0_SENSOR && EXAMPLE_SPI_CAM_0_SCCB_PORT > 0
+#error "SPI camera 0 SCCB port must be 0 when I3C is selected"
+#endif
+#if EXAMPLE_ENABLE_SPI_CAM_1_SENSOR && EXAMPLE_SPI_CAM_1_SCCB_PORT > 0
+#error "SPI camera 1 SCCB port must be 0 when I3C is selected"
+#endif
+#if CONFIG_EXAMPLE_SCCB_INIT_BY_APP && EXAMPLE_SCCB_PORT_INIT_BY_APP > 0
+#error "SCCB port must be 0 when I3C is selected"
+#endif
+
+#if EXAMPLE_ENABLE_MIPI_CSI_CAM_SENSOR
+#define EXAMPLE_SCCB_REF_SCL                    EXAMPLE_MIPI_CSI_SCCB_SCL_PIN
+#define EXAMPLE_SCCB_REF_SDA                    EXAMPLE_MIPI_CSI_SCCB_SDA_PIN
+#elif EXAMPLE_ENABLE_DVP_CAM_SENSOR
+#define EXAMPLE_SCCB_REF_SCL                    EXAMPLE_DVP_SCCB_SCL_PIN
+#define EXAMPLE_SCCB_REF_SDA                    EXAMPLE_DVP_SCCB_SDA_PIN
+#elif EXAMPLE_ENABLE_SPI_CAM_0_SENSOR
+#define EXAMPLE_SCCB_REF_SCL                    EXAMPLE_SPI_CAM_0_SCCB_SCL_PIN
+#define EXAMPLE_SCCB_REF_SDA                    EXAMPLE_SPI_CAM_0_SCCB_SDA_PIN
+#endif
+
+#if defined(EXAMPLE_SCCB_REF_SCL)
+#if EXAMPLE_ENABLE_MIPI_CSI_CAM_MOTOR
+#if (EXAMPLE_MIPI_CSI_CAM_MOTOR_SCCB_SCL_PIN != EXAMPLE_SCCB_REF_SCL) || \
+    (EXAMPLE_MIPI_CSI_CAM_MOTOR_SCCB_SDA_PIN != EXAMPLE_SCCB_REF_SDA)
+#error "Motor SCCB SCL/SDA must match the other SCCB pins"
+#endif
+#endif /* EXAMPLE_ENABLE_MIPI_CSI_CAM_MOTOR */
+
+#if EXAMPLE_ENABLE_DVP_CAM_SENSOR && (EXAMPLE_ENABLE_MIPI_CSI_CAM_SENSOR || EXAMPLE_ENABLE_SPI_CAM_0_SENSOR)
+#if (EXAMPLE_DVP_SCCB_SCL_PIN != EXAMPLE_SCCB_REF_SCL) || \
+    (EXAMPLE_DVP_SCCB_SDA_PIN != EXAMPLE_SCCB_REF_SDA)
+#error "DVP SCCB SCL/SDA must match the other SCCB pins"
+#endif
+#endif /* EXAMPLE_ENABLE_DVP_CAM_SENSOR */
+
+#if EXAMPLE_ENABLE_SPI_CAM_0_SENSOR && (EXAMPLE_ENABLE_MIPI_CSI_CAM_SENSOR || EXAMPLE_ENABLE_DVP_CAM_SENSOR)
+#if (EXAMPLE_SPI_CAM_0_SCCB_SCL_PIN != EXAMPLE_SCCB_REF_SCL) || \
+    (EXAMPLE_SPI_CAM_0_SCCB_SDA_PIN != EXAMPLE_SCCB_REF_SDA)
+#error "SPI camera 0 SCCB SCL/SDA must match the other SCCB pins"
+#endif
+#endif /* EXAMPLE_ENABLE_SPI_CAM_0_SENSOR */
+
+#if EXAMPLE_ENABLE_SPI_CAM_1_SENSOR
+#if (EXAMPLE_SPI_CAM_1_SCCB_SCL_PIN != EXAMPLE_SCCB_REF_SCL) || \
+    (EXAMPLE_SPI_CAM_1_SCCB_SDA_PIN != EXAMPLE_SCCB_REF_SDA)
+#error "SPI camera 1 SCCB SCL/SDA must match the other SCCB pins"
+#endif
+#endif /* EXAMPLE_ENABLE_SPI_CAM_1_SENSOR */
+#endif /* EXAMPLE_SCCB_REF_SCL */
+#endif /* CONFIG_EXAMPLE_SCCB_USE_I3C && ESP_SCCB_I3C_SUPPORTED */
+
+#if CONFIG_EXAMPLE_SCCB_USE_I3C && ESP_SCCB_I3C_SUPPORTED
+#define EXAMPLE_SCCB_BUS_PINS(sccb_port, scl, sda) \
+    .bus_type = ESP_VIDEO_SCCB_BUS_I3C, \
+    .init_sccb = true, \
+    .i3c_config = { \
+        .scl_pin = (scl), \
+        .sda_pin = (sda), \
+    },
+#elif CONFIG_EXAMPLE_SCCB_USE_I2C
+#define EXAMPLE_SCCB_BUS_PINS(sccb_port, scl, sda) \
+    .init_sccb = true, \
+    .i2c_config = { \
+        .port = (sccb_port), \
+        .scl_pin = (scl), \
+        .sda_pin = (sda), \
+    },
+#else
+#error "Selected SCCB interface is not available"
+#endif
 
 #if EXAMPLE_ENABLE_MIPI_CSI_CAM_SENSOR
 #if EXAMPLE_ENABLE_MIPI_CSI_CAM_IRCUT
@@ -21,15 +106,10 @@ static esp_video_init_ircut_config_t s_csi_ircut_config = {
 
 static const esp_video_init_csi_config_t s_csi_config = {
     .sccb_config = {
-#if !CONFIG_EXAMPLE_SCCB_I2C_INIT_BY_APP
-        .init_sccb = true,
-        .i2c_config = {
-            .port      = EXAMPLE_MIPI_CSI_SCCB_I2C_PORT,
-            .scl_pin   = EXAMPLE_MIPI_CSI_SCCB_I2C_SCL_PIN,
-            .sda_pin   = EXAMPLE_MIPI_CSI_SCCB_I2C_SDA_PIN,
-        },
-#endif /* !CONFIG_EXAMPLE_SCCB_I2C_INIT_BY_APP */
-        .freq = EXAMPLE_MIPI_CSI_SCCB_I2C_FREQ,
+#if !CONFIG_EXAMPLE_SCCB_INIT_BY_APP
+        EXAMPLE_SCCB_BUS_PINS(EXAMPLE_MIPI_CSI_SCCB_PORT, EXAMPLE_MIPI_CSI_SCCB_SCL_PIN, EXAMPLE_MIPI_CSI_SCCB_SDA_PIN)
+#endif /* !CONFIG_EXAMPLE_SCCB_INIT_BY_APP */
+        .freq = EXAMPLE_MIPI_CSI_SCCB_FREQ,
     },
 #if EXAMPLE_ENABLE_MIPI_CSI_CAM_IRCUT
     .ircut_config = &s_csi_ircut_config,
@@ -44,15 +124,10 @@ static const esp_video_init_csi_config_t s_csi_config = {
 #if EXAMPLE_ENABLE_MIPI_CSI_CAM_MOTOR
 static const esp_video_init_cam_motor_config_t s_cam_motor_config = {
     .sccb_config = {
-#if !CONFIG_EXAMPLE_SCCB_I2C_INIT_BY_APP
-        .init_sccb = true,
-        .i2c_config = {
-            .port      = EXAMPLE_MIPI_CSI_CAM_MOTOR_SCCB_I2C_PORT,
-            .scl_pin   = EXAMPLE_MIPI_CSI_CAM_MOTOR_SCCB_I2C_SCL_PIN,
-            .sda_pin   = EXAMPLE_MIPI_CSI_CAM_MOTOR_SCCB_I2C_SDA_PIN,
-        },
-#endif /* !CONFIG_EXAMPLE_SCCB_I2C_INIT_BY_APP */
-        .freq      = EXAMPLE_MIPI_CSI_CAM_MOTOR_SCCB_I2C_FREQ,
+#if !CONFIG_EXAMPLE_SCCB_INIT_BY_APP
+        EXAMPLE_SCCB_BUS_PINS(EXAMPLE_MIPI_CSI_CAM_MOTOR_SCCB_PORT, EXAMPLE_MIPI_CSI_CAM_MOTOR_SCCB_SCL_PIN, EXAMPLE_MIPI_CSI_CAM_MOTOR_SCCB_SDA_PIN)
+#endif /* !CONFIG_EXAMPLE_SCCB_INIT_BY_APP */
+        .freq      = EXAMPLE_MIPI_CSI_CAM_MOTOR_SCCB_FREQ,
     },
     .reset_pin = EXAMPLE_MIPI_CSI_CAM_MOTOR_RESET_PIN,
     .pwdn_pin  = EXAMPLE_MIPI_CSI_CAM_MOTOR_PWDN_PIN,
@@ -72,15 +147,10 @@ static esp_video_init_ircut_config_t s_dvp_ircut_config = {
 
 static const esp_video_init_dvp_config_t s_dvp_config = {
     .sccb_config = {
-#if !CONFIG_EXAMPLE_SCCB_I2C_INIT_BY_APP
-        .init_sccb = true,
-        .i2c_config = {
-            .port      = EXAMPLE_DVP_SCCB_I2C_PORT,
-            .scl_pin   = EXAMPLE_DVP_SCCB_I2C_SCL_PIN,
-            .sda_pin   = EXAMPLE_DVP_SCCB_I2C_SDA_PIN,
-        },
-#endif /* !CONFIG_EXAMPLE_SCCB_I2C_INIT_BY_APP */
-        .freq      = EXAMPLE_DVP_SCCB_I2C_FREQ,
+#if !CONFIG_EXAMPLE_SCCB_INIT_BY_APP
+        EXAMPLE_SCCB_BUS_PINS(EXAMPLE_DVP_SCCB_PORT, EXAMPLE_DVP_SCCB_SCL_PIN, EXAMPLE_DVP_SCCB_SDA_PIN)
+#endif /* !CONFIG_EXAMPLE_SCCB_INIT_BY_APP */
+        .freq      = EXAMPLE_DVP_SCCB_FREQ,
     },
 #if EXAMPLE_ENABLE_DVP_CAM_IRCUT
     .ircut_config = &s_dvp_ircut_config,
@@ -106,15 +176,10 @@ static const esp_video_init_dvp_config_t s_dvp_config = {
 static const esp_video_init_spi_config_t s_spi_config[] = {
     {
         .sccb_config = {
-#if !CONFIG_EXAMPLE_SCCB_I2C_INIT_BY_APP
-            .init_sccb = true,
-            .i2c_config = {
-                .port      = EXAMPLE_SPI_CAM_0_SCCB_I2C_PORT,
-                .scl_pin   = EXAMPLE_SPI_CAM_0_SCCB_I2C_SCL_PIN,
-                .sda_pin   = EXAMPLE_SPI_CAM_0_SCCB_I2C_SDA_PIN,
-            },
-#endif /* !CONFIG_EXAMPLE_SCCB_I2C_INIT_BY_APP */
-            .freq      = EXAMPLE_SPI_CAM_0_SCCB_I2C_FREQ,
+#if !CONFIG_EXAMPLE_SCCB_INIT_BY_APP
+            EXAMPLE_SCCB_BUS_PINS(EXAMPLE_SPI_CAM_0_SCCB_PORT, EXAMPLE_SPI_CAM_0_SCCB_SCL_PIN, EXAMPLE_SPI_CAM_0_SCCB_SDA_PIN)
+#endif /* !CONFIG_EXAMPLE_SCCB_INIT_BY_APP */
+            .freq      = EXAMPLE_SPI_CAM_0_SCCB_FREQ,
         },
         .reset_pin = EXAMPLE_SPI_CAM_0_SENSOR_RESET_PIN,
         .pwdn_pin  = EXAMPLE_SPI_CAM_0_SENSOR_PWDN_PIN,
@@ -137,27 +202,22 @@ static const esp_video_init_spi_config_t s_spi_config[] = {
         .xclk_source = EXAMPLE_SPI_CAM_0_XCLK_RESOURCE,
         .xclk_pin = EXAMPLE_SPI_CAM_0_XCLK_PIN,
         .xclk_freq = EXAMPLE_SPI_CAM_0_XCLK_FREQ,
-#if CONFIG_EXAMPLE_SPI_CAM_XCLK_USE_LEDC
+#if CONFIG_EXAMPLE_SPI_CAM_0_XCLK_USE_LEDC
         .xclk_ledc_cfg = {
             .timer = EXAMPLE_SPI_CAM_0_XCLK_TIMER,
             .clk_cfg = LEDC_AUTO_CLK,
             .channel = EXAMPLE_SPI_CAM_0_XCLK_TIMER_CHANNEL,
         },
-#endif /* CONFIG_EXAMPLE_SPI_CAM_XCLK_USE_LEDC */
+#endif /* CONFIG_EXAMPLE_SPI_CAM_0_XCLK_USE_LEDC */
     },
 
 #if EXAMPLE_ENABLE_SPI_CAM_1_SENSOR
     {
         .sccb_config = {
-#if !CONFIG_EXAMPLE_SCCB_I2C_INIT_BY_APP
-            .init_sccb = true,
-            .i2c_config = {
-                .port = EXAMPLE_SPI_CAM_1_SCCB_I2C_PORT,
-                .scl_pin = EXAMPLE_SPI_CAM_1_SCCB_I2C_SCL_PIN,
-                .sda_pin = EXAMPLE_SPI_CAM_1_SCCB_I2C_SDA_PIN,
-            },
-#endif /* !CONFIG_EXAMPLE_SCCB_I2C_INIT_BY_APP */
-            .freq = EXAMPLE_SPI_CAM_1_SCCB_I2C_FREQ,
+#if !CONFIG_EXAMPLE_SCCB_INIT_BY_APP
+            EXAMPLE_SCCB_BUS_PINS(EXAMPLE_SPI_CAM_1_SCCB_PORT, EXAMPLE_SPI_CAM_1_SCCB_SCL_PIN, EXAMPLE_SPI_CAM_1_SCCB_SDA_PIN)
+#endif /* !CONFIG_EXAMPLE_SCCB_INIT_BY_APP */
+            .freq = EXAMPLE_SPI_CAM_1_SCCB_FREQ,
         },
         .reset_pin = EXAMPLE_SPI_CAM_1_SENSOR_RESET_PIN,
         .pwdn_pin = EXAMPLE_SPI_CAM_1_SENSOR_PWDN_PIN,
@@ -221,18 +281,41 @@ static const esp_video_init_config_t s_cam_config = {
 #endif /* EXAMPLE_ENABLE_USB_UVC_CAM_SENSOR */
 };
 
-#if CONFIG_EXAMPLE_SCCB_I2C_INIT_BY_APP
+#if CONFIG_EXAMPLE_SCCB_INIT_BY_APP
+#if CONFIG_EXAMPLE_SCCB_USE_I3C && ESP_SCCB_I3C_SUPPORTED
+static const i3c_master_bus_config_t s_bus_config = {
+    .clock_source = I3C_MASTER_CLK_SRC_DEFAULT,
+    .scl_io_num = EXAMPLE_SCCB_SCL_PIN_INIT_BY_APP,
+    .sda_io_num = EXAMPLE_SCCB_SDA_PIN_INIT_BY_APP,
+};
+
+static i3c_master_bus_handle_t s_sccb_bus_handle;
+
+#define EXAMPLE_SCCB_ATTACH_BUS(cfg, handle) \
+    do { \
+        (cfg).init_sccb = false; \
+        (cfg).bus_type = ESP_VIDEO_SCCB_BUS_I3C; \
+        (cfg).i3c_handle = (handle); \
+    } while (0)
+#elif CONFIG_EXAMPLE_SCCB_USE_I2C
 static const i2c_master_bus_config_t s_bus_config = {
-    .i2c_port = EXAMPLE_SCCB_I2C_PORT_INIT_BY_APP,
-    .sda_io_num = EXAMPLE_SCCB_I2C_SDA_PIN_INIT_BY_APP,
-    .scl_io_num = EXAMPLE_SCCB_I2C_SCL_PIN_INIT_BY_APP,
+    .i2c_port = EXAMPLE_SCCB_PORT_INIT_BY_APP,
+    .sda_io_num = EXAMPLE_SCCB_SDA_PIN_INIT_BY_APP,
+    .scl_io_num = EXAMPLE_SCCB_SCL_PIN_INIT_BY_APP,
     .clk_source = I2C_CLK_SRC_DEFAULT,
     .glitch_ignore_cnt = 7,
     .flags.enable_internal_pullup = true,
 };
 
-static i2c_master_bus_handle_t s_i2cbus_handle;
-#endif /* CONFIG_EXAMPLE_SCCB_I2C_INIT_BY_APP */
+static i2c_master_bus_handle_t s_sccb_bus_handle;
+
+#define EXAMPLE_SCCB_ATTACH_BUS(cfg, handle) \
+    do { \
+        (cfg).init_sccb = false; \
+        (cfg).i2c_handle = (handle); \
+    } while (0)
+#endif
+#endif /* CONFIG_EXAMPLE_SCCB_INIT_BY_APP */
 
 #if defined(EXAMPLE_MIPI_CSI_XCLK_PIN) && EXAMPLE_MIPI_CSI_XCLK_PIN > 0
 static esp_cam_sensor_xclk_handle_t s_xclk_handle;
@@ -256,32 +339,32 @@ esp_err_t example_video_init(void)
 
     const esp_video_init_config_t *cam_config_ptr = &s_cam_config;
 
-#if CONFIG_EXAMPLE_SCCB_I2C_INIT_BY_APP
-    ESP_RETURN_ON_ERROR(i2c_new_master_bus(&s_bus_config, &s_i2cbus_handle), TAG, "failed to initialize i2c bus");
+#if CONFIG_EXAMPLE_SCCB_INIT_BY_APP
+#if CONFIG_EXAMPLE_SCCB_USE_I3C && ESP_SCCB_I3C_SUPPORTED
+    ESP_RETURN_ON_ERROR(i3c_new_master_bus(&s_bus_config, &s_sccb_bus_handle), TAG, "failed to initialize SCCB bus");
+#elif CONFIG_EXAMPLE_SCCB_USE_I2C
+    ESP_RETURN_ON_ERROR(i2c_new_master_bus(&s_bus_config, &s_sccb_bus_handle), TAG, "failed to initialize SCCB bus");
+#endif
 
 #if EXAMPLE_ENABLE_MIPI_CSI_CAM_SENSOR
     esp_video_init_csi_config_t csi_config = s_csi_config;
-    csi_config.sccb_config.init_sccb = false;
-    csi_config.sccb_config.i2c_handle = s_i2cbus_handle;
+    EXAMPLE_SCCB_ATTACH_BUS(csi_config.sccb_config, s_sccb_bus_handle);
 
 #if EXAMPLE_ENABLE_MIPI_CSI_CAM_MOTOR
     esp_video_init_cam_motor_config_t cam_motor_config = s_cam_motor_config;
-    cam_motor_config.sccb_config.init_sccb = false;
-    cam_motor_config.sccb_config.i2c_handle = s_i2cbus_handle;
+    EXAMPLE_SCCB_ATTACH_BUS(cam_motor_config.sccb_config, s_sccb_bus_handle);
 #endif /* EXAMPLE_ENABLE_MIPI_CSI_CAM_MOTOR */
 #endif /* EXAMPLE_ENABLE_MIPI_CSI_CAM_SENSOR */
 #if EXAMPLE_ENABLE_DVP_CAM_SENSOR
     esp_video_init_dvp_config_t dvp_config = s_dvp_config;
-    dvp_config.sccb_config.init_sccb = false;
-    dvp_config.sccb_config.i2c_handle = s_i2cbus_handle;
+    EXAMPLE_SCCB_ATTACH_BUS(dvp_config.sccb_config, s_sccb_bus_handle);
 #endif /* EXAMPLE_ENABLE_DVP_CAM_SENSOR */
 #if EXAMPLE_ENABLE_SPI_CAM_0_SENSOR
     esp_video_init_spi_config_t spi_config[ESP_VIDEO_SPI_DEVICE_NUM];
 
     memcpy(spi_config, s_spi_config, sizeof(esp_video_init_spi_config_t) * ESP_VIDEO_SPI_DEVICE_NUM);
     for (int i = 0; i < ESP_VIDEO_SPI_DEVICE_NUM; i++) {
-        spi_config[i].sccb_config.init_sccb = false;
-        spi_config[i].sccb_config.i2c_handle = s_i2cbus_handle;
+        EXAMPLE_SCCB_ATTACH_BUS(spi_config[i].sccb_config, s_sccb_bus_handle);
     }
 #endif /* EXAMPLE_ENABLE_SPI_CAM_0_SENSOR */
 
@@ -304,7 +387,7 @@ esp_err_t example_video_init(void)
     };
 
     cam_config_ptr = &cam_config;
-#endif /* CONFIG_EXAMPLE_SCCB_I2C_INIT_BY_APP */
+#endif /* CONFIG_EXAMPLE_SCCB_INIT_BY_APP */
 
 #if defined(EXAMPLE_MIPI_CSI_XCLK_PIN) && EXAMPLE_MIPI_CSI_XCLK_PIN > 0
     esp_cam_sensor_xclk_config_t cam_xclk_config = {
@@ -321,33 +404,53 @@ esp_err_t example_video_init(void)
 #endif /* defined(EXAMPLE_MIPI_CSI_XCLK_PIN) && EXAMPLE_MIPI_CSI_XCLK_PIN > 0 */
 
 #if EXAMPLE_ENABLE_MIPI_CSI_CAM_SENSOR
-    ESP_LOGI(TAG, "MIPI-CSI camera sensor I2C port=%d, scl_pin=%d, sda_pin=%d, freq=%d",
-             EXAMPLE_MIPI_CSI_SCCB_I2C_PORT,
-             EXAMPLE_MIPI_CSI_SCCB_I2C_SCL_PIN,
-             EXAMPLE_MIPI_CSI_SCCB_I2C_SDA_PIN,
-             EXAMPLE_MIPI_CSI_SCCB_I2C_FREQ);
+#if CONFIG_EXAMPLE_SCCB_USE_I3C && ESP_SCCB_I3C_SUPPORTED
+    ESP_LOGI(TAG, "MIPI-CSI camera sensor SCCB scl_pin=%d, sda_pin=%d, freq=%d",
+             EXAMPLE_MIPI_CSI_SCCB_SCL_PIN, EXAMPLE_MIPI_CSI_SCCB_SDA_PIN, EXAMPLE_MIPI_CSI_SCCB_FREQ);
+#elif CONFIG_EXAMPLE_SCCB_USE_I2C
+    ESP_LOGI(TAG, "MIPI-CSI camera sensor SCCB port=%d, scl_pin=%d, sda_pin=%d, freq=%d",
+             EXAMPLE_MIPI_CSI_SCCB_PORT,
+             EXAMPLE_MIPI_CSI_SCCB_SCL_PIN,
+             EXAMPLE_MIPI_CSI_SCCB_SDA_PIN,
+             EXAMPLE_MIPI_CSI_SCCB_FREQ);
+#endif
 #endif /* EXAMPLE_ENABLE_MIPI_CSI_CAM_SENSOR */
 
 #if EXAMPLE_ENABLE_DVP_CAM_SENSOR
-    ESP_LOGI(TAG, "DVP camera sensor I2C port=%d, scl_pin=%d, sda_pin=%d, freq=%d",
-             EXAMPLE_DVP_SCCB_I2C_PORT,
-             EXAMPLE_DVP_SCCB_I2C_SCL_PIN,
-             EXAMPLE_DVP_SCCB_I2C_SDA_PIN,
-             EXAMPLE_DVP_SCCB_I2C_FREQ);
+#if CONFIG_EXAMPLE_SCCB_USE_I3C && ESP_SCCB_I3C_SUPPORTED
+    ESP_LOGI(TAG, "DVP camera sensor SCCB scl_pin=%d, sda_pin=%d, freq=%d",
+             EXAMPLE_DVP_SCCB_SCL_PIN, EXAMPLE_DVP_SCCB_SDA_PIN, EXAMPLE_DVP_SCCB_FREQ);
+#elif CONFIG_EXAMPLE_SCCB_USE_I2C
+    ESP_LOGI(TAG, "DVP camera sensor SCCB port=%d, scl_pin=%d, sda_pin=%d, freq=%d",
+             EXAMPLE_DVP_SCCB_PORT,
+             EXAMPLE_DVP_SCCB_SCL_PIN,
+             EXAMPLE_DVP_SCCB_SDA_PIN,
+             EXAMPLE_DVP_SCCB_FREQ);
+#endif
 #endif /* EXAMPLE_ENABLE_DVP_CAM_SENSOR */
 
 #if EXAMPLE_ENABLE_SPI_CAM_0_SENSOR
-    ESP_LOGI(TAG, "SPI camera sensor 0 I2C port=%d, scl_pin=%d, sda_pin=%d, freq=%d",
-             EXAMPLE_SPI_CAM_0_SCCB_I2C_PORT,
-             EXAMPLE_SPI_CAM_0_SCCB_I2C_SCL_PIN,
-             EXAMPLE_SPI_CAM_0_SCCB_I2C_SDA_PIN,
-             EXAMPLE_SPI_CAM_0_SCCB_I2C_FREQ);
+#if CONFIG_EXAMPLE_SCCB_USE_I3C && ESP_SCCB_I3C_SUPPORTED
+    ESP_LOGI(TAG, "SPI camera sensor 0 SCCB scl_pin=%d, sda_pin=%d, freq=%d",
+             EXAMPLE_SPI_CAM_0_SCCB_SCL_PIN, EXAMPLE_SPI_CAM_0_SCCB_SDA_PIN, EXAMPLE_SPI_CAM_0_SCCB_FREQ);
+#elif CONFIG_EXAMPLE_SCCB_USE_I2C
+    ESP_LOGI(TAG, "SPI camera sensor 0 SCCB port=%d, scl_pin=%d, sda_pin=%d, freq=%d",
+             EXAMPLE_SPI_CAM_0_SCCB_PORT,
+             EXAMPLE_SPI_CAM_0_SCCB_SCL_PIN,
+             EXAMPLE_SPI_CAM_0_SCCB_SDA_PIN,
+             EXAMPLE_SPI_CAM_0_SCCB_FREQ);
+#endif
 #if EXAMPLE_ENABLE_SPI_CAM_1_SENSOR
-    ESP_LOGI(TAG, "SPI camera sensor 1 I2C port=%d, scl_pin=%d, sda_pin=%d, freq=%d",
-             EXAMPLE_SPI_CAM_1_SCCB_I2C_PORT,
-             EXAMPLE_SPI_CAM_1_SCCB_I2C_SCL_PIN,
-             EXAMPLE_SPI_CAM_1_SCCB_I2C_SDA_PIN,
-             EXAMPLE_SPI_CAM_1_SCCB_I2C_FREQ);
+#if CONFIG_EXAMPLE_SCCB_USE_I3C && ESP_SCCB_I3C_SUPPORTED
+    ESP_LOGI(TAG, "SPI camera sensor 1 SCCB scl_pin=%d, sda_pin=%d, freq=%d",
+             EXAMPLE_SPI_CAM_1_SCCB_SCL_PIN, EXAMPLE_SPI_CAM_1_SCCB_SDA_PIN, EXAMPLE_SPI_CAM_1_SCCB_FREQ);
+#elif CONFIG_EXAMPLE_SCCB_USE_I2C
+    ESP_LOGI(TAG, "SPI camera sensor 1 SCCB port=%d, scl_pin=%d, sda_pin=%d, freq=%d",
+             EXAMPLE_SPI_CAM_1_SCCB_PORT,
+             EXAMPLE_SPI_CAM_1_SCCB_SCL_PIN,
+             EXAMPLE_SPI_CAM_1_SCCB_SDA_PIN,
+             EXAMPLE_SPI_CAM_1_SCCB_FREQ);
+#endif
 #endif /* EXAMPLE_ENABLE_SPI_CAM_1_SENSOR */
 #endif /* EXAMPLE_ENABLE_SPI_CAM_0_SENSOR */
 
@@ -366,9 +469,13 @@ failed_1:
     s_xclk_handle = NULL;
 failed_0:
 #endif
-#if CONFIG_EXAMPLE_SCCB_I2C_INIT_BY_APP
-    i2c_del_master_bus(s_i2cbus_handle);
-    s_i2cbus_handle = NULL;
+#if CONFIG_EXAMPLE_SCCB_INIT_BY_APP
+#if CONFIG_EXAMPLE_SCCB_USE_I3C && ESP_SCCB_I3C_SUPPORTED
+    i3c_del_master_bus(s_sccb_bus_handle);
+#elif CONFIG_EXAMPLE_SCCB_USE_I2C
+    i2c_del_master_bus(s_sccb_bus_handle);
+#endif
+    s_sccb_bus_handle = NULL;
 #endif
     return ret;
 }
@@ -394,9 +501,13 @@ esp_err_t example_video_deinit(void)
     s_xclk_handle = NULL;
 #endif
 
-#if CONFIG_EXAMPLE_SCCB_I2C_INIT_BY_APP
-    ESP_RETURN_ON_ERROR(i2c_del_master_bus(s_i2cbus_handle), TAG, "failed to delete i2c bus");
-    s_i2cbus_handle = NULL;
+#if CONFIG_EXAMPLE_SCCB_INIT_BY_APP
+#if CONFIG_EXAMPLE_SCCB_USE_I3C && ESP_SCCB_I3C_SUPPORTED
+    ESP_RETURN_ON_ERROR(i3c_del_master_bus(s_sccb_bus_handle), TAG, "failed to delete SCCB bus");
+#elif CONFIG_EXAMPLE_SCCB_USE_I2C
+    ESP_RETURN_ON_ERROR(i2c_del_master_bus(s_sccb_bus_handle), TAG, "failed to delete SCCB bus");
+#endif
+    s_sccb_bus_handle = NULL;
 #endif
 
     s_is_init = false;

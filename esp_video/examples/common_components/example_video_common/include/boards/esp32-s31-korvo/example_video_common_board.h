@@ -17,19 +17,19 @@ extern "C" {
  */
 
 /**
- * @brief SCCB(I2C) pre-initialized port configuration
+ * @brief SCCB pre-initialized port configuration
  */
-#if CONFIG_EXAMPLE_SCCB_I2C_INIT_BY_APP
-#define EXAMPLE_SCCB_I2C_SCL_PIN_INIT_BY_APP            1
-#define EXAMPLE_SCCB_I2C_SDA_PIN_INIT_BY_APP            0
-#endif /* CONFIG_EXAMPLE_SCCB_I2C_INIT_BY_APP */
+#if CONFIG_EXAMPLE_SCCB_INIT_BY_APP
+#define EXAMPLE_SCCB_SCL_PIN_INIT_BY_APP            1
+#define EXAMPLE_SCCB_SDA_PIN_INIT_BY_APP            0
+#endif /* CONFIG_EXAMPLE_SCCB_INIT_BY_APP */
 
 #if CONFIG_EXAMPLE_ENABLE_DVP_CAM_SENSOR
 /**
  * @brief DVP camera sensor configuration
  */
-#define EXAMPLE_DVP_SCCB_I2C_SCL_PIN                    1
-#define EXAMPLE_DVP_SCCB_I2C_SDA_PIN                    0
+#define EXAMPLE_DVP_SCCB_SCL_PIN                    1
+#define EXAMPLE_DVP_SCCB_SDA_PIN                    0
 #define EXAMPLE_DVP_CAM_SENSOR_RESET_PIN                -1
 #define EXAMPLE_DVP_CAM_SENSOR_PWDN_PIN                 -1
 
@@ -54,8 +54,8 @@ extern "C" {
 /**
  * @brief SPI camera sensor configuration
  */
-#define EXAMPLE_SPI_CAM_0_SCCB_I2C_SCL_PIN              1
-#define EXAMPLE_SPI_CAM_0_SCCB_I2C_SDA_PIN              0
+#define EXAMPLE_SPI_CAM_0_SCCB_SCL_PIN              1
+#define EXAMPLE_SPI_CAM_0_SCCB_SDA_PIN              0
 #define EXAMPLE_SPI_CAM_0_SENSOR_RESET_PIN              -1
 #define EXAMPLE_SPI_CAM_0_SENSOR_PWDN_PIN               -1
 
