@@ -94,25 +94,6 @@ if CAMERA_OV5647
             Sets the default configuration for the MIPI CSI interface.
             Use query_support_formats() API to get more format options.
 
-    config CAMERA_OV5647_CSI_LINESYNC_ENABLE
-        bool "Enable CSI line synchronization"
-        default y
-        help
-            Enable MIPI CSI-2 line synchronization by sending short packets for each line.
-
-            When enabled, the sensor will send line start/end short packets that help
-            the CSI receiver synchronize with each video line. This improves timing
-            accuracy and reduces the chance of frame corruption.
-
-            Benefits:
-            - Better frame synchronization
-            - Reduced image artifacts
-            - Improved timing accuracy
-            - Enhanced error detection
-
-            Recommended: Keep enabled for reliable video capture unless specifically
-            required to disable for compatibility with certain receivers.
-
     config CAMERA_OV5647_ENABLE_MOTOR_BY_GPIO0
         bool "Enable autofocus(AF) motor by OV5647's GPIO0"
         default y if CAMERA_MOTOR_DEVICE_USED

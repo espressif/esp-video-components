@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2024-2025 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2024-2026 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -119,7 +119,7 @@ static const esp_cam_sensor_format_t ov5647_format_info[] = {
         .mipi_info = {
             .mipi_clk = OV5647_MIPI_CSI_LINE_RATE_800x1280_50FPS,
             .lane_num = 2,
-            .line_sync_en = CONFIG_CAMERA_OV5647_CSI_LINESYNC_ENABLE ? true : false,
+            .line_sync_en = false,
         },
         .reserved = NULL,
     },
@@ -139,7 +139,7 @@ static const esp_cam_sensor_format_t ov5647_format_info[] = {
         .mipi_info = {
             .mipi_clk = OV5647_MIPI_CSI_LINE_RATE_800x640_50FPS,
             .lane_num = 2,
-            .line_sync_en = CONFIG_CAMERA_OV5647_CSI_LINESYNC_ENABLE ? true : false,
+            .line_sync_en = false,
         },
         .reserved = NULL,
     },
@@ -159,7 +159,7 @@ static const esp_cam_sensor_format_t ov5647_format_info[] = {
         .mipi_info = {
             .mipi_clk = OV5647_MIPI_CSI_LINE_RATE_800x800_50FPS,
             .lane_num = 2,
-            .line_sync_en = CONFIG_CAMERA_OV5647_CSI_LINESYNC_ENABLE ? true : false,
+            .line_sync_en = false,
         },
         .reserved = NULL,
     },
@@ -179,7 +179,7 @@ static const esp_cam_sensor_format_t ov5647_format_info[] = {
         .mipi_info = {
             .mipi_clk = OV5647_MIPI_CSI_LINE_RATE_1920x1080_30FPS,
             .lane_num = 2,
-            .line_sync_en = CONFIG_CAMERA_OV5647_CSI_LINESYNC_ENABLE ? true : false,
+            .line_sync_en = false,
         },
         .reserved = NULL,
     },
@@ -199,7 +199,7 @@ static const esp_cam_sensor_format_t ov5647_format_info[] = {
         .mipi_info = {
             .mipi_clk = OV5647_MIPI_CSI_LINE_RATE_1280x960_45FPS,
             .lane_num = 2,
-            .line_sync_en = CONFIG_CAMERA_OV5647_CSI_LINESYNC_ENABLE ? true : false,
+            .line_sync_en = false,
         },
         .reserved = NULL,
     },
@@ -317,16 +317,17 @@ static esp_err_t ov5647_gpio0_en_af(esp_cam_sensor_device_t *dev, int enable)
 static esp_err_t ov5647_set_stream(esp_cam_sensor_device_t *dev, int enable)
 {
     esp_err_t ret;
-    uint8_t val = OV5647_MIPI_CTRL00_BUS_IDLE;
-    if (enable) {
-#if CSI2_NONCONTINUOUS_CLOCK
-        val |= OV5647_MIPI_CTRL00_CLOCK_LANE_GATE | OV5647_MIPI_CTRL00_LINE_SYNC_ENABLE;
-#endif
-    } else {
-        val |= OV5647_MIPI_CTRL00_CLOCK_LANE_GATE | OV5647_MIPI_CTRL00_CLOCK_LANE_DISABLE;
+    /*
+     * OV5647 always uses MIPI CSI-2 non-continuous clock without line sync
+     * short packets: gate the clock lane during blanking (LP).
+     */
+    uint8_t val = OV5647_MIPI_CTRL00_BUS_IDLE | OV5647_MIPI_CTRL00_CLOCK_LANE_GATE;
+
+    if (!enable) {
+        val |= OV5647_MIPI_CTRL00_CLOCK_LANE_DISABLE;
     }
 
-    ret = ov5647_write(dev->sccb_handle, 0x4800, CONFIG_CAMERA_OV5647_CSI_LINESYNC_ENABLE ? 0x14 : 0x00);
+    ret = ov5647_write(dev->sccb_handle, OV5647_REG_MIPI_CTRL00, val);
     ESP_RETURN_ON_FALSE(ret == ESP_OK, ret, TAG, "write pad out failed");
 
 #if CONFIG_CAMERA_OV5647_ENABLE_MOTOR_BY_GPIO0

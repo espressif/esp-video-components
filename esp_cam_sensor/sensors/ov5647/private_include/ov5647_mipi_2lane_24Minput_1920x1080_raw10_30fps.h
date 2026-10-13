@@ -90,6 +90,7 @@ static const ov5647_reginfo_t ov5647_mipi_2lane_24Minput_1920x1080_raw10_30fps[]
     {0x4004, 0x04}, //blc line number
     {0x4000, 0x09},
     {0x4837, 0x19},
-    {0x4800, 0x34},
+    /* Non-continuous clock, no line sync short packets */
+    {0x4800, 0x24},
     {OV5647_REG_END, 0x00},
 };
