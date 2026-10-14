@@ -511,9 +511,9 @@ Format Video Capture:
 Controls
 
                            Gain 0x00980913 (intmenu)    : min=0 max=192 step=1 default=0
-                       Exposure 0x00980911 (int)        : min=8 max=1244 step=1 default=894
+                       Exposure 0x00980911 (int)        : min=1 max=1244 step=1 default=894
                 Group Operation 0x009a092a (u8)         : min=0 max=255 step=1 default=0
-        Exposure Time, Absolute 0x009a0902 (int)        : min=2 max=332 step=1 default=238
+        Exposure Time, Absolute 0x009a0902 (int)        : min=1 max=332 step=1 default=238
                   Vertical Flip 0x00980915 (int)        : min=0 max=1 step=1 default=0
 ```
 

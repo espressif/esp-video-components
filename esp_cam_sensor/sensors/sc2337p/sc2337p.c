@@ -75,7 +75,7 @@ struct sc2337p_cam {
 #define SC2337P_SUPPORT_NUM CONFIG_CAMERA_SC2337P_MAX_SUPPORT
 
 static const uint32_t s_limited_gain = CONFIG_CAMERA_SC2337P_ABSOLUTE_GAIN_LIMIT;
-static const uint8_t s_sc2337p_exp_min = 0x08;
+static const uint8_t s_sc2337p_exp_min = 0x01;
 static const char *TAG = "sc2337p";
 
 #if CONFIG_CAMERA_SC2337P_ANA_GAIN_PRIORITY
@@ -1238,7 +1238,7 @@ static esp_err_t sc2337p_query_para_desc(esp_cam_sensor_device_t *dev, esp_cam_s
         break;
     case ESP_CAM_SENSOR_EXPOSURE_US:
         qdesc->type = ESP_CAM_SENSOR_PARAM_TYPE_NUMBER;
-        qdesc->number.minimum = EXPOSURE_SC2337P_TO_V4L2(s_sc2337p_exp_min, dev->cur_format);
+        qdesc->number.minimum = MAX(0x01, EXPOSURE_SC2337P_TO_V4L2(s_sc2337p_exp_min, dev->cur_format)); // The minimum value must be greater than 1
         qdesc->number.maximum = EXPOSURE_SC2337P_TO_V4L2((dev->cur_format->isp_info->isp_v1_info.vts - SC2337P_EXP_MAX_OFFSET), dev->cur_format); // max = VTS-6 = height+vblank-6, so when update vblank, exposure_max must be updated
         qdesc->number.step = MAX(EXPOSURE_SC2337P_TO_V4L2(0x01, dev->cur_format), 1);
         qdesc->default_value = EXPOSURE_SC2337P_TO_V4L2((dev->cur_format->isp_info->isp_v1_info.exp_def), dev->cur_format);
