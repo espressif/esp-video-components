@@ -23,3 +23,8 @@ Version 0.3.0 (2026-08-31)
 - Split JPEG encoder/decoder and H.264 encoder in the SoC and device-node tables; noted that H.264 hardware decode is not provided.
 - Added an English entry for the ESP Video application development guide. The English text is not available yet; the page points to the Chinese documentation.
 - Updated ``ESP_Video/commands.rst``: MIPI-CSI events, ``VIDIOC_RESTART``, motor formats, ``VIDIOC_SET_OWNER``, M2M buffer types, and the control ID overview.
+
+Version 0.4.0 (2026-10-15)
+^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+- Updated and aligned the English and Chinese ESP Video documentation, including the application development guide, command reference, API reference, and technology selection guide.

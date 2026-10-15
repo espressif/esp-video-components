@@ -2,11 +2,9 @@
 API Reference
 *************
 
-:link_to_translation:`zh_CN:[中文]`
+This document lists the initialization APIs of ``esp_video`` (such as ``esp_video_init``). For project integration steps, device nodes, and the ``open``/``ioctl`` call sequence, see :doc:`index`. For parameters and examples of each request code, see :doc:`commands`.
 
-.. note::
+Initialization
+~~~~~~~~~~~~~~
 
-   The English version of this guide is not available yet.
-   Please refer to the Chinese documentation:
-
-   - `API Reference <https://docs.espressif.com/projects/esp-video-components/zh_CN/latest/esp32p4/ESP_Video/api_reference.html>`__
+.. include-build-file:: inc/esp_video_init.inc
