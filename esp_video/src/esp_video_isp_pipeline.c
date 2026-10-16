@@ -7,6 +7,7 @@
 // #undef LOG_LOCAL_LEVEL
 // #define LOG_LOCAL_LEVEL ESP_LOG_DEBUG
 
+#include <inttypes.h>
 #include <math.h>
 #include <stdio.h>
 #include <string.h>
@@ -2101,7 +2102,7 @@ esp_err_t esp_video_isp_pipeline_get_env_int32(const char *name, int32_t *val)
             s_esp_video_isp->ipa_pipeline->ipa_array) {
         esp_ipa_t *ipa = s_esp_video_isp->ipa_pipeline->ipa_array[0];
 
-        if (!esp_ipa_has_var(ipa, name)) {
+        if (!esp_ipa_has_int32_var(ipa, name)) {
             ret = ESP_ERR_NOT_FOUND;
         } else {
             *val = esp_ipa_get_int32(ipa, name);
@@ -2137,7 +2138,7 @@ esp_err_t esp_video_isp_pipeline_get_env_float(const char *name, float *val)
             s_esp_video_isp->ipa_pipeline->ipa_array) {
         esp_ipa_t *ipa = s_esp_video_isp->ipa_pipeline->ipa_array[0];
 
-        if (!esp_ipa_has_var(ipa, name)) {
+        if (!esp_ipa_has_float_var(ipa, name)) {
             ret = ESP_ERR_NOT_FOUND;
         } else {
             *val = esp_ipa_get_float(ipa, name);
@@ -2194,6 +2195,108 @@ esp_err_t esp_video_isp_pipeline_set_ipa_config(const esp_ipa_config_t *config)
             config_isp_and_camera(s_esp_video_isp, &metadata);
             ESP_LOGD(TAG, "switched IPA config description=%s",
                      config->description ? config->description : "");
+        }
+    } else {
+        ESP_LOGD(TAG, "ISP controller is not initialized");
+    }
+    _lock_release(&s_isp_lock);
+
+    return ret;
+}
+
+/**
+ * @brief Read the computed IPA state.
+ *
+ * Call while the ISP pipeline is initialized. On ESP32-P4 the ISP is bound to
+ * MIPI-CSI, so VIDIOC_STREAMOFF stops both and the state no longer changes.
+ * @p state must be the same object later passed to esp_video_isp_pipeline_set_ipa_state().
+ * The IPA configuration, width and height must stay the same between the two calls.
+ *
+ * @param state State filled on success. The caller owns this buffer.
+ *
+ * @return
+ *      - ESP_OK on success
+ *      - ESP_ERR_INVALID_ARG if @p state is NULL
+ *      - ESP_ERR_INVALID_STATE if the pipeline is not initialized
+ *      - Others if failed
+ */
+esp_err_t esp_video_isp_pipeline_get_ipa_state(esp_ipa_state_t *state)
+{
+    esp_err_t ret = ESP_ERR_INVALID_STATE;
+
+    ESP_RETURN_ON_FALSE(state, ESP_ERR_INVALID_ARG, TAG, "state is NULL");
+
+    _lock_acquire(&s_isp_lock);
+    if (s_esp_video_isp && s_esp_video_isp->ipa_pipeline) {
+        ESP_LOGD(TAG, "get IPA state, sensor %" PRIu32 "x%" PRIu32 " gain=%0.4f exposure=%" PRIu32,
+                 s_esp_video_isp->sensor.width, s_esp_video_isp->sensor.height,
+                 s_esp_video_isp->sensor.cur_gain, s_esp_video_isp->sensor.cur_exposure);
+        ret = esp_ipa_pipeline_get_state(s_esp_video_isp->ipa_pipeline,
+                                         &s_esp_video_isp->sensor, state);
+        if (ret == ESP_OK) {
+            ESP_LOGD(TAG, "got IPA state version=%" PRIu32 " config=%" PRIu32
+                     " modules=0x%" PRIx32 " %" PRIu32 "x%" PRIu32 " crc=0x%08" PRIx32,
+                     state->version, state->config_version, state->modules,
+                     state->width, state->height, state->crc32);
+            if (state->modules & ESP_IPA_STATE_MOD_AWB) {
+                ESP_LOGD(TAG, "AWB ct valid=%u ct=%" PRId32,
+                         state->awb.ct.valid, state->awb.ct.ct);
+            }
+            if (state->modules & ESP_IPA_STATE_MOD_IAN) {
+                ESP_LOGD(TAG, "IAN flags=0x%" PRIx32 " ct=%" PRId32,
+                         state->ian.global.flags, state->ian.global.ct);
+            }
+        } else {
+            ESP_LOGD(TAG, "get IPA state failed: %s", esp_err_to_name(ret));
+        }
+    } else {
+        ESP_LOGD(TAG, "ISP controller is not initialized");
+    }
+    _lock_release(&s_isp_lock);
+
+    return ret;
+}
+
+/**
+ * @brief Restore a saved IPA state and write it to the ISP and camera.
+ *
+ * Call after the pipeline is initialized, before VIDIOC_STREAMON of the frame
+ * that must use the restored parameters. @p state must come from
+ * esp_video_isp_pipeline_get_ipa_state() with the same IPA configuration.
+ *
+ * @param state State previously returned by esp_video_isp_pipeline_get_ipa_state()
+ *
+ * @return
+ *      - ESP_OK on success
+ *      - ESP_ERR_INVALID_ARG if @p state is NULL
+ *      - ESP_ERR_INVALID_STATE if the pipeline is not initialized, or @p state
+ *        does not match this pipeline
+ *      - ESP_ERR_INVALID_VERSION if @p state->version does not match
+ *      - ESP_ERR_INVALID_CRC if @p state->crc32 does not match
+ *      - Others if failed
+ */
+esp_err_t esp_video_isp_pipeline_set_ipa_state(const esp_ipa_state_t *state)
+{
+    esp_err_t ret = ESP_ERR_INVALID_STATE;
+    esp_ipa_metadata_t metadata = {0};
+
+    ESP_RETURN_ON_FALSE(state, ESP_ERR_INVALID_ARG, TAG, "state is NULL");
+
+    _lock_acquire(&s_isp_lock);
+    if (s_esp_video_isp && s_esp_video_isp->ipa_pipeline) {
+        ESP_LOGD(TAG, "set IPA state version=%" PRIu32 " modules=0x%" PRIx32
+                 " %" PRIu32 "x%" PRIu32 " crc=0x%08" PRIx32,
+                 state->version, state->modules, state->width, state->height, state->crc32);
+        ret = esp_ipa_pipeline_set_state(s_esp_video_isp->ipa_pipeline, state,
+                                         &s_esp_video_isp->sensor, &metadata);
+        if (ret == ESP_OK) {
+            ESP_LOGD(TAG, "apply IPA metadata flags=0x%" PRIx32 " exposure=%" PRIu32
+                     " gain=%0.4f rg=%0.4f bg=%0.4f",
+                     metadata.flags, metadata.exposure, metadata.gain,
+                     metadata.red_gain, metadata.blue_gain);
+            config_isp_and_camera(s_esp_video_isp, &metadata);
+        } else {
+            ESP_LOGD(TAG, "set IPA state failed: %s", esp_err_to_name(ret));
         }
     } else {
         ESP_LOGD(TAG, "ISP controller is not initialized");

@@ -496,6 +496,7 @@ ioctl 调用关系如下图：
 * `capture_stream <https://github.com/espressif/esp-video-components/tree/master/esp_video/examples/capture_stream>`__ 演示如何打开视频设备并采集图像。
 * `m2m <https://github.com/espressif/esp-video-components/tree/master/esp_video/examples/m2m>`__ 演示如何通过 M2M 设备完成三种处理：采集后使用硬件进行 JPEG/H.264 编码、使用硬件解码 JPEG 码流，以及先解码 JPEG 再编码 H.264。
 * `image_storage <https://github.com/espressif/esp-video-components/tree/master/esp_video/examples/image_storage>`__ 演示如何将图像和视频流存储到 SD 卡或 flash。
+* `fast_startup/deep_sleep <https://github.com/espressif/esp-video-components/tree/master/esp_video/examples/fast_startup/deep_sleep>`__ 演示快速启动：色温收敛后把 IPA 状态保存到 RTC memory，deep sleep 唤醒后写回并保存第一张图片。
 * `simple_video_server <https://github.com/espressif/esp-video-components/tree/master/esp_video/examples/simple_video_server>`__ 演示如何搭建本地服务器，通过浏览器预览和下载图像。
 * `uvc <https://github.com/espressif/esp-video-components/tree/master/esp_video/examples/uvc>`__ 演示如何通过 USB 将相机画面输出到 PC。
 * `v4l2_cmd <https://github.com/espressif/esp-video-components/tree/master/esp_video/examples/v4l2_cmd>`__ 演示如何用类似 v4l2-utils 的命令控制 V4L2 视频设备。

@@ -29,20 +29,21 @@ algorithm_1.c
 
 algorithm_2.c
 
-    if (esp_ipa_has_var(ipa_2, "color")) {
-        int color = esp_ipa_get_int32(ipa, "color")
+    if (esp_ipa_has_int32_var(ipa_2, "color")) {
+        int color = esp_ipa_get_int32(ipa_2, "color")
     }
 
 algorithm_3.c
 
-    if (esp_ipa_has_var(ipa_3, "color")) {
-        int color = esp_ipa_get_int32(ipa, "color")
+    if (esp_ipa_has_int32_var(ipa_3, "color")) {
+        int color = esp_ipa_get_int32(ipa_3, "color")
     }
 
 ......
 ```
 
 - Note: "ipa_1", "ipa_2" and "ipa_3" should be in one IPA pipeline
+- Prefer typed checkers (`esp_ipa_has_int32_var` / `esp_ipa_has_float_var` / `esp_ipa_has_ptr_var`); `esp_ipa_has_var` still returns true if the name exists in any typed map
 
 ## 3. JSON Configuration
 

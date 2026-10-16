@@ -19,6 +19,12 @@
 - Added `V4L2_CID_IRCUT_MODE` and IR-CUT initialization for MIPI-CSI and DVP video devices
     - `esp_video_init_ircut_config_t` supplies the IR-CUT chip and GPIO pins on CSI/DVP init
     - ISP pipeline applies IPA IR metadata to the camera through `V4L2_CID_IRCUT_MODE`
+- Added APIs to save and restore IPA pipeline state for fast startup
+    - `esp_video_isp_pipeline_get_ipa_state()` reads the computed IPA state while the ISP pipeline is initialized
+    - `esp_video_isp_pipeline_set_ipa_state()` writes a saved state to the ISP and camera. Call it after the pipeline is initialized and before `VIDIOC_STREAMON` of the frame that must use the restored parameters
+    - The same `esp_ipa_state_t` and the same IPA configuration, width and height are required between the two calls. A version or CRC mismatch returns `ESP_ERR_INVALID_VERSION` or `ESP_ERR_INVALID_CRC`
+- Added `examples/fast_startup/deep_sleep` to store IPA state in RTC memory across deep sleep and save the first frame after wakeup to the SD card
+- Updated `esp_video_isp_pipeline_get_env_int32()` and `esp_video_isp_pipeline_get_env_float()` to look up typed IPA variables
 - Updated the minimum camera exposure value in the `examples/v4l2_cmd/README.md`.
 - Added I3C as one of the options for SCCB
 - Fixed a rare ISP data type error, hnum/vnum setting error and input FIFO overflow when the sensor is still sending the current frame at stream-off. The capture controller now stops first, and the in-flight frame is drained for `ESP_VIDEO_STREAM_STOP_DRAIN_FRAMES` periods of the current format before the ISP is deleted. The default is 1. Set it to 0 to skip the wait.

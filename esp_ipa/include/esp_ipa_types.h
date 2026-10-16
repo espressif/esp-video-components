@@ -11,6 +11,7 @@
 #include <stdbool.h>
 #include <pthread.h>
 #include "driver/isp.h"
+#include "esp_err.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -1158,6 +1159,8 @@ typedef struct esp_ipa_config {
     const esp_ipa_ext_config_t *ext;            /*!< Image extended configuration */
 } esp_ipa_config_t;
 
+struct esp_ipa_state;
+
 /**
  * @brief Image process algorithm operations
  */
@@ -1196,6 +1199,32 @@ typedef struct esp_ipa_ops {
     esp_err_t (*ioctl)(struct esp_ipa *ipa, uint32_t cmd, void *data);
 
     /**
+     * @brief Write this module's computed state into @p state.
+     *
+     * NULL when the module has nothing to persist.
+     */
+    void (*state_get)(struct esp_ipa *ipa, struct esp_ipa_state *state);
+
+    /**
+     * @brief Check this module's slice of @p state.
+     *
+     * NULL when the module has nothing to persist. The pipeline calls this on
+     * every such module before any state_set.
+     */
+    esp_err_t (*state_check)(struct esp_ipa *ipa, const struct esp_ipa_state *state,
+                             const esp_ipa_sensor_t *sensor);
+
+    /**
+     * @brief Restore this module from @p state.
+     *
+     * Copy the state into the module and write this module's ISP parameters
+     * into @p metadata. Statistics are not used. state_check has already
+     * accepted @p state.
+     */
+    void (*state_set)(struct esp_ipa *ipa, const struct esp_ipa_state *state,
+                      const esp_ipa_sensor_t *sensor, esp_ipa_metadata_t *metadata);
+
+    /**
      * @brief Free all resources allocated by IPA.
      *
      * Called for both detect-only objects (e.g. a later detect failed before
@@ -1223,13 +1252,25 @@ typedef struct esp_ipa {
 } esp_ipa_t;
 
 /**
+ * @brief IPA global variable maps.
+ *
+ * int32/float/ptr values are stored in independent typed maps and are not mixed.
+ */
+typedef struct esp_ipa_map {
+    void *int32_map;                        /*!< IPA global int32_t map object pointer */
+    void *float_map;                        /*!< IPA global float map object pointer */
+    void *ptr_map;                          /*!< IPA global void * map object pointer */
+} esp_ipa_map_t;
+
+/**
  * @brief Image process algorithm pipeline object
  */
 typedef struct esp_ipa_pipeline {
     pthread_mutex_t mutex;                  /*!< IPA pipeline mutex */
     const esp_ipa_config_t *config;         /*!< IPA numbers */
     esp_ipa_t **ipa_array;                  /*!< IPA array */
-    void *map;                              /*!< IPA global map object pointer */
+    esp_ipa_map_t map;                      /*!< IPA global variable maps */
+    bool inited;                            /*!< True after a successful init */
 } esp_ipa_pipeline_t;
 
 #ifdef __cplusplus

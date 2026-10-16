@@ -4,6 +4,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+#include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
 #include "esp_log.h"
@@ -14,6 +15,7 @@
 
 #include "esp_ipa.h"
 #include "esp_ipa_detect.h"
+#include "esp_ipa_state.h"
 
 #define TEST_MEMORY_LEAK_THRESHOLD (-256)
 
@@ -53,7 +55,7 @@ static const esp_ipa_sensor_t s_esp_ipa_sensor = {
 static void check_leak(size_t before_free, size_t after_free, const char *type)
 {
     ssize_t delta = after_free - before_free;
-    printf("MALLOC_CAP_%s: Before %u bytes free, After %u bytes free (delta %d)\n", type, before_free, after_free, delta);
+    printf("MALLOC_CAP_%s: Before %zu bytes free, After %zu bytes free (delta %zd)\n", type, before_free, after_free, delta);
     TEST_ASSERT_MESSAGE(delta >= TEST_MEMORY_LEAK_THRESHOLD, "memory leak");
 }
 
@@ -1250,6 +1252,178 @@ TEST_CASE("DPC model 1 linear interpolation test", "[IPA][DPC]")
     TEST_ESP_OK(esp_ipa_pipeline_destroy(handle));
 }
 
+TEST_CASE("DPC state rejects a replaced tuning table", "[IPA][DPC][STATE]")
+{
+    const esp_ipa_config_t *base = esp_ipa_pipeline_get_config(IPA_TARGET_NAME);
+    static esp_ipa_config_t cfg;
+    static esp_ipa_dpc_config_t dpc_cfg;
+    static const esp_ipa_dpc_unit_t table[] = {
+        {
+            .gain = 1000,
+            .dpc = {
+                .method = ESP_IPA_DPC_DYNAMIC_METHOD_1,
+                .method_1 = {
+                    .high_threshold = 4,
+                    .low_threshold = 4,
+                },
+            },
+        },
+        {
+            .gain = 4000,
+            .dpc = {
+                .method = ESP_IPA_DPC_DYNAMIC_METHOD_1,
+                .method_1 = {
+                    .high_threshold = 8,
+                    .low_threshold = 8,
+                },
+            },
+        },
+    };
+    static const esp_ipa_dpc_unit_t short_table[] = {
+        {
+            .gain = 1000,
+            .dpc = {
+                .method = ESP_IPA_DPC_DYNAMIC_METHOD_1,
+                .method_1 = {
+                    .high_threshold = 1,
+                    .low_threshold = 1,
+                },
+            },
+        },
+    };
+    static const esp_ipa_dpc_unit_t same_len[] = {
+        {
+            .gain = 1000,
+            .dpc = {
+                .method = ESP_IPA_DPC_DYNAMIC_METHOD_1,
+                .method_1 = {
+                    .high_threshold = 4,
+                    .low_threshold = 4,
+                },
+            },
+        },
+        {
+            .gain = 4000,
+            .dpc = {
+                .method = ESP_IPA_DPC_DYNAMIC_METHOD_1,
+                .method_1 = {
+                    .high_threshold = 9,
+                    .low_threshold = 8,
+                },
+            },
+        },
+    };
+    static const esp_ipa_dpc_unit_t same_bytes[] = {
+        {
+            .gain = 1000,
+            .dpc = {
+                .method = ESP_IPA_DPC_DYNAMIC_METHOD_1,
+                .method_1 = {
+                    .high_threshold = 4,
+                    .low_threshold = 4,
+                },
+            },
+        },
+        {
+            .gain = 4000,
+            .dpc = {
+                .method = ESP_IPA_DPC_DYNAMIC_METHOD_1,
+                .method_1 = {
+                    .high_threshold = 8,
+                    .low_threshold = 8,
+                },
+            },
+        },
+    };
+    esp_ipa_pipeline_handle_t handle = NULL;
+    esp_ipa_metadata_t metadata = {0};
+    esp_ipa_metadata_t restored = {0};
+    esp_ipa_stats_t stats = {0};
+    esp_ipa_sensor_t sensor = s_esp_ipa_sensor;
+    esp_ipa_state_t *state;
+
+    TEST_ASSERT_NOT_NULL(base);
+    TEST_ASSERT_NOT_NULL(base->dpc);
+
+    state = calloc(1, sizeof(*state));
+    TEST_ASSERT_NOT_NULL(state);
+
+    dpc_cfg.model = ESP_IPA_DPC_MODEL_0;
+    dpc_cfg.debounce_gain = 200;
+    dpc_cfg.table = table;
+    dpc_cfg.table_size = ARRAY_SIZE(table);
+    dpc_cfg.enable_log = false;
+    memcpy(&cfg, base, sizeof(cfg));
+    cfg.dpc = &dpc_cfg;
+
+    TEST_ESP_OK(esp_ipa_pipeline_create(&cfg, &handle));
+    TEST_ESP_OK(esp_ipa_pipeline_init(handle, &sensor, &metadata));
+
+    metadata.flags = 0;
+    sensor.cur_gain = 4.0f;
+    TEST_ESP_OK(esp_ipa_pipeline_process(handle, &stats, &sensor, &metadata));
+    TEST_ASSERT_EQUAL_UINT8(8, metadata.dpc.method_1.high_threshold);
+
+    TEST_ESP_OK(esp_ipa_pipeline_get_state(handle, &s_esp_ipa_sensor, state));
+    TEST_ASSERT_EQUAL_INT(1, state->dpc.index);
+
+    /* Saved index 1 is past a one-node table, and debounce would read table[1]. */
+    dpc_cfg.table = short_table;
+    dpc_cfg.table_size = ARRAY_SIZE(short_table);
+    memset(&metadata, 0, sizeof(metadata));
+    TEST_ESP_OK(esp_ipa_pipeline_set_config(handle, &cfg, &s_esp_ipa_sensor, &metadata));
+
+    restored.dpc.method_1.high_threshold = 1;
+    TEST_ASSERT_EQUAL(ESP_ERR_INVALID_STATE,
+                      esp_ipa_pipeline_set_state(handle, state, &s_esp_ipa_sensor, &restored));
+    TEST_ASSERT_EQUAL_UINT8(1, restored.dpc.method_1.high_threshold);
+
+    metadata.flags = 0;
+    sensor.cur_gain = 4.0f;
+    TEST_ESP_OK(esp_ipa_pipeline_process(handle, &stats, &sensor, &metadata));
+
+    /* Same length, different node. Index 1 is in range and still incompatible. */
+    dpc_cfg.table = same_len;
+    dpc_cfg.table_size = ARRAY_SIZE(same_len);
+    dpc_cfg.debounce_gain = 200;
+    memset(&metadata, 0, sizeof(metadata));
+    TEST_ESP_OK(esp_ipa_pipeline_set_config(handle, &cfg, &s_esp_ipa_sensor, &metadata));
+    TEST_ASSERT_EQUAL(ESP_ERR_INVALID_STATE,
+                      esp_ipa_pipeline_set_state(handle, state, &s_esp_ipa_sensor, &restored));
+
+    /* Debounce change only. Table bytes stay the same. */
+    dpc_cfg.table = table;
+    dpc_cfg.table_size = ARRAY_SIZE(table);
+    dpc_cfg.debounce_gain = 500;
+    memset(&metadata, 0, sizeof(metadata));
+    TEST_ESP_OK(esp_ipa_pipeline_set_config(handle, &cfg, &s_esp_ipa_sensor, &metadata));
+    TEST_ASSERT_EQUAL(ESP_ERR_INVALID_STATE,
+                      esp_ipa_pipeline_set_state(handle, state, &s_esp_ipa_sensor, &restored));
+
+    /* enable_log is not part of the tune. */
+    dpc_cfg.debounce_gain = 200;
+    dpc_cfg.enable_log = true;
+    memset(&metadata, 0, sizeof(metadata));
+    TEST_ESP_OK(esp_ipa_pipeline_set_config(handle, &cfg, &s_esp_ipa_sensor, &metadata));
+    memset(&restored, 0, sizeof(restored));
+    TEST_ESP_OK(esp_ipa_pipeline_set_state(handle, state, &s_esp_ipa_sensor, &restored));
+    TEST_ASSERT_EQUAL_UINT8(8, restored.dpc.method_1.high_threshold);
+    TEST_ASSERT_TRUE(restored.flags & IPA_METADATA_FLAGS_DPC);
+
+    /* Same gain and DPC bytes, different table object. */
+    dpc_cfg.enable_log = false;
+    dpc_cfg.table = same_bytes;
+    dpc_cfg.table_size = ARRAY_SIZE(same_bytes);
+    memset(&metadata, 0, sizeof(metadata));
+    TEST_ESP_OK(esp_ipa_pipeline_set_config(handle, &cfg, &s_esp_ipa_sensor, &metadata));
+    memset(&restored, 0, sizeof(restored));
+    TEST_ESP_OK(esp_ipa_pipeline_set_state(handle, state, &s_esp_ipa_sensor, &restored));
+    TEST_ASSERT_EQUAL_UINT8(8, restored.dpc.method_1.high_threshold);
+
+    free(state);
+    TEST_ESP_OK(esp_ipa_pipeline_destroy(handle));
+}
+
 TEST_CASE("Auto enhancement test", "[IPA]")
 {
     esp_ipa_pipeline_handle_t handle = NULL;
@@ -1744,8 +1918,9 @@ TEST_CASE("Auto white balance test", "[IPA]")
         metadata.flags = 0;
         stats.awb_stats[0].counted = i + ipa_config->awb->min_counted;
         stats.awb_stats[0].sum_g = 10000000;
-        stats.awb_stats[0].sum_r = 10000000 / ((0.1 + ipa_config->awb->min_red_gain_step) * i);
-        stats.awb_stats[0].sum_b = 10000000 / ((0.1 + ipa_config->awb->min_blue_gain_step) * i);
+        /* Prior loop latches gain near 1.0. Step from that value by more than min_*_gain_step. */
+        stats.awb_stats[0].sum_r = 10000000 / (1.0f + (0.1f + ipa_config->awb->min_red_gain_step) * i);
+        stats.awb_stats[0].sum_b = 10000000 / (1.0f + (0.1f + ipa_config->awb->min_blue_gain_step) * i);
         TEST_ESP_OK(esp_ipa_pipeline_process(handle, &stats, &s_esp_ipa_sensor, &metadata));
 
         if (i > 0) {
@@ -2157,11 +2332,9 @@ TEST_CASE("Auto gain control test", "[IPA]")
             if (j < test_count) {
                 stats.ae_stats[j].luminance = test_luma;
             } else {
-                if (i % 2) {
-                    stats.ae_stats[j].luminance = 0;
-                } else {
-                    stats.ae_stats[j].luminance = 135;
-                }
+                /* Complement blocks stay inside the hold band. Luma 0 is a real
+                 * dark scene and would force an exposure/gain update. */
+                stats.ae_stats[j].luminance = 135;
             }
         }
         TEST_ESP_OK(esp_ipa_pipeline_process(handle, &stats, &s_esp_ipa_sensor, &metadata));
@@ -2181,6 +2354,8 @@ TEST_CASE("Auto gain control test", "[IPA]")
     new_agc_config.luma_high = 101;
     new_agc_config.luma_low = 99;
     new_agc_config.luma_target = 100;
+    /* Expected exposure/gain table is computed from the fixed target above. */
+    new_agc_config.luma_pwl_enable = false;
     new_agc_config.meter_mode = ESP_IPA_AGC_METER_AVERAGE;
     new_ipa_config.agc = &new_agc_config;
 
@@ -2834,71 +3009,96 @@ TEST_CASE("Set/Get IPAs global variable", "[IPA]")
     const esp_ipa_config_t *ipa_config = esp_ipa_pipeline_get_config(IPA_TARGET_NAME);
     esp_ipa_pipeline_handle_t handle = NULL;
     esp_ipa_metadata_t metadata = {0};
+    const char *test_ptr1 = "test_ptr1";
+    const char *test_ptr2 = "test_ptr2";
+    esp_ipa_t *ipa0;
+    esp_ipa_t *ipa1;
 
     TEST_ESP_OK(esp_ipa_pipeline_create(ipa_config, &handle));
     TEST_ESP_OK(esp_ipa_pipeline_init(handle, &s_esp_ipa_sensor, &metadata));
 
-    /* Test set/get variable in 1 IPA */
+    ipa0 = handle->ipa_array[0];
+    ipa1 = handle->ipa_array[1];
 
-    esp_ipa_set_int32(handle->ipa_array[0], "ct", 1000);
-    TEST_ASSERT_EQUAL_INT32(esp_ipa_get_int32(handle->ipa_array[0], "ct"), 1000);
+    /* Typed maps are independent: same name can exist in int32/float/ptr */
 
-    esp_ipa_set_int32(handle->ipa_array[0], "ct1", 2000);
-    TEST_ASSERT_EQUAL_INT32(esp_ipa_get_int32(handle->ipa_array[0], "ct1"), 2000);
+    TEST_ASSERT_FALSE(esp_ipa_has_var(ipa0, "ct"));
+    TEST_ASSERT_FALSE(esp_ipa_has_int32_var(ipa0, "ct"));
+    TEST_ASSERT_FALSE(esp_ipa_has_float_var(ipa0, "ct"));
+    TEST_ASSERT_FALSE(esp_ipa_has_ptr_var(ipa0, "ct"));
 
-    esp_ipa_set_int32(handle->ipa_array[0], "ct", 3000);
-    TEST_ASSERT_EQUAL_INT32(esp_ipa_get_int32(handle->ipa_array[0], "ct"), 3000);
+    esp_ipa_set_int32(ipa0, "ct", 1000);
+    TEST_ASSERT_EQUAL_INT32(esp_ipa_get_int32(ipa0, "ct"), 1000);
+    TEST_ASSERT_TRUE(esp_ipa_has_int32_var(ipa0, "ct"));
+    TEST_ASSERT_FALSE(esp_ipa_has_float_var(ipa0, "ct"));
+    TEST_ASSERT_FALSE(esp_ipa_has_ptr_var(ipa0, "ct"));
+    TEST_ASSERT_TRUE(esp_ipa_has_var(ipa0, "ct"));
 
-    esp_ipa_set_float(handle->ipa_array[0], "ct", 1.001);
-    TEST_ASSERT_EQUAL_INT32(esp_ipa_get_float(handle->ipa_array[0], "ct"), 1.001);
+    esp_ipa_set_int32(ipa0, "ct1", 2000);
+    TEST_ASSERT_EQUAL_INT32(esp_ipa_get_int32(ipa0, "ct1"), 2000);
+    TEST_ASSERT_TRUE(esp_ipa_has_int32_var(ipa0, "ct1"));
+    TEST_ASSERT_FALSE(esp_ipa_has_int32_var(ipa0, "ct2"));
 
-    esp_ipa_set_float(handle->ipa_array[0], "ct1", 1.201);
-    TEST_ASSERT_EQUAL_INT32(esp_ipa_get_float(handle->ipa_array[0], "ct1"), 1.201);
+    esp_ipa_set_int32(ipa0, "ct", 3000);
+    TEST_ASSERT_EQUAL_INT32(esp_ipa_get_int32(ipa0, "ct"), 3000);
 
-    esp_ipa_set_float(handle->ipa_array[0], "ct", 1.302);
-    TEST_ASSERT_EQUAL_INT32(esp_ipa_get_float(handle->ipa_array[0], "ct"), 1.302);
+    esp_ipa_set_float(ipa0, "ct", 1.001f);
+    TEST_ASSERT_EQUAL_FLOAT(esp_ipa_get_float(ipa0, "ct"), 1.001f);
+    TEST_ASSERT_TRUE(esp_ipa_has_float_var(ipa0, "ct"));
+    TEST_ASSERT_TRUE(esp_ipa_has_int32_var(ipa0, "ct"));
+    TEST_ASSERT_EQUAL_INT32(esp_ipa_get_int32(ipa0, "ct"), 3000);
 
-    TEST_ASSERT_TRUE(esp_ipa_has_var(handle->ipa_array[0], "ct"));
-    TEST_ASSERT_TRUE(esp_ipa_has_var(handle->ipa_array[0], "ct1"));
-    TEST_ASSERT_FALSE(esp_ipa_has_var(handle->ipa_array[0], "ct2"));
+    esp_ipa_set_float(ipa0, "ct1", 1.201f);
+    TEST_ASSERT_EQUAL_FLOAT(esp_ipa_get_float(ipa0, "ct1"), 1.201f);
+    TEST_ASSERT_TRUE(esp_ipa_has_float_var(ipa0, "ct1"));
 
-    /* Test set/get variable in 2 IPAs */
+    esp_ipa_set_float(ipa0, "ct", 1.302f);
+    TEST_ASSERT_EQUAL_FLOAT(esp_ipa_get_float(ipa0, "ct"), 1.302f);
 
-    esp_ipa_set_int32(handle->ipa_array[0], "ct", 1000);
-    TEST_ASSERT_EQUAL_INT32(esp_ipa_get_int32(handle->ipa_array[1], "ct"), 1000);
+    esp_ipa_set_ptr(ipa0, "ct", test_ptr1);
+    TEST_ASSERT_EQUAL_PTR(esp_ipa_get_ptr(ipa0, "ct"), test_ptr1);
+    TEST_ASSERT_TRUE(esp_ipa_has_ptr_var(ipa0, "ct"));
+    TEST_ASSERT_FALSE(esp_ipa_has_ptr_var(ipa0, "ct2"));
+    TEST_ASSERT_TRUE(esp_ipa_has_var(ipa0, "ct"));
+    TEST_ASSERT_TRUE(esp_ipa_has_var(ipa0, "ct1"));
+    TEST_ASSERT_FALSE(esp_ipa_has_var(ipa0, "ct2"));
 
-    esp_ipa_set_int32(handle->ipa_array[1], "ct1", 2000);
-    TEST_ASSERT_EQUAL_INT32(esp_ipa_get_int32(handle->ipa_array[0], "ct1"), 2000);
+    /* Variables are shared across IPAs in one pipeline */
 
-    esp_ipa_set_int32(handle->ipa_array[1], "ct", 3000);
-    TEST_ASSERT_EQUAL_INT32(esp_ipa_get_int32(handle->ipa_array[0], "ct"), 3000);
+    esp_ipa_set_int32(ipa0, "ct", 1000);
+    TEST_ASSERT_EQUAL_INT32(esp_ipa_get_int32(ipa1, "ct"), 1000);
+    TEST_ASSERT_TRUE(esp_ipa_has_int32_var(ipa1, "ct"));
 
-    esp_ipa_set_float(handle->ipa_array[1], "ct", 1.001);
-    TEST_ASSERT_EQUAL_INT32(esp_ipa_get_float(handle->ipa_array[0], "ct"), 1.001);
+    esp_ipa_set_int32(ipa1, "ct1", 2000);
+    TEST_ASSERT_EQUAL_INT32(esp_ipa_get_int32(ipa0, "ct1"), 2000);
 
-    esp_ipa_set_float(handle->ipa_array[0], "ct1", 1.201);
-    TEST_ASSERT_EQUAL_INT32(esp_ipa_get_float(handle->ipa_array[1], "ct1"), 1.201);
+    esp_ipa_set_int32(ipa1, "ct", 3000);
+    TEST_ASSERT_EQUAL_INT32(esp_ipa_get_int32(ipa0, "ct"), 3000);
 
-    esp_ipa_set_float(handle->ipa_array[0], "ct", 1.302);
-    TEST_ASSERT_EQUAL_INT32(esp_ipa_get_float(handle->ipa_array[1], "ct"), 1.302);
+    esp_ipa_set_float(ipa1, "ct", 1.001f);
+    TEST_ASSERT_EQUAL_FLOAT(esp_ipa_get_float(ipa0, "ct"), 1.001f);
+    TEST_ASSERT_TRUE(esp_ipa_has_float_var(ipa0, "ct"));
 
-    TEST_ASSERT_TRUE(esp_ipa_has_var(handle->ipa_array[0], "ct"));
-    TEST_ASSERT_TRUE(esp_ipa_has_var(handle->ipa_array[0], "ct1"));
-    TEST_ASSERT_FALSE(esp_ipa_has_var(handle->ipa_array[0], "ct2"));
+    esp_ipa_set_float(ipa0, "ct1", 1.201f);
+    TEST_ASSERT_EQUAL_FLOAT(esp_ipa_get_float(ipa1, "ct1"), 1.201f);
 
-    TEST_ASSERT_TRUE(esp_ipa_has_var(handle->ipa_array[1], "ct"));
-    TEST_ASSERT_TRUE(esp_ipa_has_var(handle->ipa_array[1], "ct1"));
-    TEST_ASSERT_FALSE(esp_ipa_has_var(handle->ipa_array[1], "ct2"));
+    esp_ipa_set_float(ipa0, "ct", 1.302f);
+    TEST_ASSERT_EQUAL_FLOAT(esp_ipa_get_float(ipa1, "ct"), 1.302f);
 
-    TEST_ASSERT_TRUE(esp_ipa_has_var(handle->ipa_array[0], "ct"));
-    TEST_ASSERT_TRUE(esp_ipa_has_var(handle->ipa_array[1], "ct"));
+    TEST_ASSERT_TRUE(esp_ipa_has_var(ipa0, "ct"));
+    TEST_ASSERT_TRUE(esp_ipa_has_var(ipa0, "ct1"));
+    TEST_ASSERT_FALSE(esp_ipa_has_var(ipa0, "ct2"));
 
-    char *test_ptr1 = "test_ptr1";
-    char *test_ptr2 = "test_ptr2";
-    esp_ipa_set_ptr(handle->ipa_array[0], test_ptr1, test_ptr1);
-    esp_ipa_set_ptr(handle->ipa_array[1], test_ptr2, test_ptr2);
-    TEST_ASSERT_EQUAL_PTR(esp_ipa_get_ptr(handle->ipa_array[1], test_ptr1), test_ptr1);
-    TEST_ASSERT_EQUAL_PTR(esp_ipa_get_ptr(handle->ipa_array[0], test_ptr2), test_ptr2);
+    TEST_ASSERT_TRUE(esp_ipa_has_var(ipa1, "ct"));
+    TEST_ASSERT_TRUE(esp_ipa_has_var(ipa1, "ct1"));
+    TEST_ASSERT_FALSE(esp_ipa_has_var(ipa1, "ct2"));
+
+    esp_ipa_set_ptr(ipa0, test_ptr1, test_ptr1);
+    esp_ipa_set_ptr(ipa1, test_ptr2, test_ptr2);
+    TEST_ASSERT_EQUAL_PTR(esp_ipa_get_ptr(ipa1, test_ptr1), test_ptr1);
+    TEST_ASSERT_EQUAL_PTR(esp_ipa_get_ptr(ipa0, test_ptr2), test_ptr2);
+    TEST_ASSERT_TRUE(esp_ipa_has_ptr_var(ipa0, test_ptr1));
+    TEST_ASSERT_TRUE(esp_ipa_has_ptr_var(ipa1, test_ptr2));
 
     TEST_ESP_OK(esp_ipa_pipeline_destroy(handle));
 }
@@ -3113,6 +3313,85 @@ TEST_CASE("IOCTL multiple threads test", "[IPA]")
     TEST_ASSERT_EQUAL(0, pthread_join(t1, NULL));
     TEST_ASSERT_EQUAL(0, pthread_join(t2, NULL));
 
+    TEST_ESP_OK(esp_ipa_pipeline_destroy(handle));
+}
+
+TEST_CASE("pipeline state get and set", "[IPA][STATE]")
+{
+    esp_ipa_metadata_t metadata = {0};
+    esp_ipa_metadata_t restored = {0};
+    esp_ipa_pipeline_handle_t handle = NULL;
+    const esp_ipa_config_t *ipa_config = esp_ipa_pipeline_get_config(IPA_TARGET_NAME);
+    esp_ipa_sensor_t bad_sensor = s_esp_ipa_sensor;
+    esp_ipa_state_t *state;
+    esp_ipa_state_t *again;
+    uint32_t modules;
+    uint32_t width;
+
+    state = calloc(1, sizeof(*state));
+    again = calloc(1, sizeof(*again));
+    TEST_ASSERT_NOT_NULL(state);
+    TEST_ASSERT_NOT_NULL(again);
+
+    TEST_ESP_OK(esp_ipa_pipeline_create(ipa_config, &handle));
+    TEST_ASSERT_EQUAL(ESP_ERR_INVALID_ARG, esp_ipa_pipeline_get_state(NULL, &s_esp_ipa_sensor, state));
+    TEST_ASSERT_EQUAL(ESP_ERR_INVALID_ARG, esp_ipa_pipeline_get_state(handle, NULL, state));
+    TEST_ASSERT_EQUAL(ESP_ERR_INVALID_ARG, esp_ipa_pipeline_get_state(handle, &s_esp_ipa_sensor, NULL));
+    TEST_ASSERT_EQUAL(ESP_ERR_INVALID_ARG, esp_ipa_pipeline_set_state(NULL, state, &s_esp_ipa_sensor, &metadata));
+    TEST_ASSERT_EQUAL(ESP_ERR_INVALID_ARG, esp_ipa_pipeline_set_state(handle, NULL, &s_esp_ipa_sensor, &metadata));
+    TEST_ASSERT_EQUAL(ESP_ERR_INVALID_ARG, esp_ipa_pipeline_set_state(handle, state, NULL, &metadata));
+    TEST_ASSERT_EQUAL(ESP_ERR_INVALID_ARG, esp_ipa_pipeline_set_state(handle, state, &s_esp_ipa_sensor, NULL));
+    TEST_ASSERT_EQUAL(ESP_ERR_INVALID_STATE, esp_ipa_pipeline_get_state(handle, &s_esp_ipa_sensor, state));
+    TEST_ASSERT_EQUAL(ESP_ERR_INVALID_STATE, esp_ipa_pipeline_set_state(handle, state, &s_esp_ipa_sensor, &metadata));
+
+    TEST_ESP_OK(esp_ipa_pipeline_init(handle, &s_esp_ipa_sensor, &metadata));
+    TEST_ESP_OK(esp_ipa_pipeline_get_state(handle, &s_esp_ipa_sensor, state));
+    TEST_ASSERT_EQUAL_UINT32(ESP_IPA_STATE_VERSION, state->version);
+    TEST_ASSERT_EQUAL_UINT32(ipa_config->version, state->config_version);
+    TEST_ASSERT_EQUAL_UINT32(s_esp_ipa_sensor.width, state->width);
+    TEST_ASSERT_EQUAL_UINT32(s_esp_ipa_sensor.height, state->height);
+    modules = ESP_IPA_STATE_MOD_AGC | ESP_IPA_STATE_MOD_ATC | ESP_IPA_STATE_MOD_ADN |
+              ESP_IPA_STATE_MOD_DPC | ESP_IPA_STATE_MOD_IR | ESP_IPA_STATE_MOD_AEN |
+              ESP_IPA_STATE_MOD_ACC | ESP_IPA_STATE_MOD_AF | ESP_IPA_STATE_MOD_IAN |
+              ESP_IPA_STATE_MOD_AWB;
+    TEST_ASSERT_EQUAL_UINT32(modules, state->modules);
+
+    restored.exposure = 123;
+    width = state->width;
+    state->width = width + 1;
+    TEST_ASSERT_EQUAL(ESP_ERR_INVALID_CRC,
+                      esp_ipa_pipeline_set_state(handle, state, &s_esp_ipa_sensor, &restored));
+    TEST_ASSERT_EQUAL_UINT32(123, restored.exposure);
+    state->width = width;
+
+    state->version += 1;
+    TEST_ASSERT_EQUAL(ESP_ERR_INVALID_VERSION,
+                      esp_ipa_pipeline_set_state(handle, state, &s_esp_ipa_sensor, &restored));
+    TEST_ASSERT_EQUAL_UINT32(123, restored.exposure);
+
+    state->version = ESP_IPA_STATE_VERSION;
+    bad_sensor.width += 1;
+    TEST_ASSERT_EQUAL(ESP_ERR_INVALID_STATE,
+                      esp_ipa_pipeline_set_state(handle, state, &bad_sensor, &restored));
+    TEST_ASSERT_EQUAL_UINT32(123, restored.exposure);
+
+    memset(&restored, 0, sizeof(restored));
+    TEST_ESP_OK(esp_ipa_pipeline_set_state(handle, state, &s_esp_ipa_sensor, &restored));
+    metadata = restored;
+    memset(&restored, 0, sizeof(restored));
+    TEST_ESP_OK(esp_ipa_pipeline_set_state(handle, state, &s_esp_ipa_sensor, &restored));
+    TEST_ASSERT_EQUAL_UINT32(metadata.flags, restored.flags);
+    TEST_ASSERT_EQUAL_UINT32(metadata.exposure, restored.exposure);
+    TEST_ASSERT_EQUAL_FLOAT(metadata.gain, restored.gain);
+    TEST_ASSERT_EQUAL_FLOAT(metadata.red_gain, restored.red_gain);
+    TEST_ASSERT_EQUAL_FLOAT(metadata.blue_gain, restored.blue_gain);
+    TEST_ASSERT_TRUE(restored.flags & IPA_METADATA_FLAGS_ET);
+
+    TEST_ESP_OK(esp_ipa_pipeline_get_state(handle, &s_esp_ipa_sensor, again));
+    TEST_ASSERT_EQUAL_MEMORY(state, again, sizeof(*state));
+
+    free(again);
+    free(state);
     TEST_ESP_OK(esp_ipa_pipeline_destroy(handle));
 }
 

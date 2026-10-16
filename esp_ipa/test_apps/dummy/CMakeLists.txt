@@ -5,6 +5,7 @@ cmake_minimum_required(VERSION 3.16)
 set(COMPONENTS main)
 
 include($ENV{IDF_PATH}/tools/cmake/project.cmake)
+
 idf_build_set_property(ESP_IPA_JSON_CONFIG_FILE_PATH "test_apps_dummy.json" APPEND)
 idf_build_set_property(ESP_IPA_JSON_CONFIG_FILE_PATH "test_apps_dummy_2.json" APPEND)
 idf_build_set_property(ESP_IPA_JSON_CONFIG_FILE_PATH "test_apps_dummy_3.json" APPEND)
