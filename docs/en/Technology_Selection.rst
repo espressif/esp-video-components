@@ -24,10 +24,12 @@ Hardware selection recommendations:
 
 - For sensors that output RAW format data, you must select a chip with an ISP, such as ESP32-P4.
 - For sensors that output YUV or RGB data, you can select any ESP32-xx chip that has a camera interface.
+- When JPEG hardware encoding or decoding is required, but MIPI-CSI/ISP/H.264 is not, you can select ESP32-S31 (DVP/SPI/USB + JPEG codec).
+- When H.264 hardware encoding is required, you must select ESP32-P4. An H.264 hardware decoder device is not provided currently.
 
 Software Solution Selection
 ----------------------------
 
 - **Image transmission:** For resolutions up to 720p, use chips with SPI or DVP interfaces. For resolutions above 720p, use chips with USB or MIPI-CSI interfaces.
-- **Video streaming:** For high frame rate requirements, use chips with USB or MIPI-CSI interfaces.
+- **Video streaming:** For applications requiring high frame rates, use chips with USB or MIPI-CSI interfaces.
 - **AI:** Use chips with an AI acceleration instruction set.

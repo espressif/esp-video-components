@@ -16,15 +16,15 @@
 
 .. list::
 
-  - `产品选型工具 <https://products.espressif.com/#/product-selector?language=zh&names=>`_ 可以帮助你了解不同乐鑫产品的硬件区别。
-  - `技术规格书 <https://www.espressif.com/zh-hans/support/documents/technical-documents?keys=&field_download_document_type_tid%5B%5D=510>`_ 可以帮助你了解该芯片/模组所支持的硬件能力。
-  - `硬件选型入门指导 <https://docs.espressif.com/projects/esp-techpedia/zh_CN/latest/esp-friends/get-started/board-selection.html>`_ 可以帮助你简要对比芯片差别，了解芯片、模组和开发板的差别以及选择指南。
+    - `产品选型工具 <https://products.espressif.com/#/product-selector?language=zh&names=>`_ 可以帮助你了解不同乐鑫产品的硬件区别。
+    - `技术规格书 <https://www.espressif.com/zh-hans/support/documents/technical-documents?keys=&field_download_document_type_tid%5B%5D=510>`_ 可以帮助你了解该芯片/模组所支持的硬件能力。
+    - `硬件选型入门指导 <https://docs.espressif.com/projects/esp-techpedia/zh_CN/latest/esp-friends/get-started/board-selection.html>`_ 可以帮助你简要对比芯片差别，了解芯片、模组和开发板的差别以及选择指南。
 
 硬件选型建议：
 
 - 对于输出 RAW 格式的传感器，必须选择带 ISP 的芯片，如 ESP32-P4。
 - 对于输出 YUV 或者 RGB 的传感器，可以选择 ESP32-xx 芯片中拥有相机接口的芯片。
-- 需要 JPEG 硬件编码或解码、但不需要 MIPI-CSI / ISP / H.264 时，可以选择 ESP32-S31（DVP/SPI/USB + JPEG 编解码器）。
+- 需要 JPEG 硬件编码或解码、但不需要 MIPI-CSI/ISP/H.264 时，可以选择 ESP32-S31（DVP/SPI/USB + JPEG 编解码器）。
 - 需要 H.264 硬件编码时，必须选择 ESP32-P4。当前不提供 H.264 硬件解码器设备。
 
 软件方案选型

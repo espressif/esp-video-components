@@ -1,20 +1,20 @@
-****************
+********
 命令介绍
-****************
+********
 
-本文档说明 ``esp_video`` 已实现的 V4L2 ioctl 请求代码、命令参数及用法示例，便于按功能查阅。设备节点、Capture / M2M 数据通路以及应用侧典型调用顺序见 :doc:`index`。初始化 API 见 :doc:`api_reference`。
+本文档说明 ``esp_video`` 已实现的 V4L2 ioctl 请求代码、命令参数及用法示例，便于按功能查阅。设备节点、Capture/M2M 数据通路以及应用侧典型调用顺序见 :doc:`index`。初始化 API 见 :doc:`api_reference`。
 
 .. important::
 
-   - 示例侧重接口用法，未覆盖完整错误处理。产品代码须检查 ``ioctl`` 返回值。
-   - 组件只实现当前芯片硬件能力范围内的 V4L2 功能。未列入下表的标准命令默认未实现；部分命令仅部分设备可用，或以编译宏为准。例如 ``VIDIOC_SUBSCRIBE_EVENT`` / ``VIDIOC_DQEVENT`` / ``VIDIOC_S_EVENT_CALLBACK`` 仅在 MIPI-CSI 驱动支持事件时可用（``ESP_VIDEO_CSI_DRIVER_HAS_EVENT``）。若当前 ESP-IDF 的 MIPI-CSI 驱动不含错误事件，应用程序不应调用这些命令。
-   - Capture 设备使用 ``V4L2_BUF_TYPE_VIDEO_CAPTURE``。M2M 编解码设备（JPEG 编码 ``/dev/video10``、H.264 编码 ``/dev/video11``、JPEG 解码 ``/dev/video12``）须分别对 ``V4L2_BUF_TYPE_VIDEO_OUTPUT``（输入）和 ``V4L2_BUF_TYPE_VIDEO_CAPTURE``（输出）申请缓冲并 ``STREAMON`` / ``STREAMOFF``。
-   - 像素格式按字节序区分：YUV422 使用 ``V4L2_PIX_FMT_YUYV`` / ``V4L2_PIX_FMT_UYVY``；RGB565 使用 ``V4L2_PIX_FMT_RGB565``（小端）/ ``V4L2_PIX_FMT_RGB565X``（大端）。已不再使用 ``V4L2_PIX_FMT_YUV422P``。JPEG 解码器还支持 ``V4L2_PIX_FMT_BGR565``。DVP 在支持格式转换时，仅当传感器输出为 YUV422 YUYV 时可将数据转为 RGB565，转换结果是大端 ``V4L2_PIX_FMT_RGB565X``，不是小端 ``V4L2_PIX_FMT_RGB565``。传感器输出 UYVY 时不支持该转换。
+    - 示例侧重接口用法，未覆盖完整错误处理。产品代码须检查 ``ioctl`` 返回值。
+    - 组件只实现当前芯片硬件能力范围内的 V4L2 功能。未列入下表的标准命令默认未实现；部分命令仅部分设备可用，或以编译宏为准。例如 ``VIDIOC_SUBSCRIBE_EVENT``/``VIDIOC_DQEVENT``/``VIDIOC_S_EVENT_CALLBACK`` 仅在 MIPI-CSI 驱动支持事件时可用 (``ESP_VIDEO_CSI_DRIVER_HAS_EVENT``)。若当前 ESP-IDF 的 MIPI-CSI 驱动不含错误事件，应用程序不应调用这些命令。
+    - Capture 设备使用 ``V4L2_BUF_TYPE_VIDEO_CAPTURE``。M2M 编解码设备（JPEG 编码 ``/dev/video10``、H.264 编码 ``/dev/video11``、JPEG 解码 ``/dev/video12``）须分别对 ``V4L2_BUF_TYPE_VIDEO_OUTPUT``\（输入）和 ``V4L2_BUF_TYPE_VIDEO_CAPTURE``\（输出）申请缓冲并 ``STREAMON``/``STREAMOFF``。
+    - 像素格式按字节序区分：YUV422 使用 ``V4L2_PIX_FMT_YUYV``/``V4L2_PIX_FMT_UYVY``；RGB565 使用 ``V4L2_PIX_FMT_RGB565``\（小端）/``V4L2_PIX_FMT_RGB565X``\（大端）。已不再使用 ``V4L2_PIX_FMT_YUV422P``。JPEG 解码器还支持 ``V4L2_PIX_FMT_BGR565``。DVP 仅支持将传感器输出的 YUV422 YUYV 数据转换为 RGB565，转换结果是大端 ``V4L2_PIX_FMT_RGB565X``，不是小端 ``V4L2_PIX_FMT_RGB565``。传感器输出 UYVY 时不支持该转换。
 
 ioctl 调用顺序
-~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~
 
-应用侧典型顺序与 :doc:`index` 中的应用编程一节一致：打开设备 → 查询能力与格式 → 申请并排队缓冲区 → ``STREAMON`` → 循环 ``DQBUF`` / ``QBUF`` → ``STREAMOFF`` → 关闭设备。ioctl 会落到对应子设备；以查询、设置相机传感器格式为例：
+应用侧典型顺序与 ESP Video 应用开发指南中的 :ref:`应用编程 <esp-video-application-programming>` 小节所述流程一致：打开设备 -> 查询能力与格式 -> 申请并排队缓冲区 -> ``STREAMON`` -> 循环 ``DQBUF``/``QBUF`` -> ``STREAMOFF`` -> 关闭设备。ioctl 会分发到对应的子设备；以下以查询和设置相机传感器格式为例：
 
 .. blockdiag::
     :caption: ioctl 调用流程
@@ -40,10 +40,10 @@ ioctl 调用顺序
         IOCTL2 -> SENSOR2;
     }
 
-下文先给出已实现命令一览，再按功能展开参数与示例。超时、传感器格式、事件等厂商扩展 ioctl 见后文扩展命令。控制项 ID 见文末控制 ID 一览。
+下文先给出已实现命令一览，再按功能展开参数与示例。超时、传感器格式、事件等厂商扩展 ioctl 见后文 :ref:`扩展命令 <esp-video-commands-extended-commands>`。控制项 ID 见文末 :ref:`控制 ID 一览 <esp-video-commands-control-id-overview>`。
 
 V4L2 命令
-~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~
 
 当前已实现的请求代码如下。未列出的标准命令默认未实现。
 
@@ -56,37 +56,37 @@ V4L2 命令
      - 适用范围
    * - ``VIDIOC_QUERYCAP``
      - 所有视频设备
-   * - ``VIDIOC_ENUM_FMT`` / ``VIDIOC_G_FMT`` / ``VIDIOC_S_FMT``
+   * - ``VIDIOC_ENUM_FMT``/``VIDIOC_G_FMT``/``VIDIOC_S_FMT``
      - Capture 与 M2M；须在停流时设置格式
-   * - ``VIDIOC_ENUM_FRAMESIZES`` / ``VIDIOC_ENUM_FRAMEINTERVALS``
-     - CSI / DVP / SPI 等采集设备
-   * - ``VIDIOC_REQBUFS`` / ``VIDIOC_QUERYBUF`` / ``VIDIOC_QBUF`` / ``VIDIOC_DQBUF``
+   * - ``VIDIOC_ENUM_FRAMESIZES``/``VIDIOC_ENUM_FRAMEINTERVALS``
+     - CSI/DVP/SPI 等采集设备
+   * - ``VIDIOC_REQBUFS``/``VIDIOC_QUERYBUF``/``VIDIOC_QBUF``/``VIDIOC_DQBUF``
      - 所有流式设备；``count=0`` 释放缓冲
-   * - ``VIDIOC_STREAMON`` / ``VIDIOC_STREAMOFF``
+   * - ``VIDIOC_STREAMON``/``VIDIOC_STREAMOFF``
      - 所有流式设备；M2M 需分别启停 OUTPUT 与 CAPTURE
-   * - ``VIDIOC_QUERY_EXT_CTRL`` / ``VIDIOC_S_EXT_CTRLS`` / ``VIDIOC_G_EXT_CTRLS`` / ``VIDIOC_QUERYMENU``
+   * - ``VIDIOC_QUERY_EXT_CTRL``/``VIDIOC_S_EXT_CTRLS``/``VIDIOC_G_EXT_CTRLS``/``VIDIOC_QUERYMENU``
      - 传感器、ISP、JPEG、H.264 等控制项
-   * - ``VIDIOC_S_SELECTION`` / ``VIDIOC_G_SELECTION``
+   * - ``VIDIOC_S_SELECTION``/``VIDIOC_G_SELECTION``
      - MIPI-CSI 裁剪
-   * - ``VIDIOC_S_PARM`` / ``VIDIOC_G_PARM``
+   * - ``VIDIOC_S_PARM``/``VIDIOC_G_PARM``
      - 采集帧间隔；H.264 设备可用于配置/查询 FPS（开流后也可设置）
-   * - ``VIDIOC_S_SENSOR_FMT`` / ``VIDIOC_G_SENSOR_FMT`` / ``VIDIOC_ENUM_SENSOR_FMT``
-     - 相机传感器输出格式：设置 / 获取 / 枚举
-   * - ``VIDIOC_S_MOTOR_FMT`` / ``VIDIOC_G_MOTOR_FMT``
+   * - ``VIDIOC_S_SENSOR_FMT``/``VIDIOC_G_SENSOR_FMT``/``VIDIOC_ENUM_SENSOR_FMT``
+     - 相机传感器输出格式：设置/获取/枚举
+   * - ``VIDIOC_S_MOTOR_FMT``/``VIDIOC_G_MOTOR_FMT``
      - 自动对焦电机（需使能电机控制器）
    * - ``VIDIOC_SET_OWNER``
      - 增减设备引用计数
-   * - ``VIDIOC_S_DQBUF_TIMEOUT`` / ``VIDIOC_G_DQBUF_TIMEOUT``
+   * - ``VIDIOC_S_DQBUF_TIMEOUT``/``VIDIOC_G_DQBUF_TIMEOUT``
      - ``DQBUF`` 超时
-   * - ``VIDIOC_SUBSCRIBE_EVENT`` / ``VIDIOC_UNSUBSCRIBE_EVENT`` / ``VIDIOC_DQEVENT`` / ``VIDIOC_S_EVENT_CALLBACK``
+   * - ``VIDIOC_SUBSCRIBE_EVENT``/``VIDIOC_UNSUBSCRIBE_EVENT``/``VIDIOC_DQEVENT``/``VIDIOC_S_EVENT_CALLBACK``
      - 仅 MIPI-CSI，且驱动支持事件
    * - ``VIDIOC_RESTART``
      - 须在开流之后、停流之前调用
 
-上表同时列出标准命令与厂商扩展命令。下面按查询、格式、缓冲、数据流、控制的顺序说明标准命令；每小节依次给出请求代码、参数结构、字段说明和示例。厂商扩展命令见后文扩展命令。
+上表同时列出标准命令与厂商扩展命令。下面按查询、格式、缓冲、数据流、控制的顺序说明标准命令；每小节依次给出请求代码、参数结构、字段说明和示例。厂商扩展命令见后文 :ref:`扩展命令 <esp-video-commands-extended-commands>`。
 
 查询设备能力
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^
 
 **命令简介**：
 
@@ -126,26 +126,26 @@ V4L2 命令
 
 .. code-block:: c
 
-   void example_querycap(void)
-   {
-       int fd = open("/dev/video0", O_RDWR);
+    void example_querycap(void)
+    {
+        int fd = open("/dev/video0", O_RDWR);
 
-       struct v4l2_capability cap = {0};
+        struct v4l2_capability cap = {0};
 
-       ioctl(fd, VIDIOC_QUERYCAP, &cap);
+        ioctl(fd, VIDIOC_QUERYCAP, &cap);
 
-       printf("driver: %s, card: %s, bus: %s\n", (char *)cap.driver, (char *)cap.card, (char *)cap.bus_info);
-       printf("version: %d.%d.%d\n", (uint16_t)(cap.version >> 16),
-              (uint8_t)(cap.version >> 8),
-              (uint8_t)cap.version);
-       printf("capabilities: 0x%x\n", cap.capabilities);
-       printf("device_caps: 0x%x\n", cap.device_caps);
+        printf("driver: %s, card: %s, bus: %s\n", (char *)cap.driver, (char *)cap.card, (char *)cap.bus_info);
+        printf("version: %d.%d.%d\n", (uint16_t)(cap.version >> 16),
+               (uint8_t)(cap.version >> 8),
+               (uint8_t)cap.version);
+        printf("capabilities: 0x%x\n", cap.capabilities);
+        printf("device_caps: 0x%x\n", cap.device_caps);
 
-       close(fd);
-   }
+        close(fd);
+    }
 
 枚举像素格式
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^
 
 **命令简介**：
 
@@ -164,7 +164,7 @@ V4L2 命令
      - 用途
    * - index
      - __u32
-     - 格式序号递增
+     - 格式索引，从 0 开始递增
    * - type
      - __u32
      - 缓冲区类型
@@ -179,31 +179,31 @@ V4L2 命令
 
 .. code-block:: c
 
-   void example_enum_fmt(void)
-   {
-       int fd = open("/dev/video0", O_RDWR);
+    void example_enum_fmt(void)
+    {
+        int fd = open("/dev/video0", O_RDWR);
 
-       struct v4l2_fmtdesc fmtdesc = {0};
+        struct v4l2_fmtdesc fmtdesc = {0};
 
-       fmtdesc.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
+        fmtdesc.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
 
-       for (fmtdesc.index = 0; ; ++fmtdesc.index) {
-           if (ioctl(fd, VIDIOC_ENUM_FMT, &fmtdesc) < 0) {
-               break;
-           }
+        for (fmtdesc.index = 0; ; ++fmtdesc.index) {
+            if (ioctl(fd, VIDIOC_ENUM_FMT, &fmtdesc) < 0) {
+                break;
+            }
 
-           printf("Format: %s, pixelformat: 0x%x\n", (char *)fmtdesc.description, fmtdesc.pixelformat);
-       }
+            printf("Format: %s, pixelformat: 0x%x\n", (char *)fmtdesc.description, fmtdesc.pixelformat);
+        }
 
-       close(fd);
-   }
+        close(fd);
+    }
 
 设置/获取数据格式
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^
 
 **命令简介**：
 
-- 命令（请求代码）：``VIDIOC_S_FMT`` / ``VIDIOC_G_FMT``
+- 命令（请求代码）：``VIDIOC_S_FMT``/``VIDIOC_G_FMT``
 - 命令参数：``struct v4l2_format``
 
 参数主要字段（以 ``type == V4L2_BUF_TYPE_VIDEO_CAPTURE`` 为例）：
@@ -223,7 +223,7 @@ V4L2 命令
      - union
      - 格式信息，仅支持 pix 字段
 
-**pix（struct v4l2_pix_format） 字段说明**：
+**pix (struct v4l2_pix_format) 字段说明**：
 
 .. list-table::
    :header-rows: 1
@@ -256,36 +256,36 @@ V4L2 命令
 
 .. code-block:: c
 
-   void example_set_get_try_fmt(void)
-   {
-       int fd = open("/dev/video0", O_RDWR);
+    void example_set_get_try_fmt(void)
+    {
+        int fd = open("/dev/video0", O_RDWR);
 
-       struct v4l2_format fmt = {0};
+        struct v4l2_format fmt = {0};
 
-       // 设置格式
-       fmt.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
-       fmt.fmt.pix.width = 320;
-       fmt.fmt.pix.height = 240;
-       fmt.fmt.pix.pixelformat = V4L2_PIX_FMT_RGB565;
-       fmt.fmt.pix.field = V4L2_FIELD_NONE;
+        // 设置格式
+        fmt.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
+        fmt.fmt.pix.width = 320;
+        fmt.fmt.pix.height = 240;
+        fmt.fmt.pix.pixelformat = V4L2_PIX_FMT_RGB565;
+        fmt.fmt.pix.field = V4L2_FIELD_NONE;
 
-       ioctl(fd, VIDIOC_S_FMT, &fmt);
+        ioctl(fd, VIDIOC_S_FMT, &fmt);
 
-       /* 运行时改格式须在停流状态下进行 */
+        /* 运行时改格式须在停流状态下进行 */
 
-       // 获取当前格式
-       memset(&fmt, 0, sizeof(fmt));
-       fmt.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
+        // 获取当前格式
+        memset(&fmt, 0, sizeof(fmt));
+        fmt.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
 
-       ioctl(fd, VIDIOC_G_FMT, &fmt);
+        ioctl(fd, VIDIOC_G_FMT, &fmt);
 
-       printf("Current: %ux%u, fmt=0x%x\n", fmt.fmt.pix.width, fmt.fmt.pix.height, fmt.fmt.pix.pixelformat);
+        printf("Current: %ux%u, fmt=0x%x\n", fmt.fmt.pix.width, fmt.fmt.pix.height, fmt.fmt.pix.pixelformat);
 
-       close(fd);
-   }
+        close(fd);
+    }
 
 枚举支持的分辨率
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^
 
 **命令简介**：
 
@@ -304,7 +304,7 @@ V4L2 命令
      - 用途
    * - index
      - __u32
-     - 分辨率序号递增
+     - 分辨率索引，从 0 开始递增
    * - pixel_format
      - __u32
      - 目标像素格式
@@ -315,7 +315,7 @@ V4L2 命令
      - union
      - 分辨率信息
 
-**discrete（struct v4l2_frmsize_discrete） 字段说明**：
+**discrete (struct v4l2_frmsize_discrete) 字段说明**：
 
 .. list-table::
    :header-rows: 1
@@ -332,7 +332,7 @@ V4L2 命令
      - __u32
      - 高度
 
-**stepwise（struct v4l2_frmsize_stepwise） 字段说明**：
+**stepwise (struct v4l2_frmsize_stepwise) 字段说明**：
 
 .. list-table::
    :header-rows: 1
@@ -365,30 +365,30 @@ V4L2 命令
 
 .. code-block:: c
 
-   void example_enum_framesizes(void)
-   {
-       int fd = open("/dev/video0", O_RDWR);
+    void example_enum_framesizes(void)
+    {
+        int fd = open("/dev/video0", O_RDWR);
 
-       struct v4l2_frmsizeenum fsize = {0};
-       fsize.pixel_format = V4L2_PIX_FMT_RGB565;
+        struct v4l2_frmsizeenum fsize = {0};
+        fsize.pixel_format = V4L2_PIX_FMT_RGB565;
 
-       for (fsize.index = 0; ; fsize.index++) {
-           if (ioctl(fd, VIDIOC_ENUM_FRAMESIZES, &fsize) < 0) {
-               break;
-           }
+        for (fsize.index = 0; ; fsize.index++) {
+            if (ioctl(fd, VIDIOC_ENUM_FRAMESIZES, &fsize) < 0) {
+                break;
+            }
 
-           if (fsize.type == V4L2_FRMSIZE_TYPE_DISCRETE) {
-               printf("Discrete: %ux%u\n", fsize.discrete.width, fsize.discrete.height);
-           } else if (fsize.type == V4L2_FRMSIZE_TYPE_STEPWISE) {
-               printf("Stepwise: %ux%u~%ux%u, step: %ux%u\n", fsize.stepwise.min_width, fsize.stepwise.min_height, fsize.stepwise.max_width, fsize.stepwise.max_height, fsize.stepwise.step_width, fsize.stepwise.step_height);
-           }
-       }
+            if (fsize.type == V4L2_FRMSIZE_TYPE_DISCRETE) {
+                printf("Discrete: %ux%u\n", fsize.discrete.width, fsize.discrete.height);
+            } else if (fsize.type == V4L2_FRMSIZE_TYPE_STEPWISE) {
+                printf("Stepwise: %ux%u~%ux%u, step: %ux%u\n", fsize.stepwise.min_width, fsize.stepwise.min_height, fsize.stepwise.max_width, fsize.stepwise.max_height, fsize.stepwise.step_width, fsize.stepwise.step_height);
+            }
+        }
 
-       close(fd);
-   }
+        close(fd);
+    }
 
 枚举帧率
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^
 
 **命令简介**：
 
@@ -407,7 +407,7 @@ V4L2 命令
      - 用途
    * - index
      - __u32
-     - 帧率序号递增
+     - 帧率索引，从 0 开始递增
    * - pixel_format
      - __u32
      - 目标像素格式
@@ -424,7 +424,7 @@ V4L2 命令
      - union
      - 帧率信息
 
-**discrete（struct v4l2_fract） 字段说明**：
+**discrete (struct v4l2_fract) 字段说明**：
 
 .. list-table::
    :header-rows: 1
@@ -441,7 +441,7 @@ V4L2 命令
      - __u32
      - 分母
 
-**stepwise（struct v4l2_frmival_stepwise） 字段说明**：
+**stepwise (struct v4l2_frmival_stepwise) 字段说明**：
 
 .. list-table::
    :header-rows: 1
@@ -465,37 +465,37 @@ V4L2 命令
 
 .. code-block:: c
 
-   void example_enum_frameintervals(void)
-   {
-       int fd = open("/dev/video0", O_RDWR);
+    void example_enum_frameintervals(void)
+    {
+        int fd = open("/dev/video0", O_RDWR);
 
-       struct v4l2_frmivalenum ival = {0};
-       ival.pixel_format = V4L2_PIX_FMT_RGB565;
-       ival.width = 640;
-       ival.height = 480;
+        struct v4l2_frmivalenum ival = {0};
+        ival.pixel_format = V4L2_PIX_FMT_RGB565;
+        ival.width = 640;
+        ival.height = 480;
 
-       for (ival.index = 0; ; ival.index++) {
-           if (ioctl(fd, VIDIOC_ENUM_FRAMEINTERVALS, &ival) < 0) {
-               break;
-           }
+        for (ival.index = 0; ; ival.index++) {
+            if (ioctl(fd, VIDIOC_ENUM_FRAMEINTERVALS, &ival) < 0) {
+                break;
+            }
 
-           if (ival.type == V4L2_FRMIVAL_TYPE_DISCRETE) {
-               printf("Discrete interval: %u/%u\n", ival.discrete.numerator, ival.discrete.denominator);
-           } else if (ival.type == V4L2_FRMIVAL_TYPE_STEPWISE) {
-               printf("Stepwise interval: %u/%u~%u/%u, step: %u/%u\n", ival.stepwise.min.numerator, ival.stepwise.min.denominator, ival.stepwise.max.numerator, ival.stepwise.max.denominator, ival.stepwise.step.numerator, ival.stepwise.step.denominator);
-           }
-       }
+            if (ival.type == V4L2_FRMIVAL_TYPE_DISCRETE) {
+                printf("Discrete interval: %u/%u\n", ival.discrete.numerator, ival.discrete.denominator);
+            } else if (ival.type == V4L2_FRMIVAL_TYPE_STEPWISE) {
+                printf("Stepwise interval: %u/%u~%u/%u, step: %u/%u\n", ival.stepwise.min.numerator, ival.stepwise.min.denominator, ival.stepwise.max.numerator, ival.stepwise.max.denominator, ival.stepwise.step.numerator, ival.stepwise.step.denominator);
+            }
+        }
 
-       close(fd);
-   }
+        close(fd);
+    }
 
 申请/释放缓冲区
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^
 
 - 命令（请求代码）：``VIDIOC_REQBUFS``
 - 命令参数：``struct v4l2_requestbuffers``
 
-**字段说明：**
+**字段说明**：
 
 .. list-table::
    :header-rows: 1
@@ -519,36 +519,36 @@ V4L2 命令
 
 .. code-block:: c
 
-   void example_reqbufs(void)
-   {
-       int fd = open("/dev/video0", O_RDWR);
+    void example_reqbufs(void)
+    {
+        int fd = open("/dev/video0", O_RDWR);
 
-       struct v4l2_requestbuffers req = {0};
-       req.count = 3;
-       req.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
-       req.memory = V4L2_MEMORY_MMAP;
+        struct v4l2_requestbuffers req = {0};
+        req.count = 3;
+        req.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
+        req.memory = V4L2_MEMORY_MMAP;
 
-       ioctl(fd, VIDIOC_REQBUFS, &req);
+        ioctl(fd, VIDIOC_REQBUFS, &req);
 
-       /* count=0 释放已申请的视频缓冲 */
-       req.count = 0;
-       ioctl(fd, VIDIOC_REQBUFS, &req);
+        /* count=0 释放已申请的视频缓冲 */
+        req.count = 0;
+        ioctl(fd, VIDIOC_REQBUFS, &req);
 
-       close(fd);
-   }
+        close(fd);
+    }
 
 .. note::
 
-   内存类型支持 ``V4L2_MEMORY_MMAP`` 与 ``V4L2_MEMORY_USERPTR``。M2M 设备需分别对 ``V4L2_BUF_TYPE_VIDEO_OUTPUT`` 与 ``V4L2_BUF_TYPE_VIDEO_CAPTURE`` 调用 ``VIDIOC_REQBUFS``。
+    内存类型支持 ``V4L2_MEMORY_MMAP`` 与 ``V4L2_MEMORY_USERPTR``。M2M 设备需分别对 ``V4L2_BUF_TYPE_VIDEO_OUTPUT`` 与 ``V4L2_BUF_TYPE_VIDEO_CAPTURE`` 调用 ``VIDIOC_REQBUFS``。
 
 
 查询缓冲区属性
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^
 
 - 命令（请求代码）：``VIDIOC_QUERYBUF``
 - 命令参数：``struct v4l2_buffer``
 
-**字段说明：**
+**字段说明**：
 
 .. list-table::
    :header-rows: 1
@@ -560,7 +560,7 @@ V4L2 命令
      - 用途
    * - index
      - __u32
-     - 缓冲区索引（0 ~ count-1）
+     - 缓冲区索引 (0 ~ count-1)
    * - type
      - __u32
      - 缓冲区类型
@@ -572,7 +572,7 @@ V4L2 命令
      - 内存类型
    * - m.offset/m.userptr
      - union
-     - 缓冲区地址（offset 或 userptr）
+     - 缓冲区地址（偏移量或用户空间指针）
    * - length
      - __u32
      - 缓冲区总长度
@@ -581,25 +581,25 @@ V4L2 命令
 
 .. code-block:: c
 
-   void example_querybuf(void)
-   {
-       int fd = open("/dev/video0", O_RDWR);
+    void example_querybuf(void)
+    {
+        int fd = open("/dev/video0", O_RDWR);
 
-       struct v4l2_buffer buf = {0};
-       buf.index = 0;
-       buf.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
-       buf.memory = V4L2_MEMORY_MMAP;
+        struct v4l2_buffer buf = {0};
+        buf.index = 0;
+        buf.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
+        buf.memory = V4L2_MEMORY_MMAP;
 
-       ioctl(fd, VIDIOC_QUERYBUF, &buf);
+        ioctl(fd, VIDIOC_QUERYBUF, &buf);
 
-       printf("Buffer length: %u\n", buf.length);
-       printf("Buffer offset: %u\n", buf.m.offset);
+        printf("Buffer length: %u\n", buf.length);
+        printf("Buffer offset: %u\n", buf.m.offset);
 
-       close(fd);
-   }
+        close(fd);
+    }
 
 缓冲区入队列
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^
 
 - 命令（请求代码）：``VIDIOC_QBUF``
 - 命令参数：``struct v4l2_buffer``
@@ -610,22 +610,22 @@ V4L2 命令
 
 .. code-block:: c
 
-   void example_qbuf(void)
-   {
-       int fd = open("/dev/video0", O_RDWR);
+    void example_qbuf(void)
+    {
+        int fd = open("/dev/video0", O_RDWR);
 
-       struct v4l2_buffer buf = {0};
-       buf.index = 0;
-       buf.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
-       buf.memory = V4L2_MEMORY_MMAP;
+        struct v4l2_buffer buf = {0};
+        buf.index = 0;
+        buf.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
+        buf.memory = V4L2_MEMORY_MMAP;
 
-       ioctl(fd, VIDIOC_QBUF, &buf);
+        ioctl(fd, VIDIOC_QBUF, &buf);
 
-       close(fd);
-   }
+        close(fd);
+    }
 
 缓冲区出队列
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^
 
 - 命令（请求代码）：``VIDIOC_DQBUF``
 - 命令参数：``struct v4l2_buffer``
@@ -636,24 +636,24 @@ V4L2 命令
 
 .. code-block:: c
 
-   void example_dqbuf(void)
-   {
-       int fd = open("/dev/video0", O_RDWR);
+    void example_dqbuf(void)
+    {
+        int fd = open("/dev/video0", O_RDWR);
 
-       struct v4l2_buffer buf = {0};
-       buf.index = 0;
-       buf.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
-       buf.memory = V4L2_MEMORY_MMAP;
- 
-       ioctl(fd, VIDIOC_DQBUF, &buf);
+        struct v4l2_buffer buf = {0};
+        buf.index = 0;
+        buf.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
+        buf.memory = V4L2_MEMORY_MMAP;
 
-       close(fd);
-   }
+        ioctl(fd, VIDIOC_DQBUF, &buf);
+
+        close(fd);
+    }
 
 启动/停止数据流
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^
 
-- 命令（请求代码）：``VIDIOC_STREAMON`` / ``VIDIOC_STREAMOFF``
+- 命令（请求代码）：``VIDIOC_STREAMON``/``VIDIOC_STREAMOFF``
 - 命令参数：``int *``
 
 功能说明：
@@ -661,28 +661,28 @@ V4L2 命令
 - ``STREAMON``：开流，开始处理缓冲队列
 - ``STREAMOFF``：停流；设备会丢弃队列中尚未处理的缓冲
 
-M2M 编解码设备须分别对 OUTPUT 与 CAPTURE 调用本命令。USB UVC 在停流后会回收队列中的缓冲。
+M2M 编解码设备须分别对 OUTPUT 与 CAPTURE 调用本命令。USB UVC 在停流后会回收队列中的缓冲区。
 
 **用法示例**：
 
 .. code-block:: c
 
-   void example_streamon_streamoff(void)
-   {
-       int fd = open("/dev/video0", O_RDWR);
+    void example_streamon_streamoff(void)
+    {
+        int fd = open("/dev/video0", O_RDWR);
 
-       int type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
-       ioctl(fd, VIDIOC_STREAMON, &type);
+        int type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
+        ioctl(fd, VIDIOC_STREAMON, &type);
 
-       type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
-       ioctl(fd, VIDIOC_STREAMOFF, &type);
+        type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
+        ioctl(fd, VIDIOC_STREAMOFF, &type);
 
-       close(fd);
-   }
+        close(fd);
+    }
 
 
 查询扩展控制
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^
 
 - 命令（请求代码）：``VIDIOC_QUERY_EXT_CTRL``
 - 命令参数：``struct v4l2_query_ext_ctrl``
@@ -699,7 +699,7 @@ M2M 编解码设备须分别对 OUTPUT 与 CAPTURE 调用本命令。USB UVC 在
      - 用途
    * - id
      - __u32
-     - 控制ID
+     - 控制 ID
    * - type
      - __u32
      - 控制类型
@@ -735,27 +735,27 @@ M2M 编解码设备须分别对 OUTPUT 与 CAPTURE 调用本命令。USB UVC 在
 
 .. code-block:: c
 
-   void example_query_ext_ctrl(void)
-   {
-       int fd = open("/dev/video0", O_RDWR);
+    void example_query_ext_ctrl(void)
+    {
+        int fd = open("/dev/video0", O_RDWR);
 
-       struct v4l2_query_ext_ctrl qctrl = {0};
-       qctrl.id = V4L2_CID_BRIGHTNESS;
-       ioctl(fd, VIDIOC_QUERY_EXT_CTRL, &qctrl);
+        struct v4l2_query_ext_ctrl qctrl = {0};
+        qctrl.id = V4L2_CID_BRIGHTNESS;
+        ioctl(fd, VIDIOC_QUERY_EXT_CTRL, &qctrl);
 
-       printf("Control: %s, type: %u, minimum: %lld, maximum: %lld, step: %lld, default_value: %lld\n", qctrl.name, qctrl.type, qctrl.minimum, qctrl.maximum, qctrl.step, qctrl.default_value);
+        printf("Control: %s, type: %u, minimum: %lld, maximum: %lld, step: %lld, default_value: %lld\n", qctrl.name, qctrl.type, qctrl.minimum, qctrl.maximum, qctrl.step, qctrl.default_value);
 
-       close(fd);
-   }
+        close(fd);
+    }
 
 .. note::
 
-   可用 ``qctrl.id = V4L2_CID_BRIGHTNESS | V4L2_CTRL_FLAG_NEXT_CTRL`` 从指定 ID 起迭代枚举后续控制项。
+    可用 ``qctrl.id = V4L2_CID_BRIGHTNESS | V4L2_CTRL_FLAG_NEXT_CTRL`` 从指定 ID 起迭代枚举后续控制项。
 
 设置/获取扩展控制
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^
 
-- 命令（请求代码）：``VIDIOC_S_EXT_CTRLS`` / ``VIDIOC_G_EXT_CTRLS``
+- 命令（请求代码）：``VIDIOC_S_EXT_CTRLS``/``VIDIOC_G_EXT_CTRLS``
 - 命令参数：``struct v4l2_ext_controls``
 
 **字段说明**：
@@ -778,7 +778,7 @@ M2M 编解码设备须分别对 OUTPUT 与 CAPTURE 调用本命令。USB UVC 在
      - struct v4l2_ext_control *
      - 控制数组
 
-**controls（struct v4l2_ext_control） 字段说明**：
+**controls (struct v4l2_ext_control) 字段说明**：
 
 .. list-table::
    :header-rows: 1
@@ -790,45 +790,45 @@ M2M 编解码设备须分别对 OUTPUT 与 CAPTURE 调用本命令。USB UVC 在
      - 用途
    * - id
      - __u32
-     - 控制ID
+     - 控制 ID
    * - size
      - __u32
      - 元素大小
    * - value/value64/...
      - union
-     - 值/64 位值/... bit
+     - 32 位整数、64 位整数或数据指针等
 
 **用法示例**：
 
 .. code-block:: c
 
-   void example_set_get_ext_ctrl(void)
-   {
-       int fd = open("/dev/video0", O_RDWR);
+    void example_set_get_ext_ctrl(void)
+    {
+        int fd = open("/dev/video0", O_RDWR);
 
-       struct v4l2_ext_controls ctrls = {0};
-       struct v4l2_ext_control control = {0};
+        struct v4l2_ext_controls ctrls = {0};
+        struct v4l2_ext_control control = {0};
 
-       ctrls.ctrl_class = V4L2_CTRL_CLASS_USER;
-       ctrls.count = 1;
-       ctrls.controls = &control;
-       control.id = V4L2_CID_BRIGHTNESS;
-       control.value = 128;
-       control.size = sizeof(int);
-       ioctl(fd, VIDIOC_S_EXT_CTRLS, &ctrls);
+        ctrls.ctrl_class = V4L2_CTRL_CLASS_USER;
+        ctrls.count = 1;
+        ctrls.controls = &control;
+        control.id = V4L2_CID_BRIGHTNESS;
+        control.value = 128;
+        control.size = sizeof(int);
+        ioctl(fd, VIDIOC_S_EXT_CTRLS, &ctrls);
 
-       memset(&ctrls, 0, sizeof(struct v4l2_ext_controls));
-       memset(&control, 0, sizeof(struct v4l2_ext_control));
-       ctrls.ctrl_class = V4L2_CTRL_CLASS_USER;
-       ctrls.count = 1;
-       ctrls.controls = &control;
-       control.id = V4L2_CID_BRIGHTNESS;
-       control.size = sizeof(int);
-       ioctl(fd, VIDIOC_G_EXT_CTRLS, &ctrls);
-       printf("Brightness: %d\n", control.value);
+        memset(&ctrls, 0, sizeof(struct v4l2_ext_controls));
+        memset(&control, 0, sizeof(struct v4l2_ext_control));
+        ctrls.ctrl_class = V4L2_CTRL_CLASS_USER;
+        ctrls.count = 1;
+        ctrls.controls = &control;
+        control.id = V4L2_CID_BRIGHTNESS;
+        control.size = sizeof(int);
+        ioctl(fd, VIDIOC_G_EXT_CTRLS, &ctrls);
+        printf("Brightness: %d\n", control.value);
 
-       close(fd);
-   }
+        close(fd);
+    }
 
 ``VIDIOC_S_EXT_CTRLS`` 可以一次设置单个或多个控制项。下面以相机传感器曝光时间为例：
 
@@ -859,11 +859,11 @@ M2M 编解码设备须分别对 OUTPUT 与 CAPTURE 调用本命令。USB UVC 在
 
 .. note::
 
-   通过 ``V4L2_CTRL_CLASS_ESP_CAM_IOCTL`` 可直接调用 ``esp_cam_sensor`` 的 ioctl（仅支持 ``v4l2_ext_control`` 的 ``p_u8`` 与 ``size`` 字段）。H.264 编码器支持在开流后设置 I 帧间隔、码率、QP 等控制项。
+    通过 ``V4L2_CTRL_CLASS_ESP_CAM_IOCTL`` 可直接调用 ``esp_cam_sensor`` 的 ioctl（仅支持 ``v4l2_ext_control`` 的 ``p_u8`` 与 ``size`` 字段）。H.264 编码器支持在开流后设置 I 帧间隔、码率、QP 等控制项。
 
 
 查询菜单
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^
 
 - 命令（请求代码）：``VIDIOC_QUERYMENU``
 - 命令参数：``struct v4l2_querymenu``
@@ -880,7 +880,7 @@ M2M 编解码设备须分别对 OUTPUT 与 CAPTURE 调用本命令。USB UVC 在
      - 用途
    * - id
      - __u32
-     - 菜单ID
+     - 菜单 ID
    * - index
      - __u32
      - 菜单索引
@@ -892,25 +892,25 @@ M2M 编解码设备须分别对 OUTPUT 与 CAPTURE 调用本命令。USB UVC 在
 
 .. code-block:: c
 
-   void example_query_menu(void)
-   {
-       int fd = open("/dev/video0", O_RDWR);
+    void example_query_menu(void)
+    {
+        int fd = open("/dev/video0", O_RDWR);
 
-       struct v4l2_querymenu qmenu = {0};
-       qmenu.id = V4L2_CID_GAIN;
-       qmenu.index = 0;
-       ioctl(fd, VIDIOC_QUERYMENU, &qmenu);
+        struct v4l2_querymenu qmenu = {0};
+        qmenu.id = V4L2_CID_GAIN;
+        qmenu.index = 0;
+        ioctl(fd, VIDIOC_QUERYMENU, &qmenu);
 
-       printf("Gain: value: %lld\n", qmenu.value);
+        printf("Gain: value: %lld\n", qmenu.value);
 
-       close(fd);
-   }
+        close(fd);
+    }
 
 
 设置/获取选择区域
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^
 
-- 命令（请求代码）：``VIDIOC_S_SELECTION`` / ``VIDIOC_G_SELECTION``
+- 命令（请求代码）：``VIDIOC_S_SELECTION``/``VIDIOC_G_SELECTION``
 - 命令参数：``struct v4l2_selection``
 - 适用范围：MIPI-CSI 视频设备的图像裁剪
 
@@ -934,7 +934,7 @@ M2M 编解码设备须分别对 OUTPUT 与 CAPTURE 调用本命令。USB UVC 在
      - struct v4l2_rect
      - 选择区域
 
-**r（struct v4l2_rect） 字段说明**：
+**r (struct v4l2_rect) 字段说明**：
 
 .. list-table::
    :header-rows: 1
@@ -961,33 +961,33 @@ M2M 编解码设备须分别对 OUTPUT 与 CAPTURE 调用本命令。USB UVC 在
 
 .. code-block:: c
 
-   void example_set_get_selection(void)
-   {
-       int fd = open("/dev/video0", O_RDWR);
+    void example_set_get_selection(void)
+    {
+        int fd = open("/dev/video0", O_RDWR);
 
-       struct v4l2_selection selection = {0};
-       selection.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
-       selection.target = V4L2_SEL_TGT_CROP;
-       selection.r.left = 0;
-       selection.r.top = 0;
-       selection.r.width = 640;
-       selection.r.height = 480;
-       ioctl(fd, VIDIOC_S_SELECTION, &selection);
+        struct v4l2_selection selection = {0};
+        selection.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
+        selection.target = V4L2_SEL_TGT_CROP;
+        selection.r.left = 0;
+        selection.r.top = 0;
+        selection.r.width = 640;
+        selection.r.height = 480;
+        ioctl(fd, VIDIOC_S_SELECTION, &selection);
 
-       memset(&selection, 0, sizeof(struct v4l2_selection));
-       selection.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
-       selection.target = V4L2_SEL_TGT_CROP;
-       ioctl(fd, VIDIOC_G_SELECTION, &selection);
-       printf("Selection: left: %d, top: %d, width: %d, height: %d\n", selection.r.left, selection.r.top, selection.r.width, selection.r.height);
+        memset(&selection, 0, sizeof(struct v4l2_selection));
+        selection.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
+        selection.target = V4L2_SEL_TGT_CROP;
+        ioctl(fd, VIDIOC_G_SELECTION, &selection);
+        printf("Selection: left: %d, top: %d, width: %d, height: %d\n", selection.r.left, selection.r.top, selection.r.width, selection.r.height);
 
-       close(fd);
-   }
+        close(fd);
+    }
 
 
 设置/获取流参数
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^
 
-- 命令（请求代码）：``VIDIOC_S_PARM`` / ``VIDIOC_G_PARM``
+- 命令（请求代码）：``VIDIOC_S_PARM``/``VIDIOC_G_PARM``
 - 命令参数：``struct v4l2_streamparm``
 - 适用范围：采集设备的帧间隔；H.264 编码器可用 ``timeperframe`` 配置/查询 FPS，且支持在开流后修改编码参数
 
@@ -1008,7 +1008,7 @@ M2M 编解码设备须分别对 OUTPUT 与 CAPTURE 调用本命令。USB UVC 在
      - union
      - 采集参数
 
-**capture（struct v4l2_captureparm） 字段说明**：
+**capture (struct v4l2_captureparm) 字段说明**：
 
 .. list-table::
    :header-rows: 1
@@ -1020,43 +1020,45 @@ M2M 编解码设备须分别对 OUTPUT 与 CAPTURE 调用本命令。USB UVC 在
      - 用途
    * - capability
      - __u32
-     - 捕获能力
+     - 采集能力
    * - timeperframe
      - struct v4l2_fract
-     - 每帧时间间隔
+     - 帧间隔
 
 **用法示例**：
 
 .. code-block:: c
 
-   void example_set_get_parm(void)
-   {
-       int fd = open("/dev/video0", O_RDWR);
+    void example_set_get_parm(void)
+    {
+        int fd = open("/dev/video0", O_RDWR);
 
-       struct v4l2_streamparm sparm = {0};
-       sparm.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
-       sparm.parm.capture.capability = V4L2_CAP_TIMEPERFRAME;
-       sparm.parm.capture.timeperframe.numerator = 1;
-       sparm.parm.capture.timeperframe.denominator = 30;
-       ioctl(fd, VIDIOC_S_PARM, &sparm);
+        struct v4l2_streamparm sparm = {0};
+        sparm.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
+        sparm.parm.capture.capability = V4L2_CAP_TIMEPERFRAME;
+        sparm.parm.capture.timeperframe.numerator = 1;
+        sparm.parm.capture.timeperframe.denominator = 30;
+        ioctl(fd, VIDIOC_S_PARM, &sparm);
 
-       memset(&sparm, 0, sizeof(struct v4l2_streamparm));
-       sparm.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
-       ioctl(fd, VIDIOC_G_PARM, &sparm);
-       printf("Time per frame: %d/%d\n", sparm.parm.capture.timeperframe.numerator, sparm.parm.capture.timeperframe.denominator);
+        memset(&sparm, 0, sizeof(struct v4l2_streamparm));
+        sparm.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
+        ioctl(fd, VIDIOC_G_PARM, &sparm);
+        printf("Time per frame: %d/%d\n", sparm.parm.capture.timeperframe.numerator, sparm.parm.capture.timeperframe.denominator);
 
-       close(fd);
-   }
+        close(fd);
+    }
+
+.. _esp-video-commands-extended-commands:
 
 扩展命令
-~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~
 
 以下为 ``esp_video`` 在标准 V4L2 之外提供的请求代码，用于超时、传感器/电机格式、引用计数、MIPI-CSI 事件和设备重启。
 
 设置/获取缓冲区出队列超时时间
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-- 命令（请求代码）：``VIDIOC_S_DQBUF_TIMEOUT`` / ``VIDIOC_G_DQBUF_TIMEOUT``
+- 命令（请求代码）：``VIDIOC_S_DQBUF_TIMEOUT``/``VIDIOC_G_DQBUF_TIMEOUT``
 - 命令参数：``struct timeval``
 
 **字段说明**：
@@ -1080,29 +1082,29 @@ M2M 编解码设备须分别对 OUTPUT 与 CAPTURE 调用本命令。USB UVC 在
 
 .. code-block:: c
 
-   void example_set_get_dqbuf_timeout(void)
-   {
-       int fd = open("/dev/video0", O_RDWR);
+    void example_set_get_dqbuf_timeout(void)
+    {
+        int fd = open("/dev/video0", O_RDWR);
 
-       struct timeval timeout = {0};
-       timeout.tv_sec = 1;
-       timeout.tv_usec = 0;
+        struct timeval timeout = {0};
+        timeout.tv_sec = 1;
+        timeout.tv_usec = 0;
 
-       ioctl(fd, VIDIOC_S_DQBUF_TIMEOUT, &timeout);
+        ioctl(fd, VIDIOC_S_DQBUF_TIMEOUT, &timeout);
 
-       memset(&timeout, 0, sizeof(struct timeval));
-       ioctl(fd, VIDIOC_G_DQBUF_TIMEOUT, &timeout);
-       printf("DQBUF timeout: %d/%d\n", timeout.tv_sec, timeout.tv_usec);
+        memset(&timeout, 0, sizeof(struct timeval));
+        ioctl(fd, VIDIOC_G_DQBUF_TIMEOUT, &timeout);
+        printf("DQBUF timeout: %d/%d\n", timeout.tv_sec, timeout.tv_usec);
 
-       close(fd);
-   }
+        close(fd);
+    }
 
 
 设置/获取/枚举相机传感器输出格式
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-- 命令（请求代码）：``VIDIOC_S_SENSOR_FMT`` / ``VIDIOC_G_SENSOR_FMT`` / ``VIDIOC_ENUM_SENSOR_FMT``
-- ``VIDIOC_S_SENSOR_FMT`` / ``VIDIOC_G_SENSOR_FMT`` 参数：``esp_cam_sensor_format_t``
+- 命令（请求代码）：``VIDIOC_S_SENSOR_FMT``/``VIDIOC_G_SENSOR_FMT``/``VIDIOC_ENUM_SENSOR_FMT``
+- ``VIDIOC_S_SENSOR_FMT``/``VIDIOC_G_SENSOR_FMT`` 参数：``esp_cam_sensor_format_t``
 - ``VIDIOC_ENUM_SENSOR_FMT`` 参数：``struct v4l2_sensor_format_enum``
 
 ``esp_cam_sensor_format_t`` 字段说明见头文件定义。
@@ -1119,73 +1121,73 @@ M2M 编解码设备须分别对 OUTPUT 与 CAPTURE 调用本命令。USB UVC 在
      - 用途
    * - index
      - uint32_t
-     - 由应用填写的格式序号，从 0 开始递增枚举
+     - 由应用填写的格式索引，从 0 开始递增
    * - format
      - esp_cam_sensor_format_t
      - 驱动返回的传感器格式；其中指针字段指向驱动静态数据，可用于随后的 ``VIDIOC_S_SENSOR_FMT``
 
-推荐流程：先用 ``VIDIOC_ENUM_SENSOR_FMT`` 枚举并选择 sensor format，再调用标准
-``VIDIOC_ENUM_FMT`` / ``VIDIOC_ENUM_FRAMESIZES`` / ``VIDIOC_ENUM_FRAMEINTERVALS``
-查询当前 sensor 模式下设备支持的 V4L2 输出格式，最后 ``VIDIOC_S_FMT`` 并采集。
+推荐流程：先用 ``VIDIOC_ENUM_SENSOR_FMT`` 枚举并选择传感器格式，再调用标准
+``VIDIOC_ENUM_FMT``/``VIDIOC_ENUM_FRAMESIZES``/``VIDIOC_ENUM_FRAMEINTERVALS``
+查询当前传感器模式下设备支持的 V4L2 输出格式，最后调用 ``VIDIOC_S_FMT`` 设置格式，然后采集图像。
 
-``VIDIOC_S_SENSOR_FMT`` 须在未申请缓冲时调用。若已 ``VIDIOC_REQBUFS`` 且 ``count>0``，该命令返回失败（``errno`` 为 ``EBUSY``），需先 ``VIDIOC_REQBUFS`` 且 ``count=0`` 释放缓冲后再设置。
+``VIDIOC_S_SENSOR_FMT`` 须在申请缓冲区前调用。若已调用 ``VIDIOC_REQBUFS`` 且 ``count>0``，该命令会失败（``errno`` 为 ``EBUSY``）；此时需先调用 ``VIDIOC_REQBUFS`` 并将 ``count`` 设为 0 以释放缓冲区，再设置传感器格式。
 
 **用法示例**：
 
 .. code-block:: c
 
-   void example_enum_set_sensor_format(void)
-   {
-       int fd = open("/dev/video0", O_RDWR);
-       struct v4l2_sensor_format_enum sensor_enum = {0};
-       struct v4l2_fmtdesc fmtdesc = {
-           .type = V4L2_BUF_TYPE_VIDEO_CAPTURE,
-       };
-       struct v4l2_format format = {
-           .type = V4L2_BUF_TYPE_VIDEO_CAPTURE,
-       };
+    void example_enum_set_sensor_format(void)
+    {
+        int fd = open("/dev/video0", O_RDWR);
+        struct v4l2_sensor_format_enum sensor_enum = {0};
+        struct v4l2_fmtdesc fmtdesc = {
+            .type = V4L2_BUF_TYPE_VIDEO_CAPTURE,
+        };
+        struct v4l2_format format = {
+            .type = V4L2_BUF_TYPE_VIDEO_CAPTURE,
+        };
 
-       /* 1. 枚举 sensor format */
-       for (sensor_enum.index = 0;
-            ioctl(fd, VIDIOC_ENUM_SENSOR_FMT, &sensor_enum) == 0;
-            sensor_enum.index++) {
-           printf("[%u] %s %ux%u @%ufps\n",
-                  sensor_enum.index,
-                  sensor_enum.format.name,
-                  sensor_enum.format.width,
-                  sensor_enum.format.height,
-                  sensor_enum.format.fps);
-       }
+        /* 1. 枚举传感器格式 */
+        for (sensor_enum.index = 0;
+             ioctl(fd, VIDIOC_ENUM_SENSOR_FMT, &sensor_enum) == 0;
+             sensor_enum.index++) {
+            printf("[%u] %s %ux%u @%ufps\n",
+                   sensor_enum.index,
+                   sensor_enum.format.name,
+                   sensor_enum.format.width,
+                   sensor_enum.format.height,
+                   sensor_enum.format.fps);
+        }
 
-       /* 2. 选择并配置 sensor format（这里以 index 0 为例） */
-       sensor_enum.index = 0;
-       ioctl(fd, VIDIOC_ENUM_SENSOR_FMT, &sensor_enum);
-       ioctl(fd, VIDIOC_S_SENSOR_FMT, &sensor_enum.format);
+        /* 2. 选择并配置传感器格式（这里以索引 0 为例） */
+        sensor_enum.index = 0;
+        ioctl(fd, VIDIOC_ENUM_SENSOR_FMT, &sensor_enum);
+        ioctl(fd, VIDIOC_S_SENSOR_FMT, &sensor_enum.format);
 
-       /* 3. 枚举当前模式下设备支持的 V4L2 输出格式 */
-       uint32_t selected_pixelformat = 0;
-       for (fmtdesc.index = 0; ioctl(fd, VIDIOC_ENUM_FMT, &fmtdesc) == 0; fmtdesc.index++) {
-           printf("V4L2 format[%u]: " V4L2_FMT_STR "\n",
-                  fmtdesc.index, V4L2_FMT_STR_ARG(fmtdesc.pixelformat));
-           if (fmtdesc.index == 0) {
-               selected_pixelformat = fmtdesc.pixelformat;
-           }
-       }
+        /* 3. 枚举当前模式下设备支持的 V4L2 输出格式 */
+        uint32_t selected_pixelformat = 0;
+        for (fmtdesc.index = 0; ioctl(fd, VIDIOC_ENUM_FMT, &fmtdesc) == 0; fmtdesc.index++) {
+            printf("V4L2 format[%u]: " V4L2_FMT_STR "\n",
+                   fmtdesc.index, V4L2_FMT_STR_ARG(fmtdesc.pixelformat));
+            if (fmtdesc.index == 0) {
+                selected_pixelformat = fmtdesc.pixelformat;
+            }
+        }
 
-       /* 4. 配置 V4L2 format 后即可 REQBUFS / STREAMON 抓图 */
-       ioctl(fd, VIDIOC_G_FMT, &format);
-       format.fmt.pix.pixelformat = selected_pixelformat;
-       ioctl(fd, VIDIOC_S_FMT, &format);
+        /* 4. 配置 V4L2 格式后，即可调用 REQBUFS/STREAMON 采集图像 */
+        ioctl(fd, VIDIOC_G_FMT, &format);
+        format.fmt.pix.pixelformat = selected_pixelformat;
+        ioctl(fd, VIDIOC_S_FMT, &format);
 
-       close(fd);
-   }
+        close(fd);
+    }
 
 设置/获取自动对焦电机格式
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^^^^^^^
 
-- 命令（请求代码）：``VIDIOC_S_MOTOR_FMT`` / ``VIDIOC_G_MOTOR_FMT``
+- 命令（请求代码）：``VIDIOC_S_MOTOR_FMT``/``VIDIOC_G_MOTOR_FMT``
 - 命令参数：``esp_cam_motor_format_t``
-- 适用范围：已使能相机电机控制器（``CONFIG_ESP_VIDEO_ENABLE_CAMERA_MOTOR_CONTROLLER``）
+- 适用范围：相机电机控制器已使能 (``CONFIG_ESP_VIDEO_ENABLE_CAMERA_MOTOR_CONTROLLER``)
 
 **主要字段**：
 
@@ -1202,10 +1204,10 @@ M2M 编解码设备须分别对 OUTPUT 与 CAPTURE 调用本命令。USB UVC 在
      - 格式名称
    * - mode
      - esp_cam_motor_mode_t
-     - 控制模式（DIRECT / LSC / DLC）
+     - 控制模式 (DIRECT/LSC/DLC)
    * - step_period
      - struct
-     - 步进周期与每步 code 数
+     - 步进周期与每步码值数
    * - init_position
      - int
      - 该格式对应的初始位置
@@ -1214,50 +1216,50 @@ M2M 编解码设备须分别对 OUTPUT 与 CAPTURE 调用本命令。USB UVC 在
 
 .. code-block:: c
 
-   void example_set_get_motor_format(void)
-   {
-       int fd = open("/dev/video0", O_RDWR);
-       esp_cam_motor_format_t format = {0};
+    void example_set_get_motor_format(void)
+    {
+        int fd = open("/dev/video0", O_RDWR);
+        esp_cam_motor_format_t format = {0};
 
-       ioctl(fd, VIDIOC_G_MOTOR_FMT, &format);
-       printf("Motor format: %s\n", format.name);
+        ioctl(fd, VIDIOC_G_MOTOR_FMT, &format);
+        printf("Motor format: %s\n", format.name);
 
-       ioctl(fd, VIDIOC_S_MOTOR_FMT, &format);
+        ioctl(fd, VIDIOC_S_MOTOR_FMT, &format);
 
-       close(fd);
-   }
+        close(fd);
+    }
 
 设置设备引用计数
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^
 
 - 命令（请求代码）：``VIDIOC_SET_OWNER``
 - 命令参数：``int *``
 
-功能说明：入参非 0 时增加设备引用计数，为 0 时减少引用计数。多打开/关闭同一视频设备时用于保持设备存活。
+功能说明：传入值非 0 时增加设备引用计数，为 0 时减少设备引用计数。多次打开/关闭同一视频设备时，可通过该命令使设备保持活动状态。
 
 **用法示例**：
 
 .. code-block:: c
 
-   void example_set_owner(void)
-   {
-       int fd = open("/dev/video0", O_RDWR);
-       int owner = 1;
+    void example_set_owner(void)
+    {
+        int fd = open("/dev/video0", O_RDWR);
+        int owner = 1;
 
-       ioctl(fd, VIDIOC_SET_OWNER, &owner);
+        ioctl(fd, VIDIOC_SET_OWNER, &owner);
 
-       owner = 0;
-       ioctl(fd, VIDIOC_SET_OWNER, &owner);
+        owner = 0;
+        ioctl(fd, VIDIOC_SET_OWNER, &owner);
 
-       close(fd);
-   }
+        close(fd);
+    }
 
 订阅/取消订阅事件
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^
 
-- 命令（请求代码）：``VIDIOC_SUBSCRIBE_EVENT`` / ``VIDIOC_UNSUBSCRIBE_EVENT``
+- 命令（请求代码）：``VIDIOC_SUBSCRIBE_EVENT``/``VIDIOC_UNSUBSCRIBE_EVENT``
 - 命令参数：``struct v4l2_event_subscription``
-- 适用范围：仅 MIPI-CSI；依赖 ``ESP_VIDEO_CSI_DRIVER_HAS_EVENT``。ESP-IDF 若未提供 MIPI-CSI 错误事件，则本命令不可用。
+- 适用范围：仅 MIPI-CSI；依赖 ``ESP_VIDEO_CSI_DRIVER_HAS_EVENT``。ESP-IDF 若未提供 MIPI-CSI 错误事件，则这些命令不可用。
 
 **字段说明**：
 
@@ -1293,35 +1295,35 @@ M2M 编解码设备须分别对 OUTPUT 与 CAPTURE 调用本命令。USB UVC 在
    * - ``V4L2_EVENT_ESP_VIDEO_EVENT_UNSUBSCRIBED``
      - 取消订阅后由驱动投递给 ``DQEVENT`` 等待任务，便于退出监听循环。应用无需主动订阅
    * - ``V4L2_EVENT_ESP_MIPI_CSI_INTERRUPT_DISABLE``
-     - 内部使用。事件回调返回 true 时禁用硬件中断并投递本事件，应用不应订阅
+     - 内部使用。事件回调返回 ``true`` 时禁用硬件中断并投递本事件，应用不应订阅
 
 ``host_err_mask`` 位定义：
 
 - ``ESP_MIPI_CSI_HOST_ERR_PHY``：PHY 错误
-- ``ESP_MIPI_CSI_HOST_ERR_PACKET``：包错误
+- ``ESP_MIPI_CSI_HOST_ERR_PACKET``：数据包错误
 - ``ESP_MIPI_CSI_HOST_ERR_FRAME``：帧边界或序号错误
 - ``ESP_MIPI_CSI_HOST_ERR_CRC``：CRC 错误
-- ``ESP_MIPI_CSI_HOST_ERR_DATA_ID``：无法识别的 data type
+- ``ESP_MIPI_CSI_HOST_ERR_DATA_ID``：无法识别的数据类型
 
 **用法示例**：
 
 .. code-block:: c
 
-   void example_subscribe_event(int fd)
-   {
-       struct v4l2_event_subscription sub = {
-           .type = V4L2_EVENT_ESP_MIPI_CSI_ERROR,
-       };
+    void example_subscribe_event(int fd)
+    {
+        struct v4l2_event_subscription sub = {
+            .type = V4L2_EVENT_ESP_MIPI_CSI_ERROR,
+        };
 
-       ioctl(fd, VIDIOC_SUBSCRIBE_EVENT, &sub);
+        ioctl(fd, VIDIOC_SUBSCRIBE_EVENT, &sub);
 
-       /* 取消全部订阅 */
-       sub.type = V4L2_EVENT_ALL;
-       ioctl(fd, VIDIOC_UNSUBSCRIBE_EVENT, &sub);
-   }
+        /* 取消全部订阅 */
+        sub.type = V4L2_EVENT_ALL;
+        ioctl(fd, VIDIOC_UNSUBSCRIBE_EVENT, &sub);
+    }
 
 取出事件
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^
 
 - 命令（请求代码）：``VIDIOC_DQEVENT``
 - 命令参数：``struct v4l2_event``
@@ -1354,25 +1356,25 @@ M2M 编解码设备须分别对 OUTPUT 与 CAPTURE 调用本命令。USB UVC 在
 
 .. code-block:: c
 
-   void example_dqevent(int fd)
-   {
-       struct v4l2_event event;
+    void example_dqevent(int fd)
+    {
+        struct v4l2_event event;
 
-       if (ioctl(fd, VIDIOC_DQEVENT, &event) < 0) {
-           return;
-       }
+        if (ioctl(fd, VIDIOC_DQEVENT, &event) < 0) {
+            return;
+        }
 
-       if (event.type == V4L2_EVENT_ESP_MIPI_CSI_ERROR) {
-           v4l2_event_esp_mipi_csi_error_t *err =
-               (v4l2_event_esp_mipi_csi_error_t *)&event.u.data;
-           printf("CSI error mask: 0x%x\n", (unsigned)err->host_err_mask);
-       }
-   }
+        if (event.type == V4L2_EVENT_ESP_MIPI_CSI_ERROR) {
+            v4l2_event_esp_mipi_csi_error_t *err =
+                (v4l2_event_esp_mipi_csi_error_t *)&event.u.data;
+            printf("CSI error mask: 0x%x\n", (unsigned)err->host_err_mask);
+        }
+    }
 
 完整事件跟踪示例见 ``esp_video/examples/common_components/example_video_common/example_video_event.c``。
 
 设置事件回调
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^
 
 - 命令（请求代码）：``VIDIOC_S_EVENT_CALLBACK``
 - 命令参数：``struct v4l2_event_callback``
@@ -1390,42 +1392,42 @@ M2M 编解码设备须分别对 OUTPUT 与 CAPTURE 调用本命令。USB UVC 在
      - 用途
    * - callback_func
      - ``bool (*)(void *, uint32_t)``
-     - 中断上下文回调。返回 true 时禁用硬件中断并投递 ``V4L2_EVENT_ESP_MIPI_CSI_INTERRUPT_DISABLE``
+     - 中断上下文回调。返回 ``true`` 时禁用硬件中断并投递 ``V4L2_EVENT_ESP_MIPI_CSI_INTERRUPT_DISABLE``
    * - user_data
      - void *
-     - 回调用户数据
+     - 回调函数的用户数据
 
 .. attention::
 
-   回调必须放在 IRAM 中，且不得调用可能阻塞的函数（如 ``malloc`` / ``free`` / ``printf``），否则可能导致系统崩溃。
+    回调必须放在 IRAM 中，且不得调用可能阻塞的函数（如 ``malloc``/``free``/``printf``），否则可能导致系统崩溃。
 
 **用法示例**：
 
 .. code-block:: c
 
-   static bool IRAM_ATTR example_csi_isr(void *user_data, uint32_t err_mask)
-   {
-       (void)user_data;
-       (void)err_mask;
-       return false; /* 不禁用硬件中断 */
-   }
+    static bool IRAM_ATTR example_csi_isr(void *user_data, uint32_t err_mask)
+    {
+        (void)user_data;
+        (void)err_mask;
+        return false; /* 不禁用硬件中断 */
+    }
 
-   void example_set_event_callback(int fd)
-   {
-       struct v4l2_event_callback cb = {
-           .callback_func = example_csi_isr,
-           .user_data = NULL,
-       };
+    void example_set_event_callback(int fd)
+    {
+        struct v4l2_event_callback cb = {
+            .callback_func = example_csi_isr,
+            .user_data = NULL,
+        };
 
-       ioctl(fd, VIDIOC_S_EVENT_CALLBACK, &cb);
-   }
+        ioctl(fd, VIDIOC_S_EVENT_CALLBACK, &cb);
+    }
 
 重启视频设备
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^
 
 - 命令（请求代码）：``VIDIOC_RESTART``
 - 命令参数：``struct v4l2_restart_config``
-- 适用范围：必须在开流之后、停流之前调用，用于硬件异常后恢复。
+- 适用范围：必须在开流之后、停流之前调用，用于在硬件异常后恢复设备。
 
 **字段说明**：
 
@@ -1448,20 +1450,22 @@ M2M 编解码设备须分别对 OUTPUT 与 CAPTURE 调用本命令。USB UVC 在
 
 .. code-block:: c
 
-   void example_restart(int fd)
-   {
-       struct v4l2_restart_config config = {
-           .type = V4L2_BUF_TYPE_VIDEO_CAPTURE,
-           .restart_sensor = true,
-       };
+    void example_restart(int fd)
+    {
+        struct v4l2_restart_config config = {
+            .type = V4L2_BUF_TYPE_VIDEO_CAPTURE,
+            .restart_sensor = true,
+        };
 
-       ioctl(fd, VIDIOC_RESTART, &config);
-   }
+        ioctl(fd, VIDIOC_RESTART, &config);
+    }
+
+.. _esp-video-commands-control-id-overview:
 
 控制 ID 一览
-~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~
 
-以下为当前实现的主要控制 ID，配合前文 ``VIDIOC_QUERY_EXT_CTRL`` / ``VIDIOC_S_EXT_CTRLS`` 使用。具体设备是否支持某项，请用 ``VIDIOC_QUERY_EXT_CTRL`` 查询。
+以下为当前实现的主要控制 ID，配合前文 ``VIDIOC_QUERY_EXT_CTRL``/``VIDIOC_S_EXT_CTRLS`` 使用。具体设备是否支持某项，请用 ``VIDIOC_QUERY_EXT_CTRL`` 查询。
 
 .. list-table::
    :header-rows: 1
@@ -1471,7 +1475,7 @@ M2M 编解码设备须分别对 OUTPUT 与 CAPTURE 调用本命令。USB UVC 在
    * - ID
      - Class
      - 说明
-   * - ``V4L2_CID_VFLIP`` / ``V4L2_CID_HFLIP``
+   * - ``V4L2_CID_VFLIP``/``V4L2_CID_HFLIP``
      - USER
      - 垂直/水平镜像
    * - ``V4L2_CID_GAIN``
@@ -1497,34 +1501,34 @@ M2M 编解码设备须分别对 OUTPUT 与 CAPTURE 调用本命令。USB UVC 在
      - H.264 I 帧间隔
    * - ``V4L2_CID_MPEG_VIDEO_BITRATE``
      - CODEC
-     - H.264 码率（bit/s）
-   * - ``V4L2_CID_MPEG_VIDEO_H264_MIN_QP`` / ``V4L2_CID_MPEG_VIDEO_H264_MAX_QP``
+     - H.264 码率 (bit/s)
+   * - ``V4L2_CID_MPEG_VIDEO_H264_MIN_QP``/``V4L2_CID_MPEG_VIDEO_H264_MAX_QP``
      - CODEC
      - H.264 量化参数范围
-   * - ``V4L2_CID_RED_BALANCE`` / ``V4L2_CID_BLUE_BALANCE``
+   * - ``V4L2_CID_RED_BALANCE``/``V4L2_CID_BLUE_BALANCE``
      - USER
      - 红/蓝色度增益
-   * - ``V4L2_CID_BRIGHTNESS`` / ``V4L2_CID_CONTRAST`` / ``V4L2_CID_SATURATION`` / ``V4L2_CID_HUE``
+   * - ``V4L2_CID_BRIGHTNESS``/``V4L2_CID_CONTRAST``/``V4L2_CID_SATURATION``/``V4L2_CID_HUE``
      - USER
-     - ISP 亮度/对比度/饱和度/色相
+     - ISP 亮度/对比度/饱和度/色度
    * - ``V4L2_CID_USER_ESP_ISP_BF``
      - USER
-     - ISP Bayer 滤波
+     - ISP 拜耳域降噪
    * - ``V4L2_CID_USER_ESP_ISP_CCM``
      - USER
-     - ISP 色彩校正矩阵
+     - ISP 颜色校正矩阵
    * - ``V4L2_CID_USER_ESP_ISP_SHARPEN``
      - USER
      - ISP 锐化
-   * - ``V4L2_CID_USER_ESP_ISP_GAMMA`` / ``V4L2_CID_USER_ESP_ISP_GAMMA_EXT``
+   * - ``V4L2_CID_USER_ESP_ISP_GAMMA``/``V4L2_CID_USER_ESP_ISP_GAMMA_EXT``
      - USER
-     - ISP GAMMA；EXT 可分通道配置
+     - ISP 伽马校正；EXT 可按通道分别配置
    * - ``V4L2_CID_USER_ESP_ISP_DEMOSAIC``
      - USER
      - ISP 去马赛克
-   * - ``V4L2_CID_USER_ESP_ISP_AWB`` / ``V4L2_CID_USER_ESP_ISP_AE`` / ``V4L2_CID_USER_ESP_ISP_AF`` / ``V4L2_CID_USER_ESP_ISP_HIST``
+   * - ``V4L2_CID_USER_ESP_ISP_AWB``/``V4L2_CID_USER_ESP_ISP_AE``/``V4L2_CID_USER_ESP_ISP_AF``/``V4L2_CID_USER_ESP_ISP_HIST``
      - USER
-     - ISP AWB / AE / AF / Histogram 窗口与统计
+     - ISP AWB/AE/AF/直方图窗口与统计
    * - ``V4L2_CID_USER_ESP_ISP_LSC``
      - USER
      - ISP 镜头阴影校正
@@ -1539,11 +1543,10 @@ M2M 编解码设备须分别对 OUTPUT 与 CAPTURE 调用本命令。USB UVC 在
      - 传感器统计
    * - ``V4L2_CID_CAMERA_AE_LEVEL``
      - CAMERA
-     - 传感器 AE 目标
+     - 相机传感器自动曝光目标级别
    * - ``V4L2_CID_CAMERA_GROUP``
      - CAMERA
      - 曝光与增益组参数
    * - ``V4L2_CID_MOTOR_START_TIME``
      - CAMERA
-     - 对焦电机启动时间
-
+     - 自动对焦电机启动时间
