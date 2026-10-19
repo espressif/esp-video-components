@@ -10,6 +10,7 @@
   - The control logic relies on IR-CUT hardware currently supported by this component.
 - Fixed the OV5647 camera sensor driver to use non-continuous clock and no-line-sync mode.
 - Updated the minimum exposure values ​​for the SC2336 and SC2337P camera sensors.
+- Updated the SC132GS default IPA JSON and added DPC configuration.
 
 ## 2.6.0
 
