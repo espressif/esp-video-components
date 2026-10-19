@@ -16,11 +16,11 @@ This is the documentation hub for Espressif's camera application development com
 
 By using ESP-Video-Components, you can build vision applications efficiently.
 
-==================  ===================  ==========================================
-|Get Started|_      |Camera Sensors|_    |Video Application Development Guide|_
-------------------  -------------------  ------------------------------------------
-`Get Started`_      `Camera Sensors`_    `Video Application Development Guide`_
-==================  ===================  ==========================================
+==================  ===================  ==========================================  ========================
+|Get Started|_      |Camera Sensors|_    |Video Application Development Guide|_         |Application Solutions|_
+------------------  -------------------  ------------------------------------------  ------------------------
+`Get Started`_      `Camera Sensors`_    `Video Application Development Guide`_           `Application Solutions`_
+==================  ===================  ==========================================  ========================
 
 .. |Get Started| image:: ../_static/get-started.png
 .. _Get Started: Get_Started/index.html
@@ -31,12 +31,16 @@ By using ESP-Video-Components, you can build vision applications efficiently.
 .. |Video Application Development Guide| image:: ../_static/esp_video.png
 .. _Video Application Development Guide: ESP_Video/index.html
 
+.. |Application Solutions| image:: ../_static/solutions.png
+.. _Application Solutions: Solutions/index.html
+
 .. toctree::
    :hidden:
 
    Get Started <Get_Started/index>
    Espressif Camera Peripheral Development and Tuning Guide <ESP_Camera_Sensor/index>
    Espressif Video Application Development Guide <ESP_Video/index>
+   Application Solutions <Solutions/index>
    Index of Abbreviations <index_of_abbreviations>
    Technology Selection <Technology_Selection>
    Disclaimer <disclaimer>
