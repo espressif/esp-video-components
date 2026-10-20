@@ -1,11 +1,12 @@
 /*
- * SPDX-FileCopyrightText: 2024-2025 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2024-2026 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Apache-2.0
  */
 
 #include <string.h>
 #include <sys/param.h>
+#include <pthread.h>
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>
 #include "driver/gpio.h"
@@ -33,6 +34,9 @@ typedef struct {
     uint32_t exposure_val;
     uint32_t exposure_max;
     uint32_t gain_index; // current gain index
+    uint16_t cur_vts;    // current vts
+    uint16_t cur_fps;    // current fps
+    pthread_mutex_t exposure_mutex; // Protects exposure_max & exposure register access with VTS update
 
     uint32_t vflip_en : 1;
     uint32_t hmirror_en : 1;
@@ -76,6 +80,7 @@ struct sc2336_cam {
 static const uint32_t s_limited_gain = CONFIG_CAMERA_SC2336_ABSOLUTE_GAIN_LIMIT;
 static size_t s_limited_gain_index;
 static const uint8_t s_sc2336_exp_min = 0x01;
+static const uint8_t s_sc2336_fps_min = 0x05;
 static const char *TAG = "sc2336";
 
 #if CONFIG_CAMERA_SC2336_ANA_GAIN_PRIORITY
@@ -1494,6 +1499,55 @@ static esp_err_t sc2336_set_test_pattern(esp_cam_sensor_device_t *dev, int enabl
     return sc2336_set_reg_bits(dev->sccb_handle, 0x4501, 3, 1, enable ? 0x01 : 0x00);
 }
 
+/*
+* Notes:
+* Setting VTS and setting exposure time are mutually exclusive via exposure_mutex.
+* Only increasing the VTS is supported; it cannot be less than the default VTS.
+*/
+static esp_err_t sc2336_set_vts(esp_cam_sensor_device_t *dev, uint32_t u32_val)
+{
+    esp_err_t ret;
+    struct sc2336_cam *cam_sc2336 = (struct sc2336_cam *)dev->priv;
+    uint32_t value_buf = MAX(u32_val, dev->cur_format->isp_info->isp_v1_info.vts);
+    value_buf = MIN(value_buf, SC2336_VTS_MAX);
+
+    if (pthread_mutex_lock(&cam_sc2336->sc2336_para.exposure_mutex) != 0) {
+        return ESP_ERR_INVALID_STATE;
+    }
+
+    ret = sc2336_write(dev->sccb_handle,
+                       SC2336_REG_TOTAL_HEIGHT_L,
+                       (value_buf & 0xff));
+    ret |= sc2336_write(dev->sccb_handle,
+                        SC2336_REG_TOTAL_HEIGHT_H,
+                        (value_buf >> 8));
+    if (ret == ESP_OK) {
+        cam_sc2336->sc2336_para.cur_vts = value_buf;
+        cam_sc2336->sc2336_para.exposure_max = cam_sc2336->sc2336_para.cur_vts - SC2336_EXP_MAX_OFFSET;
+    }
+
+    if (pthread_mutex_unlock(&cam_sc2336->sc2336_para.exposure_mutex) != 0) {
+        return ESP_ERR_INVALID_STATE;
+    }
+    return ret;
+}
+
+static esp_err_t sc2336_set_fps(esp_cam_sensor_device_t *dev, uint32_t u32_val)
+{
+    esp_err_t ret;
+    struct sc2336_cam *cam_sc2336 = (struct sc2336_cam *)dev->priv;
+    // Only reducing the FPS is supported; it cannot exceed the default FPS.
+    uint32_t value_buf = MIN(u32_val, dev->cur_format->fps);
+    value_buf = MAX(value_buf, s_sc2336_fps_min);
+    uint16_t target_vts = dev->cur_format->isp_info->isp_v1_info.pclk / (dev->cur_format->isp_info->isp_v1_info.hts * value_buf);
+
+    ret = sc2336_set_vts(dev, target_vts);
+    if (ret == ESP_OK) {
+        cam_sc2336->sc2336_para.cur_fps = value_buf;
+    }
+    return ret;
+}
+
 static esp_err_t sc2336_hw_reset(esp_cam_sensor_device_t *dev)
 {
     if (dev->reset_pin >= 0) {
@@ -1554,10 +1608,13 @@ static esp_err_t sc2336_set_exp_val(esp_cam_sensor_device_t *dev, uint32_t u32_v
 {
     esp_err_t ret;
     struct sc2336_cam *cam_sc2336 = (struct sc2336_cam *)dev->priv;
-    uint32_t value_buf = MAX(u32_val, s_sc2336_exp_min);
+    uint32_t value_buf;
+    value_buf = MAX(u32_val, s_sc2336_exp_min);
+    if (pthread_mutex_lock(&cam_sc2336->sc2336_para.exposure_mutex) != 0) {
+        return ESP_ERR_INVALID_STATE;
+    }
     value_buf = MIN(value_buf, cam_sc2336->sc2336_para.exposure_max);
 
-    ESP_LOGD(TAG, "set exposure 0x%" PRIx32, value_buf);
     /* 4 least significant bits of expsoure are fractional part */
     ret = sc2336_write(dev->sccb_handle,
                        SC2336_REG_SHUTTER_TIME_H,
@@ -1568,9 +1625,15 @@ static esp_err_t sc2336_set_exp_val(esp_cam_sensor_device_t *dev, uint32_t u32_v
     ret |= sc2336_write(dev->sccb_handle,
                         SC2336_REG_SHUTTER_TIME_L,
                         SC2336_FETCH_EXP_L(value_buf));
+
+    if (pthread_mutex_unlock(&cam_sc2336->sc2336_para.exposure_mutex) != 0) {
+        return ESP_ERR_INVALID_STATE;
+    }
+
     if (ret == ESP_OK) {
         cam_sc2336->sc2336_para.exposure_val = value_buf;
     }
+    ESP_LOGD(TAG, "set exposure 0x%" PRIx32, value_buf);
     return ret;
 }
 
@@ -1599,11 +1662,12 @@ static esp_err_t sc2336_set_total_gain_val(esp_cam_sensor_device_t *dev, uint32_
 static esp_err_t sc2336_query_para_desc(esp_cam_sensor_device_t *dev, esp_cam_sensor_param_desc_t *qdesc)
 {
     esp_err_t ret = ESP_OK;
+    struct sc2336_cam *cam_sc2336 = (struct sc2336_cam *)dev->priv;
     switch (qdesc->id) {
     case ESP_CAM_SENSOR_EXPOSURE_VAL:
         qdesc->type = ESP_CAM_SENSOR_PARAM_TYPE_NUMBER;
         qdesc->number.minimum = s_sc2336_exp_min;
-        qdesc->number.maximum = dev->cur_format->isp_info->isp_v1_info.vts - SC2336_EXP_MAX_OFFSET; // max = VTS-6 = height+vblank-6, so when update vblank, exposure_max must be updated
+        qdesc->number.maximum = cam_sc2336->sc2336_para.exposure_max; // max = VTS-6 = height+vblank-6, so when update vblank, exposure_max must be updated
         qdesc->number.step = 1;
         qdesc->default_value = dev->cur_format->isp_info->isp_v1_info.exp_def;
         break;
@@ -1632,6 +1696,13 @@ static esp_err_t sc2336_query_para_desc(esp_cam_sensor_device_t *dev, esp_cam_se
         qdesc->number.step = 1;
         qdesc->default_value = 0;
         break;
+    case ESP_CAM_SENSOR_FPS:
+        qdesc->type = ESP_CAM_SENSOR_PARAM_TYPE_NUMBER;
+        qdesc->number.minimum = s_sc2336_fps_min;
+        qdesc->number.maximum = dev->cur_format->fps;
+        qdesc->number.step = 1;
+        qdesc->default_value = dev->cur_format->fps;
+        break;
     default: {
         ESP_LOGD(TAG, "id=%"PRIx32" is not supported", qdesc->id);
         ret = ESP_ERR_INVALID_ARG;
@@ -1652,6 +1723,10 @@ static esp_err_t sc2336_get_para_value(esp_cam_sensor_device_t *dev, uint32_t id
     }
     case ESP_CAM_SENSOR_GAIN: {
         *(uint32_t *)arg = cam_sc2336->sc2336_para.gain_index;
+        break;
+    }
+    case ESP_CAM_SENSOR_FPS: {
+        *(uint32_t *)arg = cam_sc2336->sc2336_para.cur_fps;
         break;
     }
     default: {
@@ -1706,6 +1781,11 @@ static esp_err_t sc2336_set_para_value(esp_cam_sensor_device_t *dev, uint32_t id
     case ESP_CAM_SENSOR_HMIRROR: {
         int *value = (int *)arg;
         ret = sc2336_set_mirror(dev, *value);
+        break;
+    }
+    case ESP_CAM_SENSOR_FPS: {
+        uint32_t u32_val = *(uint32_t *)arg;
+        ret = sc2336_set_fps(dev, u32_val);
         break;
     }
     default: {
@@ -1777,7 +1857,9 @@ static esp_err_t sc2336_set_format(esp_cam_sensor_device_t *dev, const esp_cam_s
     // init para
     cam_sc2336->sc2336_para.exposure_val = dev->cur_format->isp_info->isp_v1_info.exp_def;
     cam_sc2336->sc2336_para.gain_index = dev->cur_format->isp_info->isp_v1_info.gain_def;
-    cam_sc2336->sc2336_para.exposure_max = dev->cur_format->isp_info->isp_v1_info.vts - SC2336_EXP_MAX_OFFSET;
+    cam_sc2336->sc2336_para.cur_vts = dev->cur_format->isp_info->isp_v1_info.vts;
+    cam_sc2336->sc2336_para.exposure_max = cam_sc2336->sc2336_para.cur_vts - SC2336_EXP_MAX_OFFSET;
+    cam_sc2336->sc2336_para.cur_fps = dev->cur_format->fps;
 
     return ret;
 }
@@ -1904,6 +1986,8 @@ static esp_err_t sc2336_delete(esp_cam_sensor_device_t *dev)
     ESP_LOGD(TAG, "del sc2336 (%p)", dev);
     if (dev) {
         if (dev->priv) {
+            struct sc2336_cam *cam_sc2336 = (struct sc2336_cam *)dev->priv;
+            pthread_mutex_destroy(&cam_sc2336->sc2336_para.exposure_mutex);
             free(dev->priv);
             dev->priv = NULL;
         }
@@ -1944,6 +2028,13 @@ esp_cam_sensor_device_t *sc2336_detect(esp_cam_sensor_config_t *config)
     cam_sc2336 = heap_caps_calloc(1, sizeof(struct sc2336_cam), MALLOC_CAP_DEFAULT);
     if (!cam_sc2336) {
         ESP_LOGE(TAG, "failed to calloc cam");
+        free(dev);
+        return NULL;
+    }
+
+    if (pthread_mutex_init(&cam_sc2336->sc2336_para.exposure_mutex, NULL) != 0) {
+        ESP_LOGE(TAG, "failed to init exposure mutex");
+        free(cam_sc2336);
         free(dev);
         return NULL;
     }
@@ -1991,6 +2082,7 @@ esp_cam_sensor_device_t *sc2336_detect(esp_cam_sensor_config_t *config)
 
 err_free_handler:
     sc2336_power_off(dev);
+    pthread_mutex_destroy(&cam_sc2336->sc2336_para.exposure_mutex);
     free(dev->priv);
     free(dev);
 
