@@ -228,3 +228,11 @@ esp_err_t esp_sccb_del_i2c_io(esp_sccb_io_handle_t io_handle)
 
     return io_handle->del(io_handle);
 }
+
+esp_err_t esp_sccb_del_i3c_io(esp_sccb_io_handle_t io_handle)
+{
+    ESP_RETURN_ON_FALSE(io_handle, ESP_ERR_INVALID_ARG, TAG, "invalid argument: null pointer");
+    ESP_RETURN_ON_FALSE(io_handle->del, ESP_ERR_NOT_SUPPORTED, TAG, "controller driver function not supported");
+
+    return io_handle->del(io_handle);
+}

@@ -11,3 +11,4 @@ This component provides an interface for SCCB (Serial Camera Control Bus) and it
 Now we have implementations based on:
 
 - esp-driver-i2c
+- esp-driver-i3c

@@ -128,10 +128,10 @@ Navigate to **Espressif Camera Sensors Configurations**:
    
    ```
    Example Video Initialization Configuration  --->
-       [*] Use Pre-initialized SCCB(I2C) Bus for All Camera Sensors And Motors
-           (0) SCCB(I2C) Port Number
-           (8) SCCB(I2C) SCL Pin
-           (7) SCCB(I2C) SDA Pin
+       [*] Use Pre-initialized SCCB Bus for All Camera Sensors And Motors
+           (0) SCCB Port Number
+           (8) SCCB SCL Pin
+           (7) SCCB SDA Pin
    ```
 
 7. **Select target camera sensors:**

@@ -101,23 +101,24 @@ menu "Example Video Initialization Configuration"
                 mobile devices and professional camera applications.
 
         if EXAMPLE_ENABLE_MIPI_CSI_CAM_SENSOR
-            config EXAMPLE_MIPI_CSI_SCCB_I2C_PORT
-                int "SCCB(I2C) Port Number"
+            config EXAMPLE_MIPI_CSI_SCCB_PORT
+                int "SCCB Port Number"
+                default 0 if EXAMPLE_SCCB_USE_I3C
                 default 0
+                range 0 0 if EXAMPLE_SCCB_USE_I3C
                 range ENV_I2C_RANGE_MIN ENV_I2C_RANGE_MAX
-                depends on !EXAMPLE_SCCB_I2C_INIT_BY_APP
                 help
-                    I2C port number for camera sensor control communication.
+                    SCCB port number for camera sensor control communication.
+                    Must be 0 when I3C is selected.
 
-                    SCCB (Serial Camera Control Bus) is an I2C-compatible
-                    protocol used for camera sensor configuration.
+                    SCCB (Serial Camera Control Bus) is used for camera sensor configuration.
 
-            config EXAMPLE_MIPI_CSI_SCCB_I2C_FREQ
-                int "SCCB(I2C) Frequency (100K-400K Hz)"
+            config EXAMPLE_MIPI_CSI_SCCB_FREQ
+                int "SCCB Frequency (100K-400K Hz)"
                 default 100000
                 range 100000 400000
                 help
-                    I2C clock frequency for camera sensor communication.
+                    SCCB clock frequency for camera sensor control communication.
 
                     Recommended values:
                     - 100000 Hz (100kHz): Standard speed, most compatible
@@ -137,25 +138,26 @@ menu "Example Video Initialization Configuration"
                     capabilities. Disable if using fixed-focus lenses.
 
             if EXAMPLE_ENABLE_MIPI_CSI_CAM_MOTOR
-                config EXAMPLE_MIPI_CSI_CAM_MOTOR_SCCB_I2C_PORT
-                    int "Motor SCCB(I2C) Port Number"
+                config EXAMPLE_MIPI_CSI_CAM_MOTOR_SCCB_PORT
+                    int "Motor SCCB Port Number"
+                    default 0 if EXAMPLE_SCCB_USE_I3C
                     default 0
+                    range 0 0 if EXAMPLE_SCCB_USE_I3C
                     range ENV_I2C_RANGE_MIN ENV_I2C_RANGE_MAX
-                    depends on !EXAMPLE_SCCB_I2C_INIT_BY_APP
                     help
-                        I2C port number for autofocus motor control communication.
+                        SCCB port number for autofocus motor control communication.
+                        Must be 0 when I3C is selected.
 
-                        SCCB (Serial Camera Control Bus) is an I2C-compatible
-                        protocol used for camera sensor configuration.
+                        SCCB (Serial Camera Control Bus) is used for camera sensor configuration.
 
                         Can be the same as camera sensor port if sharing the bus.
 
-                config EXAMPLE_MIPI_CSI_CAM_MOTOR_SCCB_I2C_FREQ
-                    int "Motor SCCB(I2C) Frequency (100K-400K Hz)"
+                config EXAMPLE_MIPI_CSI_CAM_MOTOR_SCCB_FREQ
+                    int "Motor SCCB Frequency (100K-400K Hz)"
                     default 100000
                     range 100000 400000
                     help
-                        I2C clock frequency for camera sensor communication.
+                        SCCB clock frequency for camera sensor control communication.
 
                         Recommended values:
                         - 100000 Hz (100kHz): Standard speed, most compatible
@@ -198,21 +200,21 @@ menu "Example Video Initialization Configuration"
             endif
 
             if EXAMPLE_SELECT_CUSTOMIZED_DEV_BOARD
-                config EXAMPLE_MIPI_CSI_SCCB_I2C_SCL_PIN
-                    int "SCCB(I2C) SCL Pin"
+                config EXAMPLE_MIPI_CSI_SCCB_SCL_PIN
+                    int "SCCB SCL Pin"
                     default 8
                     range ENV_GPIO_RANGE_MIN ENV_GPIO_RANGE_MAX
-                    depends on !EXAMPLE_SCCB_I2C_INIT_BY_APP
+                    depends on !EXAMPLE_SCCB_INIT_BY_APP
                     help
-                        GPIO pin for I2C clock signal to camera sensor.
+                        GPIO pin for the SCCB clock signal to the camera sensor.
 
-                config EXAMPLE_MIPI_CSI_SCCB_I2C_SDA_PIN
-                    int "SCCB(I2C) SDA Pin"
+                config EXAMPLE_MIPI_CSI_SCCB_SDA_PIN
+                    int "SCCB SDA Pin"
                     default 7
                     range ENV_GPIO_RANGE_MIN ENV_GPIO_RANGE_MAX
-                    depends on !EXAMPLE_SCCB_I2C_INIT_BY_APP
+                    depends on !EXAMPLE_SCCB_INIT_BY_APP
                     help
-                        GPIO pin for I2C data signal to camera sensor.
+                        GPIO pin for the SCCB data signal to the camera sensor.
 
                 config EXAMPLE_MIPI_CSI_CAM_SENSOR_RESET_PIN
                     int "Reset Pin"
@@ -259,23 +261,23 @@ menu "Example Video Initialization Configuration"
                 endif
 
                 if EXAMPLE_ENABLE_MIPI_CSI_CAM_MOTOR
-                    config EXAMPLE_MIPI_CSI_CAM_MOTOR_SCCB_I2C_SCL_PIN
-                        int "Motor SCCB(I2C) SCL Pin"
+                    config EXAMPLE_MIPI_CSI_CAM_MOTOR_SCCB_SCL_PIN
+                        int "Motor SCCB SCL Pin"
                         default 8
                         range ENV_GPIO_RANGE_MIN ENV_GPIO_RANGE_MAX
-                        depends on !EXAMPLE_SCCB_I2C_INIT_BY_APP
+                        depends on !EXAMPLE_SCCB_INIT_BY_APP
                         help
-                            GPIO pin for I2C clock signal to autofocus motor.
-                            Can share the same pin as camera sensor I2C.
+                            GPIO pin for the SCCB clock signal to the autofocus motor.
+                            Can share the same pin as the camera sensor SCCB.
 
-                    config EXAMPLE_MIPI_CSI_CAM_MOTOR_SCCB_I2C_SDA_PIN
-                        int "Motor SCCB(I2C) SDA Pin"
+                    config EXAMPLE_MIPI_CSI_CAM_MOTOR_SCCB_SDA_PIN
+                        int "Motor SCCB SDA Pin"
                         default 7
                         range ENV_GPIO_RANGE_MIN ENV_GPIO_RANGE_MAX
-                        depends on !EXAMPLE_SCCB_I2C_INIT_BY_APP
+                        depends on !EXAMPLE_SCCB_INIT_BY_APP
                         help
-                            GPIO pin for I2C data signal to autofocus motor.
-                            Can share the same pin as camera sensor I2C.
+                            GPIO pin for the SCCB data signal to the autofocus motor.
+                            Can share the same pin as the camera sensor SCCB.
 
                     config EXAMPLE_MIPI_CSI_CAM_MOTOR_RESET_PIN
                         int "Motor Reset Pin"
@@ -376,23 +378,24 @@ menu "Example Video Initialization Configuration"
                 Common in older camera modules and ESP32-CAM boards.
 
         if EXAMPLE_ENABLE_DVP_CAM_SENSOR
-            config EXAMPLE_DVP_SCCB_I2C_PORT
-                int "SCCB(I2C) Port Number"
+            config EXAMPLE_DVP_SCCB_PORT
+                int "SCCB Port Number"
+                default 0 if EXAMPLE_SCCB_USE_I3C
                 default 0
+                range 0 0 if EXAMPLE_SCCB_USE_I3C
                 range ENV_I2C_RANGE_MIN ENV_I2C_RANGE_MAX
-                depends on !EXAMPLE_SCCB_I2C_INIT_BY_APP
                 help
-                    I2C port number for camera sensor control communication.
+                    SCCB port number for camera sensor control communication.
+                    Must be 0 when I3C is selected.
 
-                    SCCB (Serial Camera Control Bus) is an I2C-compatible
-                    protocol used for camera sensor configuration.
+                    SCCB (Serial Camera Control Bus) is used for camera sensor configuration.
 
-            config EXAMPLE_DVP_SCCB_I2C_FREQ
-                int "SCCB(I2C) Frequency (10K-400K Hz)"
+            config EXAMPLE_DVP_SCCB_FREQ
+                int "SCCB Frequency (10K-400K Hz)"
                 default 100000
                 range 10000 400000
                 help
-                    I2C clock frequency for camera sensor communication.
+                    SCCB clock frequency for camera sensor control communication.
 
                     Recommended values:
                     - 10000  Hz  (10kHz): Used only for specific cases
@@ -446,25 +449,25 @@ menu "Example Video Initialization Configuration"
             endif
 
             if EXAMPLE_SELECT_CUSTOMIZED_DEV_BOARD
-                config EXAMPLE_DVP_SCCB_I2C_SCL_PIN
-                    int "SCCB(I2C) SCL Pin"
+                config EXAMPLE_DVP_SCCB_SCL_PIN
+                    int "SCCB SCL Pin"
                     default 8 if IDF_TARGET_ESP32P4
                     default 5 if IDF_TARGET_ESP32S3
                     default 1 if IDF_TARGET_ESP32S31
                     range ENV_GPIO_RANGE_MIN ENV_GPIO_RANGE_MAX
-                    depends on !EXAMPLE_SCCB_I2C_INIT_BY_APP
+                    depends on !EXAMPLE_SCCB_INIT_BY_APP
                     help
-                        GPIO pin for I2C clock signal to camera sensor.
+                        GPIO pin for the SCCB clock signal to the camera sensor.
 
-                config EXAMPLE_DVP_SCCB_I2C_SDA_PIN
-                    int "SCCB(I2C) SDA Pin"
+                config EXAMPLE_DVP_SCCB_SDA_PIN
+                    int "SCCB SDA Pin"
                     default 7 if IDF_TARGET_ESP32P4
                     default 4 if IDF_TARGET_ESP32S3
                     default 0 if IDF_TARGET_ESP32S31
                     range ENV_GPIO_RANGE_MIN ENV_GPIO_RANGE_MAX
-                    depends on !EXAMPLE_SCCB_I2C_INIT_BY_APP
+                    depends on !EXAMPLE_SCCB_INIT_BY_APP
                     help
-                        GPIO pin for I2C data signal to camera sensor.
+                        GPIO pin for the SCCB data signal to the camera sensor.
 
                 config EXAMPLE_DVP_CAM_SENSOR_RESET_PIN
                     int "Reset Pin"
@@ -659,23 +662,24 @@ menu "Example Video Initialization Configuration"
                         The data I/O bus transforms 4-bit data per clock, this is only supported by parallel I/O interface.
             endchoice
 
-            config EXAMPLE_SPI_CAM_0_SCCB_I2C_PORT
-                int "SCCB(I2C) Port Number"
+            config EXAMPLE_SPI_CAM_0_SCCB_PORT
+                int "SCCB Port Number"
+                default 0 if EXAMPLE_SCCB_USE_I3C
                 default 0
+                range 0 0 if EXAMPLE_SCCB_USE_I3C
                 range ENV_I2C_RANGE_MIN ENV_I2C_RANGE_MAX
-                depends on !EXAMPLE_SCCB_I2C_INIT_BY_APP
                 help
-                    I2C port number for camera sensor control communication.
+                    SCCB port number for camera sensor control communication.
+                    Must be 0 when I3C is selected.
 
-                    SCCB (Serial Camera Control Bus) is an I2C-compatible
-                    protocol used for camera sensor configuration.
+                    SCCB (Serial Camera Control Bus) is used for camera sensor configuration.
 
-            config EXAMPLE_SPI_CAM_0_SCCB_I2C_FREQ
-                int "SCCB(I2C) Frequency (10K-400K Hz)"
+            config EXAMPLE_SPI_CAM_0_SCCB_FREQ
+                int "SCCB Frequency (10K-400K Hz)"
                 default 100000
                 range 10000 400000
                 help
-                    I2C clock frequency for camera sensor communication.
+                    SCCB clock frequency for camera sensor control communication.
 
                     Recommended values:
                     - 10000  Hz  (10kHz): Used only for specific cases
@@ -742,25 +746,25 @@ menu "Example Video Initialization Configuration"
             endif
 
             if EXAMPLE_SELECT_CUSTOMIZED_DEV_BOARD
-                config EXAMPLE_SPI_CAM_0_SCCB_I2C_SCL_PIN
-                    int "SCCB(I2C) SCL Pin"
+                config EXAMPLE_SPI_CAM_0_SCCB_SCL_PIN
+                    int "SCCB SCL Pin"
                     default 8 if IDF_TARGET_ESP32P4
                     default 1 if IDF_TARGET_ESP32S31
                     default 5
                     range ENV_GPIO_RANGE_MIN ENV_GPIO_RANGE_MAX
-                    depends on !EXAMPLE_SCCB_I2C_INIT_BY_APP
+                    depends on !EXAMPLE_SCCB_INIT_BY_APP
                     help
-                        GPIO pin for I2C clock signal to camera sensor.
+                        GPIO pin for the SCCB clock signal to the camera sensor.
 
-                config EXAMPLE_SPI_CAM_0_SCCB_I2C_SDA_PIN
-                    int "SCCB(I2C) SDA Pin"
+                config EXAMPLE_SPI_CAM_0_SCCB_SDA_PIN
+                    int "SCCB SDA Pin"
                     default 7 if IDF_TARGET_ESP32P4
                     default 0 if IDF_TARGET_ESP32S31
                     default 4
                     range ENV_GPIO_RANGE_MIN ENV_GPIO_RANGE_MAX
-                    depends on !EXAMPLE_SCCB_I2C_INIT_BY_APP
+                    depends on !EXAMPLE_SCCB_INIT_BY_APP
                     help
-                        GPIO pin for I2C data signal to camera sensor.
+                        GPIO pin for the SCCB data signal to the camera sensor.
 
                 config EXAMPLE_SPI_CAM_0_SENSOR_RESET_PIN
                     int "Reset Pin"
@@ -1035,23 +1039,24 @@ menu "Example Video Initialization Configuration"
                 Requires fewer GPIO pins than DVP but has lower bandwidth.
     
         if EXAMPLE_ENABLE_SPI_CAM_1_SENSOR
-            config EXAMPLE_SPI_CAM_1_SCCB_I2C_PORT
-                int "SCCB(I2C) Port Number"
+            config EXAMPLE_SPI_CAM_1_SCCB_PORT
+                int "SCCB Port Number"
+                default 0 if EXAMPLE_SCCB_USE_I3C
                 default 1
+                range 0 0 if EXAMPLE_SCCB_USE_I3C
                 range ENV_I2C_RANGE_MIN ENV_I2C_RANGE_MAX
-                depends on !EXAMPLE_SCCB_I2C_INIT_BY_APP
                 help
-                    I2C port number for camera sensor control communication.
+                    SCCB port number for camera sensor control communication.
+                    Must be 0 when I3C is selected.
 
-                    SCCB (Serial Camera Control Bus) is an I2C-compatible
-                    protocol used for camera sensor configuration.
+                    SCCB (Serial Camera Control Bus) is used for camera sensor configuration.
 
-            config EXAMPLE_SPI_CAM_1_SCCB_I2C_FREQ
-                int "SCCB(I2C) Frequency (10K-400K Hz)"
+            config EXAMPLE_SPI_CAM_1_SCCB_FREQ
+                int "SCCB Frequency (10K-400K Hz)"
                 default 100000
                 range 10000 400000
                 help
-                    I2C clock frequency for camera sensor communication.
+                    SCCB clock frequency for camera sensor control communication.
 
                     Recommended values:
                     - 10000  Hz  (10kHz): Used only for specific cases
@@ -1116,23 +1121,23 @@ menu "Example Video Initialization Configuration"
             endif
 
             if EXAMPLE_SELECT_CUSTOMIZED_DEV_BOARD
-                config EXAMPLE_SPI_CAM_1_SCCB_I2C_SCL_PIN
-                    int "SCCB(I2C) SCL Pin"
+                config EXAMPLE_SPI_CAM_1_SCCB_SCL_PIN
+                    int "SCCB SCL Pin"
                     default 5 if IDF_TARGET_ESP32P4
                     default 1 if IDF_TARGET_ESP32S3
                     range ENV_GPIO_RANGE_MIN ENV_GPIO_RANGE_MAX
-                    depends on !EXAMPLE_SCCB_I2C_INIT_BY_APP
+                    depends on !EXAMPLE_SCCB_INIT_BY_APP
                     help
-                        GPIO pin for I2C clock signal to camera sensor.
+                        GPIO pin for the SCCB clock signal to the camera sensor.
 
-                config EXAMPLE_SPI_CAM_1_SCCB_I2C_SDA_PIN
-                    int "SCCB(I2C) SDA Pin"
+                config EXAMPLE_SPI_CAM_1_SCCB_SDA_PIN
+                    int "SCCB SDA Pin"
                     default 6 if IDF_TARGET_ESP32P4
                     default 2 if IDF_TARGET_ESP32S3
                     range ENV_GPIO_RANGE_MIN ENV_GPIO_RANGE_MAX
-                    depends on !EXAMPLE_SCCB_I2C_INIT_BY_APP
+                    depends on !EXAMPLE_SCCB_INIT_BY_APP
                     help
-                        GPIO pin for I2C data signal to camera sensor.
+                        GPIO pin for the SCCB data signal to the camera sensor.
 
                 config EXAMPLE_SPI_CAM_1_SENSOR_RESET_PIN
                     int "Reset Pin"
@@ -1186,48 +1191,76 @@ menu "Example Video Initialization Configuration"
         endif
     endmenu
 
-    menuconfig EXAMPLE_SCCB_I2C_INIT_BY_APP
-        bool "Use Pre-initialized SCCB(I2C) Bus for All Camera Sensors And Motors"
+    choice EXAMPLE_SELECT_SCCB_INTERFACE
+        prompt "Select SCCB Interface"
+        default EXAMPLE_SCCB_USE_I2C
+        help
+            Select the bus that implements SCCB for every enabled camera
+            sensor and motor.
+
+        config EXAMPLE_SCCB_USE_I2C
+            bool "I2C"
+            help
+                Initialize each interface on its own I2C port.
+
+                Multiple SCCB buses can be used on ESP32-P4.
+
+        config EXAMPLE_SCCB_USE_I3C
+            bool "I3C"
+            depends on SOC_I3C_MASTER_SUPPORTED && ("$(IDF_VERSION)" >= "6.1.0")
+            help
+                Drive SCCB with the I3C master in legacy I2C mode.
+
+                Requires ESP-IDF >= 6.1.0, the same minimum as esp_sccb_intf
+                I3C support. esp_driver_i3c is not available before that.
+
+                I3C provides one bus, so every enabled camera sensor and motor
+                must use the same SCL and SDA pins. SCCB port numbers must be 0.
+    endchoice
+
+    menuconfig EXAMPLE_SCCB_INIT_BY_APP
+        bool "Use Pre-initialized SCCB Bus for All Camera Sensors And Motors"
         default n
         help
-            Enable this option to use an I2C bus that has been explicitly
-            initialized by your application before camera initialization.
-            All camera sensors including the motors use this I2C bus on the
-            specified port.
+            Enable this option to create one SCCB bus for every camera sensor
+            and motor. When the selected SCCB interface uses a port number,
+            that port is configured below.
 
             Benefits:
-            - Allows sharing I2C bus with other devices
-            - Provides application control over I2C timing
-            - Enables custom I2C configuration
+            - Allows sharing the SCCB bus with other devices
+            - Provides application control over bus timing
+            - Enables custom bus configuration
 
-            When enabled, you must call i2c_master_bus_init() before
-            initializing the camera sensor.
+            The example creates this bus during video initialization.
 
-    if EXAMPLE_SCCB_I2C_INIT_BY_APP
-        config EXAMPLE_SCCB_I2C_PORT_INIT_BY_APP
-            int "SCCB(I2C) Port Number"
+    if EXAMPLE_SCCB_INIT_BY_APP
+        config EXAMPLE_SCCB_PORT_INIT_BY_APP
+            int "SCCB Port Number"
+            default 0 if EXAMPLE_SCCB_USE_I3C
             default 0
+            range 0 0 if EXAMPLE_SCCB_USE_I3C
             range ENV_I2C_RANGE_MIN ENV_I2C_RANGE_MAX
             help
-                I2C port number for all camera sensors and motors.
+                SCCB port number for all camera sensors and motors.
+                Must be 0 when I3C is selected.
 
-        config EXAMPLE_SCCB_I2C_SCL_PIN_INIT_BY_APP
-            int "SCCB(I2C) SCL Pin"
+        config EXAMPLE_SCCB_SCL_PIN_INIT_BY_APP
+            int "SCCB SCL Pin"
             default 8 if IDF_TARGET_ESP32P4
             default 5
             range ENV_GPIO_RANGE_MIN ENV_GPIO_RANGE_MAX
             depends on EXAMPLE_SELECT_CUSTOMIZED_DEV_BOARD
             help
-                GPIO pin for I2C clock signal to all camera sensors and motors.
+                GPIO pin for the SCCB clock signal to all camera sensors and motors.
 
-        config EXAMPLE_SCCB_I2C_SDA_PIN_INIT_BY_APP
-            int "SCCB(I2C) SDA Pin"
+        config EXAMPLE_SCCB_SDA_PIN_INIT_BY_APP
+            int "SCCB SDA Pin"
             default 7 if IDF_TARGET_ESP32P4
             default 4
             range ENV_GPIO_RANGE_MIN ENV_GPIO_RANGE_MAX
             depends on EXAMPLE_SELECT_CUSTOMIZED_DEV_BOARD
             help
-                GPIO pin for I2C data signal to all camera sensors and motors.
+                GPIO pin for the SCCB data signal to all camera sensors and motors.
     endif
 
     choice EXAMPLE_SELECT_JPEG_ENCODER

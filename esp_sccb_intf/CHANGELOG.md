@@ -1,3 +1,7 @@
+## 1.0.0
+
+- Added support for the SCCB interface via the I3C interface.
+
 ## 0.0.9
 
 - Added information about the document system to README.md.

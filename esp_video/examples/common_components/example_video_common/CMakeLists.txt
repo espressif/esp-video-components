@@ -23,6 +23,15 @@ idf_component_register(SRCS "${srcs}"
                        INCLUDE_DIRS "${inc_dirs}"
                        REQUIRES "esp_video" "fatfs")
 
+if(CONFIG_EXAMPLE_SCCB_USE_I3C)
+    # Same gate as esp_sccb_intf: esp_driver_i3c exists from ESP-IDF v6.1.0.
+    if(NOT "${IDF_VERSION_MAJOR}.${IDF_VERSION_MINOR}.${IDF_VERSION_PATCH}" VERSION_GREATER_EQUAL "6.1.0")
+        message(FATAL_ERROR "CONFIG_EXAMPLE_SCCB_USE_I3C requires ESP-IDF >= 6.1.0 "
+                            "(current ${IDF_VERSION_MAJOR}.${IDF_VERSION_MINOR}.${IDF_VERSION_PATCH})")
+    endif()
+    idf_component_optional_requires(PRIVATE "esp_driver_i3c")
+endif()
+
 if(CONFIG_EXAMPLE_SELECT_JPEG_HW_DRIVER)
     idf_component_optional_requires(PRIVATE "esp_driver_jpeg")
 endif()
