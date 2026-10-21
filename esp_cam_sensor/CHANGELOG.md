@@ -13,6 +13,7 @@
 - Updated the SC132GS default IPA JSON and added DPC configuration.
 - Updated the MIT245 default IPA configuration by removing LSC and retuning AWB, AGC, CCM, denoising, gamma and sharpening parameters.
 - Added `set_fps()` function to set the frame rate in the SC2336 sensor driver.
+- Added JX-H63P MIPI RAW sensor driver.
 
 ## 2.6.0
 
