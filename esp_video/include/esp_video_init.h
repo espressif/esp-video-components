@@ -79,6 +79,19 @@ typedef struct esp_video_init_ircut_config {
 #endif /* CONFIG_ESP_VIDEO_ENABLE_IRCUT_SUPPORT */
 
 /**
+ * @brief Supplemental LED initialization configuration
+ *
+ * Night IR-CUT mode turns the LED on. Day IR-CUT mode turns it off.
+ */
+#if CONFIG_ESP_VIDEO_ENABLE_LED_SUPPORT
+typedef struct esp_video_init_led_config {
+    gpio_num_t gpio_ctrl;                       /*!< LED control pin. Set to -1 if the hardware has no LED */
+    gpio_num_t gpio_en;                         /*!< LED enable pin passed to the driver. Set to -1 if not used.
+                                                     IR2835 does not drive this pin. A later LED driver may. */
+} esp_video_init_led_config_t;
+#endif /* CONFIG_ESP_VIDEO_ENABLE_LED_SUPPORT */
+
+/**
  * @brief SCCB bus implementation
  *
  * @note Zero means I2C, so existing initializers keep using the I2C master.
@@ -132,6 +145,9 @@ typedef struct esp_video_init_csi_config {
 #if CONFIG_ESP_VIDEO_ENABLE_MIPI_CSI_IRCUT_SUPPORT
     esp_video_init_ircut_config_t *ircut_config; /*!< IR-Cut initialization configuration, if hardware has no IR-Cut chip, set ircut_config to be NULL */
 #endif
+#if CONFIG_ESP_VIDEO_ENABLE_MIPI_CSI_LED_SUPPORT
+    esp_video_init_led_config_t *led_config;    /*!< Supplemental LED configuration. NULL or gpio_ctrl -1 skips LED initialization */
+#endif
 
     gpio_num_t  reset_pin;                      /*!< Camera sensor reset pin, if hardware has no reset pin, set reset_pin to be -1 */
     gpio_num_t  pwdn_pin;                       /*!< Camera sensor power down pin, if hardware has no power down pin, set pwdn_pin to be -1 */
@@ -146,10 +162,6 @@ typedef struct esp_video_init_csi_config {
 #if CONFIG_ESP_VIDEO_ENABLE_DVP_VIDEO_DEVICE
 typedef struct esp_video_init_dvp_config {
     esp_video_init_sccb_config_t sccb_config;   /*!< Camera sensor SCCB configuration */
-
-#if CONFIG_ESP_VIDEO_ENABLE_DVP_IRCUT_SUPPORT
-    esp_video_init_ircut_config_t *ircut_config; /*!< IR-Cut initialization configuration, if hardware has no IR-Cut chip, set ircut_config to be NULL */
-#endif
 
     gpio_num_t  reset_pin;                      /*!< Camera sensor reset pin, if hardware has no reset pin, set reset_pin to be -1 */
     gpio_num_t  pwdn_pin;                       /*!< Camera sensor power down pin, if hardware has no power down pin, set pwdn_pin to be -1 */

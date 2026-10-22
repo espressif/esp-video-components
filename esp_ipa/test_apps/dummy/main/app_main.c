@@ -3165,6 +3165,7 @@ TEST_CASE("IR day/night switch", "[IPA][IR]")
     const esp_ipa_config_t *base = esp_ipa_pipeline_get_config(IPA_TARGET_NAME);
     static esp_ipa_config_t cfg;
     static esp_ipa_ir_config_t ir;
+    static esp_ipa_ir_model0_config_t model0;
     esp_ipa_pipeline_handle_t handle = NULL;
     esp_ipa_metadata_t metadata = {0};
     esp_ipa_stats_t stats = {0};
@@ -3175,64 +3176,118 @@ TEST_CASE("IR day/night switch", "[IPA][IR]")
 
     memcpy(&cfg, base, sizeof(cfg));
     memcpy(&ir, base->ir, sizeof(ir));
-    ir.luma_env = "ir_env_luma";
-    ir.ir_factor = 1.0f;
-    ir.enter_delay_us = 0;
-    ir.exit_delay_us = 0;
-    ir.normal.luma_threshold = 50.0f;
-    ir.normal.awb_threshold = 100.0f;
-    ir.normal.hold_time_us = 0;
-    ir.ir_mode.luma_threshold = 50.0f;
-    ir.ir_mode.awb_threshold = 100.0f;
-    ir.ir_mode.hold_time_us = 0;
+    TEST_ASSERT_NOT_NULL(ir.model0_param);
+    memcpy(&model0, ir.model0_param, sizeof(model0));
+    ir.model0_param = &model0;
+    model0.luma_env = "ir_env_luma";
+    model0.night_ir_factor = 1.0f;
+    model0.day_luma_threshold = 50.0f;
+    model0.day_keep_time_us = 0;
+    model0.day_switch_night_time_us = 0;
+    model0.night_luma_threshold = 50.0f;
+    model0.night_keep_time_us = 0;
+    model0.night_switch_day_time_us = 0;
     cfg.ir = &ir;
 
     TEST_ESP_OK(esp_ipa_pipeline_create(&cfg, &handle));
     TEST_ESP_OK(esp_ipa_pipeline_init(handle, &sensor, &metadata));
     TEST_ASSERT_EQUAL_HEX32(IPA_METADATA_FLAGS_IR, metadata.flags & IPA_METADATA_FLAGS_IR);
     TEST_ASSERT_FALSE(metadata.ir_enable);
-    TEST_ASSERT_EQUAL_INT32(0, esp_ipa_get_int32(handle->ipa_array[0], "ir.enable"));
 
-    stats.flags = IPA_STATS_FLAGS_AWB;
-    stats.awb_stats[0].sum_b = 1000;
-    stats.awb_stats[0].counted = 100;
-
-    /* Both luma and AWB G/R dark: enter IR on the first frame when hold_time_us is 0 */
+    /* Day: dark luma starts the switch to night. */
     metadata.flags = 0;
-    stats.awb_stats[0].sum_g = 500;
-    stats.awb_stats[0].sum_r = 2000;
     esp_ipa_set_float(handle->ipa_array[0], "ir_env_luma", 10.0f);
     TEST_ESP_OK(esp_ipa_pipeline_process(handle, &stats, &sensor, &metadata));
     TEST_ASSERT_EQUAL_HEX32(IPA_METADATA_FLAGS_IR, metadata.flags & IPA_METADATA_FLAGS_IR);
     TEST_ASSERT_TRUE(metadata.ir_enable);
-    TEST_ASSERT_EQUAL_INT32(1, esp_ipa_get_int32(handle->ipa_array[0], "ir.enable"));
+    {
+        int mod_status = 1;
 
-    /* Both luma and AWB G/R bright: leave IR on the next frame (enter_delay_us is 0) */
+        TEST_ESP_OK(esp_ipa_pipeline_ioctl(handle, ESP_IPA_AWB_G_STATUS, &mod_status));
+        TEST_ASSERT_EQUAL_INT32(0, mod_status);
+        TEST_ESP_OK(esp_ipa_pipeline_ioctl(handle, ESP_IPA_IAN_G_CT_STATUS, &mod_status));
+        TEST_ASSERT_EQUAL_INT32(0, mod_status);
+        TEST_ESP_OK(esp_ipa_pipeline_ioctl(handle, ESP_IPA_ACC_G_CCM_STATUS, &mod_status));
+        TEST_ASSERT_EQUAL_INT32(0, mod_status);
+    }
+    TEST_ASSERT_EQUAL_HEX32(0, memcmp(&metadata.awb, &model0.night_awb, sizeof(metadata.awb)));
+    TEST_ASSERT_EQUAL_HEX32(0, memcmp(&metadata.ccm, &model0.night_ccm, sizeof(metadata.ccm)));
+    TEST_ASSERT_EQUAL_FLOAT(model0.night_red_gain, metadata.red_gain);
+    TEST_ASSERT_EQUAL_FLOAT(model0.night_blue_gain, metadata.blue_gain);
+
+    /* day_switch_night_time_us is 0: this frame only enters night. Bright stats are not judged. */
     metadata.flags = 0;
-    stats.awb_stats[0].sum_g = 200000;
-    stats.awb_stats[0].sum_r = 1000;
     esp_ipa_set_float(handle->ipa_array[0], "ir_env_luma", 80.0f);
+    TEST_ESP_OK(esp_ipa_pipeline_process(handle, &stats, &sensor, &metadata));
+    TEST_ASSERT_EQUAL_HEX32(0, metadata.flags & IPA_METADATA_FLAGS_IR);
+    TEST_ASSERT_TRUE(metadata.ir_enable);
+
+    /* Night: bright luma but AWB R is 0, stay in night. */
+    stats.flags = IPA_STATS_FLAGS_AWB;
+    stats.awb_stats[0].sum_r = 0;
+    stats.awb_stats[0].sum_g = 500;
+    metadata.flags = 0;
+    TEST_ESP_OK(esp_ipa_pipeline_process(handle, &stats, &sensor, &metadata));
+    TEST_ASSERT_EQUAL_HEX32(0, metadata.flags & IPA_METADATA_FLAGS_IR);
+    TEST_ASSERT_TRUE(metadata.ir_enable);
+
+    /* Night: bright luma but AWB G is 0, stay in night. */
+    stats.awb_stats[0].sum_r = 500;
+    stats.awb_stats[0].sum_g = 0;
+    metadata.flags = 0;
+    TEST_ESP_OK(esp_ipa_pipeline_process(handle, &stats, &sensor, &metadata));
+    TEST_ASSERT_EQUAL_HEX32(0, metadata.flags & IPA_METADATA_FLAGS_IR);
+    TEST_ASSERT_TRUE(metadata.ir_enable);
+
+    /* Night: bright luma and AWB R and G are non-zero leaves night. */
+    stats.awb_stats[0].sum_r = 500;
+    stats.awb_stats[0].sum_g = 500;
+    metadata.flags = 0;
     TEST_ESP_OK(esp_ipa_pipeline_process(handle, &stats, &sensor, &metadata));
     TEST_ASSERT_EQUAL_HEX32(IPA_METADATA_FLAGS_IR, metadata.flags & IPA_METADATA_FLAGS_IR);
     TEST_ASSERT_FALSE(metadata.ir_enable);
-    TEST_ASSERT_EQUAL_INT32(0, esp_ipa_get_int32(handle->ipa_array[0], "ir.enable"));
 
-    /* After exit delay 0, both dark can enter IR again */
+    /* night_switch_day_time_us is 0: this frame only returns to day. */
     metadata.flags = 0;
-    stats.awb_stats[0].sum_g = 500;
-    stats.awb_stats[0].sum_r = 2000;
     esp_ipa_set_float(handle->ipa_array[0], "ir_env_luma", 10.0f);
+    TEST_ESP_OK(esp_ipa_pipeline_process(handle, &stats, &sensor, &metadata));
+    TEST_ASSERT_EQUAL_HEX32(0, metadata.flags & IPA_METADATA_FLAGS_IR);
+    TEST_ASSERT_FALSE(metadata.ir_enable);
+    {
+        int mod_status = 0;
+        esp_ipa_state_t *state = calloc(1, sizeof(*state));
+
+        TEST_ASSERT_NOT_NULL(state);
+        TEST_ESP_OK(esp_ipa_pipeline_ioctl(handle, ESP_IPA_AWB_G_STATUS, &mod_status));
+        TEST_ASSERT_EQUAL_INT32(1, mod_status);
+        TEST_ESP_OK(esp_ipa_pipeline_ioctl(handle, ESP_IPA_IAN_G_CT_STATUS, &mod_status));
+        TEST_ASSERT_EQUAL_INT32(1, mod_status);
+        TEST_ESP_OK(esp_ipa_pipeline_ioctl(handle, ESP_IPA_ACC_G_CCM_STATUS, &mod_status));
+        TEST_ASSERT_EQUAL_INT32(1, mod_status);
+        TEST_ESP_OK(esp_ipa_pipeline_ioctl(handle, ESP_IPA_ACC_G_SAT_STATUS, &mod_status));
+        TEST_ASSERT_EQUAL_INT32(1, mod_status);
+        TEST_ESP_OK(esp_ipa_pipeline_get_state(handle, &sensor, state));
+        TEST_ASSERT_EQUAL_INT32(-1, state->acc.sat.index);
+        TEST_ASSERT_EQUAL_INT32(-1, state->acc.ccm.index);
+        TEST_ASSERT_EQUAL_INT32(-1, state->ian.ct.index);
+        TEST_ASSERT_EQUAL_UINT8(0, state->awb.range.valid);
+        free(state);
+    }
+
+    /* Day: dark luma starts the switch to night again. */
+    metadata.flags = 0;
     TEST_ESP_OK(esp_ipa_pipeline_process(handle, &stats, &sensor, &metadata));
     TEST_ASSERT_TRUE(metadata.ir_enable);
 
     TEST_ESP_OK(esp_ipa_pipeline_destroy(handle));
 }
 
-TEST_CASE("IR AWB G/R and enter delay", "[IPA][IR]")
+TEST_CASE("IR day to night transition", "[IPA][IR]")
 {
     const esp_ipa_config_t *base = esp_ipa_pipeline_get_config(IPA_TARGET_NAME);
     static esp_ipa_config_t cfg;
     static esp_ipa_ir_config_t ir;
+    static esp_ipa_ir_model0_config_t model0;
     esp_ipa_pipeline_handle_t handle = NULL;
     esp_ipa_metadata_t metadata = {0};
     esp_ipa_stats_t stats = {0};
@@ -3243,57 +3298,53 @@ TEST_CASE("IR AWB G/R and enter delay", "[IPA][IR]")
 
     memcpy(&cfg, base, sizeof(cfg));
     memcpy(&ir, base->ir, sizeof(ir));
-    ir.luma_env = "ir_env_luma";
-    ir.ir_factor = 1.0f;
-    ir.enter_delay_us = 80000;
-    ir.exit_delay_us = 0;
-    ir.normal.luma_threshold = 50.0f;
-    ir.normal.awb_threshold = 1.0f;
-    ir.normal.hold_time_us = 0;
-    ir.ir_mode.luma_threshold = 50.0f;
-    ir.ir_mode.awb_threshold = 1.0f;
-    ir.ir_mode.hold_time_us = 0;
+    TEST_ASSERT_NOT_NULL(ir.model0_param);
+    memcpy(&model0, ir.model0_param, sizeof(model0));
+    ir.model0_param = &model0;
+    model0.luma_env = "ir_env_luma";
+    model0.night_ir_factor = 1.0f;
+    model0.day_luma_threshold = 50.0f;
+    model0.day_keep_time_us = 0;
+    model0.day_switch_night_time_us = 80000;
+    model0.night_luma_threshold = 50.0f;
+    model0.night_keep_time_us = 0;
+    model0.night_switch_day_time_us = 0;
     cfg.ir = &ir;
 
     TEST_ESP_OK(esp_ipa_pipeline_create(&cfg, &handle));
     TEST_ESP_OK(esp_ipa_pipeline_init(handle, &sensor, &metadata));
 
-    /* Missing AWB: skip and stay in normal mode */
-    stats.flags = 0;
-    esp_ipa_set_float(handle->ipa_array[0], "ir_env_luma", 10.0f);
+    /* Bright luma stays in day. */
+    esp_ipa_set_float(handle->ipa_array[0], "ir_env_luma", 80.0f);
     metadata.flags = 0;
     TEST_ESP_OK(esp_ipa_pipeline_process(handle, &stats, &sensor, &metadata));
     TEST_ASSERT_EQUAL_HEX32(0, metadata.flags & IPA_METADATA_FLAGS_IR);
     TEST_ASSERT_FALSE(metadata.ir_enable);
 
-    /* Luma is dark but AWB G/R is bright: disagreed, skip and stay in normal mode */
-    stats.flags = IPA_STATS_FLAGS_AWB;
-    stats.awb_stats[0].sum_g = 2000;
-    stats.awb_stats[0].sum_r = 1000;
-    stats.awb_stats[0].sum_b = 1000;
-    stats.awb_stats[0].counted = 100;
+    /* Dark luma starts the switch to night. */
     esp_ipa_set_float(handle->ipa_array[0], "ir_env_luma", 10.0f);
-    metadata.flags = 0;
-    TEST_ESP_OK(esp_ipa_pipeline_process(handle, &stats, &sensor, &metadata));
-    TEST_ASSERT_EQUAL_HEX32(0, metadata.flags & IPA_METADATA_FLAGS_IR);
-
-    /* Both luma and AWB G/R are dark: enter IR */
-    stats.awb_stats[0].sum_g = 500;
-    stats.awb_stats[0].sum_r = 2000;
     metadata.flags = 0;
     TEST_ESP_OK(esp_ipa_pipeline_process(handle, &stats, &sensor, &metadata));
     TEST_ASSERT_TRUE(metadata.ir_enable);
 
-    /* During enter delay, bright scene is ignored */
-    stats.awb_stats[0].sum_g = 2000;
-    stats.awb_stats[0].sum_r = 1000;
+    /* During the day-to-night transition, a bright scene is ignored. */
     esp_ipa_set_float(handle->ipa_array[0], "ir_env_luma", 80.0f);
     metadata.flags = 0;
     TEST_ESP_OK(esp_ipa_pipeline_process(handle, &stats, &sensor, &metadata));
     TEST_ASSERT_EQUAL_HEX32(0, metadata.flags & IPA_METADATA_FLAGS_IR);
 
-    usleep(ir.enter_delay_us + 20000);
+    usleep(model0.day_switch_night_time_us + 20000);
 
+    /* Transition elapsed: this frame only enters night. */
+    metadata.flags = 0;
+    TEST_ESP_OK(esp_ipa_pipeline_process(handle, &stats, &sensor, &metadata));
+    TEST_ASSERT_EQUAL_HEX32(0, metadata.flags & IPA_METADATA_FLAGS_IR);
+    TEST_ASSERT_TRUE(metadata.ir_enable);
+
+    /* Bright luma and AWB R and G are non-zero leaves night. */
+    stats.flags = IPA_STATS_FLAGS_AWB;
+    stats.awb_stats[0].sum_r = 500;
+    stats.awb_stats[0].sum_g = 500;
     metadata.flags = 0;
     TEST_ESP_OK(esp_ipa_pipeline_process(handle, &stats, &sensor, &metadata));
     TEST_ASSERT_FALSE(metadata.ir_enable);
@@ -3301,11 +3352,12 @@ TEST_CASE("IR AWB G/R and enter delay", "[IPA][IR]")
     TEST_ESP_OK(esp_ipa_pipeline_destroy(handle));
 }
 
-TEST_CASE("IR environment luma from AE statistics", "[IPA][IR]")
+TEST_CASE("IR missing luma does not switch", "[IPA][IR]")
 {
     const esp_ipa_config_t *base = esp_ipa_pipeline_get_config(IPA_TARGET_NAME);
     static esp_ipa_config_t cfg;
     static esp_ipa_ir_config_t ir;
+    static esp_ipa_ir_model0_config_t model0;
     esp_ipa_pipeline_handle_t handle = NULL;
     esp_ipa_metadata_t metadata = {0};
     esp_ipa_stats_t stats = {0};
@@ -3316,25 +3368,21 @@ TEST_CASE("IR environment luma from AE statistics", "[IPA][IR]")
 
     memcpy(&cfg, base, sizeof(cfg));
     memcpy(&ir, base->ir, sizeof(ir));
-    ir.luma_env = NULL;
-    ir.k = 1000.0f;
-    ir.ir_factor = 1.0f;
-    ir.enter_delay_us = 0;
-    ir.exit_delay_us = 0;
-    ir.normal.luma_threshold = 50.0f;
-    ir.normal.awb_threshold = 100.0f;
-    ir.normal.hold_time_us = 0;
-    ir.ir_mode.luma_threshold = 50.0f;
-    ir.ir_mode.awb_threshold = 100.0f;
-    ir.ir_mode.hold_time_us = 0;
+    TEST_ASSERT_NOT_NULL(ir.model0_param);
+    memcpy(&model0, ir.model0_param, sizeof(model0));
+    ir.model0_param = &model0;
+    model0.luma_env = NULL;
+    model0.night_ir_factor = 1.0f;
+    model0.day_luma_threshold = 50.0f;
+    model0.day_keep_time_us = 0;
+    model0.day_switch_night_time_us = 0;
+    model0.night_luma_threshold = 50.0f;
+    model0.night_keep_time_us = 0;
+    model0.night_switch_day_time_us = 0;
     cfg.ir = &ir;
-
-    sensor.cur_gain = 1.0f;
-    sensor.cur_exposure = 1000;
 
     stats.flags = IPA_STATS_FLAGS_AE | IPA_STATS_FLAGS_AWB;
-    stats.awb_stats[0].sum_b = 1000;
-    stats.awb_stats[0].counted = 100;
+    stats.awb_stats[0].sum_r = 500;
     for (int i = 0; i < ISP_AE_REGIONS; i++) {
         stats.ae_stats[i].luminance = 10;
     }
@@ -3342,22 +3390,139 @@ TEST_CASE("IR environment luma from AE statistics", "[IPA][IR]")
     TEST_ESP_OK(esp_ipa_pipeline_create(&cfg, &handle));
     TEST_ESP_OK(esp_ipa_pipeline_init(handle, &sensor, &metadata));
 
-    /* luma = 10 * k / (gain * exposure) = 10, AWB G/R dark */
-    stats.awb_stats[0].sum_g = 500;
-    stats.awb_stats[0].sum_r = 2000;
-    metadata.flags = 0;
-    TEST_ESP_OK(esp_ipa_pipeline_process(handle, &stats, &sensor, &metadata));
-    TEST_ASSERT_TRUE(metadata.ir_enable);
-
-    for (int i = 0; i < ISP_AE_REGIONS; i++) {
-        stats.ae_stats[i].luminance = 80;
-    }
-    stats.awb_stats[0].sum_g = 200000;
-    stats.awb_stats[0].sum_r = 1000;
+    /* No luma_env: AE and AWB do not start the switch to night. */
     metadata.flags = 0;
     TEST_ESP_OK(esp_ipa_pipeline_process(handle, &stats, &sensor, &metadata));
     TEST_ASSERT_FALSE(metadata.ir_enable);
 
+    TEST_ESP_OK(esp_ipa_pipeline_destroy(handle));
+}
+
+TEST_CASE("IR NIGHT_SWITCH_DAY snapshot keeps zero saturation", "[IPA][IR]")
+{
+    const esp_ipa_config_t *base = esp_ipa_pipeline_get_config(IPA_TARGET_NAME);
+    static esp_ipa_config_t cfg;
+    static esp_ipa_ir_config_t ir;
+    static esp_ipa_ir_model0_config_t model0;
+    esp_ipa_pipeline_handle_t handle = NULL;
+    esp_ipa_metadata_t metadata = {0};
+    esp_ipa_metadata_t restored = {0};
+    esp_ipa_stats_t stats = {0};
+    esp_ipa_sensor_t sensor = s_esp_ipa_sensor;
+    esp_ipa_state_t *state;
+    int sat_status = -1;
+    int64_t start_us;
+
+    TEST_ASSERT_NOT_NULL(base);
+    TEST_ASSERT_NOT_NULL(base->ir);
+
+    memcpy(&cfg, base, sizeof(cfg));
+    memcpy(&ir, base->ir, sizeof(ir));
+    TEST_ASSERT_NOT_NULL(ir.model0_param);
+    memcpy(&model0, ir.model0_param, sizeof(model0));
+    ir.model0_param = &model0;
+    model0.luma_env = "ir_env_luma";
+    model0.night_ir_factor = 1.0f;
+    model0.day_luma_threshold = 50.0f;
+    model0.day_keep_time_us = 200000;
+    model0.day_switch_night_time_us = 500000;
+    model0.night_luma_threshold = 50.0f;
+    model0.night_keep_time_us = 400000;
+    model0.night_switch_day_time_us = 600000;
+    cfg.ir = &ir;
+
+    sensor.cur_saturation = 123;
+
+    state = calloc(1, sizeof(*state));
+    TEST_ASSERT_NOT_NULL(state);
+
+    TEST_ESP_OK(esp_ipa_pipeline_create(&cfg, &handle));
+    TEST_ESP_OK(esp_ipa_pipeline_init(handle, &sensor, &metadata));
+
+    /* Dark long enough to enter IR. Stop on the transition frame. */
+    esp_ipa_set_float(handle->ipa_array[0], "ir_env_luma", 10.0f);
+    start_us = esp_timer_get_time();
+    do {
+        metadata.flags = 0;
+        TEST_ESP_OK(esp_ipa_pipeline_process(handle, &stats, &sensor, &metadata));
+        if (metadata.flags & IPA_METADATA_FLAGS_IR) {
+            break;
+        }
+        usleep(2000);
+    } while ((esp_timer_get_time() - start_us) < (int64_t)model0.day_keep_time_us + 100000);
+    TEST_ASSERT_EQUAL_HEX32(IPA_METADATA_FLAGS_IR, metadata.flags & IPA_METADATA_FLAGS_IR);
+    TEST_ASSERT_TRUE(metadata.ir_enable);
+    TEST_ASSERT_EQUAL_HEX32(IPA_METADATA_FLAGS_ST, metadata.flags & IPA_METADATA_FLAGS_ST);
+    TEST_ASSERT_EQUAL_UINT32(0, metadata.saturation);
+    TEST_ESP_OK(esp_ipa_pipeline_ioctl(handle, ESP_IPA_ACC_G_SAT_STATUS, &sat_status));
+    TEST_ASSERT_EQUAL_INT32(0, sat_status);
+
+    /* Finish the day-to-night transition. */
+    start_us = esp_timer_get_time();
+    while ((esp_timer_get_time() - start_us) < (int64_t)model0.day_switch_night_time_us + 20000) {
+        metadata.flags = 0;
+        TEST_ESP_OK(esp_ipa_pipeline_process(handle, &stats, &sensor, &metadata));
+        usleep(2000);
+    }
+
+    /* Bright luma and AWB R and G are non-zero long enough to leave night. */
+    stats.flags = IPA_STATS_FLAGS_AWB;
+    stats.awb_stats[0].sum_r = 500;
+    stats.awb_stats[0].sum_g = 500;
+    esp_ipa_set_float(handle->ipa_array[0], "ir_env_luma", 80.0f);
+    start_us = esp_timer_get_time();
+    do {
+        metadata.flags = 0;
+        TEST_ESP_OK(esp_ipa_pipeline_process(handle, &stats, &sensor, &metadata));
+        if ((metadata.flags & IPA_METADATA_FLAGS_IR) && !metadata.ir_enable) {
+            break;
+        }
+        usleep(2000);
+    } while ((esp_timer_get_time() - start_us) < (int64_t)model0.night_keep_time_us + 100000);
+    TEST_ASSERT_EQUAL_HEX32(IPA_METADATA_FLAGS_IR, metadata.flags & IPA_METADATA_FLAGS_IR);
+    TEST_ASSERT_FALSE(metadata.ir_enable);
+    TEST_ESP_OK(esp_ipa_pipeline_ioctl(handle, ESP_IPA_ACC_G_SAT_STATUS, &sat_status));
+    TEST_ASSERT_EQUAL_INT32(0, sat_status);
+
+    TEST_ESP_OK(esp_ipa_pipeline_get_state(handle, &sensor, state));
+    TEST_ASSERT_TRUE(state->modules & ESP_IPA_STATE_MOD_IR);
+    TEST_ASSERT_TRUE(state->modules & ESP_IPA_STATE_MOD_ACC);
+    TEST_ASSERT_EQUAL_UINT8(0, state->ir.ir_enable);
+    TEST_ASSERT_EQUAL_UINT8(3, state->ir.state); /* IR_STATE_NIGHT_SWITCH_DAY */
+    TEST_ASSERT_EQUAL_UINT8(0, state->acc.sat.enable);
+
+    memset(&restored, 0, sizeof(restored));
+    TEST_ESP_OK(esp_ipa_pipeline_set_state(handle, state, &sensor, &restored));
+    TEST_ASSERT_EQUAL_HEX32(IPA_METADATA_FLAGS_IR, restored.flags & IPA_METADATA_FLAGS_IR);
+    TEST_ASSERT_FALSE(restored.ir_enable);
+    TEST_ASSERT_EQUAL_HEX32(IPA_METADATA_FLAGS_ST, restored.flags & IPA_METADATA_FLAGS_ST);
+    TEST_ASSERT_EQUAL_UINT32(0, restored.saturation);
+    TEST_ESP_OK(esp_ipa_pipeline_ioctl(handle, ESP_IPA_ACC_G_SAT_STATUS, &sat_status));
+    TEST_ASSERT_EQUAL_INT32(0, sat_status);
+
+    /* Night-to-day transition still running: grayscale must continue. */
+    metadata.flags = 0;
+    TEST_ESP_OK(esp_ipa_pipeline_process(handle, &stats, &sensor, &metadata));
+    TEST_ASSERT_EQUAL_HEX32(0, metadata.flags & IPA_METADATA_FLAGS_ST);
+    TEST_ESP_OK(esp_ipa_pipeline_ioctl(handle, ESP_IPA_ACC_G_SAT_STATUS, &sat_status));
+    TEST_ASSERT_EQUAL_INT32(0, sat_status);
+
+    esp_ipa_set_int32(handle->ipa_array[0], "ct", 2000);
+    start_us = esp_timer_get_time();
+    do {
+        metadata.flags = 0;
+        TEST_ESP_OK(esp_ipa_pipeline_process(handle, &stats, &sensor, &metadata));
+        if (metadata.flags & IPA_METADATA_FLAGS_ST) {
+            break;
+        }
+        usleep(2000);
+    } while ((esp_timer_get_time() - start_us) < (int64_t)model0.night_switch_day_time_us + 100000);
+    TEST_ASSERT_EQUAL_HEX32(IPA_METADATA_FLAGS_ST, metadata.flags & IPA_METADATA_FLAGS_ST);
+    TEST_ASSERT_EQUAL_UINT32(2, metadata.saturation);
+    TEST_ESP_OK(esp_ipa_pipeline_ioctl(handle, ESP_IPA_ACC_G_SAT_STATUS, &sat_status));
+    TEST_ASSERT_EQUAL_INT32(1, sat_status);
+
+    free(state);
     TEST_ESP_OK(esp_ipa_pipeline_destroy(handle));
 }
 
@@ -3712,6 +3877,42 @@ TEST_CASE("IOCTL set/get test", "[IPA]")
     TEST_ESP_OK(esp_ipa_pipeline_ioctl(handle, ESP_IPA_AGC_S_STATUS, &status));
     TEST_ESP_OK(esp_ipa_pipeline_ioctl(handle, ESP_IPA_AGC_G_STATUS, &status));
     TEST_ASSERT_EQUAL_INT32(0, status);
+
+    /**
+     * Saturation runs by default.
+     * ESP_IPA_ACC_S_SAT_STATUS 0 stops later saturation updates.
+     */
+    esp_ipa_stats_t stats = {0};
+    int sat_status = 0;
+    uint32_t kept_saturation;
+
+    TEST_ESP_OK(esp_ipa_pipeline_ioctl(handle, ESP_IPA_ACC_G_SAT_STATUS, &sat_status));
+    TEST_ASSERT_EQUAL_INT32(1, sat_status);
+
+    esp_ipa_set_int32(handle->ipa_array[0], "ct", 1510);
+    metadata.flags = 0;
+    TEST_ESP_OK(esp_ipa_pipeline_process(handle, &stats, &s_esp_ipa_sensor, &metadata));
+    TEST_ASSERT_EQUAL_HEX32(IPA_METADATA_FLAGS_ST, metadata.flags & IPA_METADATA_FLAGS_ST);
+    TEST_ASSERT_EQUAL_HEX32(2, metadata.saturation);
+
+    sat_status = 0;
+    TEST_ESP_OK(esp_ipa_pipeline_ioctl(handle, ESP_IPA_ACC_S_SAT_STATUS, &sat_status));
+    TEST_ESP_OK(esp_ipa_pipeline_ioctl(handle, ESP_IPA_ACC_G_SAT_STATUS, &sat_status));
+    TEST_ASSERT_EQUAL_INT32(0, sat_status);
+
+    kept_saturation = metadata.saturation;
+    esp_ipa_set_int32(handle->ipa_array[0], "ct", 4510);
+    metadata.flags = 0;
+    TEST_ESP_OK(esp_ipa_pipeline_process(handle, &stats, &s_esp_ipa_sensor, &metadata));
+    TEST_ASSERT_EQUAL_HEX32(0, metadata.flags & IPA_METADATA_FLAGS_ST);
+    TEST_ASSERT_EQUAL_HEX32(kept_saturation, metadata.saturation);
+
+    sat_status = 1;
+    TEST_ESP_OK(esp_ipa_pipeline_ioctl(handle, ESP_IPA_ACC_S_SAT_STATUS, &sat_status));
+    metadata.flags = 0;
+    TEST_ESP_OK(esp_ipa_pipeline_process(handle, &stats, &s_esp_ipa_sensor, &metadata));
+    TEST_ASSERT_EQUAL_HEX32(IPA_METADATA_FLAGS_ST, metadata.flags & IPA_METADATA_FLAGS_ST);
+    TEST_ASSERT_EQUAL_HEX32(5, metadata.saturation);
 
     TEST_ESP_OK(esp_ipa_pipeline_destroy(handle));
 }

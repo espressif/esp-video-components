@@ -10,6 +10,9 @@
 #include "esp_cam_sensor_types.h"
 #include "esp_cam_motor_types.h"
 #include "esp_cam_ircut_types.h"
+#if CONFIG_ESP_VIDEO_ENABLE_LED_SUPPORT
+#include "esp_cam_led_types.h"
+#endif
 
 #ifdef __cplusplus
 extern "C" {
@@ -19,6 +22,9 @@ typedef struct esp_video_cam {
     esp_cam_sensor_device_t *sensor;
     esp_cam_motor_device_t *motor;
     esp_cam_ircut_device_t *ircut;
+#if CONFIG_ESP_VIDEO_ENABLE_LED_SUPPORT
+    esp_cam_led_device_t *led;
+#endif
 } esp_video_cam_t;
 
 /**

@@ -208,6 +208,8 @@ typedef struct esp_ipa_sensor {
     esp_ipa_sensor_focus_t *focus_info;     /*!< Sensor focus information, if sensor does not support setting focus, set to NULL */
 
     uint32_t cur_saturation;                /*!< Current saturation, used to restore after leaving IR mode */
+
+    bool ir_led_on;                            /*!< Caller-supplied IR LED state. true: LED is on */
 } esp_ipa_sensor_t;
 
 /**
@@ -261,6 +263,10 @@ typedef struct esp_ipa_stats_af {
 
 /**
  * @brief ISP statistics for IPA.
+ *
+ * Callers of esp_ipa_pipeline_process() must upload real-time statistics every
+ * cycle. IPA metadata may change statistics parameters from configuration, but
+ * the statistics stream itself must not stop.
  */
 typedef struct esp_ipa_stats {
     uint64_t seq;                           /*!< ISP statistics sequence */
@@ -1131,18 +1137,30 @@ typedef struct esp_ipa_af_window_weight {
 } esp_ipa_af_window_weight_t;
 
 /**
- * @brief IR day/night detect parameters for one working mode.
+ * @brief IR model 0 configuration.
  *
- * Both environment luma and AWB G/R (`sum_g / sum_r`) are required.
- * Bright only when luma > luma_threshold and G/R > awb_threshold;
- * dark only when both are not greater than the thresholds.
- * If either sample is missing or the two results disagree, this frame is skipped.
+ * Day compares environment luma with day_luma_threshold.
+ * Night multiplies luma by night_ir_factor, then compares with night_luma_threshold.
  */
-typedef struct esp_ipa_ir_detect_config {
-    float luma_threshold;                       /*!< Environment luma threshold; bright when luma is greater */
-    float awb_threshold;                        /*!< AWB G/R threshold; bright when sum_g/sum_r is greater */
-    uint32_t hold_time_us;                      /*!< Consecutive detect duration in microseconds to switch mode */
-} esp_ipa_ir_detect_config_t;
+typedef struct esp_ipa_ir_model0_config {
+    const char *luma_env;                       /*!< Environment luma variable. Missing variable means this frame has no luma */
+
+    float day_luma_threshold;                   /*!< Day environment luma threshold; bright when luma is greater */
+    uint32_t day_switch_night_time_us;          /*!< Transition time from day to night, microseconds */
+    uint32_t day_keep_time_us;                  /*!< Dark must hold this long before leaving day, microseconds */
+
+    float night_ir_factor;                      /*!< Multiply environment luma at night */
+    float night_luma_threshold;                 /*!< Night environment luma threshold; bright when luma is greater */
+    uint32_t night_switch_day_time_us;          /*!< Transition time from night to day, microseconds */
+    uint32_t night_keep_time_us;                /*!< Bright must hold this long before leaving night, microseconds */
+
+    esp_ipa_awb_range_t night_awb;              /*!< AWB statistics window written when the switch to night starts */
+    esp_ipa_ccm_t night_ccm;                    /*!< CCM written when the switch to night starts */
+    float night_red_gain;                       /*!< Red gain written when the switch to night starts */
+    float night_blue_gain;                      /*!< Blue gain written when the switch to night starts */
+
+    bool enable_log;                            /*!< Enable IR algorithm log */
+} esp_ipa_ir_model0_config_t;
 
 /**
  * @brief IR algorithm configuration.
@@ -1150,19 +1168,7 @@ typedef struct esp_ipa_ir_detect_config {
 typedef struct esp_ipa_ir_config {
     esp_ipa_ir_model_t model;                   /*!< IR data model type */
 
-    const char *luma_env;                       /*!< Prefer this environment variable for luma; NULL to use AE statistics */
-    float k;                                    /*!< Env luma = ae_luma / (gain * exposure / k) */
-    uint8_t weight[ISP_AE_REGIONS];             /*!< AE region weights for environment luma */
-
-    float ir_factor;                            /*!< Multiply environment luma in IR mode */
-
-    uint32_t enter_delay_us;                    /*!< Idle time after entering IR mode, microseconds */
-    uint32_t exit_delay_us;                     /*!< Idle time after leaving IR mode, microseconds */
-
-    esp_ipa_ir_detect_config_t normal;          /*!< Detect parameters in normal mode */
-    esp_ipa_ir_detect_config_t ir_mode;         /*!< Detect parameters in IR mode */
-
-    bool enable_log;                            /*!< Enable IR algorithm log */
+    esp_ipa_ir_model0_config_t *model0_param;      /*!< Parameters used by model 0 */
 } esp_ipa_ir_config_t;
 
 /**
@@ -1200,6 +1206,8 @@ typedef struct esp_ipa_ops {
                                                                1: AGC,
                                                                2: AF,
                                                                3: AWB,
+                                                               4: ACC,
+                                                               5: IAN,
                                                                others: reserved */
 
     /**

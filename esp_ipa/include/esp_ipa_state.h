@@ -119,8 +119,6 @@ typedef struct {
  * The switch-delay clock is cleared by set. state is the IR switch state machine.
  */
 typedef struct {
-    uint32_t prev_saturation;       /*!< Saturation saved before IR was enabled */
-    uint8_t sat_saved;              /*!< prev_saturation is valid */
     uint8_t state;                  /*!< IR switch state */
     uint8_t ir_enable;              /*!< IR cut / illuminator enable */
 } esp_ipa_ir_state_t;
@@ -191,19 +189,23 @@ typedef struct {
  * @brief ACC saturation computed state.
  *
  * An index of -1 means the saturation table has not been applied.
+ * enable is 0 when saturation updates are stopped. Resuming sets index to -1.
  */
 typedef struct {
     int32_t index;                  /*!< Saturation table index */
+    uint8_t enable;                 /*!< Saturation calculation enable */
 } esp_ipa_acc_sat_state_t;
 
 /**
  * @brief ACC CCM computed state.
  *
  * An index of -1 means the CCM table has not been applied. index may also be -2.
+ * enable is 0 when CCM updates are stopped. Resuming sets index to -1.
  */
 typedef struct {
     uint32_t prev_ct;               /*!< Previous color temperature */
     int32_t index;                  /*!< CCM table index */
+    uint8_t enable;                 /*!< CCM calculation enable */
     uint8_t base_valid;             /*!< base holds a CCM */
     uint8_t out_valid;              /*!< out is the CCM written to metadata */
     esp_ipa_ccm_t base;             /*!< CCM before gain blend */
@@ -319,6 +321,7 @@ typedef struct {
  * @brief IAN color-temperature smoothing state.
  *
  * rg_min/rg_max/bg_min/bg_max come from configuration and are not stored.
+ * enable is 0 when color-temperature estimation is stopped. Resuming sets index to -1.
  */
 typedef struct {
     int32_t index;                  /*!< Statistics window index */
@@ -326,6 +329,7 @@ typedef struct {
     double prev_bg;                 /*!< Previous B/G */
     int32_t prev_ct;                /*!< Previous color temperature */
     uint8_t smooth_inited;          /*!< CT smoothing has a sample */
+    uint8_t enable;                 /*!< Color-temperature estimation enable */
 } esp_ipa_ian_ct_state_t;
 
 /**
@@ -454,9 +458,11 @@ typedef struct {
  * @brief AWB (`esp_ipa_awb`) computed state.
  *
  * The startup-hold clock is cleared by set and is not stored.
+ * enable is 0 when AWB is stopped. Resuming clears the applied statistics window.
  */
 typedef struct {
     uint32_t model;                 /*!< esp_ipa_awb_model_t */
+    uint8_t enable;                 /*!< AWB calculation enable */
     float prev_green_luma;          /*!< Previous green luma */
     esp_ipa_awb_gain_state_t gain;
     esp_ipa_awb_range_state_t range;

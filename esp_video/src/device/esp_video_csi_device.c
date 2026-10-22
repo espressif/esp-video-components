@@ -729,6 +729,38 @@ esp_err_t esp_video_csi_video_device_add_ircut(esp_cam_ircut_device_t *ircut_dev
 }
 #endif
 
+#if CONFIG_ESP_VIDEO_ENABLE_MIPI_CSI_LED_SUPPORT
+/**
+ * @brief Add supplemental LED device to MIPI-CSI video device
+ *
+ * @param led_dev LED device
+ *
+ * @return
+ *      - ESP_OK on success
+ *      - Others if failed
+ */
+esp_err_t esp_video_csi_video_device_add_led(esp_cam_led_device_t *led_dev)
+{
+    struct esp_video *video;
+    esp_video_device_common_t *common;
+
+    video = esp_video_device_get_object(CSI_NAME);
+    if (!video) {
+        return ESP_ERR_NOT_FOUND;
+    }
+
+    common = VIDEO_PRIV_DATA(esp_video_device_common_t *, video);
+
+    if (common->cam.led) {
+        return ESP_ERR_INVALID_STATE;
+    }
+
+    common->cam.led = led_dev;
+
+    return ESP_OK;
+}
+#endif
+
 /**
  * @brief Destroy MIPI-CSI video device
  *

@@ -100,6 +100,7 @@ struct v4l2_sensor_format_enum {
 #define V4L2_CID_MOTOR_START_TIME       (V4L2_CID_CAMERA_CLASS_BASE + 43)
 
 #define V4L2_CID_IRCUT_MODE             (V4L2_CID_CAMERA_CLASS_BASE + 44)
+#define V4L2_CID_IR_LED_BRIGHTNESS      (V4L2_CID_CAMERA_CLASS_BASE + 45)
 
 /**
  * @brief Use this class to call esp_cam_sensor ioctl commands directly, this is only
