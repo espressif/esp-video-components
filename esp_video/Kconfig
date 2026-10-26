@@ -45,6 +45,17 @@ menu "Espressif Video Configuration"
             Recommended: Keep enabled during development, consider disabling
             for production builds where performance is critical.
 
+    config ESP_VIDEO_STREAM_STOP_DRAIN_FRAMES
+        int "Frames to wait after stream off before deleting ISP"
+        range 0 16
+        default 3
+        help
+            Sensor stream-off returns after the I2C write. The sensor stays in
+            HS until the current frame ends. Wait this many periods of the active
+            format before the ISP is deleted, so an in-flight frame can finish.
+
+            The default is 3 frames. Set this to 0 to skip the wait.
+
     menuconfig ESP_VIDEO_ENABLE_MIPI_CSI_VIDEO_DEVICE
         bool "Enable MIPI-CSI based Video Device"
         depends on SOC_MIPI_CSI_SUPPORTED

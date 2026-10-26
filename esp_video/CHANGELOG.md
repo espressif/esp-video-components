@@ -21,6 +21,7 @@
     - ISP pipeline applies IPA IR metadata to the camera through `V4L2_CID_IRCUT_MODE`
 - Updated the minimum camera exposure value in the `examples/v4l2_cmd/README.md`.
 - Added I3C as one of the options for SCCB
+- Fixed a rare ISP data type error, hnum/vnum setting error and input FIFO overflow when the sensor is still sending the current frame at stream-off. The capture controller now stops first, and the in-flight frame is drained for `ESP_VIDEO_STREAM_STOP_DRAIN_FRAMES` periods of the current format before the ISP is deleted. The default is 3. Set it to 0 to skip the wait.
 
 ## 2.5.0
 
