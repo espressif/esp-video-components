@@ -12,6 +12,8 @@
 #include "esp_timer.h"
 #include "esp_memory_utils.h"
 #include "esp_private/esp_cache_private.h"
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
 #include "esp_video.h"
 #include "esp_video_ioctl.h"
 #include "esp_video_internal.h"
@@ -457,6 +459,32 @@ fail_0:
     return ret;
 }
 
+/* Stream-off returns after the sensor I2C write. The sensor stays in HS
+ * until the current frame ends. Wait CONFIG_ESP_VIDEO_STREAM_STOP_DRAIN_FRAMES
+ * periods of the active format. The default is one frame, which covers a
+ * stop that takes effect at the end of the current frame. Zero skips the
+ * wait. Do not cap the result: SC2331 5 fps is 200 ms for that one frame. */
+#define VIDEO_STREAM_DRAIN_MIN_MS     4
+#define VIDEO_STREAM_DRAIN_DEFAULT_MS 50
+
+#if CONFIG_ESP_VIDEO_STREAM_STOP_DRAIN_FRAMES > 0
+static uint32_t video_stream_drain_ms(const esp_cam_sensor_format_t *format)
+{
+    uint32_t frames = CONFIG_ESP_VIDEO_STREAM_STOP_DRAIN_FRAMES;
+    uint32_t fps = (format != NULL) ? format->fps : 0;
+    if (fps == 0) {
+        return VIDEO_STREAM_DRAIN_DEFAULT_MS;
+    }
+
+    uint32_t frame_ms = (1000U + fps - 1U) / fps;
+    uint32_t drain_ms = frame_ms * frames;
+    if (drain_ms < VIDEO_STREAM_DRAIN_MIN_MS) {
+        return VIDEO_STREAM_DRAIN_MIN_MS;
+    }
+    return drain_ms;
+}
+#endif
+
 static esp_err_t common_video_stop_impl(struct esp_video *video, bool restart_sensor)
 {
     esp_video_device_common_t *common = VIDEO_DEVICE_COMMON(video);
@@ -473,10 +501,25 @@ static esp_err_t common_video_stop_impl(struct esp_video *video, bool restart_se
                             TAG, "failed to stop sensor stream");
     }
 
+    /* Cut the CSI/DVP data path before the ISP is disabled or the host is
+     * reset. Reprogramming hnum / data type, or resetting the PHY, while a
+     * frame is still in HS makes the next stream report data type error,
+     * hnum / vnum setting error and fifo overflow together. */
+    ESP_RETURN_ON_ERROR(esp_cam_ctlr_stop(common->cam_ctrl_handle), TAG, "failed to stop CAM ctlr");
+
+#if CONFIG_ESP_VIDEO_STREAM_STOP_DRAIN_FRAMES > 0
+    if (restart_sensor) {
+        uint32_t drain_ms = video_stream_drain_ms(common->sensor_format);
+
+        ESP_LOGD(TAG, "drain %" PRIu32 " ms (%d frames) before ISP delete",
+                 drain_ms, CONFIG_ESP_VIDEO_STREAM_STOP_DRAIN_FRAMES);
+        vTaskDelay(pdMS_TO_TICKS(drain_ms));
+    }
+#endif
+
     if (common->intf->stop) {
         ESP_RETURN_ON_ERROR(common->intf->stop(common), TAG, "device stop failed");
     }
-    ESP_RETURN_ON_ERROR(esp_cam_ctlr_stop(common->cam_ctrl_handle), TAG, "failed to stop CAM ctlr");
     ESP_RETURN_ON_ERROR(esp_cam_ctlr_disable(common->cam_ctrl_handle), TAG, "failed to disable CAM ctlr");
     ESP_RETURN_ON_ERROR(esp_cam_ctlr_del(common->cam_ctrl_handle), TAG, "failed to delete CAM ctlr");
     common->cam_ctrl_handle = NULL;
