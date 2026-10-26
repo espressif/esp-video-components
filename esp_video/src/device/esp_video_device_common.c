@@ -461,8 +461,9 @@ fail_0:
 
 /* Stream-off returns after the sensor I2C write. The sensor stays in HS
  * until the current frame ends. Wait CONFIG_ESP_VIDEO_STREAM_STOP_DRAIN_FRAMES
- * periods of the active format so a long exposure can still finish. Zero
- * skips the wait. Do not cap this: SC2331 5 fps is 200 ms per frame. */
+ * periods of the active format. The default is one frame, which covers a
+ * stop that takes effect at the end of the current frame. Zero skips the
+ * wait. Do not cap the result: SC2331 5 fps is 200 ms for that one frame. */
 #define VIDEO_STREAM_DRAIN_MIN_MS     4
 #define VIDEO_STREAM_DRAIN_DEFAULT_MS 50
 
