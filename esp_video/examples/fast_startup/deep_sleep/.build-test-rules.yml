@@ -1,0 +1,8 @@
+esp_video/examples/fast_startup/deep_sleep:
+  enable:
+    - if: IDF_TARGET in ["esp32p4"]
+      reason: ISP pipeline controller and MIPI-CSI are required
+  depends_components:
+    - esp_video
+    - esp_cam_sensor
+    - esp_sccb_intf

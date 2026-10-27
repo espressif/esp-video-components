@@ -5,6 +5,7 @@
  */
 
 #include <stdio.h>
+#include <stdlib.h>
 #include <inttypes.h>
 #include <string.h>
 #include <fcntl.h>
@@ -490,5 +491,59 @@ TEST_CASE("ISP pipeline switch IPA JSON by environment luma", "[video][isp_pipel
 
     test_stream_off(fd);
     TEST_ESP_OK(example_video_deinit());
+}
+
+TEST_CASE("ISP pipeline get and set IPA state", "[video][isp_pipeline]")
+{
+    int fd;
+    esp_ipa_state_t *state;
+    esp_ipa_state_t *again;
+    uint32_t crc;
+
+    setUp();
+
+    state = calloc(1, sizeof(*state));
+    again = calloc(1, sizeof(*again));
+    TEST_ASSERT_NOT_NULL(state);
+    TEST_ASSERT_NOT_NULL(again);
+
+    TEST_ESP_ERR(ESP_ERR_INVALID_ARG, esp_video_isp_pipeline_get_ipa_state(NULL));
+    TEST_ESP_ERR(ESP_ERR_INVALID_ARG, esp_video_isp_pipeline_set_ipa_state(NULL));
+    TEST_ESP_ERR(ESP_ERR_INVALID_STATE, esp_video_isp_pipeline_get_ipa_state(state));
+    TEST_ESP_ERR(ESP_ERR_INVALID_STATE, esp_video_isp_pipeline_set_ipa_state(state));
+
+    TEST_ESP_OK(example_video_init());
+    TEST_ASSERT_TRUE(esp_video_isp_pipeline_is_initialized());
+
+    test_stream_on(&fd);
+    vTaskDelay(pdMS_TO_TICKS(500));
+    test_stream_off(fd);
+    vTaskDelay(pdMS_TO_TICKS(100));
+
+    TEST_ESP_OK(esp_video_isp_pipeline_get_ipa_state(state));
+    TEST_ASSERT_EQUAL_UINT32(ESP_IPA_STATE_VERSION, state->version);
+    TEST_ASSERT_NOT_EQUAL(0, state->width);
+    TEST_ASSERT_NOT_EQUAL(0, state->height);
+
+    TEST_ESP_OK(esp_video_isp_pipeline_set_ipa_state(state));
+    TEST_ESP_OK(esp_video_isp_pipeline_get_ipa_state(again));
+    TEST_ASSERT_EQUAL_MEMORY(state, again, sizeof(*state));
+
+    crc = state->crc32;
+    state->crc32 ^= 0x1;
+    TEST_ESP_ERR(ESP_ERR_INVALID_CRC, esp_video_isp_pipeline_set_ipa_state(state));
+    state->crc32 = crc;
+
+    state->version += 1;
+    TEST_ESP_ERR(ESP_ERR_INVALID_VERSION, esp_video_isp_pipeline_set_ipa_state(state));
+    state->version = ESP_IPA_STATE_VERSION;
+
+    TEST_ESP_OK(esp_video_isp_pipeline_set_ipa_state(state));
+
+    TEST_ESP_OK(example_video_deinit());
+    TEST_ESP_ERR(ESP_ERR_INVALID_STATE, esp_video_isp_pipeline_get_ipa_state(state));
+
+    free(again);
+    free(state);
 }
 #endif /* CONFIG_ESP_VIDEO_ENABLE_ISP_PIPELINE_CONTROLLER && CONFIG_ESP_VIDEO_ENABLE_MIPI_CSI_VIDEO_DEVICE */

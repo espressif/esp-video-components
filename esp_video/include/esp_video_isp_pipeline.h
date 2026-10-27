@@ -13,6 +13,7 @@
 #include "esp_video_isp_ioctl.h"
 #if CONFIG_ESP_VIDEO_ENABLE_ISP_PIPELINE_CONTROLLER
 #include "esp_ipa.h"
+#include "esp_ipa_state.h"
 #endif
 
 #ifdef __cplusplus
@@ -215,6 +216,44 @@ const esp_ipa_config_t *esp_video_isp_pipeline_enum_ipa_configs(const char *sens
  *      - Others if failed
  */
 esp_err_t esp_video_isp_pipeline_set_ipa_config(const esp_ipa_config_t *config);
+
+/**
+ * @brief Read the computed IPA state.
+ *
+ * Call while the ISP pipeline is initialized. On ESP32-P4 the ISP is bound to
+ * MIPI-CSI, so VIDIOC_STREAMOFF stops both and the state no longer changes.
+ * @p state must be the same object later passed to esp_video_isp_pipeline_set_ipa_state().
+ * The IPA configuration, width and height must stay the same between the two calls.
+ *
+ * @param state State filled on success. The caller owns this buffer.
+ *
+ * @return
+ *      - ESP_OK on success
+ *      - ESP_ERR_INVALID_ARG if @p state is NULL
+ *      - ESP_ERR_INVALID_STATE if the pipeline is not initialized
+ *      - Others if failed
+ */
+esp_err_t esp_video_isp_pipeline_get_ipa_state(esp_ipa_state_t *state);
+
+/**
+ * @brief Restore a saved IPA state and write it to the ISP and camera.
+ *
+ * Call after the pipeline is initialized, before VIDIOC_STREAMON of the frame
+ * that must use the restored parameters. @p state must come from
+ * esp_video_isp_pipeline_get_ipa_state() with the same IPA configuration.
+ *
+ * @param state State previously returned by esp_video_isp_pipeline_get_ipa_state()
+ *
+ * @return
+ *      - ESP_OK on success
+ *      - ESP_ERR_INVALID_ARG if @p state is NULL
+ *      - ESP_ERR_INVALID_STATE if the pipeline is not initialized, or @p state
+ *        does not match this pipeline
+ *      - ESP_ERR_INVALID_VERSION if @p state->version does not match
+ *      - ESP_ERR_INVALID_CRC if @p state->crc32 does not match
+ *      - Others if failed
+ */
+esp_err_t esp_video_isp_pipeline_set_ipa_state(const esp_ipa_state_t *state);
 #endif /* CONFIG_ESP_VIDEO_ENABLE_ISP_PIPELINE_CONTROLLER */
 
 #ifdef __cplusplus

@@ -1,0 +1,55 @@
+menu "Example Configuration"
+    config EXAMPLE_CT_MIN
+        int "Minimum color temperature (K)"
+        default 3000
+        range 2000 20000
+        help
+            Cold boot keeps streaming until the IPA color temperature is at least this value.
+
+    config EXAMPLE_CT_MAX
+        int "Maximum color temperature (K)"
+        default 8000
+        range EXAMPLE_CT_MIN 20000
+        help
+            Cold boot keeps streaming until the IPA color temperature is at most this value.
+
+    config EXAMPLE_CT_WAIT_MS
+        int "Color temperature wait timeout (ms)"
+        default 30000
+        range 1000 300000
+        help
+            Give up this boot if color temperature is still outside the range after this time.
+            The device does not save IPA state and does not enter deep sleep.
+
+    config EXAMPLE_RECV_TIMEOUT_MS
+        int "Frame receive timeout (ms)"
+        default 1000
+        range 10 60000
+        help
+            DQBUF timeout applied to the camera and JPEG devices after open, and used while
+            recycling frames until color temperature is in range. During color-temperature
+            wait, each DQBUF uses the smaller of this value and the remaining wait deadline.
+            One frame that does not arrive within that time stops this boot.
+
+    config EXAMPLE_SLEEP_TIME_SEC
+        int "Deep sleep time (seconds)"
+        default 10
+        range 1 86400
+        help
+            Timer wakeup interval after the IPA state has been stored in RTC memory.
+
+    config EXAMPLE_JPEG_COMPRESSION_QUALITY
+        int "JPEG compression quality (%)"
+        default 80
+        range 1 100
+        help
+            JPEG quality of the first frame saved after wakeup.
+
+    config EXAMPLE_IMAGE_FILE_NAME
+        string "Image file name"
+        default "fast_startup_deep_sleep"
+        help
+            Base name of the JPEG saved after wakeup.
+            The file is stored as <mount point>/<name>_no.<index>.jpg.
+            The index is a 4-digit number kept in RTC memory and increases after a successful write.
+endmenu

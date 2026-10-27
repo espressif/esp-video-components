@@ -56,6 +56,11 @@ esp_err_t esp_ipa_pipeline_create(const esp_ipa_config_t *config, esp_ipa_pipeli
  * @note `config->version` must match the current pipeline. `config->nums` and
  *       `config->names[i]` must match the modules loaded at create time, and
  *       each built-in module must have its sub-configuration present.
+ * @note Do not call this between esp_ipa_pipeline_get_state() and
+ *       esp_ipa_pipeline_set_state(). State does not store the configuration;
+ *       the config at get and set must be identical. Changing it here makes
+ *       the saved results inconsistent with the modules, and set_state then
+ *       writes wrong ISP parameters.
  *
  * @param[in]  handle   Pipeline handle (pointer value stays the same)
  * @param[in]  config   New IPA configuration
@@ -129,7 +134,7 @@ esp_err_t esp_ipa_pipeline_destroy(esp_ipa_pipeline_handle_t handle);
 esp_err_t esp_ipa_awb_set_fixed_ct(esp_ipa_pipeline_handle_t handle, uint32_t ct);
 
 /**
- * @brief Check if IPA contains of this variable.
+ * @brief Check if IPA contains of this variable in any typed map.
  *
  * @note Returns false if `ipa->pipeline` is NULL. Do not call from detect-only
  *       `destroy` — that path must not access the pipeline at all.
@@ -137,9 +142,45 @@ esp_err_t esp_ipa_awb_set_fixed_ct(esp_ipa_pipeline_handle_t handle, uint32_t ct
  * @param ipa   Image process algorithm object
  * @param name  Variable name
  *
- * @return true if IPA has global variable of this name; false true if IPA has no global variable of this name
+ * @return true if IPA has global variable of this name; false if IPA has no global variable of this name
  */
 bool esp_ipa_has_var(esp_ipa_t *ipa, const char *name);
+
+/**
+ * @brief Check if IPA contains of this int32_t variable.
+ *
+ * @note Returns false if `ipa` or `ipa->pipeline` is NULL.
+ *
+ * @param ipa   Image process algorithm object
+ * @param name  Variable name
+ *
+ * @return true if IPA has int32_t global variable of this name; otherwise false
+ */
+bool esp_ipa_has_int32_var(esp_ipa_t *ipa, const char *name);
+
+/**
+ * @brief Check if IPA contains of this float variable.
+ *
+ * @note Returns false if `ipa` or `ipa->pipeline` is NULL.
+ *
+ * @param ipa   Image process algorithm object
+ * @param name  Variable name
+ *
+ * @return true if IPA has float global variable of this name; otherwise false
+ */
+bool esp_ipa_has_float_var(esp_ipa_t *ipa, const char *name);
+
+/**
+ * @brief Check if IPA contains of this pointer variable.
+ *
+ * @note Returns false if `ipa` or `ipa->pipeline` is NULL.
+ *
+ * @param ipa   Image process algorithm object
+ * @param name  Variable name
+ *
+ * @return true if IPA has pointer global variable of this name; otherwise false
+ */
+bool esp_ipa_has_ptr_var(esp_ipa_t *ipa, const char *name);
 
 /**
  * @brief Set int32_t type global variable.

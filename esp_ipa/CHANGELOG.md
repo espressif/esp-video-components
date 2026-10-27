@@ -5,6 +5,16 @@
 - Updated AWB model 2 reference counters with low white-point counts to reduce stale statistics that delay recovery after lens occlusion
 - Added support for the DPC (Defective Pixel Correction) control algorithm
 - Added day/night IR mode switching from environment luma and AWB G/R (both required and must agree), with hold time and enter/exit delay
+- Added APIs to get and set IPA pipeline running state
+    - `esp_ipa_pipeline_get_state` and `esp_ipa_pipeline_set_state` require the same IPA configuration at both calls. Do not call `esp_ipa_pipeline_set_config` to change parameters between them: state does not store the configuration, and a different config makes `set_state` write wrong ISP parameters
+- Pipeline global variables: `esp_ipa_map_t` owns typed maps (`int32_map` / `float_map` / `ptr_map`); independent C++ map implementations (no uint32_t type-punning); added `esp_ipa_has_int32_var` / `esp_ipa_has_float_var` / `esp_ipa_has_ptr_var` while keeping `esp_ipa_has_var`
+- ACC CCM: publish `IPA_METADATA_FLAGS_CCM` only when the gain-blended matrix differs from the last published CCM
+- ACC LSC: init still applies a table, but leaves the gain/CT lookup uncommitted so the first process publishes the table selected by the real CT
+- AGC meter: the high luma bound is exclusive (`< high`) for both block luma and environment luma
+- AWB model 3: publish red/blue gain on any real change (step `1e-4`) instead of `min_*_gain_step`, and write the active preset CT into the pipeline `ct` variable during process
+- IAN: when AWB model 3 is active, `cal_ct` does not overwrite the fixed color temperature
+- Added APIs to get and set IPA pipeline running state
+    - `esp_ipa_pipeline_get_state` and `esp_ipa_pipeline_set_state` require the same IPA configuration at both calls. Do not call `esp_ipa_pipeline_set_config` to change parameters between them: state does not store the configuration, and a different config makes `set_state` write wrong ISP parameters
 
 ## 2.4.0
 
