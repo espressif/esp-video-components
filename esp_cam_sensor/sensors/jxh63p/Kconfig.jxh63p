@@ -1,0 +1,88 @@
+menuconfig CAMERA_JXH63P
+    bool "JXH63P"
+    default n
+    depends on SOC_MIPI_CSI_SUPPORTED
+    help
+        Enabling this option will add the support for JXH63P.
+
+if CAMERA_JXH63P
+    menu "Auto detect JXH63P"
+        config CAMERA_JXH63P_AUTO_DETECT_MIPI_INTERFACE_SENSOR
+            bool "Detect for MIPI CSI interface sensor"
+            default y
+            help
+                When enabled, the JXH63P sensor will be automatically detected
+                and initialized on the MIPI CSI interface at startup without requiring
+                manual detection call(jxh63p_detect) in your application.
+    endmenu
+
+    menu "Choose supported formats for MIPI CSI interface"
+        config CAMERA_JXH63P_MIPI_RAW10_1280X720_30FPS
+            bool "MIPI 1-lane, 24M input, 1280x720 30fps, RAW10"
+            default y
+            help
+                RAW10 format at 1280x720 resolution with 30fps framerate.
+                Requires MIPI CSI-2 1-lane interface with 24MHz input clock.
+
+        config CAMERA_JXH63P_MIPI_RAW10_640X480_30FPS
+            bool "MIPI 1-lane, 24M input, 640x480 30fps, RAW10"
+            default n
+            help
+                RAW10 format at 640x480 resolution with 30fps framerate.
+                Requires MIPI CSI-2 1-lane interface with 24MHz input clock.
+    endmenu
+
+    choice CAMERA_JXH63P_MIPI_DEFAULT_FMT
+        prompt "Select default output format for MIPI CSI interface"
+        default CAMERA_JXH63P_MIPI_DEFAULT_FMT_RAW10_1280X720_30FPS
+        help
+            Select the default format to load when the sensor is detected.
+            When the sensor is in stream off state, the format can be changed.
+
+        config CAMERA_JXH63P_MIPI_DEFAULT_FMT_RAW10_1280X720_30FPS
+            bool "MIPI 1-lane, 24M input, 1280x720 30fps, RAW10"
+            depends on CAMERA_JXH63P_MIPI_RAW10_1280X720_30FPS
+
+        config CAMERA_JXH63P_MIPI_DEFAULT_FMT_RAW10_640X480_30FPS
+            bool "MIPI 1-lane, 24M input, 640x480 30fps, RAW10"
+            depends on CAMERA_JXH63P_MIPI_RAW10_640X480_30FPS
+    endchoice # CAMERA_JXH63P_MIPI_DEFAULT_FMT
+
+    config CAMERA_JXH63P_MIPI_IF_FORMAT_INDEX_DEFAULT
+        int
+        default 0 if CAMERA_JXH63P_MIPI_DEFAULT_FMT_RAW10_1280X720_30FPS
+        default 1 if CAMERA_JXH63P_MIPI_DEFAULT_FMT_RAW10_640X480_30FPS
+        help
+            Set the configuration loaded by default for the MIPI interface.
+            More information can be obtained by calling the query_support_formats().
+
+    choice CAMERA_JXH63P_IPA_JSON_CONFIGURATION_FILE
+        prompt "IPA Configuration File"
+        default CAMERA_JXH63P_DEFAULT_IPA_JSON_CONFIGURATION_FILE
+        help
+            Select the Image Processing Algorithm (IPA) JSON configuration file
+            for the JXH63P sensor.
+
+        config CAMERA_JXH63P_DEFAULT_IPA_JSON_CONFIGURATION_FILE
+            bool "Use default configuration"
+            help
+                Use the built-in default IPA configuration file:
+                "esp_cam_sensor/sensors/JXH63P/cfg/JXH63P_default.json"
+
+                This configuration provides optimized settings for monochrome
+                machine vision applications and is recommended for most use cases.
+
+        config CAMERA_JXH63P_CUSTOMIZED_IPA_JSON_CONFIGURATION_FILE
+            bool "Use custom configuration"
+            help
+                Use a custom IPA configuration file with your own optimized settings.
+                You must specify the custom file path in the configuration below.
+        endchoice
+
+    config CAMERA_JXH63P_CUSTOMIZED_IPA_JSON_CONFIGURATION_FILE_PATH
+        string "Custom IPA configuration file path"
+        depends on CAMERA_JXH63P_CUSTOMIZED_IPA_JSON_CONFIGURATION_FILE
+        help
+            Specify the path to your custom JXH63P IPA JSON configuration file.
+            The path is relative to your project root directory.
+endif
