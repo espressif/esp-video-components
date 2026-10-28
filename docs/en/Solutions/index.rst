@@ -8,6 +8,7 @@ Application Solutions
    :maxdepth: 1
 
    Infrared Night Vision <ir_night_vision>
+   Fast Startup <fast_startup>
 
 .. note::
 
