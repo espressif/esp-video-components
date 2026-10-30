@@ -271,6 +271,51 @@ static esp_err_t ov5645_get_sensor_id(esp_cam_sensor_device_t *dev, esp_cam_sens
     return ret;
 }
 
+/* 0x3820[2:1] / 0x3821[2:1] are sensor+ISP flip/mirror. 0x4514 retunes the
+ * average window so full-size (no binning) flip does not shift color.
+ * Same table as set_mirror_flip() in ov5645_mipi_yuv_Sensor.c. */
+static esp_err_t ov5645_update_mirror_flip_avg(esp_cam_sensor_device_t *dev)
+{
+    uint8_t reg20 = 0;
+    uint8_t reg21 = 0;
+    esp_err_t ret = ov5645_read(dev->sccb_handle, 0x3820, &reg20);
+    if (ret != ESP_OK) {
+        return ret;
+    }
+    ret = ov5645_read(dev->sccb_handle, 0x3821, &reg21);
+    if (ret != ESP_OK) {
+        return ret;
+    }
+
+    bool flip = (reg20 & 0x06) != 0;
+    bool mirror = (reg21 & 0x06) != 0;
+    /* Binning bits are 0x3820[0] and 0x3821[0]. Capture leaves both clear. */
+    bool capture = ((reg20 | reg21) & 0x01) == 0;
+    uint8_t avg = 0x00;
+    if (capture && flip) {
+        avg = mirror ? 0xbb : 0xaa;
+    }
+    return ov5645_write(dev->sccb_handle, 0x4514, avg);
+}
+
+static esp_err_t ov5645_set_hmirror(esp_cam_sensor_device_t *dev, int enable)
+{
+    esp_err_t ret = ov5645_set_reg_bits(dev->sccb_handle, 0x3821, 1, 2, enable ? 0x03 : 0x00);
+    if (ret != ESP_OK) {
+        return ret;
+    }
+    return ov5645_update_mirror_flip_avg(dev);
+}
+
+static esp_err_t ov5645_set_vflip(esp_cam_sensor_device_t *dev, int enable)
+{
+    esp_err_t ret = ov5645_set_reg_bits(dev->sccb_handle, 0x3820, 1, 2, enable ? 0x03 : 0x00);
+    if (ret != ESP_OK) {
+        return ret;
+    }
+    return ov5645_update_mirror_flip_avg(dev);
+}
+
 static esp_err_t ov5645_set_stream(esp_cam_sensor_device_t *dev, int enable)
 {
     esp_err_t ret = ESP_FAIL;
@@ -285,16 +330,6 @@ static esp_err_t ov5645_set_stream(esp_cam_sensor_device_t *dev, int enable)
 
     ESP_LOGD(TAG, "Stream=%d", enable);
     return ret;
-}
-
-static esp_err_t ov5645_set_hmirror(esp_cam_sensor_device_t *dev, int enable)
-{
-    return ov5645_set_reg_bits(dev->sccb_handle, 0x3821, 2, 1, enable ? 1 : 0);
-}
-
-static esp_err_t ov5645_set_vflip(esp_cam_sensor_device_t *dev, int enable)
-{
-    return ov5645_set_reg_bits(dev->sccb_handle, 0x3820, 2, 1, enable ? 1 : 0);
 }
 
 static esp_err_t ov5645_query_para_desc(esp_cam_sensor_device_t *dev, esp_cam_sensor_param_desc_t *qdesc)

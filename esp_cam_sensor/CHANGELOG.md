@@ -14,6 +14,7 @@
 - Updated the MIT245 default IPA configuration by removing LSC and retuning AWB, AGC, CCM, denoising, gamma and sharpening parameters.
 - Added `set_fps()` function to set the frame rate in the SC2336 sensor driver.
 - Added JX-H63P MIPI RAW sensor driver.
+- Fixed the mirror and flip settings in the OV5645 camera sensor driver.
 
 ## 2.6.0
 
