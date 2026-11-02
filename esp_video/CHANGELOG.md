@@ -28,6 +28,7 @@
 - Updated the minimum camera exposure value in the `examples/v4l2_cmd/README.md`.
 - Added I3C as one of the options for SCCB
 - Fixed a rare ISP data type error, hnum/vnum setting error and input FIFO overflow when the sensor is still sending the current frame at stream-off. The capture controller now stops first, and the in-flight frame is drained for `ESP_VIDEO_STREAM_STOP_DRAIN_FRAMES` periods of the current format before the ISP is deleted. The default is 1. Set it to 0 to skip the wait.
+- Fixed MIPI-CSI input color on ESP32-P4 revisions below v3.0 with ESP-IDF v5.5.6 or later. These versions expect the CSI input format to match the ISP output, so the capture path no longer reports the sensor format as the CSI input
 
 ## 2.5.0
 
