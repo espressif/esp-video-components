@@ -7,6 +7,10 @@
 
 本文档主要介绍相机传感器调试过程中的驱动开发流程及注意事项。相机传感器调试可按照下图所示流程实施：
 
+.. note::
+
+    图像质量调优使用 PC 端调试分析工具。该工具需向 `乐鑫商务 <https://www.espressif.com/en/contact-us/sales-questions>`_ 或 sales@espressif.com 申请后获取，本仓库不提供公开安装包。申请方式见 `技术支持政策 <https://github.com/espressif/esp-video-components/blob/master/esp_cam_sensor/SUPPORT_POLICY_CN.md>`_。
+
 .. figure:: ../../_static/Sensor_drivers/sensor_tuning_flow_cn.png
     :align: center
     :alt: 传感器调试流程

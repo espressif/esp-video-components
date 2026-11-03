@@ -28,3 +28,8 @@ Version 0.4.0 (2026-10-15)
 ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 - Updated and aligned the English and Chinese ESP Video documentation, including the application development guide, command reference, API reference, and technology selection guide.
+
+Version 0.4.1 (2026-11-03)
+^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+- Get Started and Camera Sensor Tuning state that the PC tuning and analysis tool is requested from the Espressif business team (https://www.espressif.com/en/contact-us/sales-questions or sales@espressif.com). Both pages link to ``SUPPORT_POLICY`` and state that this repository does not publish an installable package.
