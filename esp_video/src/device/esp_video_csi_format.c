@@ -506,8 +506,12 @@ esp_err_t esp_video_csi_check_format(esp_cam_sensor_output_format_t sensor_fmt, 
         /* ISP output to requested format */
         in_out_format->isp_output_fmt = v4l2_to_isp_color(requested_fmt);
 
-        /* ISP output to CSI output */
-#if ESP_IDF_VERSION < ESP_IDF_VERSION_VAL(6, 0, 0)
+        /*
+         * From ESP-IDF v5.5.6, input_data_color_type is the color entering CSI
+         * (the ISP output), not the sensor format. Revisions below v3.0 cannot
+         * convert, so the CSI input must match the ISP output.
+         */
+#if ESP_IDF_VERSION < ESP_IDF_VERSION_VAL(5, 5, 6)
         /* Old IDF version: use sensor format as CSI input */
         in_out_format->csi_input_fmt = v4l2_to_csi_color(sensor_v4l2_fmt);
 #else
