@@ -75,7 +75,7 @@ System Architecture
 
 The system is organized into five layers: PC-side tuning and analysis tools, application layer, application framework layer, device layer, and kernel layer.
 
-- PC-side tuning and analysis tools are used for previewing images, analyzing image quality, tuning image system parameters online, and calibrating image processing unit parameters.
+- PC-side tuning and analysis tools preview images, analyze image quality, tune image-system parameters online, and calibrate image-processing parameters. Request these tools from the `Espressif business team <https://www.espressif.com/en/contact-us/sales-questions>`_ or sales@espressif.com. This repository does not publish an installable package. See the `Support Policy <https://github.com/espressif/esp-video-components/blob/master/esp_cam_sensor/SUPPORT_POLICY.md>`_.
 - The application layer primarily uses various APIs provided by esp_video for application development.
 - esp_video is the application framework layer. It not only manages the various devices and libraries in the device layer, but also provides efficient and user-friendly APIs to applications. As middleware for the entire system, it provides a unified interface to upper layers and a unified standard to lower-layer components to facilitate compatible control of various devices.
 - The device layer includes the underlying implementation of camera sensor devices and image processing control algorithm libraries, and provides calling interfaces to upper layers.

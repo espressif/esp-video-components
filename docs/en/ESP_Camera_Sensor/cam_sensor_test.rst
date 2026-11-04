@@ -5,7 +5,11 @@ Camera Sensor Tuning
 
 :link_to_translation:`zh_CN:[中文]`
 
-This document describes the driver development workflow and key considerations during camera sensor tuning. Follow the workflow shown below to perform camera sensor tuning:
+This document describes the driver development workflow and key considerations during camera sensor tuning. Follow the workflow shown below to perform camera sensor tuning.
+
+.. note::
+
+    Image-quality tuning uses a PC-side tuning and analysis tool. Request this tool from the `Espressif business team <https://www.espressif.com/en/contact-us/sales-questions>`_ or sales@espressif.com. This repository does not publish an installable package. See the `Support Policy <https://github.com/espressif/esp-video-components/blob/master/esp_cam_sensor/SUPPORT_POLICY.md>`_.
 
 .. figure:: ../../_static/Sensor_drivers/sensor_tuning_flow_en.jpg
     :align: center

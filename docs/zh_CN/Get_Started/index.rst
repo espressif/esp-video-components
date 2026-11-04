@@ -75,7 +75,7 @@ ESP-Video-Components 是乐鑫官方的相机系统开发与应用框架。它�
 
 从组织结构来看，系统分为五层：PC 端调试分析工具、应用层、应用框架层、设备层、内核层。
 
-- PC 端调试分析工具，用于预览图像、分析图像质量、在线调试图像系统的参数、标定图像处理单元的参数。
+- PC 端调试分析工具用于预览图像、分析图像质量、在线调试图像系统参数、标定图像处理单元参数。该工具需向 `乐鑫商务 <https://www.espressif.com/en/contact-us/sales-questions>`_ 或 sales@espressif.com 申请后获取，本仓库不提供公开安装包。申请方式见 `技术支持政策 <https://github.com/espressif/esp-video-components/blob/master/esp_cam_sensor/SUPPORT_POLICY_CN.md>`_。
 - 应用层主要是调用 esp_video 提供的各种 API 进行应用开发。
 - esp_video 是应用框架层，它不仅管理设备层的各个设备和库，还向应用程序提供高效、便捷的 API 接口。作为整个系统的中间件，它对上实现统一的接口，对下层组件也提供统一的标准以方便各种设备的兼容控制。
 - 设备层，包括相机传感器设备、图像处理控制算法库的底层实现，并以统一的接口向上层提供调用接口。
