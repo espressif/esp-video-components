@@ -4,6 +4,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+#include <math.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
@@ -26,6 +27,16 @@
 static size_t before_free_8bit;
 static size_t before_free_32bit;
 static const char *TAG = "dummy";
+
+static esp_err_t dummy_awb_s_ct(esp_ipa_pipeline_handle_t handle, uint32_t ct)
+{
+    return esp_ipa_pipeline_ioctl(handle, ESP_IPA_AWB_S_CT, &ct);
+}
+
+static esp_err_t dummy_awb_s_reset(esp_ipa_pipeline_handle_t handle)
+{
+    return esp_ipa_pipeline_ioctl(handle, ESP_IPA_AWB_S_RESET, NULL);
+}
 
 static esp_ipa_sensor_focus_t s_esp_ipa_sensor_info = {
     .max_pos = 1000,
@@ -2105,6 +2116,200 @@ TEST_CASE("AWB model_2 optional startup zone", "[IPA]")
     }
 }
 
+TEST_CASE("AWB model_2 fixed CT hold", "[IPA]")
+{
+    const esp_ipa_config_t *base = esp_ipa_pipeline_get_config(IPA_TARGET_NAME);
+    static esp_ipa_config_t cfg;
+    static esp_ipa_awb_config_t awb;
+    static const esp_ipa_awb_ct_point_t refs[] = {
+        { .ct = 5000, .rg = 0.50f, .bg = 0.60f, .radius = 0.20f },
+        { .ct = 6500, .rg = 0.60f, .bg = 0.50f, .radius = 0.20f },
+    };
+    esp_ipa_pipeline_handle_t handle = NULL;
+    esp_ipa_metadata_t metadata = {0};
+    esp_ipa_stats_t stats = {0};
+    const float m_lo = 1000000.0f / 5000.0f;
+    const float m_hi = 1000000.0f / 6500.0f;
+    const float m = 1000000.0f / 6200.0f;
+    const float t = (m - m_lo) / (m_hi - m_lo);
+    const float rg = 0.50f + t * (0.60f - 0.50f);
+    const float bg = 0.60f + t * (0.50f - 0.60f);
+
+    TEST_ASSERT_NOT_NULL(base);
+    TEST_ASSERT_NOT_NULL(base->awb);
+    memcpy(&cfg, base, sizeof(cfg));
+    memcpy(&awb, base->awb, sizeof(awb));
+    awb.model = ESP_IPA_AWB_MODEL_2;
+    awb.ref_points = refs;
+    awb.ref_points_count = 2;
+    awb.min_red_gain_step = 0;
+    awb.min_blue_gain_step = 0;
+    awb.red_gain_scale = 1.0f;
+    awb.blue_gain_scale = 1.0f;
+    awb.export_ct = true;
+    cfg.awb = &awb;
+
+    TEST_ESP_OK(esp_ipa_pipeline_create(&cfg, &handle));
+    TEST_ESP_OK(esp_ipa_pipeline_init(handle, &s_esp_ipa_sensor, &metadata));
+    TEST_ESP_OK(dummy_awb_s_ct(handle, 6200));
+    TEST_ASSERT_EQUAL_INT32(6200, esp_ipa_get_int32(handle->ipa_array[0], "ct"));
+
+    stats.flags = IPA_STATS_FLAGS_AWB;
+    stats.awb_stats[0].counted = awb.min_counted + 10;
+    stats.awb_stats[0].sum_g = 4000;
+    stats.awb_stats[0].sum_r = 1000;
+    stats.awb_stats[0].sum_b = 8000;
+    metadata.flags = 0;
+    TEST_ESP_OK(esp_ipa_pipeline_process(handle, &stats, &s_esp_ipa_sensor, &metadata));
+    TEST_ASSERT_EQUAL_HEX32(0, metadata.flags & IPA_METADATA_FLAGS_AWB);
+    TEST_ASSERT_EQUAL_HEX32(IPA_METADATA_FLAGS_RG | IPA_METADATA_FLAGS_BG,
+                            metadata.flags & (IPA_METADATA_FLAGS_RG | IPA_METADATA_FLAGS_BG));
+    TEST_ASSERT_FLOAT_WITHIN(1e-4f, 1.0f / rg, metadata.red_gain);
+    TEST_ASSERT_FLOAT_WITHIN(1e-4f, 1.0f / bg, metadata.blue_gain);
+
+    TEST_ESP_OK(dummy_awb_s_reset(handle));
+    metadata.flags = 0;
+    TEST_ESP_OK(esp_ipa_pipeline_process(handle, &stats, &s_esp_ipa_sensor, &metadata));
+    TEST_ASSERT_EQUAL_HEX32(IPA_METADATA_FLAGS_AWB, metadata.flags & IPA_METADATA_FLAGS_AWB);
+    TEST_ESP_OK(esp_ipa_pipeline_destroy(handle));
+}
+
+TEST_CASE("AWB model_2 fixed CT get/set_state", "[IPA][AWB]")
+{
+    const esp_ipa_config_t *base = esp_ipa_pipeline_get_config(IPA_TARGET_NAME);
+    static esp_ipa_config_t cfg;
+    static esp_ipa_awb_config_t awb;
+    static const esp_ipa_awb_ct_point_t refs[] = {
+        { .ct = 5000, .rg = 0.50f, .bg = 0.60f, .radius = 0.20f },
+        { .ct = 6500, .rg = 0.60f, .bg = 0.50f, .radius = 0.20f },
+    };
+    const float m_lo = 1000000.0f / 5000.0f;
+    const float m_hi = 1000000.0f / 6500.0f;
+    const float m = 1000000.0f / 6200.0f;
+    const float t = (m - m_lo) / (m_hi - m_lo);
+    const float rg = 0.50f + t * (0.60f - 0.50f);
+    const float bg = 0.60f + t * (0.50f - 0.60f);
+    esp_ipa_pipeline_handle_t handle = NULL;
+    esp_ipa_metadata_t metadata = {0};
+    esp_ipa_stats_t stats = {0};
+    esp_ipa_state_t *state;
+
+    TEST_ASSERT_NOT_NULL(base);
+    TEST_ASSERT_NOT_NULL(base->awb);
+    memcpy(&cfg, base, sizeof(cfg));
+    memcpy(&awb, base->awb, sizeof(awb));
+    awb.model = ESP_IPA_AWB_MODEL_2;
+    awb.ref_points = refs;
+    awb.ref_points_count = 2;
+    awb.min_red_gain_step = 0;
+    awb.min_blue_gain_step = 0;
+    awb.red_gain_scale = 1.0f;
+    awb.blue_gain_scale = 1.0f;
+    awb.export_ct = true;
+    cfg.awb = &awb;
+
+    state = calloc(1, sizeof(*state));
+    TEST_ASSERT_NOT_NULL(state);
+
+    TEST_ESP_OK(esp_ipa_pipeline_create(&cfg, &handle));
+    TEST_ESP_OK(esp_ipa_pipeline_init(handle, &s_esp_ipa_sensor, &metadata));
+    TEST_ESP_OK(dummy_awb_s_ct(handle, 6200));
+    TEST_ESP_OK(esp_ipa_pipeline_get_state(handle, &s_esp_ipa_sensor, state));
+    TEST_ASSERT_EQUAL_UINT8(1, state->awb.fixed.valid);
+    TEST_ASSERT_EQUAL_UINT32(6200, state->awb.fixed.ct);
+
+    TEST_ESP_OK(esp_ipa_pipeline_destroy(handle));
+    handle = NULL;
+    TEST_ESP_OK(esp_ipa_pipeline_create(&cfg, &handle));
+    TEST_ESP_OK(esp_ipa_pipeline_init(handle, &s_esp_ipa_sensor, &metadata));
+    TEST_ESP_OK(esp_ipa_pipeline_set_state(handle, state, &s_esp_ipa_sensor, &metadata));
+    TEST_ASSERT_EQUAL_INT32(6200, esp_ipa_get_int32(handle->ipa_array[0], "ct"));
+
+    stats.flags = IPA_STATS_FLAGS_AWB;
+    stats.awb_stats[0].counted = awb.min_counted + 10;
+    stats.awb_stats[0].sum_g = 4000;
+    stats.awb_stats[0].sum_r = 1000;
+    stats.awb_stats[0].sum_b = 8000;
+    metadata.flags = 0;
+    TEST_ESP_OK(esp_ipa_pipeline_process(handle, &stats, &s_esp_ipa_sensor, &metadata));
+    TEST_ASSERT_EQUAL_HEX32(0, metadata.flags & IPA_METADATA_FLAGS_AWB);
+    TEST_ASSERT_EQUAL_INT32(6200, esp_ipa_get_int32(handle->ipa_array[0], "ct"));
+    if (metadata.flags & (IPA_METADATA_FLAGS_RG | IPA_METADATA_FLAGS_BG)) {
+        TEST_ASSERT_FLOAT_WITHIN(1e-4f, 1.0f / rg, metadata.red_gain);
+        TEST_ASSERT_FLOAT_WITHIN(1e-4f, 1.0f / bg, metadata.blue_gain);
+    }
+
+    TEST_ESP_OK(dummy_awb_s_reset(handle));
+    metadata.flags = 0;
+    TEST_ESP_OK(esp_ipa_pipeline_process(handle, &stats, &s_esp_ipa_sensor, &metadata));
+    TEST_ASSERT_EQUAL_HEX32(IPA_METADATA_FLAGS_AWB, metadata.flags & IPA_METADATA_FLAGS_AWB);
+    TEST_ESP_OK(esp_ipa_pipeline_destroy(handle));
+    free(state);
+}
+
+TEST_CASE("AWB model_2 fixed CT publishes WBG", "[IPA][AWB]")
+{
+    const esp_ipa_config_t *base = esp_ipa_pipeline_get_config(IPA_TARGET_NAME);
+    static esp_ipa_config_t cfg;
+    static esp_ipa_awb_config_t awb;
+    static const esp_ipa_awb_ct_point_t refs[] = {
+        { .ct = 5000, .rg = 0.50f, .bg = 0.60f, .radius = 0.20f },
+        { .ct = 6500, .rg = 0.60f, .bg = 0.50f, .radius = 0.20f },
+    };
+    esp_ipa_pipeline_handle_t handle = NULL;
+    esp_ipa_metadata_t metadata = {0};
+    esp_ipa_stats_t stats = {0};
+
+    TEST_ASSERT_NOT_NULL(base);
+    TEST_ASSERT_NOT_NULL(base->awb);
+    memcpy(&cfg, base, sizeof(cfg));
+    memcpy(&awb, base->awb, sizeof(awb));
+    awb.model = ESP_IPA_AWB_MODEL_2;
+    awb.ref_points = refs;
+    awb.ref_points_count = 2;
+    awb.min_red_gain_step = 0.5f;
+    awb.min_blue_gain_step = 0.5f;
+    awb.red_gain_scale = 1.0f;
+    awb.blue_gain_scale = 1.0f;
+    awb.export_ct = true;
+    awb.startup_zone_enabled = false;
+    awb.startup_hold_frames = 0;
+    cfg.awb = &awb;
+
+    TEST_ESP_OK(esp_ipa_pipeline_create(&cfg, &handle));
+    TEST_ESP_OK(esp_ipa_pipeline_init(handle, &s_esp_ipa_sensor, &metadata));
+
+    stats.flags = IPA_STATS_FLAGS_AWB;
+    stats.awb_stats[0].counted = awb.min_counted + 10;
+    stats.awb_stats[0].sum_g = 4000;
+    stats.awb_stats[0].sum_r = 1000;
+    stats.awb_stats[0].sum_b = 8000;
+
+    TEST_ESP_OK(dummy_awb_s_ct(handle, 5000));
+    metadata.flags = 0;
+    TEST_ESP_OK(esp_ipa_pipeline_process(handle, &stats, &s_esp_ipa_sensor, &metadata));
+    TEST_ASSERT_EQUAL_HEX32(IPA_METADATA_FLAGS_RG | IPA_METADATA_FLAGS_BG,
+                            metadata.flags & (IPA_METADATA_FLAGS_RG | IPA_METADATA_FLAGS_BG));
+    TEST_ASSERT_FLOAT_WITHIN(1e-4f, 2.0f, metadata.red_gain);
+    TEST_ASSERT_FLOAT_WITHIN(1e-4f, 1.0f / 0.60f, metadata.blue_gain);
+
+    TEST_ESP_OK(dummy_awb_s_ct(handle, 6500));
+    metadata.flags = 0;
+    TEST_ESP_OK(esp_ipa_pipeline_process(handle, &stats, &s_esp_ipa_sensor, &metadata));
+    TEST_ASSERT_EQUAL_HEX32(IPA_METADATA_FLAGS_RG | IPA_METADATA_FLAGS_BG,
+                            metadata.flags & (IPA_METADATA_FLAGS_RG | IPA_METADATA_FLAGS_BG));
+    TEST_ASSERT_FLOAT_WITHIN(1e-4f, 1.0f / 0.60f, metadata.red_gain);
+    TEST_ASSERT_FLOAT_WITHIN(1e-4f, 2.0f, metadata.blue_gain);
+    TEST_ASSERT_EQUAL_INT32(6500, esp_ipa_get_int32(handle->ipa_array[0], "ct"));
+
+    TEST_ESP_OK(dummy_awb_s_reset(handle));
+    metadata.flags = 0;
+    TEST_ESP_OK(esp_ipa_pipeline_process(handle, &stats, &s_esp_ipa_sensor, &metadata));
+    TEST_ASSERT_EQUAL_HEX32(IPA_METADATA_FLAGS_AWB, metadata.flags & IPA_METADATA_FLAGS_AWB);
+    TEST_ASSERT_EQUAL_HEX32(0, metadata.flags & (IPA_METADATA_FLAGS_RG | IPA_METADATA_FLAGS_BG));
+    TEST_ESP_OK(esp_ipa_pipeline_destroy(handle));
+}
+
 TEST_CASE("AWB model_3 fixed CT", "[IPA]")
 {
     const esp_ipa_config_t *base = esp_ipa_pipeline_get_config(IPA_TARGET_NAME);
@@ -2146,7 +2351,7 @@ TEST_CASE("AWB model_3 fixed CT", "[IPA]")
     TEST_ASSERT_EQUAL_HEX32(0, metadata.flags & (IPA_METADATA_FLAGS_RG | IPA_METADATA_FLAGS_BG));
     TEST_ASSERT_EQUAL_INT32(5000, esp_ipa_get_int32(handle->ipa_array[0], "ct"));
 
-    esp_ipa_awb_set_fixed_ct(handle, 6500);
+    dummy_awb_s_ct(handle, 6500);
     metadata.flags = 0;
     TEST_ESP_OK(esp_ipa_pipeline_process(handle, &stats, &s_esp_ipa_sensor, &metadata));
     TEST_ASSERT_EQUAL_HEX32(IPA_METADATA_FLAGS_RG | IPA_METADATA_FLAGS_BG,
@@ -2155,7 +2360,33 @@ TEST_CASE("AWB model_3 fixed CT", "[IPA]")
     TEST_ASSERT_EQUAL_FLOAT(1.0f / 0.38f, metadata.blue_gain);
     TEST_ASSERT_EQUAL_INT32(6500, esp_ipa_get_int32(handle->ipa_array[0], "ct"));
 
-    TEST_ASSERT_EQUAL(ESP_ERR_INVALID_ARG, esp_ipa_awb_set_fixed_ct(handle, 6200));
+    {
+        const float m_lo = 1000000.0f / 5000.0f;
+        const float m_hi = 1000000.0f / 6500.0f;
+        const float m = 1000000.0f / 6200.0f;
+        const float t = (m - m_lo) / (m_hi - m_lo);
+        const float rg = 0.5f + t * (0.55f - 0.5f);
+        const float bg = 0.4f + t * (0.38f - 0.4f);
+
+        awb.min_red_gain_step = 0;
+        awb.min_blue_gain_step = 0;
+        TEST_ESP_OK(dummy_awb_s_ct(handle, 6200));
+        metadata.flags = 0;
+        TEST_ESP_OK(esp_ipa_pipeline_process(handle, &stats, &s_esp_ipa_sensor, &metadata));
+        TEST_ASSERT_EQUAL_HEX32(IPA_METADATA_FLAGS_RG | IPA_METADATA_FLAGS_BG,
+                                metadata.flags & (IPA_METADATA_FLAGS_RG | IPA_METADATA_FLAGS_BG));
+        TEST_ASSERT_FLOAT_WITHIN(1e-4f, 1.0f / rg, metadata.red_gain);
+        TEST_ASSERT_FLOAT_WITHIN(1e-4f, 1.0f / bg, metadata.blue_gain);
+        TEST_ASSERT_EQUAL_INT32(6200, esp_ipa_get_int32(handle->ipa_array[0], "ct"));
+    }
+
+    TEST_ESP_OK(dummy_awb_s_ct(handle, 2000));
+    TEST_ASSERT_EQUAL_INT32(5000, esp_ipa_get_int32(handle->ipa_array[0], "ct"));
+    TEST_ESP_OK(dummy_awb_s_ct(handle, 9000));
+    TEST_ASSERT_EQUAL_INT32(6500, esp_ipa_get_int32(handle->ipa_array[0], "ct"));
+    TEST_ASSERT_EQUAL(ESP_ERR_INVALID_ARG, dummy_awb_s_ct(handle, 0));
+    TEST_ESP_OK(dummy_awb_s_reset(handle));
+    TEST_ASSERT_EQUAL_INT32(5000, esp_ipa_get_int32(handle->ipa_array[0], "ct"));
 
     /* Rebuild with a new model-3 table: set_config init selects default_ct. */
     {
@@ -2244,7 +2475,7 @@ TEST_CASE("AWB model_3 fixed CT", "[IPA]")
         TEST_ESP_OK(esp_ipa_pipeline_create(&cfg_m3, &handle));
         memset(&metadata, 0, sizeof(metadata));
         TEST_ESP_OK(esp_ipa_pipeline_init(handle, &s_esp_ipa_sensor, &metadata));
-        TEST_ESP_OK(esp_ipa_awb_set_fixed_ct(handle, 6500));
+        TEST_ESP_OK(dummy_awb_s_ct(handle, 6500));
         TEST_ASSERT_EQUAL_INT32(6500, esp_ipa_get_int32(handle->ipa_array[0], "ct"));
         for (int i = 0; i < handle->config->nums; i++) {
             if (!strcmp(handle->ipa_array[i]->name, "esp_ipa_awb")) {
@@ -2571,6 +2802,156 @@ TEST_CASE("Auto gain control test", "[IPA]")
         TEST_ESP_OK(esp_ipa_pipeline_destroy(handle));
     }
 
+}
+
+static uint32_t ae_index(uint32_t x, uint32_t y)
+{
+    return x * ISP_AE_BLOCK_Y_NUM + y;
+}
+
+TEST_CASE("AGC luma weight and target offset", "[IPA][AGC]")
+{
+    const esp_ipa_config_t *base = esp_ipa_pipeline_get_config(IPA_TARGET_NAME);
+    static esp_ipa_config_t cfg;
+    static esp_ipa_agc_config_t agc;
+    esp_ipa_pipeline_handle_t handle = NULL;
+    esp_ipa_metadata_t metadata = {0};
+    esp_ipa_stats_t stats;
+    esp_ipa_agc_meter_luma_weight_t table;
+    float offset = 0.0f;
+
+    TEST_ASSERT_NOT_NULL(base);
+    TEST_ASSERT_NOT_NULL(base->agc);
+    memcpy(&cfg, base, sizeof(cfg));
+    memcpy(&agc, base->agc, sizeof(agc));
+    for (int i = 0; i < ISP_AE_REGIONS; i++) {
+        agc.luma_weight_table[i] = 1;
+    }
+    agc.exposure_adjust_delay = 0;
+    agc.exposure_frame_delay = 0;
+    agc.gain_frame_delay = 0;
+    agc.inc_gain_ratio = 1.0f;
+    agc.dec_gain_ratio = 1.0f;
+    agc.luma_target = 100;
+    agc.luma_low = 99;
+    agc.luma_high = 101;
+    agc.luma_low_threshold = 0;
+    agc.luma_low_regions = 0;
+    agc.luma_high_threshold = 200;
+    agc.luma_high_regions = 0;
+    agc.meter_mode = ESP_IPA_AGC_METER_AVERAGE;
+    agc.anti_flicker_mode = ESP_IPA_AGC_ANTI_FLICKER_NONE;
+    agc.ac_freq = 0;
+    agc.luma_pwl_enable = false;
+    agc.gain_only = false;
+    agc.max_gain = 0;
+    cfg.agc = &agc;
+
+    TEST_ESP_OK(esp_ipa_pipeline_create(&cfg, &handle));
+    TEST_ESP_OK(esp_ipa_pipeline_init(handle, &s_esp_ipa_sensor, &metadata));
+    TEST_ESP_OK(esp_ipa_pipeline_ioctl(handle, ESP_IPA_AGC_G_METER_TARGET_OFFSET, &offset));
+    TEST_ASSERT_EQUAL_FLOAT(0.0f, offset);
+    TEST_ESP_OK(esp_ipa_pipeline_ioctl(handle, ESP_IPA_AGC_G_METER_LUMA_WEIGHT, &table));
+    for (int i = 0; i < ISP_AE_REGIONS; i++) {
+        TEST_ASSERT_EQUAL_UINT8(1, table.weight[i]);
+    }
+
+    offset = 32.1f;
+    TEST_ESP_OK(esp_ipa_pipeline_ioctl(handle, ESP_IPA_AGC_S_METER_TARGET_OFFSET, &offset));
+    TEST_ESP_OK(esp_ipa_pipeline_ioctl(handle, ESP_IPA_AGC_G_METER_TARGET_OFFSET, &offset));
+    TEST_ASSERT_FLOAT_WITHIN(0.01f, 32.1f, offset);
+
+    offset = 1000.0f;
+    TEST_ESP_OK(esp_ipa_pipeline_ioctl(handle, ESP_IPA_AGC_S_METER_TARGET_OFFSET, &offset));
+    TEST_ESP_OK(esp_ipa_pipeline_ioctl(handle, ESP_IPA_AGC_G_METER_TARGET_OFFSET, &offset));
+    TEST_ASSERT_EQUAL_FLOAT(ESP_IPA_AGC_METER_TARGET_OFFSET_MAX, offset);
+
+    offset = NAN;
+    TEST_ASSERT_EQUAL(ESP_ERR_INVALID_ARG, esp_ipa_pipeline_ioctl(handle, ESP_IPA_AGC_S_METER_TARGET_OFFSET, &offset));
+    TEST_ESP_OK(esp_ipa_pipeline_ioctl(handle, ESP_IPA_AGC_G_METER_TARGET_OFFSET, &offset));
+    TEST_ASSERT_EQUAL_FLOAT(ESP_IPA_AGC_METER_TARGET_OFFSET_MAX, offset);
+
+    offset = 0.0f;
+    TEST_ESP_OK(esp_ipa_pipeline_ioctl(handle, ESP_IPA_AGC_S_METER_TARGET_OFFSET, &offset));
+
+    memset(&stats, 0, sizeof(stats));
+    stats.flags = IPA_STATS_FLAGS_AE;
+    for (int i = 0; i < ISP_AE_REGIONS; i++) {
+        stats.ae_stats[i].luminance = 100;
+    }
+    metadata.flags = 0;
+    TEST_ESP_OK(esp_ipa_pipeline_process(handle, &stats, &s_esp_ipa_sensor, &metadata));
+    TEST_ASSERT_EQUAL_HEX32(0, metadata.flags & (IPA_METADATA_FLAGS_GN | IPA_METADATA_FLAGS_ET));
+
+    offset = 4.0f;
+    TEST_ESP_OK(esp_ipa_pipeline_ioctl(handle, ESP_IPA_AGC_S_METER_TARGET_OFFSET, &offset));
+    for (int i = 0; i < ISP_AE_REGIONS; i++) {
+        stats.ae_stats[i].luminance = 104;
+    }
+    metadata.flags = 0;
+    TEST_ESP_OK(esp_ipa_pipeline_process(handle, &stats, &s_esp_ipa_sensor, &metadata));
+    TEST_ASSERT_EQUAL_HEX32(0, metadata.flags & (IPA_METADATA_FLAGS_GN | IPA_METADATA_FLAGS_ET));
+    for (int i = 0; i < ISP_AE_REGIONS; i++) {
+        stats.ae_stats[i].luminance = 100;
+    }
+    metadata.flags = 0;
+    TEST_ESP_OK(esp_ipa_pipeline_process(handle, &stats, &s_esp_ipa_sensor, &metadata));
+    /* 4% below the shifted hold band is taken by exposure; gain can stay 1.0 */
+    TEST_ASSERT_NOT_EQUAL_HEX32(0, metadata.flags & (IPA_METADATA_FLAGS_GN | IPA_METADATA_FLAGS_ET));
+
+    offset = 1.0f;
+    TEST_ESP_OK(esp_ipa_pipeline_ioctl(handle, ESP_IPA_AGC_S_METER_TARGET_OFFSET, &offset));
+    for (int i = 0; i < ISP_AE_REGIONS; i++) {
+        stats.ae_stats[i].luminance = 20;
+    }
+    metadata.flags = 0;
+    TEST_ESP_OK(esp_ipa_pipeline_process(handle, &stats, &s_esp_ipa_sensor, &metadata));
+    TEST_ASSERT_EQUAL_HEX32(IPA_METADATA_FLAGS_GN | IPA_METADATA_FLAGS_ET,
+                            metadata.flags & (IPA_METADATA_FLAGS_GN | IPA_METADATA_FLAGS_ET));
+    TEST_ASSERT_EQUAL_UINT32(s_esp_ipa_sensor.max_exposure, metadata.exposure);
+
+    memset(table.weight, 1, sizeof(table.weight));
+    table.weight[ae_index(0, 0)] = 8;
+    TEST_ESP_OK(esp_ipa_pipeline_ioctl(handle, ESP_IPA_AGC_S_METER_LUMA_WEIGHT, &table));
+    TEST_ESP_OK(esp_ipa_pipeline_ioctl(handle, ESP_IPA_AGC_G_METER_LUMA_WEIGHT, &table));
+    TEST_ASSERT_EQUAL_UINT8(8, table.weight[ae_index(0, 0)]);
+    for (int i = 1; i < ISP_AE_REGIONS; i++) {
+        TEST_ASSERT_EQUAL_UINT8(1, table.weight[i]);
+    }
+
+    offset = 10.0f;
+    TEST_ESP_OK(esp_ipa_pipeline_ioctl(handle, ESP_IPA_AGC_S_METER_TARGET_OFFSET, &offset));
+    TEST_ESP_OK(esp_ipa_pipeline_ioctl(handle, ESP_IPA_AGC_S_RESET_METER_WEIGHT, NULL));
+    TEST_ESP_OK(esp_ipa_pipeline_ioctl(handle, ESP_IPA_AGC_G_METER_TARGET_OFFSET, &offset));
+    TEST_ASSERT_EQUAL_FLOAT(10.0f, offset);
+    TEST_ESP_OK(esp_ipa_pipeline_ioctl(handle, ESP_IPA_AGC_G_METER_LUMA_WEIGHT, &table));
+    for (int i = 0; i < ISP_AE_REGIONS; i++) {
+        TEST_ASSERT_EQUAL_UINT8(1, table.weight[i]);
+    }
+
+    agc.luma_high_regions = ISP_AE_REGIONS;
+    stats.ae_stats[ae_index(0, 0)].luminance = 250;
+    for (int i = 1; i < ISP_AE_REGIONS; i++) {
+        stats.ae_stats[i].luminance = 100;
+    }
+    memset(table.weight, 1, sizeof(table.weight));
+    table.weight[ae_index(0, 0)] = 8;
+    TEST_ESP_OK(esp_ipa_pipeline_ioctl(handle, ESP_IPA_AGC_S_METER_LUMA_WEIGHT, &table));
+    metadata.flags = 0;
+    TEST_ESP_OK(esp_ipa_pipeline_process(handle, &stats, &s_esp_ipa_sensor, &metadata));
+    TEST_ASSERT_EQUAL_HEX32(IPA_METADATA_FLAGS_ET, metadata.flags & IPA_METADATA_FLAGS_ET);
+    TEST_ASSERT_LESS_THAN_UINT32(s_esp_ipa_sensor.cur_exposure, metadata.exposure);
+
+    TEST_ESP_OK(esp_ipa_pipeline_ioctl(handle, ESP_IPA_AGC_S_RESET_METER_WEIGHT, NULL));
+    TEST_ESP_OK(esp_ipa_pipeline_ioctl(handle, ESP_IPA_AGC_G_METER_LUMA_WEIGHT, &table));
+    for (int i = 0; i < ISP_AE_REGIONS; i++) {
+        TEST_ASSERT_EQUAL_UINT8(1, table.weight[i]);
+    }
+
+    memset(table.weight, 0, sizeof(table.weight));
+    TEST_ASSERT_EQUAL(ESP_ERR_INVALID_ARG, esp_ipa_pipeline_ioctl(handle, ESP_IPA_AGC_S_METER_LUMA_WEIGHT, &table));
+
+    TEST_ESP_OK(esp_ipa_pipeline_destroy(handle));
 }
 
 /*
@@ -3167,6 +3548,113 @@ TEST_CASE("Auto focus test", "[IPA]")
     TEST_ASSERT_EQUAL_INT32(1, ipa_config->af->weight_table[0]);
     TEST_ASSERT_EQUAL_INT32(10, ipa_config->af->weight_table[1]);
     TEST_ASSERT_EQUAL_INT32(100, ipa_config->af->weight_table[2]);
+
+    {
+        const uint32_t frame = 1000;
+        const uint32_t spot = frame / 5;
+        const uint32_t left = 200 - spot / 2;
+        const uint32_t top = 250 - spot / 2;
+        esp_ipa_af_windows_t custom = {0};
+        esp_ipa_af_windows_t got;
+        esp_ipa_stats_t stats = {0};
+
+        for (int i = 0; i < ISP_AF_WINDOW_NUM; i++) {
+            custom.windows[i].top_left.x = left;
+            custom.windows[i].top_left.y = top;
+            custom.windows[i].btm_right.x = left + spot - 1;
+            custom.windows[i].btm_right.y = top + spot - 1;
+        }
+        TEST_ESP_OK(esp_ipa_pipeline_ioctl(handle, ESP_IPA_AF_S_WINDOWS, &custom));
+        TEST_ESP_OK(esp_ipa_pipeline_ioctl(handle, ESP_IPA_AF_G_WINDOWS, &got));
+        for (int i = 0; i < ISP_AF_WINDOW_NUM; i++) {
+            TEST_ASSERT_EQUAL_UINT32(left, got.windows[i].top_left.x);
+            TEST_ASSERT_EQUAL_UINT32(top, got.windows[i].top_left.y);
+            TEST_ASSERT_EQUAL_UINT32(left + spot - 1, got.windows[i].btm_right.x);
+            TEST_ASSERT_EQUAL_UINT32(top + spot - 1, got.windows[i].btm_right.y);
+        }
+
+        stats.flags = IPA_STATS_FLAGS_AF;
+        metadata.flags = 0;
+        TEST_ESP_OK(esp_ipa_pipeline_process(handle, &stats, &s_esp_ipa_sensor, &metadata));
+        /* First AF stats after S_WINDOWS are dropped while ISP windows settle. */
+        TEST_ASSERT_EQUAL_HEX32(IPA_METADATA_FLAGS_AF, metadata.flags & IPA_METADATA_FLAGS_AF);
+        TEST_ASSERT_EQUAL_HEX32(0, metadata.flags & IPA_METADATA_FLAGS_FP);
+        TEST_ASSERT_EQUAL_UINT32(left, metadata.af.windows[0].top_left.x);
+        TEST_ASSERT_EQUAL_UINT32(top, metadata.af.windows[0].top_left.y);
+
+        metadata.flags = 0;
+        TEST_ESP_OK(esp_ipa_pipeline_process(handle, &stats, &s_esp_ipa_sensor, &metadata));
+        TEST_ASSERT_EQUAL_HEX32(IPA_METADATA_FLAGS_FP, metadata.flags & IPA_METADATA_FLAGS_FP);
+
+        TEST_ESP_OK(esp_ipa_pipeline_ioctl(handle, ESP_IPA_AF_S_RESET, NULL));
+        TEST_ESP_OK(esp_ipa_pipeline_ioctl(handle, ESP_IPA_AF_G_WINDOWS, &got));
+        TEST_ASSERT_EQUAL_INT32(50, got.windows[0].top_left.x);
+        TEST_ASSERT_EQUAL_INT32(100, got.windows[0].top_left.y);
+        TEST_ASSERT_EQUAL_INT32(150, got.windows[1].top_left.x);
+        TEST_ASSERT_EQUAL_INT32(250, got.windows[2].top_left.x);
+
+        esp_ipa_af_window_weight_t wt;
+        TEST_ESP_OK(esp_ipa_pipeline_ioctl(handle, ESP_IPA_AF_G_WINDOW_WEIGHT, &wt));
+        TEST_ASSERT_EQUAL_UINT8(1, wt.weight[0]);
+        TEST_ASSERT_EQUAL_UINT8(10, wt.weight[1]);
+        TEST_ASSERT_EQUAL_UINT8(100, wt.weight[2]);
+        wt.weight[0] = 5;
+        wt.weight[1] = 6;
+        wt.weight[2] = 7;
+        TEST_ESP_OK(esp_ipa_pipeline_ioctl(handle, ESP_IPA_AF_S_WINDOW_WEIGHT, &wt));
+        memset(&wt, 0, sizeof(wt));
+        TEST_ESP_OK(esp_ipa_pipeline_ioctl(handle, ESP_IPA_AF_G_WINDOW_WEIGHT, &wt));
+        TEST_ASSERT_EQUAL_UINT8(5, wt.weight[0]);
+        TEST_ASSERT_EQUAL_UINT8(6, wt.weight[1]);
+        TEST_ASSERT_EQUAL_UINT8(7, wt.weight[2]);
+
+        custom.windows[0].top_left.x = 10;
+        custom.windows[0].top_left.y = 20;
+        custom.windows[0].btm_right.x = 30;
+        custom.windows[0].btm_right.y = 40;
+        custom.windows[1] = custom.windows[0];
+        custom.windows[2] = custom.windows[0];
+        TEST_ESP_OK(esp_ipa_pipeline_ioctl(handle, ESP_IPA_AF_S_WINDOWS, &custom));
+        TEST_ESP_OK(esp_ipa_pipeline_ioctl(handle, ESP_IPA_AF_G_WINDOWS, &got));
+        TEST_ASSERT_EQUAL_UINT32(10, got.windows[0].top_left.x);
+        TEST_ASSERT_EQUAL_UINT32(40, got.windows[0].btm_right.y);
+
+        for (int i = 0; i < ISP_AF_WINDOW_NUM; i++) {
+            custom.windows[i].top_left.x = 40;
+            custom.windows[i].top_left.y = 50;
+            custom.windows[i].btm_right.x = 119;
+            custom.windows[i].btm_right.y = 109;
+        }
+        TEST_ESP_OK(esp_ipa_pipeline_ioctl(handle, ESP_IPA_AF_S_WINDOWS, &custom));
+        TEST_ESP_OK(esp_ipa_pipeline_ioctl(handle, ESP_IPA_AF_G_WINDOWS, &got));
+        for (int i = 0; i < ISP_AF_WINDOW_NUM; i++) {
+            TEST_ASSERT_EQUAL_UINT32(40, got.windows[i].top_left.x);
+            TEST_ASSERT_EQUAL_UINT32(50, got.windows[i].top_left.y);
+            TEST_ASSERT_EQUAL_UINT32(119, got.windows[i].btm_right.x);
+            TEST_ASSERT_EQUAL_UINT32(109, got.windows[i].btm_right.y);
+        }
+
+        custom.windows[0].top_left.x = 40;
+        custom.windows[0].btm_right.x = 30;
+        TEST_ASSERT_EQUAL(ESP_ERR_INVALID_ARG, esp_ipa_pipeline_ioctl(handle, ESP_IPA_AF_S_WINDOWS, &custom));
+
+        custom.windows[0].top_left.x = 40;
+        custom.windows[0].top_left.y = 50;
+        custom.windows[0].btm_right.x = 4095;
+        custom.windows[0].btm_right.y = 109;
+        custom.windows[1] = custom.windows[0];
+        custom.windows[2] = custom.windows[0];
+        TEST_ASSERT_EQUAL(ESP_ERR_INVALID_ARG, esp_ipa_pipeline_ioctl(handle, ESP_IPA_AF_S_WINDOWS, &custom));
+
+        TEST_ESP_OK(esp_ipa_pipeline_ioctl(handle, ESP_IPA_AF_S_RESET, NULL));
+        TEST_ESP_OK(esp_ipa_pipeline_ioctl(handle, ESP_IPA_AF_G_WINDOWS, &got));
+        TEST_ASSERT_EQUAL_INT32(50, got.windows[0].top_left.x);
+        TEST_ASSERT_EQUAL_INT32(150, got.windows[1].top_left.x);
+        TEST_ESP_OK(esp_ipa_pipeline_ioctl(handle, ESP_IPA_AF_G_WINDOW_WEIGHT, &wt));
+        TEST_ASSERT_EQUAL_UINT8(1, wt.weight[0]);
+        TEST_ASSERT_EQUAL_UINT8(10, wt.weight[1]);
+        TEST_ASSERT_EQUAL_UINT8(100, wt.weight[2]);
+    }
 
     TEST_ESP_OK(esp_ipa_pipeline_destroy(handle));
 

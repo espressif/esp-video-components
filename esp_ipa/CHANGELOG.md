@@ -1,5 +1,8 @@
 ## Unreleased
 
+- Added AGC, AF, and AWB runtime ioctl commands in this component's headers and prebuilt libraries: `ESP_IPA_AGC_S/G_METER_LUMA_WEIGHT`, `ESP_IPA_AGC_S_RESET_METER_WEIGHT`, `ESP_IPA_AGC_S/G_METER_TARGET_OFFSET`, `ESP_IPA_AF_S/G_WINDOWS`, `ESP_IPA_AF_S/G_WINDOW_WEIGHT`, `ESP_IPA_AF_S_RESET`, `ESP_IPA_AWB_S_CT`, and `ESP_IPA_AWB_S_RESET`. `esp_video` links this tree through `override_path`
+- Changed `esp_ipa_awb_set_fixed_ct` to wrap `ESP_IPA_AWB_S_CT`: exact preset match when present, otherwise mired interpolation between presets (clamped to the table ends). Previously only exact preset match was accepted (`ESP_ERR_INVALID_ARG` between presets)
+- Documented AF `S_WINDOWS` contract: statistics-window pixels, each edge in 0..4094, no automatic check against the current sensor frame size
 - Added ESP-IDF 6.0+ support for ESP32-P4 revisions below v3.0
 - Added optional AWB model 2 `startup_zone` and `startup_hold_frames` to initialize gains and CT from a selected zone and hold startup WBG while AWB calculation continues; normal startup is preserved when omitted
 - Updated AWB model 2 reference counters with low white-point counts to reduce stale statistics that delay recovery after lens occlusion

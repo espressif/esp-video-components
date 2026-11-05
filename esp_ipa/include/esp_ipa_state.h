@@ -420,11 +420,15 @@ typedef struct {
 } esp_ipa_awb_ref_scan_state_t;
 
 /**
- * @brief AWB model-3 fixed color temperature.
+ * @brief AWB fixed color temperature hold.
+ *
+ * Model 3: ct is a preset or a mired interpolation on fixed_ct.presets[].
+ * Model 2: ct is a ref_points[] entry or a mired interpolation; valid means
+ * statistics are skipped until reset.
  */
 typedef struct {
-    uint8_t valid;                  /*!< ct selects a model 3 preset */
-    uint32_t ct;                    /*!< Model 3 preset color temperature */
+    uint8_t valid;                  /*!< 1: apply ct and skip model 2 statistics */
+    uint32_t ct;                    /*!< Held Kelvin after clamp or interpolation */
 } esp_ipa_awb_fixed_state_t;
 
 /**

@@ -812,8 +812,10 @@ typedef struct esp_ipa_awb_fixed {
  * @endcode
  *
  * Legacy single entry (`fixed_ct { ct, rg, bg }`) is equivalent to one preset with
- * `default_ct = ct`. Runtime CT is selected with esp_ipa_awb_set_fixed_ct(), which
- * validates the preset and caches it; process applies the cached preset directly.
+ * `default_ct = ct`. Runtime CT uses `ESP_IPA_AWB_S_CT` or `esp_ipa_awb_set_fixed_ct`.
+ * A Kelvin value on a preset is used as stored. A value between two presets is
+ * interpolated in mired (1000000 / Kelvin). A value outside the table is clamped
+ * to the nearest preset. process applies the cached gains directly.
  */
 typedef struct esp_ipa_awb_fixed_cfg {
     uint32_t default_ct;                        /*!< Initial CT (Kelvin); 0 = first preset */
@@ -990,6 +992,18 @@ typedef struct esp_ipa_agc_luma_pwl {
     int8_t luma_shift;                          /*!< Target luma shift applied when env_luma matches */
 } esp_ipa_agc_luma_pwl_t;
 
+#define ESP_IPA_AGC_METER_TARGET_OFFSET_MIN       (-254.0f) /*!< Largest negative shift; JSON target plus offset is then clamped to 1..255 */
+#define ESP_IPA_AGC_METER_TARGET_OFFSET_MAX       (254.0f)  /*!< Largest positive shift; JSON target plus offset is then clamped to 1..255 */
+
+/**
+ * @brief Runtime AE luma weight table.
+ *
+ * Index matches AE statistics: index = x * ISP_AE_BLOCK_Y_NUM + y.
+ */
+typedef struct esp_ipa_agc_meter_luma_weight {
+    uint8_t weight[ISP_AE_REGIONS];             /*!< Per-block luma weight */
+} esp_ipa_agc_meter_luma_weight_t;
+
 /**
  * @brief Auto gain control algorithm configuration
  */
@@ -1100,6 +1114,23 @@ typedef struct esp_ipa_af_config {
 } esp_ipa_af_config_t;
 
 /**
+ * @brief Runtime AF sampling windows.
+ */
+typedef struct esp_ipa_af_windows {
+    isp_window_t windows[ISP_AF_WINDOW_NUM];    /*!< Current AF windows */
+} esp_ipa_af_windows_t;
+
+/**
+ * @brief Runtime AF window weights.
+ *
+ * Index matches AF statistics. Scoring uses definition * weight[i]
+ * and luminance * weight[i]. JSON weight_table is the reset value.
+ */
+typedef struct esp_ipa_af_window_weight {
+    uint8_t weight[ISP_AF_WINDOW_NUM];          /*!< Per-window AF weight */
+} esp_ipa_af_window_weight_t;
+
+/**
  * @brief IR day/night detect parameters for one working mode.
  *
  * Both environment luma and AWB G/R (`sum_g / sum_r`) are required.
@@ -1167,6 +1198,8 @@ struct esp_ipa_state;
 typedef struct esp_ipa_ops {
     uint8_t type;                               /*!< IPA type: 0: no type,
                                                                1: AGC,
+                                                               2: AF,
+                                                               3: AWB,
                                                                others: reserved */
 
     /**

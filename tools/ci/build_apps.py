@@ -57,6 +57,57 @@ def get_mr_components(modified_files: str) -> str:
 
     return list(components)
 
+BMGR_EXAMPLES = ('ae_meter', 'touch_3a')
+BMGR_BOARD = 'esp32_p4_function_ev_board'
+BMGR_OVERLAY_MARK = '# --- example sdkconfig.defaults.esp32p4 ---'
+
+
+def prepare_board_manager(apps):
+    """Generate board-manager sources before idf.py build.
+
+    A clean checkout has no components/gen_bmgr_codes. ae_meter and touch_3a
+    include dev_display_lcd.h from that generated component. board_manager.defaults
+    is applied after the project defaults and selects SC2336, so the example
+    sdkconfig.defaults.esp32p4 is appended and wins.
+    """
+    prepared = set()
+    assist_ready = False
+    for app in apps:
+        app_dir = Path(getattr(app, 'app_dir', ''))
+        if app_dir.name not in BMGR_EXAMPLES:
+            continue
+        key = str(app_dir.resolve())
+        if key in prepared:
+            continue
+        prepared.add(key)
+
+        gen_dir = app_dir / 'components' / 'gen_bmgr_codes'
+        if not (gen_dir / 'CMakeLists.txt').is_file():
+            if not assist_ready:
+                logger.info('Installing esp-bmgr-assist==0.8.3 for board generation')
+                subprocess.check_call([sys.executable, '-m', 'pip', 'install', 'esp-bmgr-assist==0.8.3'])
+                assist_ready = True
+            logger.info('Generating %s board codes in %s', BMGR_BOARD, app_dir)
+            subprocess.check_call(['idf.py', '-C', str(app_dir), 'bmgr', '-b', BMGR_BOARD])
+
+        defaults = gen_dir / 'board_manager.defaults'
+        overlay = app_dir / 'sdkconfig.defaults.esp32p4'
+        if not defaults.is_file() or not overlay.is_file():
+            raise FileNotFoundError(f'board manager output missing under {app_dir}')
+        text = defaults.read_text(encoding='utf-8')
+        if BMGR_OVERLAY_MARK not in text:
+            defaults.write_text(
+                text.rstrip() + '\n\n' + BMGR_OVERLAY_MARK + '\n' + overlay.read_text(encoding='utf-8'),
+                encoding='utf-8',
+            )
+        # idf.py bmgr writes a sdkconfig before the device Kconfig exists.
+        # A later build then keeps that file and ignores sdkconfig.defaults.
+        for stale in ('sdkconfig', 'sdkconfig.old'):
+            stale_path = app_dir / stale
+            if stale_path.is_file():
+                stale_path.unlink()
+
+
 def find_all_apps(root: str, manifest_files: list[str], modified_components: list[str], modified_files: list[str], targets: list[str]):
     if idf_build_apps_version == '1.1.4':
         apps = find_apps(
@@ -107,6 +158,34 @@ def find_all_apps(root: str, manifest_files: list[str], modified_components: lis
 
     return match_apps
 
+def slice_apps_for_ci(apps: list) -> list:
+    """Keep each CI job's artifact archive small enough to upload.
+
+    Matrix jobs set APP_BUILD_INDEX (1-based) and APP_BUILD_TOTAL.
+    Jobs that leave them unset build the full list.
+    """
+    parallel_count = int(os.getenv('APP_BUILD_TOTAL', '1'))
+    parallel_index = int(os.getenv('APP_BUILD_INDEX', '1'))
+    total = len(apps)
+    if parallel_count <= 1:
+        logger.info('Processing %d total apps: building apps %d-%d', total, 1 if total else 0, total)
+        return apps
+    if parallel_index < 1 or parallel_index > parallel_count:
+        raise SystemExit(f'APP_BUILD_INDEX {parallel_index} is outside 1..{parallel_count}')
+
+    chunk = (total + parallel_count - 1) // parallel_count
+    start = (parallel_index - 1) * chunk
+    end = min(start + chunk, total)
+    logger.info(
+        'Processing %d total apps: building apps %d-%d (chunk %d/%d)',
+        total,
+        start + 1 if start < end else 0,
+        end,
+        parallel_index,
+        parallel_count,
+    )
+    return apps[start:end]
+
 if __name__ == '__main__':
     root = '.'
 
@@ -124,6 +203,11 @@ if __name__ == '__main__':
     manifests = [str(p) for p in Path(root).glob('**/.build-test-rules.yml')]
 
     apps_to_build = find_all_apps(root=root, manifest_files=manifests, modified_components=modified_components, modified_files=modified_files, targets=targets)
+    apps_to_build = slice_apps_for_ci(apps_to_build)
+    if not apps_to_build:
+        logger.info('No apps in this CI chunk')
+        sys.exit(0)
+    prepare_board_manager(apps_to_build)
 
     ignore_warning_strs = []
     for f in DEFAULT_IGNORE_WARNING_FILEPATH:

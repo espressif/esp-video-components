@@ -3,6 +3,10 @@
 ## Example Layout
 * [capture_stream](https://github.com/espressif/esp-video-components/tree/master/esp_video/examples/capture_stream) demonstrates how to open video device and capture image data from the device.
 
+* [ae_meter](https://github.com/espressif/esp-video-components/tree/master/esp_video/examples/ae_meter) shows the camera on a MIPI DSI panel and changes AE metering, AF windows and weights, luma target offset, and AWB color temperature from the serial console.
+
+* [touch_3a](https://github.com/espressif/esp-video-components/tree/master/esp_video/examples/touch_3a) shows the camera on a MIPI DSI panel with GT911 touch for AE spot metering, AF near/far focus on `af_win0`, AWB color temperature buttons, and a sun/reset bar.
+
 * [image_storage](https://github.com/espressif/esp-video-components/tree/master/esp_video/examples/image_storage) demonstrates how to store image data and video stream data to an SD card or flash.
 
 * [fast_startup/deep_sleep](https://github.com/espressif/esp-video-components/tree/master/esp_video/examples/fast_startup/deep_sleep) demonstrates fast startup after deep sleep by restoring IPA state from RTC memory and saving the first frame to an SD card.

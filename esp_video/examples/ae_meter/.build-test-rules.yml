@@ -1,0 +1,9 @@
+esp_video/examples/ae_meter:
+  enable:
+    - if: IDF_TARGET == "esp32p4"
+      reason: AE meter uses the ISP pipeline controller
+  depends_components:
+    - esp_video
+    - esp_cam_sensor
+    - esp_sccb_intf
+    - esp_ipa

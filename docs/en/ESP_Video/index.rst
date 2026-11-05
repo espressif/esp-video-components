@@ -317,6 +317,38 @@ When light, contrast, or color temperature changes, the ISP pipeline and the cam
     - 2.1: The `IPA <https://github.com/espressif/esp-video-components/tree/master/esp_ipa>`__ sends brightness controls such as exposure and gain to the sensor according to the statistics.
     - 2.2: The IPA sends brightness and color parameters to the ISP based on the statistics.
 
+Runtime Metering, Focus, and White Balance
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+The ISP pipeline can change AE, AF, and AWB while the stream is running. Include ``esp_video_isp_pipeline.h``. Coordinates are pixels of the ISP statistics window. ``(0, 0)`` is the top left. These calls need the ISP pipeline controller to be initialized. If it is not initialized, the APIs return ``ESP_ERR_INVALID_STATE``. That is not the same as "stream has not started".
+
+AE on ESP32-P4 uses a 5 by 5 grid. The application maps points or rectangles onto AE blocks, then calls ``esp_video_isp_pipeline_set_agc_meter_luma_weight()``. The index is ``x * ISP_AE_BLOCK_Y_NUM + y``. Blocks whose weight differs from the JSON table stay in the average when the low-light or high-light region drop would otherwise zero them. ``esp_video_isp_pipeline_reset_agc_meter_weight()`` restores the JSON weights.
+
+``esp_video_isp_pipeline_set_agc_meter_target_offset()`` adds the same luma shift to JSON ``target``, ``target_low``, and ``target_high``. After the shift, each of the three target luma values is limited to the closed interval [1, 255]. AE keeps splitting exposure and gain. Resetting the weight table does not change the offset.
+
+``esp_video_isp_pipeline_set_af_windows()`` and ``esp_video_isp_pipeline_set_af_window_weight()`` replace the runtime windows and weights. Window coordinates are statistics-window pixels. Each edge must be less than 4095 (valid range 0..4094). ``top_left`` must not be past ``btm_right``. The API does not check against the current sensor frame size; the application must keep windows inside the active format (for example 640x480 or 1280x720). A suggested point window is one fifth of the statistics window, and at least 8 pixels. ``esp_video_isp_pipeline_reset_af()`` restores the JSON windows and weights and restarts the scan. A pipeline without AF returns ``ESP_ERR_NOT_SUPPORTED``. When the camera has no focus motor, the pipeline uses a one-code focus step so the scan can run. The windows move. The lens does not. Motor ioctls are skipped so the log is not flooded.
+
+``esp_video_isp_pipeline_set_awb_ct()`` holds white balance at a Kelvin value. Model 3 reads ``fixed_ct.presets[]``. Model 2 reads ``ref_points[]`` and skips statistics until ``esp_video_isp_pipeline_set_awb_reset()``. An exact table entry is used as stored. A value between two entries interpolates R/G and B/G in mired (``1000000 / Kelvin``). A value outside the table is clamped to the nearest entry, and the published color temperature becomes that entry. ``ct`` 0, and model 0 or model 1, return ``ESP_ERR_INVALID_ARG``. ``esp_video_isp_pipeline_set_awb_reset()`` resumes model 2 statistics. Model 3 stays on the fixed-CT table and restores ``fixed_ct.default_ct``.
+
+The serial example `esp_video/examples/ae_meter <../../../esp_video/examples/ae_meter>`__ maps windows to AE weights and AF windows from the console.
+
+.. code-block:: c
+
+    #include "esp_video_isp_pipeline.h"
+
+    uint8_t weight[ISP_AE_REGIONS];
+    isp_window_t af[ISP_AF_WINDOW_NUM];
+
+    esp_video_isp_pipeline_get_agc_meter_luma_weight(weight);
+    /* raise selected AE blocks, then: */
+    esp_video_isp_pipeline_set_agc_meter_luma_weight(weight);
+    esp_video_isp_pipeline_set_af_windows(af);
+    esp_video_isp_pipeline_set_agc_meter_target_offset(4.0f);
+    esp_video_isp_pipeline_set_awb_ct(6200);
+    esp_video_isp_pipeline_set_awb_reset();
+    esp_video_isp_pipeline_reset_agc_meter_weight();
+    esp_video_isp_pipeline_reset_af();
+
 How to Use esp_video
 --------------------
 

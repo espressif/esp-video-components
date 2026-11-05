@@ -1,5 +1,13 @@
 ## Unreleased
 
+- Set the focus step to one code when AF is enabled and the camera has no focus motor; skip focus motor ioctls on the stub path so logs are not flooded
+- Added ISP pipeline AWB `set_awb_ct` / `set_awb_reset` (model 2 resumes stats; model 3 restores `default_ct`)
+- Added ISP pipeline AF `set/get_af_windows`, `set/get_af_window_weight`, and `reset_af` (coordinates are statistics-window pixels; edges 0..4094; caller keeps windows inside the active frame)
+- Added ISP pipeline AGC `set/get_agc_meter_luma_weight`, `reset_agc_meter_weight`, and `set/get_agc_meter_target_offset`
+- Meter / AF / AWB runtime APIs return `ESP_ERR_INVALID_STATE` when the ISP pipeline controller is not initialized (not when the stream is merely idle)
+- Added `ae_meter` serial `win` / `del win` / `winw` / `aew`; demo maps windows to AE weights and AF windows
+- Added `ae_meter` serial `scan ct` and `scan ae` sweeps with start, end, signed step, and dwell time in milliseconds
+- Added `touch_3a` LCD touch demo for AWB CT buttons, AE+AF tap focus, SUN+ meter boost, and RST
 - Added `V4L2_CID_USER_ESP_ISP_DPC_DYNAMIC` and ISP pipeline control to apply IPA DPC metadata to hardware
 - Added camera-side encoder controls for the USB UVC H.264 passthrough path, over the UVC
   H.264 payload specification's Extension Unit and the Camera Terminal, exposed as standard
