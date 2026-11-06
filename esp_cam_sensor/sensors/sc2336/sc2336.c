@@ -1725,6 +1725,11 @@ static esp_err_t sc2336_get_para_value(esp_cam_sensor_device_t *dev, uint32_t id
         *(uint32_t *)arg = cam_sc2336->sc2336_para.gain_index;
         break;
     }
+    case ESP_CAM_SENSOR_EXPOSURE_US: {
+        uint32_t val = cam_sc2336->sc2336_para.exposure_val;
+        *(uint32_t *)arg = EXPOSURE_SC2336_TO_V4L2(val, dev->cur_format);
+        break;
+    }
     case ESP_CAM_SENSOR_FPS: {
         *(uint32_t *)arg = cam_sc2336->sc2336_para.cur_fps;
         break;
