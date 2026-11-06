@@ -33,6 +33,10 @@ class ipa_unit_af_c(ipa_unit_c):
             obj.max_change_time = 1000000
         if not hasattr(obj, 'edge_thresh'):
             obj.edge_thresh = 10
+        if not hasattr(obj, 'enable_log'):
+            obj.enable_log = False
+        if not hasattr(obj, 'model'):
+            obj.model = 0
 
         af_windows = list()
         if not hasattr(obj, 'windows'):
@@ -101,6 +105,8 @@ class ipa_unit_af_c(ipa_unit_c):
                 .luminance_high_threshold_ratio = {obj.luminance_high_threshold_ratio},
                 .luminance_low_threshold_ratio = {obj.luminance_low_threshold_ratio},
                 .max_change_time = {obj.max_change_time},
+                .model = {int(obj.model)},
+                .enable_log = {'true' if obj.enable_log else 'false'},
             }};
             '''
         )

@@ -1,0 +1,10 @@
+dependencies:
+  idf: ">=5.3"
+  esp_video:
+    version: ">=0.1.0"
+    override_path: "../../../"
+  example_video_common:
+    override_path: "../../common_components/example_video_common"
+  espressif/esp_board_manager: "*"
+  espressif/esp_lcd_touch: "*"
+  espressif/esp_lcd_touch_gt911: "*"

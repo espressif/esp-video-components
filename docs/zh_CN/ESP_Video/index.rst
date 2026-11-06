@@ -317,6 +317,38 @@ ISP 实时控制
     - 2.1：`IPA <https://github.com/espressif/esp-video-components/tree/master/esp_ipa>`__ 根据统计信息向传感器下发曝光、增益等亮度控制。
     - 2.2：IPA 根据统计信息向 ISP 下发亮度、颜色相关参数。
 
+运行时测光、对焦与白平衡
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+出流过程中可以改 AE、AF 和 AWB。头文件是 ``esp_video_isp_pipeline.h`` 。坐标是 ISP 统计窗口里的像素， ``(0, 0)`` 是左上角。这些调用要求 ISP pipeline 控制器已经初始化（``s_esp_video_isp`` 已创建）。未初始化时返回 ``ESP_ERR_INVALID_STATE`` ；不等于“已 STREAMON”。
+
+ESP32-P4 的 AE 统计是 5×5 网格。应用把点或矩形映射到 AE 块，再调用 ``esp_video_isp_pipeline_set_agc_meter_luma_weight()`` 。下标是 ``x * ISP_AE_BLOCK_Y_NUM + y`` 。权重和 JSON 表不同的块，在低亮或高亮区域丢弃时仍留在平均里。 ``esp_video_isp_pipeline_reset_agc_meter_weight()`` 恢复 JSON 权重。
+
+``esp_video_isp_pipeline_set_agc_meter_target_offset()`` 把 JSON 的 ``target`` 、 ``target_low`` 、 ``target_high`` 同步加同一个偏移。加偏移后的三个目标亮度均限制在闭区间 [1, 255]。AE 继续拆曝光和增益。恢复权重表不会改偏移。
+
+``esp_video_isp_pipeline_set_af_windows()`` 和 ``esp_video_isp_pipeline_set_af_window_weight()`` 改运行时窗口和权重。窗口坐标是统计窗口像素；每条边须小于 4095（有效范围 0..4094）；左上角不能越过右下角。API 不按当前 sensor 分辨率做边界检查，应用须保证窗口落在当前格式内（例如 640×480 或 1280×720）。建议的点窗口是统计窗口的 1/5，并且至少 8 像素。 ``esp_video_isp_pipeline_reset_af()`` 把窗口和权重抄回 JSON 并重新扫描。这条 pipeline 没有 AF 时返回 ``ESP_ERR_NOT_SUPPORTED`` 。相机没有对焦马达时，pipeline 使用 1 个 code 的对焦步进，扫描可以继续。窗口会移动，镜头不动；此时不会对电机 ioctl 报错刷屏。
+
+``esp_video_isp_pipeline_set_awb_ct()`` 把白平衡停在一个开尔文值上。model 3 读 ``fixed_ct.presets[]`` 。model 2 读 ``ref_points[]`` ，并停止使用统计，直到调用 ``esp_video_isp_pipeline_set_awb_reset()`` 。表中有该值时直接使用。落在两档之间时，按 mired（ ``1000000 / Kelvin`` ）插值 R/G 和 B/G。超出表范围时钳到最近端点，发布的色温也变成该端点。 ``ct`` 为 0，以及 model 0 和 model 1，返回 ``ESP_ERR_INVALID_ARG`` 。 ``esp_video_isp_pipeline_set_awb_reset()`` 让 model 2 恢复统计。model 3 仍走固定色温表，恢复 ``fixed_ct.default_ct`` 。
+
+串口例程 `esp_video/examples/ae_meter <../../../esp_video/examples/ae_meter>`__ 从控制台把窗口映射到 AE 权重和 AF 窗口。
+
+.. code-block:: c
+
+    #include "esp_video_isp_pipeline.h"
+
+    uint8_t weight[ISP_AE_REGIONS];
+    isp_window_t af[ISP_AF_WINDOW_NUM];
+
+    esp_video_isp_pipeline_get_agc_meter_luma_weight(weight);
+    /* 抬高选中的 AE 块后： */
+    esp_video_isp_pipeline_set_agc_meter_luma_weight(weight);
+    esp_video_isp_pipeline_set_af_windows(af);
+    esp_video_isp_pipeline_set_agc_meter_target_offset(4.0f);
+    esp_video_isp_pipeline_set_awb_ct(6200);
+    esp_video_isp_pipeline_set_awb_reset();
+    esp_video_isp_pipeline_reset_agc_meter_weight();
+    esp_video_isp_pipeline_reset_af();
+
 如何使用 esp_video
 ------------------
 

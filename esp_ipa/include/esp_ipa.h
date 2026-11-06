@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2024-2025 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2024-2026 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: ESPRESSIF MIT
  */
@@ -119,17 +119,20 @@ esp_err_t esp_ipa_pipeline_process(esp_ipa_pipeline_handle_t handle, const esp_i
 esp_err_t esp_ipa_pipeline_destroy(esp_ipa_pipeline_handle_t handle);
 
 /**
- * @brief Set fixed color temperature for AWB model 3 (fixed_ct).
+ * @brief Set fixed color temperature for AWB (compatibility wrapper).
  *
- * @note CT must exactly match an entry in `awb.fixed_ct.presets[]`.
- *       Call esp_ipa_pipeline_process() afterwards to apply WBG and ACC tables.
+ * @note Prefer `esp_ipa_pipeline_ioctl(handle, ESP_IPA_AWB_S_CT, &ct)`.
+ *       CT uses exact preset match when present, otherwise mired interpolation
+ *       between presets (clamped to the table ends). Call
+ *       esp_ipa_pipeline_process() afterwards to apply WBG and ACC tables.
  *
  * @param[in] handle Pipeline handle
  * @param[in] ct     Color temperature in Kelvin
  *
  * @return
  * - ESP_OK On success
- * - ESP_ERR_INVALID_ARG handle is NULL, pipeline has no AWB fixed_ct module, or ct not in presets
+ * - ESP_ERR_INVALID_ARG handle is NULL, or the pipeline has no AWB module that
+ *   accepts fixed CT
  */
 esp_err_t esp_ipa_awb_set_fixed_ct(esp_ipa_pipeline_handle_t handle, uint32_t ct);
 

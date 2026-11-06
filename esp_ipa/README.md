@@ -186,7 +186,11 @@ Developers can refer to the configuration files in [esp_cam_sensor](https://gith
 
 **AWB model 2 startup white balance** — optionally set `startup_zone` to `uhct`, `hct`, `mct`, `lct`, or `ulct`. Initializes gains and CT from the first valid reference point in the selected enabled zone, then continues automatic AWB. Omitting this parameter preserves normal startup white-point scanning. Returns `ESP_ERR_INVALID_ARG` if no matching reference is available. Startup CT is published to **`ct`**; subsequent CT updates require `export_ct: true`.
 
-**AWB model 3 (fixed CT)** — set `model` to `3` or `"fixed_ct"`. Does not use AWB statistics. Applies the active preset from `fixed_ct.presets[]` (exact CT match only). **`fixed_ct.default_ct`** must exist in `presets[]` and is selected at init. Runtime switch: `esp_ipa_awb_set_fixed_ct(handle, <kelvin>)` then `esp_ipa_pipeline_process()`. Returns `ESP_ERR_INVALID_ARG` if CT is not in the preset table. KV **`ct`** is published for ACC CCM/LSC/SAT.
+**AWB model 2 fixed color temperature** — `ESP_IPA_AWB_S_CT` (`esp_ipa_pipeline_ioctl`, `uint32_t` Kelvin) holds gains from `ref_points[]` and skips statistics. An exact `ct` uses that point. A value between two points interpolates R/G and B/G in mired (`1000000 / Kelvin`). A value outside the table is clamped to the nearest point. The next `esp_ipa_pipeline_process()` publishes WBG on any real gain change (same `1e-4` step as model 3) and keeps **`ct`**. IAN does not overwrite that held CT. `esp_ipa_pipeline_get_state` / `set_state` restore this hold when `awb.fixed.valid` is set. `ESP_IPA_AWB_S_RESET` resumes statistics and the JSON `min_*_gain_step` filter. `ct` 0 returns `ESP_ERR_INVALID_ARG`.
+
+**AWB model 3 (fixed CT)** — set `model` to `3` or `"fixed_ct"`. Does not use AWB statistics. Applies gains from `fixed_ct.presets[]`. A requested Kelvin value that matches a preset uses that preset. A value between two presets interpolates R/G and B/G in mired (`1000000 / Kelvin`). A value outside the table is clamped to the nearest preset. **`fixed_ct.default_ct`** is selected at init the same way. Runtime switch: `ESP_IPA_AWB_S_CT` then `esp_ipa_pipeline_process()`. `ESP_IPA_AWB_S_RESET` restores `default_ct` and stays on the fixed-CT table. Returns `ESP_ERR_INVALID_ARG` if `ct` is 0. KV **`ct`** is the applied Kelvin, after clamping, for ACC CCM/LSC/SAT.
+
+Model 0 and model 1 reject `ESP_IPA_AWB_S_CT` / `ESP_IPA_AWB_S_RESET` with `ESP_ERR_INVALID_ARG`.
 
 ```json
 "awb":
@@ -217,7 +221,7 @@ Legacy single preset (still supported):
 
 | Parameter | Type | Range | Description |
 |:-:|:-:|:-:|:-|
-| fixed_ct | Object | required for model 3 | **`esp_ipa_awb_fixed_cfg_t`**: **`default_ct`** (Kelvin, must match a preset), **`presets[]`** each with **`ct`/`rg`/`bg`** (>0). Runtime CT via **`esp_ipa_awb_set_fixed_ct()`** only (exact match). Legacy `{ ct, rg, bg }` = one preset. Deprecated JSON key **`fixed`** is still accepted by the generator. |
+| fixed_ct | Object | required for model 3 | **`esp_ipa_awb_fixed_cfg_t`**: **`default_ct`** (Kelvin; a preset, or a value interpolated between presets), **`presets[]`** each with **`ct`/`rg`/`bg`** (>0). Runtime CT via **`ESP_IPA_AWB_S_CT`**: exact preset, mired interpolation between presets, or clamp to the nearest preset. Legacy `{ ct, rg, bg }` = one preset. Deprecated JSON key **`fixed`** is still accepted by the generator. |
 
 ---
 
@@ -969,6 +973,10 @@ Legacy single preset (still supported):
 | high_regions | Integer | ESP32-P4:(0,25) | Image high threshold counter high regions number: if high threshold counter is less than this value will all sampled data which is higher than "high_threshold" be dropped |
 | weight | <div style="white-space: nowrap;">Array[Integer]</div> | [0,255] | Image brightness sampling weight |
 
+**Runtime AE weight** — `ESP_IPA_AGC_S_METER_LUMA_WEIGHT` replaces the 5×5 AE weight table. Index is `x * ISP_AE_BLOCK_Y_NUM + y`. An all-zero table is rejected. Blocks whose weight differs from the JSON table stay in the average when the low-threshold or high-threshold region drop would otherwise set their weight to 0. `ESP_IPA_AGC_S_RESET_METER_WEIGHT` restores the JSON table. The application maps points or rectangles onto AE blocks.
+
+**Luma target offset** — `ESP_IPA_AGC_S_METER_TARGET_OFFSET` and `ESP_IPA_AGC_G_METER_TARGET_OFFSET` add the same integer shift to JSON `luma_target`, `luma_low`, and `luma_high`. NaN and infinity are rejected. The stored shift is limited to [`ESP_IPA_AGC_METER_TARGET_OFFSET_MIN`, `ESP_IPA_AGC_METER_TARGET_OFFSET_MAX`] so an 8-bit JSON target can reach either end of 1..255. The resulting target, low, and high are then clamped to 1..255. AGC continues to split exposure and gain. Resetting the weight table does not change the offset.
+
 ---
 
 ```json
@@ -1221,6 +1229,8 @@ Legacy single preset (still supported):
 | l1_scan_points_num | Integer | >0 | Level 1 scanning point numbers |
 | l2_scan_points_num | Integer | >0 | Level 2 scanning point numbers |
 | max_pos | Integer | >0 | Maximum focus position, less value can reduce scanning time cost, but also shorten the focus distance |
+
+**Runtime AF windows** — `ESP_IPA_AF_S_WINDOWS` replaces the three runtime windows and restarts the focus scan. `ESP_IPA_AF_S_WINDOW_WEIGHT` replaces window weights (software only; no ISP settle). `ESP_IPA_AF_S_RESET` restores the JSON windows and `weight_table`, then restarts the scan. After IPA publishes new windows to the ISP, the next AF stats frame is ignored so the scan does not use stale geometry. `ESP_IPA_AF_G_WINDOWS` and `ESP_IPA_AF_G_WINDOW_WEIGHT` read the runtime windows and weights. The application maps points or rectangles onto AF windows.
 
 ---
 

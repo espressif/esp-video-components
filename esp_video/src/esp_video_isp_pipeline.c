@@ -73,6 +73,7 @@ typedef struct esp_video_isp {
         uint8_t group       : 1;
         uint8_t ae_level    : 1;
         uint8_t af_stime    : 1;
+        uint8_t focus       : 1; /*!< Real V4L2_CID_FOCUS_ABSOLUTE motor present */
     } sensor_attr;
 
     TaskHandle_t task_handler;
@@ -686,7 +687,7 @@ static void config_lsc(esp_video_isp_t *isp, esp_ipa_metadata_t *metadata)
     esp_video_isp_lsc_t lsc;
 
     if (metadata->flags & IPA_METADATA_FLAGS_LSC) {
-        lsc.enable = true;
+        lsc.enable = metadata->lsc.enable;
         lsc.gain_r = metadata->lsc.gain_r;
         lsc.gain_gr = metadata->lsc.gain_gr;
         lsc.gain_gb = metadata->lsc.gain_gb;
@@ -802,31 +803,40 @@ static void config_motor_position(esp_video_isp_t *isp, esp_ipa_metadata_t *meta
     struct v4l2_ext_controls controls;
     struct v4l2_ext_control control[1];
 
-    if (metadata->flags & IPA_METADATA_FLAGS_FP) {
+    if (!(metadata->flags & IPA_METADATA_FLAGS_FP)) {
+        return;
+    }
+
+    if (!isp->sensor_attr.focus) {
+        /* Stub focus range when AF runs without a motor: advance scan state only. */
+        isp->focus_info.cur_pos = metadata->focus_pos;
+        isp->focus_info.start_time = 0;
+        return;
+    }
+
+    controls.ctrl_class = V4L2_CID_CAMERA_CLASS;
+    controls.count      = 1;
+    controls.controls   = control;
+    control[0].id       = V4L2_CID_FOCUS_ABSOLUTE;
+    control[0].value    = metadata->focus_pos;
+    if (ioctl(isp->cam_fd, VIDIOC_S_EXT_CTRLS, &controls) != 0) {
+        ESP_LOGE(TAG, "failed to set motor position");
+        isp->focus_info.start_time = 0;
+    } else {
+        int64_t strat_time;
+
         controls.ctrl_class = V4L2_CID_CAMERA_CLASS;
         controls.count      = 1;
         controls.controls   = control;
-        control[0].id       = V4L2_CID_FOCUS_ABSOLUTE;
-        control[0].value    = metadata->focus_pos;
-        if (ioctl(isp->cam_fd, VIDIOC_S_EXT_CTRLS, &controls) != 0) {
-            ESP_LOGE(TAG, "failed to set motor position");
+        control[0].id       = V4L2_CID_MOTOR_START_TIME;
+        control[0].p_u8     = (uint8_t *)&strat_time;
+        control[0].size     = sizeof(strat_time);
+        if (ioctl(isp->cam_fd, VIDIOC_G_EXT_CTRLS, &controls) != 0) {
+            ESP_LOGE(TAG, "failed to get motor start time");
             isp->focus_info.start_time = 0;
         } else {
-            int64_t strat_time;
-
-            controls.ctrl_class = V4L2_CID_CAMERA_CLASS;
-            controls.count      = 1;
-            controls.controls   = control;
-            control[0].id       = V4L2_CID_MOTOR_START_TIME;
-            control[0].p_u8     = (uint8_t *)&strat_time;
-            control[0].size     = sizeof(strat_time);
-            if (ioctl(isp->cam_fd, VIDIOC_G_EXT_CTRLS, &controls) != 0) {
-                ESP_LOGE(TAG, "failed to get motor start time");
-                isp->focus_info.start_time = 0;
-            } else {
-                isp->focus_info.start_time = strat_time;
-                isp->focus_info.cur_pos = metadata->focus_pos;
-            }
+            isp->focus_info.start_time = strat_time;
+            isp->focus_info.cur_pos = metadata->focus_pos;
         }
     }
 }
@@ -1360,6 +1370,7 @@ static esp_err_t init_cam_dev(const esp_video_isp_config_t *config, esp_video_is
         ESP_GOTO_ON_FALSE(ret == 0, ESP_ERR_NOT_SUPPORTED, fail_0, TAG, "failed to get AF absolute position code");
 
         isp->sensor.focus_info = &isp->focus_info;
+        isp->sensor_attr.focus = 1;
 
         isp->focus_info.min_pos = qctrl.minimum;
         isp->focus_info.max_pos = qctrl.maximum;
@@ -1379,9 +1390,24 @@ static esp_err_t init_cam_dev(const esp_video_isp_config_t *config, esp_video_is
     if (ret == 0) {
         isp->focus_info.period_in_us = motor_format.step_period.period_in_us;
         isp->focus_info.codes_per_step = motor_format.step_period.codes_per_step;
+    } else if (isp->sensor_attr.focus) {
+        ESP_LOGW(TAG, "VIDIOC_G_MOTOR_FMT is not supported");
     } else {
-        ESP_LOGE(TAG, "VIDIOC_G_MOTOR_FMT is not supported");
+        ESP_LOGD(TAG, "VIDIOC_G_MOTOR_FMT is not supported");
     }
+
+#if CONFIG_ESP_IPA_AF_ALGORITHM
+    if (!isp->sensor.focus_info) {
+        /* Motor compiled in but not detected: keep IPA AF init alive. */
+        isp->sensor.focus_info = &isp->focus_info;
+        isp->focus_info.min_pos = 0;
+        isp->focus_info.max_pos = 1;
+        isp->focus_info.step_pos = 1;
+        isp->focus_info.cur_pos = 0;
+        isp->focus_info.codes_per_step = 1;
+        isp->focus_info.period_in_us = 1000;
+    }
+#endif
 #elif CONFIG_ESP_IPA_AF_ALGORITHM
     isp->sensor.focus_info = &isp->focus_info;
 
@@ -1389,6 +1415,8 @@ static esp_err_t init_cam_dev(const esp_video_isp_config_t *config, esp_video_is
     isp->focus_info.max_pos = 1;
     isp->focus_info.step_pos = 1;
     isp->focus_info.cur_pos = 0;
+    isp->focus_info.codes_per_step = 1;
+    isp->focus_info.period_in_us = 1000;
 #endif
 
     memset(&format, 0, sizeof(struct v4l2_format));
@@ -2080,6 +2108,241 @@ esp_err_t esp_video_isp_pipeline_get_agc_min_exposure(uint32_t *exposure_us)
     return ret;
 }
 
+esp_err_t esp_video_isp_pipeline_set_agc_meter_luma_weight(const uint8_t weight[ISP_AE_REGIONS])
+{
+    esp_err_t ret = ESP_ERR_INVALID_STATE;
+    esp_ipa_agc_meter_luma_weight_t table;
+
+    ESP_RETURN_ON_FALSE(weight, ESP_ERR_INVALID_ARG, TAG, "weight is NULL");
+
+    memcpy(table.weight, weight, sizeof(table.weight));
+    _lock_acquire(&s_isp_lock);
+    if (s_esp_video_isp) {
+        ret = esp_ipa_pipeline_ioctl(s_esp_video_isp->ipa_pipeline, ESP_IPA_AGC_S_METER_LUMA_WEIGHT, &table);
+    } else {
+        ESP_LOGD(TAG, "ISP controller is not initialized");
+    }
+    _lock_release(&s_isp_lock);
+
+    return ret;
+}
+
+esp_err_t esp_video_isp_pipeline_get_agc_meter_luma_weight(uint8_t weight[ISP_AE_REGIONS])
+{
+    esp_err_t ret = ESP_ERR_INVALID_STATE;
+    esp_ipa_agc_meter_luma_weight_t table;
+
+    ESP_RETURN_ON_FALSE(weight, ESP_ERR_INVALID_ARG, TAG, "weight is NULL");
+
+    _lock_acquire(&s_isp_lock);
+    if (s_esp_video_isp) {
+        ret = esp_ipa_pipeline_ioctl(s_esp_video_isp->ipa_pipeline, ESP_IPA_AGC_G_METER_LUMA_WEIGHT, &table);
+        if (ret == ESP_OK) {
+            memcpy(weight, table.weight, sizeof(table.weight));
+        }
+    } else {
+        ESP_LOGD(TAG, "ISP controller is not initialized");
+    }
+    _lock_release(&s_isp_lock);
+
+    return ret;
+}
+
+esp_err_t esp_video_isp_pipeline_reset_agc_meter_weight(void)
+{
+    esp_err_t ret = ESP_ERR_INVALID_STATE;
+
+    _lock_acquire(&s_isp_lock);
+    if (s_esp_video_isp) {
+        ret = esp_ipa_pipeline_ioctl(s_esp_video_isp->ipa_pipeline, ESP_IPA_AGC_S_RESET_METER_WEIGHT, NULL);
+    } else {
+        ESP_LOGD(TAG, "ISP controller is not initialized");
+    }
+    _lock_release(&s_isp_lock);
+
+    return ret;
+}
+
+esp_err_t esp_video_isp_pipeline_reset_af(void)
+{
+    esp_err_t ret = ESP_ERR_INVALID_STATE;
+
+    _lock_acquire(&s_isp_lock);
+    if (s_esp_video_isp) {
+        ret = esp_ipa_pipeline_ioctl(s_esp_video_isp->ipa_pipeline, ESP_IPA_AF_S_RESET, NULL);
+    } else {
+        ESP_LOGD(TAG, "ISP controller is not initialized");
+    }
+    _lock_release(&s_isp_lock);
+
+    return ret;
+}
+
+esp_err_t esp_video_isp_pipeline_set_af_windows(const isp_window_t windows[ISP_AF_WINDOW_NUM])
+{
+    esp_err_t ret = ESP_ERR_INVALID_STATE;
+    esp_ipa_af_windows_t table;
+
+    ESP_RETURN_ON_FALSE(windows, ESP_ERR_INVALID_ARG, TAG, "windows is NULL");
+
+    memcpy(table.windows, windows, sizeof(table.windows));
+    _lock_acquire(&s_isp_lock);
+    if (s_esp_video_isp) {
+        ret = esp_ipa_pipeline_ioctl(s_esp_video_isp->ipa_pipeline, ESP_IPA_AF_S_WINDOWS, &table);
+    } else {
+        ESP_LOGD(TAG, "ISP controller is not initialized");
+    }
+    _lock_release(&s_isp_lock);
+
+    return ret;
+}
+
+esp_err_t esp_video_isp_pipeline_get_af_windows(isp_window_t windows[ISP_AF_WINDOW_NUM])
+{
+    esp_err_t ret = ESP_ERR_INVALID_STATE;
+    esp_ipa_af_windows_t table;
+
+    ESP_RETURN_ON_FALSE(windows, ESP_ERR_INVALID_ARG, TAG, "windows is NULL");
+
+    _lock_acquire(&s_isp_lock);
+    if (s_esp_video_isp) {
+        ret = esp_ipa_pipeline_ioctl(s_esp_video_isp->ipa_pipeline, ESP_IPA_AF_G_WINDOWS, &table);
+        if (ret == ESP_OK) {
+            memcpy(windows, table.windows, sizeof(table.windows));
+        }
+    } else {
+        ESP_LOGD(TAG, "ISP controller is not initialized");
+    }
+    _lock_release(&s_isp_lock);
+
+    return ret;
+}
+
+esp_err_t esp_video_isp_pipeline_set_af_window_weight(const uint8_t weight[ISP_AF_WINDOW_NUM])
+{
+    esp_err_t ret = ESP_ERR_INVALID_STATE;
+    esp_ipa_af_window_weight_t table;
+
+    ESP_RETURN_ON_FALSE(weight, ESP_ERR_INVALID_ARG, TAG, "weight is NULL");
+
+    memcpy(table.weight, weight, sizeof(table.weight));
+    _lock_acquire(&s_isp_lock);
+    if (s_esp_video_isp) {
+        ret = esp_ipa_pipeline_ioctl(s_esp_video_isp->ipa_pipeline, ESP_IPA_AF_S_WINDOW_WEIGHT, &table);
+    } else {
+        ESP_LOGD(TAG, "ISP controller is not initialized");
+    }
+    _lock_release(&s_isp_lock);
+
+    return ret;
+}
+
+esp_err_t esp_video_isp_pipeline_get_af_window_weight(uint8_t weight[ISP_AF_WINDOW_NUM])
+{
+    esp_err_t ret = ESP_ERR_INVALID_STATE;
+    esp_ipa_af_window_weight_t table;
+
+    ESP_RETURN_ON_FALSE(weight, ESP_ERR_INVALID_ARG, TAG, "weight is NULL");
+
+    _lock_acquire(&s_isp_lock);
+    if (s_esp_video_isp) {
+        ret = esp_ipa_pipeline_ioctl(s_esp_video_isp->ipa_pipeline, ESP_IPA_AF_G_WINDOW_WEIGHT, &table);
+        if (ret == ESP_OK) {
+            memcpy(weight, table.weight, sizeof(table.weight));
+        }
+    } else {
+        ESP_LOGD(TAG, "ISP controller is not initialized");
+    }
+    _lock_release(&s_isp_lock);
+
+    return ret;
+}
+
+esp_err_t esp_video_isp_pipeline_set_awb_ct(uint32_t ct)
+{
+    esp_err_t ret = ESP_ERR_INVALID_STATE;
+
+    _lock_acquire(&s_isp_lock);
+    if (s_esp_video_isp) {
+        ret = esp_ipa_pipeline_ioctl(s_esp_video_isp->ipa_pipeline, ESP_IPA_AWB_S_CT, &ct);
+    } else {
+        ESP_LOGD(TAG, "ISP controller is not initialized");
+    }
+    _lock_release(&s_isp_lock);
+
+    return ret;
+}
+
+esp_err_t esp_video_isp_pipeline_set_awb_reset(void)
+{
+    esp_err_t ret = ESP_ERR_INVALID_STATE;
+
+    _lock_acquire(&s_isp_lock);
+    if (s_esp_video_isp) {
+        ret = esp_ipa_pipeline_ioctl(s_esp_video_isp->ipa_pipeline, ESP_IPA_AWB_S_RESET, NULL);
+    } else {
+        ESP_LOGD(TAG, "ISP controller is not initialized");
+    }
+    _lock_release(&s_isp_lock);
+
+    return ret;
+}
+
+esp_err_t esp_video_isp_pipeline_set_agc_meter_target_offset(float offset)
+{
+    esp_err_t ret = ESP_ERR_INVALID_STATE;
+
+    _lock_acquire(&s_isp_lock);
+    if (s_esp_video_isp) {
+        ret = esp_ipa_pipeline_ioctl(s_esp_video_isp->ipa_pipeline, ESP_IPA_AGC_S_METER_TARGET_OFFSET, &offset);
+    } else {
+        ESP_LOGD(TAG, "ISP controller is not initialized");
+    }
+    _lock_release(&s_isp_lock);
+
+    return ret;
+}
+
+esp_err_t esp_video_isp_pipeline_get_agc_meter_target_offset(float *offset)
+{
+    esp_err_t ret = ESP_ERR_INVALID_STATE;
+
+    ESP_RETURN_ON_FALSE(offset, ESP_ERR_INVALID_ARG, TAG, "offset is NULL");
+
+    _lock_acquire(&s_isp_lock);
+    if (s_esp_video_isp) {
+        ret = esp_ipa_pipeline_ioctl(s_esp_video_isp->ipa_pipeline, ESP_IPA_AGC_G_METER_TARGET_OFFSET, offset);
+    } else {
+        ESP_LOGD(TAG, "ISP controller is not initialized");
+    }
+    _lock_release(&s_isp_lock);
+
+    return ret;
+}
+
+esp_err_t esp_video_isp_pipeline_get_sensor_ae(esp_video_isp_pipeline_sensor_ae_t *ae)
+{
+    esp_err_t ret = ESP_ERR_INVALID_STATE;
+
+    ESP_RETURN_ON_FALSE(ae, ESP_ERR_INVALID_ARG, TAG, "ae is NULL");
+
+    _lock_acquire(&s_isp_lock);
+    if (s_esp_video_isp) {
+        ae->exposure_us = s_esp_video_isp->sensor.cur_exposure;
+        ae->min_exposure_us = s_esp_video_isp->sensor.min_exposure;
+        ae->max_exposure_us = s_esp_video_isp->sensor.max_exposure;
+        ae->gain = s_esp_video_isp->sensor.cur_gain;
+        ae->min_gain = s_esp_video_isp->sensor.min_gain;
+        ae->max_gain = s_esp_video_isp->sensor.max_gain;
+        ret = ESP_OK;
+    } else {
+        ESP_LOGD(TAG, "ISP controller is not initialized");
+    }
+    _lock_release(&s_isp_lock);
+
+    return ret;
+}
+
 /**
  * @brief Get int32_t type IPA environment variable.
  *
@@ -2144,6 +2407,25 @@ esp_err_t esp_video_isp_pipeline_get_env_float(const char *name, float *val)
             *val = esp_ipa_get_float(ipa, name);
             ret = ESP_OK;
         }
+    } else {
+        ESP_LOGD(TAG, "ISP controller is not initialized");
+    }
+    _lock_release(&s_isp_lock);
+
+    return ret;
+}
+
+esp_err_t esp_video_isp_pipeline_set_env_float(const char *name, float val)
+{
+    esp_err_t ret = ESP_ERR_INVALID_STATE;
+
+    ESP_RETURN_ON_FALSE(name, ESP_ERR_INVALID_ARG, TAG, "invalid argument");
+
+    _lock_acquire(&s_isp_lock);
+    if (s_esp_video_isp && s_esp_video_isp->ipa_pipeline &&
+            s_esp_video_isp->ipa_pipeline->ipa_array) {
+        esp_ipa_set_float(s_esp_video_isp->ipa_pipeline->ipa_array[0], name, val);
+        ret = ESP_OK;
     } else {
         ESP_LOGD(TAG, "ISP controller is not initialized");
     }
