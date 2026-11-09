@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 2.7.0
 
 - Updated JX-H63P default IPA JSON: AWB model 2, adjusted AGC, LSC, and CCM, and an AF window of 320x240 at (160,120) that fits both 640x480 and 1280x720
 - Updated SC2336 default IPA JSON for ESP32-P4 ECO5 (`sc2336_default_p4_eco5.json`).

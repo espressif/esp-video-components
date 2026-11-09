@@ -1,4 +1,4 @@
-## Unreleased
+## 2.5.0
 
 - Added AGC, AF, and AWB runtime ioctl commands in this component's headers and prebuilt libraries: `ESP_IPA_AGC_S/G_METER_LUMA_WEIGHT`, `ESP_IPA_AGC_S_RESET_METER_WEIGHT`, `ESP_IPA_AGC_S/G_METER_TARGET_OFFSET`, `ESP_IPA_AF_S/G_WINDOWS`, `ESP_IPA_AF_S/G_WINDOW_WEIGHT`, `ESP_IPA_AF_S_RESET`, `ESP_IPA_AWB_S_CT`, and `ESP_IPA_AWB_S_RESET`. `esp_video` links this tree through `override_path`
 - Changed `esp_ipa_awb_set_fixed_ct` to wrap `ESP_IPA_AWB_S_CT`: exact preset match when present, otherwise mired interpolation between presets (clamped to the table ends). Previously only exact preset match was accepted (`ESP_ERR_INVALID_ARG` between presets)
