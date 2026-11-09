@@ -10,6 +10,7 @@
 * [image_storage](https://github.com/espressif/esp-video-components/tree/master/esp_video/examples/image_storage) demonstrates how to store image data and video stream data to an SD card or flash.
 
 * [fast_startup/deep_sleep](https://github.com/espressif/esp-video-components/tree/master/esp_video/examples/fast_startup/deep_sleep) demonstrates fast startup after deep sleep by restoring IPA state from RTC memory and saving the first frame to an SD card.
+* [fast_startup/nvs](https://github.com/espressif/esp-video-components/tree/master/esp_video/examples/fast_startup/nvs) demonstrates fast startup after power off by restoring IPA state from NVS and saving the first frame to an SD card.
 
 * [Memory To Memory](https://github.com/espressif/esp-video-components/tree/master/esp_video/examples/m2m) demonstrates how to encode or decode streams using the M2M video devices.
 

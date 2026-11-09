@@ -3,3 +3,5 @@ dependencies:
     override_path: "../../../../"
   example_video_common:
     override_path: "../../../common_components/example_video_common"
+  fast_startup_common:
+    override_path: "../../common_components/fast_startup_common"
