@@ -10,6 +10,9 @@
 #include "esp_cam_sensor_types.h"
 #include "esp_cam_motor_types.h"
 #include "esp_cam_ircut_types.h"
+#if CONFIG_ESP_VIDEO_ENABLE_LED_SUPPORT
+#include "esp_cam_led_types.h"
+#endif
 #if CONFIG_ESP_VIDEO_ENABLE_HW_JPEG_ENC_VIDEO_DEVICE
 #include "driver/jpeg_encode.h"
 #endif
@@ -121,6 +124,18 @@ esp_err_t esp_video_csi_video_device_add_motor(esp_cam_motor_device_t *motor_dev
  */
 esp_err_t esp_video_csi_video_device_add_ircut(esp_cam_ircut_device_t *ircut_dev);
 #endif
+#if CONFIG_ESP_VIDEO_ENABLE_MIPI_CSI_LED_SUPPORT
+/**
+ * @brief Add supplemental LED device to MIPI-CSI video device
+ *
+ * @param led_dev LED device
+ *
+ * @return
+ *      - ESP_OK on success
+ *      - Others if failed
+ */
+esp_err_t esp_video_csi_video_device_add_led(esp_cam_led_device_t *led_dev);
+#endif
 #endif
 
 #if CONFIG_ESP_VIDEO_ENABLE_DVP_VIDEO_DEVICE
@@ -145,19 +160,6 @@ esp_err_t esp_video_create_dvp_video_device(esp_cam_sensor_device_t *cam_dev);
  *      - Others if failed
  */
 esp_err_t esp_video_destroy_dvp_video_device(void);
-
-#if CONFIG_ESP_VIDEO_ENABLE_DVP_IRCUT_SUPPORT
-/**
- * @brief Add IR-Cut device to DVP video device
- *
- * @param ircut_dev IR-Cut device
- *
- * @return
- *      - ESP_OK on success
- *      - Others if failed
- */
-esp_err_t esp_video_dvp_video_device_add_ircut(esp_cam_ircut_device_t *ircut_dev);
-#endif
 #endif
 
 #ifdef CONFIG_ESP_VIDEO_ENABLE_H264_VIDEO_DEVICE

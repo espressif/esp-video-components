@@ -24,9 +24,16 @@
 - Updated to use usb_host_uvc v2.6.x
 - Fixed the USB UVC teardown abandoning the stream when `uvc_host_stream_stop()` reports an
   error, which left the framework and the driver disagreeing about whether the stream was running
-- Added `V4L2_CID_IRCUT_MODE` and IR-CUT initialization for MIPI-CSI and DVP video devices
-    - `esp_video_init_ircut_config_t` supplies the IR-CUT chip and GPIO pins on CSI/DVP init
+- Added `V4L2_CID_IRCUT_MODE` and IR-CUT initialization for the MIPI-CSI video device
+    - `esp_video_init_ircut_config_t` supplies the IR-CUT chip and GPIO pins on CSI init
     - ISP pipeline applies IPA IR metadata to the camera through `V4L2_CID_IRCUT_MODE`
+- Added supplemental LED initialization for the MIPI-CSI video device
+    - `esp_video_init_led_config_t` supplies the LED GPIO pins on CSI init
+    - `gpio_en` is passed to the LED driver. IR2835 does not drive it; a later driver may
+    - `V4L2_CID_IR_LED_BRIGHTNESS` sets the IR LED brightness
+    - The ISP pipeline turns the LED on with night IR-CUT mode and off with day IR-CUT mode. IR-CUT is an electromagnetic device and its switching time cannot be controlled, so the LED is switched independently of the IR-CUT
+    - `esp_ipa_sensor_t::ir_led_on` follows the brightness read at init and each successful LED ioctl, so IPA checks AWB G/R only while the IR LED is on
+    - CSI deinit keeps the LED handle until the driver has driven the control pin low
 - Added APIs to save and restore IPA pipeline state for fast startup
     - `esp_video_isp_pipeline_get_ipa_state()` reads the computed IPA state while the ISP pipeline is initialized
     - `esp_video_isp_pipeline_set_ipa_state()` writes a saved state to the ISP and camera. Call it after the pipeline is initialized and before `VIDIOC_STREAMON` of the frame that must use the restored parameters

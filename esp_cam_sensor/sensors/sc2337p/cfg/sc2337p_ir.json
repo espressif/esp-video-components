@@ -637,30 +637,46 @@
         "ir":
         {
             "model": 0,
-            "luma_env": "ir_env_luma",
-            "k": 30557,
-            "ir_factor": 0.8,
-            "enter_delay_us": 500000,
-            "exit_delay_us": 500000,
-            "weight":
-            [
-                1, 1, 1, 1, 1,
-                1, 1, 1, 1, 1,
-                1, 1, 1, 1, 1,
-                1, 1, 1, 1, 1,
-                1, 1, 1, 1, 1
-            ],
-            "normal":
+            "model0_param":
             {
-                "luma_threshold": 50.0,
-                "awb_threshold": 1.5,
-                "hold_time_us": 500000
-            },
-            "ir_mode":
-            {
-                "luma_threshold": 15.0,
-                "awb_threshold": 0.9,
-                "hold_time_us": 500000
+                "day_luma_threshold": 5.0,
+                "day_switch_night_time_us": 3000000,
+                "day_keep_time_us": 3000000,
+
+                "night_ir_factor": 0.8,
+                "night_luma_threshold": 50.0,
+                "night_switch_day_time_us": 3000000,
+                "night_keep_time_us": 18000000,
+
+                "night_awb":
+                {
+                    "green":
+                    {
+                        "max": 255,
+                        "min": 10
+                    },
+                    "rg":
+                    {
+                        "max": 0.9778,
+                        "min": 0.3763
+                    },
+                    "bg":
+                    {
+                        "max": 0.7215,
+                        "min": 0.2834
+                    }
+                },
+                "night_ccm":
+                {
+                    "matrix":
+                    [
+                        1.0, 0.0, 0.0,
+                        0.0, 1.0, 0.0,
+                        0.0, 0.0, 1.0
+                    ]
+                },
+                "night_red_gain": 1.0,
+                "night_blue_gain": 1.0
             }
         }
     }

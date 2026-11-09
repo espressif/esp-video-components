@@ -74,7 +74,12 @@ typedef struct esp_video_isp {
         uint8_t ae_level    : 1;
         uint8_t af_stime    : 1;
         uint8_t focus       : 1; /*!< Real V4L2_CID_FOCUS_ABSOLUTE motor present */
+        uint8_t ir_led      : 1;
     } sensor_attr;
+#if CONFIG_ESP_VIDEO_ENABLE_LED_SUPPORT
+    int32_t ir_led_min;
+    int32_t ir_led_max;
+#endif
 
     TaskHandle_t task_handler;
 #if CONFIG_ISP_PIPELINE_CONTROLLER_TASK_STACK_USE_PSRAM
@@ -926,23 +931,57 @@ static void config_dpc(esp_video_isp_t *isp, esp_ipa_metadata_t *metadata)
 }
 #endif
 
+#if CONFIG_ESP_VIDEO_ENABLE_LED_SUPPORT
+static void config_ir_led(esp_video_isp_t *isp, bool enable)
+{
+    struct v4l2_ext_controls controls;
+    struct v4l2_ext_control control[1];
+
+    if (!isp->sensor_attr.ir_led) {
+        return;
+    }
+
+    memset(&controls, 0, sizeof(controls));
+    memset(&control, 0, sizeof(control));
+    controls.count = 1;
+    controls.controls = control;
+    control[0].id = V4L2_CID_IR_LED_BRIGHTNESS;
+    control[0].value = enable ? isp->ir_led_max : isp->ir_led_min;
+    if (ioctl(isp->cam_fd, VIDIOC_S_EXT_CTRLS, &controls) != 0) {
+        ESP_LOGE(TAG, "failed to set IR LED");
+    } else {
+        /* IPA checks AWB G/R only while this is true. The current frame already
+         * ran with the previous state; the next cycle sees this LED state. */
+        isp->sensor.ir_led_on = enable;
+        ESP_LOGD(TAG, "IR LED set to %s", enable ? "on" : "off");
+    }
+}
+#endif
+
 #if CONFIG_ESP_VIDEO_ENABLE_IRCUT_SUPPORT
 static void config_ir_cut(esp_video_isp_t *isp, esp_ipa_metadata_t *metadata)
 {
     if (metadata->flags & IPA_METADATA_FLAGS_IR) {
         struct v4l2_ext_controls controls;
         struct v4l2_ext_control control[1];
+        bool night = metadata->ir_enable;
 
         memset(&controls, 0, sizeof(controls));
         memset(&control, 0, sizeof(control));
         controls.count = 1;
         controls.controls = control;
         control[0].id = V4L2_CID_IRCUT_MODE;
-        control[0].value = metadata->ir_enable ? ESP_CAM_IRCUT_MODE_NIGHT : ESP_CAM_IRCUT_MODE_DAY;
+        control[0].value = night ? ESP_CAM_IRCUT_MODE_NIGHT : ESP_CAM_IRCUT_MODE_DAY;
         if (ioctl(isp->cam_fd, VIDIOC_S_EXT_CTRLS, &controls) != 0) {
             ESP_LOGE(TAG, "failed to set IR-Cut mode");
         } else {
-            ESP_LOGD(TAG, "IR-CUT set to mode %s", metadata->ir_enable ? "Night" : "Day");
+            ESP_LOGD(TAG, "IR-CUT set to mode %s", night ? "Night" : "Day");
+
+#if CONFIG_ESP_VIDEO_ENABLE_LED_SUPPORT
+            /* IR-CUT is an electromagnetic device and its switching time cannot be
+             * controlled, so the IR LED is switched independently of the IR-CUT. */
+            config_ir_led(isp, night);
+#endif
         }
     }
 }
@@ -1348,6 +1387,32 @@ static esp_err_t init_cam_dev(const esp_video_isp_config_t *config, esp_video_is
     } else {
         ESP_LOGD(TAG, "V4L2_CID_CAMERA_AE_LEVEL is not supported");
     }
+
+#if CONFIG_ESP_VIDEO_ENABLE_LED_SUPPORT
+    qctrl.id = V4L2_CID_IR_LED_BRIGHTNESS;
+    ret = ioctl(fd, VIDIOC_QUERY_EXT_CTRL, &qctrl);
+    if (ret == 0) {
+        isp->sensor_attr.ir_led = 1;
+        isp->ir_led_min = (int32_t)qctrl.minimum;
+        isp->ir_led_max = (int32_t)qctrl.maximum;
+
+        controls.ctrl_class = V4L2_CID_USER_CLASS;
+        controls.count      = 1;
+        controls.controls   = control;
+        control[0].id       = V4L2_CID_IR_LED_BRIGHTNESS;
+        control[0].value    = 0;
+        ret = ioctl(fd, VIDIOC_G_EXT_CTRLS, &controls);
+        ESP_GOTO_ON_FALSE(ret == 0, ESP_ERR_NOT_SUPPORTED, fail_0, TAG, "failed to get IR LED brightness");
+        isp->sensor.ir_led_on = control[0].value > isp->ir_led_min;
+
+        ESP_LOGD(TAG, "IR LED brightness:");
+        ESP_LOGD(TAG, "  min: %"PRIi64, qctrl.minimum);
+        ESP_LOGD(TAG, "  max: %"PRIi64, qctrl.maximum);
+        ESP_LOGD(TAG, "  current: %"PRIi32" on=%d", control[0].value, isp->sensor.ir_led_on);
+    } else {
+        ESP_LOGD(TAG, "V4L2_CID_IR_LED_BRIGHTNESS is not supported");
+    }
+#endif
 
 #if CONFIG_ESP_VIDEO_ISP_PIPELINE_CONTROL_CAMERA_MOTOR
     qctrl.id = V4L2_CID_MOTOR_START_TIME;

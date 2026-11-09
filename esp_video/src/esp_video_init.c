@@ -39,6 +39,10 @@
 #include "esp_cam_ircut.h"
 #include "esp_cam_ircut_detect.h"
 #endif
+#if CONFIG_ESP_VIDEO_ENABLE_LED_SUPPORT
+#include "esp_cam_led.h"
+#include "esp_cam_led_detect.h"
+#endif
 #if CONFIG_ESP_VIDEO_ENABLE_DVP_VIDEO_DEVICE
 #include "esp_cam_ctlr_dvp_ext.h"
 #endif
@@ -642,6 +646,54 @@ static esp_err_t deinit_cam_ircut(const char *dev_name)
 }
 #endif /* CONFIG_ESP_VIDEO_ENABLE_IRCUT_SUPPORT */
 
+#if CONFIG_ESP_VIDEO_ENABLE_LED_SUPPORT
+static esp_err_t init_cam_led(const esp_video_init_led_config_t *led_config,
+                              esp_err_t (*add_func)(esp_cam_led_device_t *))
+{
+    if (!led_config || led_config->gpio_ctrl == GPIO_NUM_NC) {
+        return ESP_OK;
+    }
+
+    esp_cam_led_device_t *led_dev = NULL;
+    esp_cam_led_config_t cfg = {
+        .type = ESP_CAM_LED_HW_TYPE_GPIO,
+        .gpio_ctrl = led_config->gpio_ctrl,
+        .gpio_en = led_config->gpio_en,
+    };
+
+    ESP_RETURN_ON_ERROR(esp_cam_led_detect(&cfg, &led_dev), TAG, "Failed to detect LED");
+    esp_err_t ret = add_func(led_dev);
+    if (ret != ESP_OK) {
+        ESP_LOGE(TAG, "Failed to add LED to video device");
+        if (esp_cam_led_del_dev(led_dev) != ESP_OK) {
+            ESP_LOGE(TAG, "Failed to turn IR LED off after add failure");
+        }
+        return ret;
+    }
+
+    return ESP_OK;
+}
+
+static esp_err_t deinit_cam_led(const char *dev_name)
+{
+    struct esp_video *video;
+    esp_video_device_common_t *common;
+    esp_cam_led_device_t *led_dev;
+
+    video = esp_video_device_get_object(dev_name);
+    ESP_RETURN_ON_FALSE(video, ESP_ERR_NOT_FOUND, TAG, "Failed to get video camera");
+
+    common = VIDEO_PRIV_DATA(esp_video_device_common_t *, video);
+    led_dev = common->cam.led;
+    if (led_dev) {
+        ESP_RETURN_ON_ERROR(esp_cam_led_del_dev(led_dev), TAG, "Failed to delete LED");
+        common->cam.led = NULL;
+    }
+
+    return ESP_OK;
+}
+#endif /* CONFIG_ESP_VIDEO_ENABLE_LED_SUPPORT */
+
 #if CONFIG_ESP_VIDEO_ENABLE_CAMERA_MOTOR_CONTROLLER
 static esp_err_t create_cam_motor_video_device(esp_cam_sensor_device_t *cam, void *priv)
 {
@@ -739,6 +791,27 @@ static esp_err_t create_csi_video_device(esp_cam_sensor_device_t *cam, void *pri
     }
 #endif /* CONFIG_ESP_VIDEO_ENABLE_MIPI_CSI_IRCUT_SUPPORT */
 
+#if CONFIG_ESP_VIDEO_ENABLE_MIPI_CSI_LED_SUPPORT
+    {
+        esp_err_t led_ret = init_cam_led(config->csi->led_config, esp_video_csi_video_device_add_led);
+        if (led_ret != ESP_OK) {
+#if CONFIG_ESP_VIDEO_ENABLE_MIPI_CSI_IRCUT_SUPPORT
+            esp_err_t ircut_ret = deinit_cam_ircut(CSI_NAME);
+            if (ircut_ret != ESP_OK) {
+                ESP_LOGE(TAG, "Failed to delete CSI IR-Cut after LED init failure: %s",
+                         esp_err_to_name(ircut_ret));
+            }
+#endif
+#if CONFIG_ESP_VIDEO_ENABLE_CAMERA_MOTOR_CONTROLLER
+            cleanup_csi_motor();
+#endif
+            esp_video_destroy_csi_video_device();
+            ESP_LOGE(TAG, "Failed to initialize LED");
+            return led_ret;
+        }
+    }
+#endif /* CONFIG_ESP_VIDEO_ENABLE_MIPI_CSI_LED_SUPPORT */
+
 #if CONFIG_ESP_VIDEO_ENABLE_ISP_PIPELINE_CONTROLLER
     if (cam->cur_format && cam->cur_format->isp_info) {
         const esp_ipa_config_t *ipa_config = esp_ipa_pipeline_get_config(cam->name);
@@ -751,6 +824,13 @@ static esp_err_t create_csi_video_device(esp_cam_sensor_device_t *cam, void *pri
 
             esp_err_t ret = esp_video_isp_pipeline_init(&isp_config);
             if (ret != ESP_OK) {
+#if CONFIG_ESP_VIDEO_ENABLE_MIPI_CSI_LED_SUPPORT
+                esp_err_t led_ret = deinit_cam_led(CSI_NAME);
+                if (led_ret != ESP_OK) {
+                    ESP_LOGE(TAG, "Failed to delete CSI LED after ISP pipeline failure: %s",
+                             esp_err_to_name(led_ret));
+                }
+#endif
 #if CONFIG_ESP_VIDEO_ENABLE_MIPI_CSI_IRCUT_SUPPORT
                 esp_err_t ircut_ret = deinit_cam_ircut(CSI_NAME);
                 if (ircut_ret != ESP_OK) {
@@ -802,6 +882,9 @@ static esp_err_t destroy_csi_video_device(void)
     }
 #endif /* CONFIG_ESP_VIDEO_ENABLE_CAMERA_MOTOR_CONTROLLER */
 
+#if CONFIG_ESP_VIDEO_ENABLE_MIPI_CSI_LED_SUPPORT
+    ESP_RETURN_ON_ERROR(deinit_cam_led(CSI_NAME), TAG, "Failed to delete CSI LED");
+#endif
 #if CONFIG_ESP_VIDEO_ENABLE_MIPI_CSI_IRCUT_SUPPORT
     ESP_RETURN_ON_ERROR(deinit_cam_ircut(CSI_NAME), TAG, "Failed to delete CSI IR-Cut");
 #endif
@@ -841,17 +924,9 @@ static esp_err_t deinit_dvp_clk_func(void *priv)
 
 static esp_err_t create_dvp_video_device(esp_cam_sensor_device_t *cam, void *priv)
 {
-    ESP_RETURN_ON_ERROR(esp_video_create_dvp_video_device(cam), TAG, "Failed to create DVP video device");
+    (void)priv;
 
-#if CONFIG_ESP_VIDEO_ENABLE_DVP_IRCUT_SUPPORT
-    const esp_video_init_dvp_config_t *dvp_config = priv;
-    esp_err_t ret = init_cam_ircut(dvp_config->ircut_config, esp_video_dvp_video_device_add_ircut);
-    if (ret != ESP_OK) {
-        esp_video_destroy_dvp_video_device();
-        ESP_LOGE(TAG, "Failed to initialize IR-Cut");
-        return ret;
-    }
-#endif
+    ESP_RETURN_ON_ERROR(esp_video_create_dvp_video_device(cam), TAG, "Failed to create DVP video device");
 
     return ESP_OK;
 }
@@ -865,9 +940,6 @@ static esp_err_t destroy_dvp_video_device(void)
     ESP_RETURN_ON_FALSE(cam.sensor, ESP_ERR_INVALID_STATE, TAG, "DVP sensor is NULL");
     ESP_RETURN_ON_ERROR(esp_video_sccb_io_del(cam.sensor->sccb_handle), TAG, "Failed to delete SCCB device");
     ESP_RETURN_ON_ERROR(destroy_cam_device(cam.sensor), TAG, "Failed to delete DVP sensor");
-#if CONFIG_ESP_VIDEO_ENABLE_DVP_IRCUT_SUPPORT
-    ESP_RETURN_ON_ERROR(deinit_cam_ircut(DVP_NAME), TAG, "Failed to delete DVP IR-Cut");
-#endif
     ESP_RETURN_ON_ERROR(esp_video_destroy_dvp_video_device(), TAG, "Failed to destroy DVP video device");
     ESP_RETURN_ON_ERROR(esp_cam_ctlr_dvp_deinit(dvp_ctlr_id), TAG, "Failed to deinit DVP port");
 

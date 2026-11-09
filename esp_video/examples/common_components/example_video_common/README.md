@@ -1,6 +1,6 @@
 # Example Video Common Component
 
-This component provides board-level initialization for esp_video, including MIPI-CSI sensor SCCB port, DVP sensor SCCB port, DVP interface configuration and SPI interface configuration. It is primarily designed for esp_video examples to simplify board-level configuration and initialization processes.
+This component provides board-level initialization for esp_video, including MIPI-CSI sensor SCCB port, DVP sensor SCCB port, DVP interface configuration, SPI interface configuration, and MIPI-CSI IR-Cut and IR LED pins. It is primarily designed for esp_video examples to simplify board-level configuration and initialization processes.
 
 ## Supported Boards and GPIO Pins
 
@@ -160,6 +160,55 @@ Example Video Initialization Configuration  --->
             (-1) XCLK Pin
         [ ] DVP  ----
 ```
+
+### MIPI-CSI IR-Cut and IR LED
+
+IR-Cut and the supplemental IR LED are configured on the MIPI-CSI camera only. The LED follows the IR-Cut day/night state:
+
+- Entering night mode switches the IR-Cut filter out of the optical path first. The LED turns on only after that switch succeeds. If the filter switch fails, the LED stays as it is.
+- Returning to day mode turns the LED off first, then moves the IR-Cut filter back into the optical path.
+
+With the ISP pipeline controller enabled, this sequence runs automatically. The example does not require the application to toggle the filter or the LED each frame.
+
+Select the drivers before the video-device options. `Enable MIPI-CSI IR-Cut Support` stays hidden until an IR-Cut driver is selected, and `Enable MIPI-CSI LED Support` stays hidden until both that IR-Cut option and an LED driver are selected. `Camera LED Control Configuration` is available on chips that have an on-chip ISP.
+
+```
+Component config  --->
+    Espressif Camera Sensors Configurations  --->
+        Camera IRCUT Control Configuration  --->
+            [*] AP1511B
+        Camera LED Control Configuration  --->
+            [*] IR2835
+    Espressif Video Configuration  --->
+        [*] Enable MIPI-CSI based Video Device  --->
+            [*] Enable MIPI-CSI IR-Cut Support
+            [*] Enable MIPI-CSI LED Support
+```
+
+`AP1511B` waits 1000 ms by default after each filter switch so the filter can settle. Increase `Waiting time for stabilization after switching (milliseconds)` when the filter moves slowly or sometimes sticks.
+
+Then fill the pins under the MIPI-CSI camera sensor. `Enable LED Control` appears only after `Enable IR-Cut Control` is selected. Replace `-1` with the GPIO wired on the board.
+
+```
+Example Video Initialization Configuration  --->
+    Select and Set Camera Sensor Interface  --->
+        [*] MIPI-CSI  --->
+            [*] Enable IR-Cut Control
+                (-1) IR-Cut FBC Pin
+                (-1) IR-Cut EN Pin
+            [*] Enable LED Control
+                (-1) LED Control Pin
+                (-1) LED Enable Pin
+```
+
+| Pin | Connection | `-1` |
+|-----|------------|------|
+| IR-Cut FBC Pin | AP1511B forward/backward control | Pin is not connected |
+| IR-Cut EN Pin | AP1511B enable | Pin is not connected |
+| LED Control Pin | IR LED on/off. IR2835 drives this GPIO high to turn the LED on and low to turn it off | Skip LED initialization |
+| LED Enable Pin | Passed through to the LED driver | Pin is not used |
+
+IR2835 does not drive `LED Enable Pin`. Leave it at `-1`. A later LED driver may use this pin to enable the LED supply.
 
 ### DVP Development Kit
 

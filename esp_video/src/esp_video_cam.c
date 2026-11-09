@@ -13,6 +13,9 @@
 #if CONFIG_ESP_VIDEO_ENABLE_IRCUT_SUPPORT
 #include "esp_cam_ircut.h"
 #endif
+#if CONFIG_ESP_VIDEO_ENABLE_LED_SUPPORT
+#include "esp_cam_led.h"
+#endif
 #include "esp_video_ioctl.h"
 #include "esp_video_cam.h"
 
@@ -595,10 +598,144 @@ CAM_IRCUT_SUBSYS_DEFINE(IRCUT_LOOKUP_TABLE)
 #define IRCUT_SUBSYS_ENTRY
 #endif
 
+#if CONFIG_ESP_VIDEO_ENABLE_LED_SUPPORT
+static const struct control_map s_led_table[] = {
+    CAM_CTRL_MAP(ESP_CAM_LED_IOCTL_SET_BRIGHTNESS, V4L2_CID_IR_LED_BRIGHTNESS, "IR LED Brightness")
+};
+
+static bool led_supported(esp_video_cam_t *cam, const struct control_map *map)
+{
+    (void)map;
+
+    return cam->led != NULL;
+}
+
+static esp_err_t led_get_range(esp_video_cam_t *cam, uint32_t *min_brightness, uint32_t *max_brightness)
+{
+    esp_err_t ret;
+    esp_cam_led_dev_info_t info;
+
+    ret = esp_cam_led_ioctl(cam->led, ESP_CAM_LED_IOCTL_GET_INFO, &info);
+    if (ret != ESP_OK) {
+        ESP_LOGE(TAG, "failed to get LED info");
+        return ret;
+    }
+
+    *min_brightness = info.brightness_range_min;
+    *max_brightness = info.brightness_range_max;
+    return ESP_OK;
+}
+
+static esp_err_t led_set(esp_video_cam_t *cam, const struct control_map *map, struct v4l2_ext_control *ctrl)
+{
+    esp_err_t ret;
+    uint32_t brightness;
+    uint32_t min_brightness;
+    uint32_t max_brightness;
+
+    (void)map;
+
+    if (!cam->led) {
+        return ESP_ERR_NOT_SUPPORTED;
+    }
+    if (ctrl->value < 0) {
+        ESP_LOGE(TAG, "IR LED brightness=%" PRIi32 " is out of range", ctrl->value);
+        return ESP_ERR_INVALID_ARG;
+    }
+
+    ret = led_get_range(cam, &min_brightness, &max_brightness);
+    if (ret != ESP_OK) {
+        return ret;
+    }
+
+    brightness = (uint32_t)ctrl->value;
+    if (brightness < min_brightness || brightness > max_brightness) {
+        ESP_LOGE(TAG, "IR LED brightness=%" PRIu32 " is out of range", brightness);
+        return ESP_ERR_INVALID_ARG;
+    }
+
+    ret = esp_cam_led_ioctl(cam->led, ESP_CAM_LED_IOCTL_SET_BRIGHTNESS, &brightness);
+    if (ret != ESP_OK) {
+        ESP_LOGE(TAG, "failed to set ioctl id=%" PRIx32, ctrl->id);
+    }
+    return ret;
+}
+
+static esp_err_t led_get(esp_video_cam_t *cam, const struct control_map *map, struct v4l2_ext_control *ctrl)
+{
+    esp_err_t ret;
+    uint32_t brightness;
+
+    (void)map;
+
+    if (!cam->led) {
+        return ESP_ERR_NOT_SUPPORTED;
+    }
+
+    ret = esp_cam_led_ioctl(cam->led, ESP_CAM_LED_IOCTL_GET_BRIGHTNESS, &brightness);
+    if (ret != ESP_OK) {
+        ESP_LOGE(TAG, "failed to get ioctl id=%" PRIx32, ctrl->id);
+        return ret;
+    }
+
+    ctrl->value = (int32_t)brightness;
+    return ESP_OK;
+}
+
+static esp_err_t led_query(esp_video_cam_t *cam, const struct control_map *map, struct v4l2_query_ext_ctrl *qctrl)
+{
+    esp_err_t ret;
+    uint32_t min_brightness;
+    uint32_t max_brightness;
+    esp_cam_sensor_param_desc_t qdesc = {
+        .type = ESP_CAM_SENSOR_PARAM_TYPE_NUMBER,
+        .number = {
+            .step = 1,
+        },
+    };
+
+    if (!cam->led) {
+        return ESP_ERR_NOT_SUPPORTED;
+    }
+
+    ret = led_get_range(cam, &min_brightness, &max_brightness);
+    if (ret != ESP_OK) {
+        return ret;
+    }
+
+    qdesc.number.minimum = (int32_t)min_brightness;
+    qdesc.number.maximum = (int32_t)max_brightness;
+    qdesc.default_value = (int32_t)min_brightness;
+    return fill_query_ext_ctrl(qctrl, map->name, &qdesc);
+}
+
+static esp_err_t led_query_menu(esp_video_cam_t *cam, const struct control_map *map, struct v4l2_querymenu *qmenu)
+{
+    (void)cam;
+    (void)map;
+
+    ESP_LOGE(TAG, "ctrl id=%" PRIx32 " is not menu type", qmenu->id);
+    return ESP_ERR_NOT_SUPPORTED;
+}
+
+static const struct cam_ctrl_ops s_led_ops = {
+    .set = led_set,
+    .get = led_get,
+    .query = led_query,
+    .query_menu = led_query_menu,
+    .supported = led_supported,
+};
+
+#define LED_SUBSYS_ENTRY CAM_SUBSYS_ENTRY(led, true)
+#else
+#define LED_SUBSYS_ENTRY
+#endif
+
 static const struct cam_ctrl_subsys s_cam_subsys[] = {
     CAM_SUBSYS_ENTRY(sensor_para, true)
     MOTOR_SUBSYS_ENTRY
     IRCUT_SUBSYS_ENTRY
+    LED_SUBSYS_ENTRY
     CAM_SUBSYS_ENTRY(sensor_ioctl, false)
 };
 

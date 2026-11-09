@@ -95,6 +95,12 @@ esp_err_t esp_ipa_pipeline_init(esp_ipa_pipeline_handle_t handle, const esp_ipa_
  *        pipeline and process it. The image process algorithm pipeline will calculate
  *        the meta data used to reconfigure ISP to improve image quality.
  *
+ * @note The caller must keep feeding real-time ISP statistics on every process cycle.
+ *       Metadata may update ISP statistics parameters (for example region or range)
+ *       according to the IPA configuration, but statistics upload must not stop.
+ *       Modules that publish or consume pipeline luma (IAN `env.luma.avg`, IR hold
+ *       timing, and similar) assume fresh AE statistics continue to arrive; a stalled
+ *       or AE-less feed can reuse stale pipeline values.
  *
  * @param handle    Image process algorithm pipeline object handle
  * @param stats     Image statistics information

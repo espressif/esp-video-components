@@ -104,6 +104,13 @@ static esp_video_init_ircut_config_t s_csi_ircut_config = {
 };
 #endif /* EXAMPLE_ENABLE_MIPI_CSI_CAM_IRCUT */
 
+#if EXAMPLE_ENABLE_MIPI_CSI_CAM_LED
+static esp_video_init_led_config_t s_csi_led_config = {
+    .gpio_ctrl = EXAMPLE_MIPI_CSI_CAM_LED_CTRL_PIN,
+    .gpio_en = EXAMPLE_MIPI_CSI_CAM_LED_EN_PIN,
+};
+#endif /* EXAMPLE_ENABLE_MIPI_CSI_CAM_LED */
+
 static const esp_video_init_csi_config_t s_csi_config = {
     .sccb_config = {
 #if !CONFIG_EXAMPLE_SCCB_INIT_BY_APP
@@ -114,6 +121,9 @@ static const esp_video_init_csi_config_t s_csi_config = {
 #if EXAMPLE_ENABLE_MIPI_CSI_CAM_IRCUT
     .ircut_config = &s_csi_ircut_config,
 #endif /* EXAMPLE_ENABLE_MIPI_CSI_CAM_IRCUT */
+#if EXAMPLE_ENABLE_MIPI_CSI_CAM_LED
+    .led_config = &s_csi_led_config,
+#endif /* EXAMPLE_ENABLE_MIPI_CSI_CAM_LED */
     .reset_pin = EXAMPLE_MIPI_CSI_CAM_SENSOR_RESET_PIN,
     .pwdn_pin  = EXAMPLE_MIPI_CSI_CAM_SENSOR_PWDN_PIN,
 #if CONFIG_EXAMPLE_MIPI_CSI_VIDEO_DEVICE_DONT_INIT_LDO
@@ -137,14 +147,6 @@ static const esp_video_init_cam_motor_config_t s_cam_motor_config = {
 #endif /* EXAMPLE_ENABLE_MIPI_CSI_CAM_SENSOR */
 
 #if EXAMPLE_ENABLE_DVP_CAM_SENSOR
-#if EXAMPLE_ENABLE_DVP_CAM_IRCUT
-static esp_video_init_ircut_config_t s_dvp_ircut_config = {
-    .ircut_chip_id = 0,
-    .fbc_pin = EXAMPLE_DVP_CAM_IRCUT_FBC_PIN,
-    .en_pin = EXAMPLE_DVP_CAM_IRCUT_EN_PIN,
-};
-#endif /* EXAMPLE_ENABLE_DVP_CAM_IRCUT */
-
 static const esp_video_init_dvp_config_t s_dvp_config = {
     .sccb_config = {
 #if !CONFIG_EXAMPLE_SCCB_INIT_BY_APP
@@ -152,9 +154,6 @@ static const esp_video_init_dvp_config_t s_dvp_config = {
 #endif /* !CONFIG_EXAMPLE_SCCB_INIT_BY_APP */
         .freq      = EXAMPLE_DVP_SCCB_FREQ,
     },
-#if EXAMPLE_ENABLE_DVP_CAM_IRCUT
-    .ircut_config = &s_dvp_ircut_config,
-#endif /* EXAMPLE_ENABLE_DVP_CAM_IRCUT */
     .reset_pin = EXAMPLE_DVP_CAM_SENSOR_RESET_PIN,
     .pwdn_pin  = EXAMPLE_DVP_CAM_SENSOR_PWDN_PIN,
     .dvp_pin = {

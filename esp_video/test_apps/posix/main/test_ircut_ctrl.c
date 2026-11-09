@@ -5,9 +5,13 @@
  */
 
 #include <string.h>
+#include "sdkconfig.h"
 #include "unity.h"
 #include "esp_cam_sensor.h"
 #include "esp_cam_ircut.h"
+#if CONFIG_ESP_VIDEO_ENABLE_LED_SUPPORT
+#include "esp_cam_led.h"
+#endif
 #include "esp_video_cam.h"
 #include "esp_video_ioctl.h"
 
@@ -342,3 +346,121 @@ TEST_CASE("IR-CUT S_EXT_CTRLS rejects readable UNKNOWN mode", "[video]")
     TEST_ASSERT_EQUAL_HEX32(ESP_CAM_IRCUT_IOC_SET_MODE, s_ircut_last_cmd);
     TEST_ASSERT_EQUAL_INT(ESP_CAM_IRCUT_MODE_DAY, ircut.current_mode);
 }
+
+#if CONFIG_ESP_VIDEO_ENABLE_LED_SUPPORT
+static int s_led_set_count;
+static uint32_t s_led_last_cmd;
+
+static const esp_cam_led_dev_info_t s_led_info = {
+    .type = ESP_CAM_LED_HW_TYPE_GPIO,
+    .spectrum = ESP_CAM_LED_SPECTRUM_IR,
+    .brightness_range_min = 0,
+    .brightness_range_max = 1,
+};
+
+static int stub_led_ioctl(esp_cam_led_device_t *dev, uint32_t cmd, void *arg)
+{
+    if (!arg) {
+        return ESP_ERR_NOT_SUPPORTED;
+    }
+
+    s_led_last_cmd = cmd;
+    if (cmd == ESP_CAM_LED_IOCTL_SET_BRIGHTNESS) {
+        dev->brightness = *(uint32_t *)arg;
+        s_led_set_count++;
+        return ESP_OK;
+    }
+    if (cmd == ESP_CAM_LED_IOCTL_GET_BRIGHTNESS) {
+        *(uint32_t *)arg = dev->brightness;
+        return ESP_OK;
+    }
+    if (cmd == ESP_CAM_LED_IOCTL_GET_INFO) {
+        memcpy(arg, &s_led_info, sizeof(s_led_info));
+        return ESP_OK;
+    }
+    return ESP_ERR_NOT_SUPPORTED;
+}
+
+static const esp_cam_led_ops_t s_led_ops = {
+    .priv_ioctl = stub_led_ioctl,
+};
+
+static void set_led_brightness(esp_video_cam_t *cam, int32_t brightness, esp_err_t expected)
+{
+    struct v4l2_ext_control control;
+    struct v4l2_ext_controls controls;
+
+    memset(&control, 0, sizeof(control));
+    memset(&controls, 0, sizeof(controls));
+    control.id = V4L2_CID_IR_LED_BRIGHTNESS;
+    control.value = brightness;
+    controls.ctrl_class = V4L2_CTRL_CLASS_USER;
+    controls.count = 1;
+    controls.controls = &control;
+    if (expected == ESP_OK) {
+        TEST_ESP_OK(esp_video_cam_set_ext_ctrls(cam, &controls));
+    } else {
+        TEST_ESP_ERR(expected, esp_video_cam_set_ext_ctrls(cam, &controls));
+    }
+}
+
+TEST_CASE("IR LED brightness control is independent of IR-CUT mode", "[video]")
+{
+    esp_video_cam_t cam;
+    esp_cam_sensor_device_t sensor;
+    esp_cam_ircut_device_t ircut;
+    esp_cam_led_device_t led;
+    struct v4l2_query_ext_ctrl qctrl;
+    struct v4l2_ext_control control;
+    struct v4l2_ext_controls controls;
+
+    memset(&ircut, 0, sizeof(ircut));
+    ircut.name = "stub-ircut";
+    ircut.ops = &s_ircut_ops;
+    ircut.current_mode = ESP_CAM_IRCUT_MODE_DAY;
+    memset(&led, 0, sizeof(led));
+    led.name = "stub-led";
+    led.ops = &s_led_ops;
+    led.info = &s_led_info;
+    led.brightness = s_led_info.brightness_range_min;
+    init_cam(&cam, &sensor, &s_sensor_ops_none, &ircut);
+    cam.led = &led;
+
+    memset(&qctrl, 0, sizeof(qctrl));
+    qctrl.id = V4L2_CID_IR_LED_BRIGHTNESS;
+    TEST_ESP_OK(esp_video_cam_query_ext_ctrls(&cam, &qctrl));
+    TEST_ASSERT_EQUAL_HEX32(V4L2_CID_IR_LED_BRIGHTNESS, qctrl.id);
+    TEST_ASSERT_EQUAL_INT(V4L2_CTRL_TYPE_INTEGER, qctrl.type);
+    TEST_ASSERT_EQUAL_STRING("IR LED Brightness", qctrl.name);
+    TEST_ASSERT_EQUAL_INT64(s_led_info.brightness_range_min, qctrl.minimum);
+    TEST_ASSERT_EQUAL_INT64(s_led_info.brightness_range_max, qctrl.maximum);
+    TEST_ASSERT_EQUAL_INT64(1, qctrl.step);
+
+    s_led_set_count = 0;
+    s_ircut_set_count = 0;
+    set_led_brightness(&cam, (int32_t)s_led_info.brightness_range_max, ESP_OK);
+    TEST_ASSERT_EQUAL_INT(1, s_led_set_count);
+    TEST_ASSERT_EQUAL_INT(0, s_ircut_set_count);
+    TEST_ASSERT_EQUAL_HEX32(ESP_CAM_LED_IOCTL_SET_BRIGHTNESS, s_led_last_cmd);
+    TEST_ASSERT_EQUAL_UINT32(s_led_info.brightness_range_max, led.brightness);
+    TEST_ASSERT_EQUAL_INT(ESP_CAM_IRCUT_MODE_DAY, ircut.current_mode);
+
+    memset(&control, 0, sizeof(control));
+    memset(&controls, 0, sizeof(controls));
+    control.id = V4L2_CID_IR_LED_BRIGHTNESS;
+    controls.count = 1;
+    controls.controls = &control;
+    TEST_ESP_OK(esp_video_cam_get_ext_ctrls(&cam, &controls));
+    TEST_ASSERT_EQUAL_INT(s_led_info.brightness_range_max, control.value);
+    TEST_ASSERT_EQUAL_HEX32(ESP_CAM_LED_IOCTL_GET_BRIGHTNESS, s_led_last_cmd);
+
+    set_led_brightness(&cam, (int32_t)s_led_info.brightness_range_min, ESP_OK);
+    TEST_ASSERT_EQUAL_UINT32(s_led_info.brightness_range_min, led.brightness);
+    TEST_ASSERT_EQUAL_INT(ESP_CAM_IRCUT_MODE_DAY, ircut.current_mode);
+
+    s_led_set_count = 0;
+    set_led_brightness(&cam, (int32_t)s_led_info.brightness_range_max + 1, ESP_ERR_INVALID_ARG);
+    TEST_ASSERT_EQUAL_INT(0, s_led_set_count);
+    TEST_ASSERT_EQUAL_UINT32(s_led_info.brightness_range_min, led.brightness);
+}
+#endif /* CONFIG_ESP_VIDEO_ENABLE_LED_SUPPORT */

@@ -14,7 +14,7 @@ Espressif image process algorithm component provides a suit of image process alg
 | Auto White Balance | Calculate red and blue channels' gain |
 | Image Analyze | Calculate image color temperature and luma |
 | Auto Sensor AE Target Control | This is added for the sensors supported AEG/AGC by themselves |
-| IR Control | Switch between normal and IR mode from environment luma and AWB G/R |
+| IR Control | Switch between day and night from environment luma. Night also requires AWB statistics with non-zero R and G sums |
 
 ## 2. Pipeline Global Variable
 
@@ -261,6 +261,8 @@ Legacy single preset (still supported):
 | saturation | Array | / | The saturation value and color temperature mapping table adopted the principle of nearest neighbor indexing |
 | color_temp | Integer | >0 | Color temperature value |
 | value | Integer | <div style="white-space: nowrap;">[0,255]</div> | Saturation value |
+
+Saturation runs after init. `esp_ipa_pipeline_ioctl()` `ESP_IPA_ACC_S_SAT_STATUS` takes an `int`: `0` stops later saturation updates, and any other value runs them again. `ESP_IPA_ACC_G_SAT_STATUS` reads that flag. Stopping does not clear the last saturation value. The next run after resume publishes the table value for the current color temperature.
 
 ---
 
@@ -1243,15 +1245,18 @@ Legacy single preset (still supported):
 {
     "ir":
     {
-        "normal": { "luma_threshold": 0.5, "awb_threshold": 1.0, "hold_time_us": 2000000 },
-        "ir_mode": { "luma_threshold": 0.8, "awb_threshold": 0.8, "hold_time_us": 3000000 }
+        "model": 0,
+        "model0_param":
+        {
+            ...
+        }
     }
 }
 ```
 
 | Parameter | Type | Range | Description |
 |:-:|:-:|:-:|:-|
-| ir | Object | / | IR day/night switching configuration parameters |
+| ir | Object | / | IR day/night switching configuration. Omitted `luma_env` uses `env.luma.avg`. JSON `null` or `"NULL"` stays C `NULL` and that frame has no luma |
 
 ---
 
@@ -1259,30 +1264,28 @@ Legacy single preset (still supported):
 "ir":
 {
     "model": 0,
-    "luma_env": "env.luma.avg",
-    "k": 1000000,
-    "ir_factor": 10.0,
-    "enter_delay_us": 500000,
-    "exit_delay_us": 500000,
-    "weight":
-    [
-        1, 1, 1, 1, 1,
-        1, 1, 1, 1, 1,
-        1, 1, 1, 1, 1,
-        1, 1, 1, 1, 1,
-        1, 1, 1, 1, 1
-    ],
-    "normal":
+    "model0_param":
     {
-        "luma_threshold": 0.5,
-        "awb_threshold": 1.0,
-        "hold_time_us": 2000000
-    },
-    "ir_mode":
-    {
-        "luma_threshold": 0.8,
-        "awb_threshold": 0.8,
-        "hold_time_us": 3000000
+        "luma_env": "env.luma.avg",
+        "day_luma_threshold": 0.5,
+        "day_switch_night_time_us": 500000,
+        "day_keep_time_us": 2000000,
+        "night_ir_factor": 10.0,
+        "night_luma_threshold": 0.8,
+        "night_switch_day_time_us": 500000,
+        "night_keep_time_us": 3000000,
+        "night_awb":
+        {
+            "green": { "max": 255, "min": 0 },
+            "rg": { "max": 1.5, "min": 0.5 },
+            "bg": { "max": 1.5, "min": 0.5 }
+        },
+        "night_ccm":
+        {
+            "matrix": [1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0]
+        },
+        "night_red_gain": 1.0,
+        "night_blue_gain": 1.0
     }
 }
 ```
@@ -1290,21 +1293,29 @@ Legacy single preset (still supported):
 | Parameter | Type | Range | Description |
 |:-:|:-:|:-:|:-|
 | model | Integer | {0} | IR data process model |
-| luma_env | String | / | Prefer this pipeline variable for environment luma; omit to compute from AE statistics, gain and exposure |
-| k | Float | != 0 | Environment luma scale: `ae_luma / (gain * exposure / k)` |
-| ir_factor | Float | / | Multiply environment luma in IR mode before threshold compare |
-| enter_delay_us | Integer | >=0 | Idle time after entering IR mode, microseconds |
-| exit_delay_us | Integer | >=0 | Idle time after leaving IR mode, microseconds |
-| weight | Array | 25 | AE region weights for environment luma |
-| normal | Object | / | Detect parameters in normal mode |
-| ir_mode | Object | / | Detect parameters in IR mode |
-| luma_threshold | Float | / | Bright when environment luma is greater than this value |
-| awb_threshold | Float | / | Bright when AWB `sum_g / sum_r` is greater than this value |
-| hold_time_us | Integer | >=0 | Consecutive-detect duration (`esp_timer`) to switch mode; `normal` uses dark, `ir_mode` uses bright |
+| model0_param | Object | / | Model 0 parameters |
+| luma_env | String | / | Pipeline variable for environment luma. Omit the key to use `env.luma.avg`. JSON `null` or the string `NULL` is C `NULL`, and that frame has no luma |
+| day_luma_threshold | Float | / | Day environment luma threshold. Bright when luma is greater |
+| day_switch_night_time_us | Integer | >=0 | Transition time from day to night, microseconds. Omitted key is `0` |
+| day_keep_time_us | Integer | >=0 | Dark must hold this long before leaving day, microseconds |
+| night_ir_factor | Float | / | Multiply environment luma at night before the threshold compare. Omitted key is `1.0` |
+| night_luma_threshold | Float | / | Night environment luma threshold. Bright when `luma * night_ir_factor` is greater |
+| night_switch_day_time_us | Integer | >=0 | Transition time from night to day, microseconds. Omitted key is `0` |
+| night_keep_time_us | Integer | >=0 | Bright luma and non-zero AWB R and G must hold this long before leaving night, microseconds |
+| night_awb | Object | / | AWB statistics window written when the switch to night starts. `green`/`rg`/`bg` each have `max` and `min` |
+| night_ccm | Object | / | CCM written when the switch to night starts. `matrix` has 9 elements, row-major |
+| night_red_gain | Float | / | Red gain written when the switch to night starts |
+| night_blue_gain | Float | / | Blue gain written when the switch to night starts |
 
-Each frame needs both luma and AWB G/R. Bright only when both exceed the thresholds; dark only when both do not. Missing samples or disagreed results skip the frame. Normal mode turns IR on when every valid frame is dark for `normal.hold_time_us`. IR mode turns IR off when every valid frame is bright for `ir_mode.hold_time_us`. Switching publishes `metadata.ir_enable` (`IPA_METADATA_FLAGS_IR`) and pipeline variable `ir.enable`.
+When the `luma_env` key is omitted, it becomes `env.luma.avg`. JSON `null` and the string `NULL` stay C `NULL`. IR does not compute luma from AE statistics.
 
-**Note**: The IR module should be put the last node of the Json configuration file. 
+Day compares luma with `day_luma_threshold`. Night multiplies luma by `night_ir_factor` before comparing with `night_luma_threshold`. A bright night frame starts leaving only when AWB statistics are present and both R and G are non-zero. No luma, missing AWB, R=0, or G=0 keeps night and does not advance the timer. Day turns IR on when it stays dark for `day_keep_time_us`. Night turns IR off when bright luma and AWB R and G stay non-zero for `night_keep_time_us`. `day_switch_night_time_us` is the day-to-night transition; night judging starts after it. `night_switch_day_time_us` is the night-to-day transition; day judging starts after it. Switching publishes `metadata.ir_enable` (`IPA_METADATA_FLAGS_IR`).
+
+The switch to night stops AWB (`ESP_IPA_AWB_S_STATUS`), IAN color-temperature estimation (`ESP_IPA_IAN_S_CT_STATUS`), CCM (`ESP_IPA_ACC_S_CCM_STATUS`) and saturation, then writes `night_awb`, `night_ccm`, `night_red_gain`, `night_blue_gain` and saturation `0`. Entering day starts those modules again. Each module clears its applied index (`-1`, or the AWB statistics window) and republishes on its next process. IR does not store or restore the previous saturation.
+
+**Note**: The IR module should be put the last node of the Json configuration file.
+
+**Note**: `esp_ipa_pipeline_process()` requires the lower layer to keep uploading real-time ISP statistics every cycle. IPA may update statistics parameters from configuration or metadata (for example region or range), but the statistics stream must not stop. With the default `luma_env` (`env.luma.avg`), IAN only refreshes that variable when the current frame carries AE; IR still reads the last published value for `day_keep_time_us` and `night_keep_time_us`. Stopping AE upload or calling process without AE can therefore advance IR hold timing on stale luma. That cached-luma path is not a skipped decision. JSON `null` / `"NULL"` (`luma_env == NULL`) means this frame has no luma, so IR does not advance the day/night decision. `esp_ipa_pipeline_process()` still returns `ESP_OK`. The application does not drop the frame. 
 
 ---
 
