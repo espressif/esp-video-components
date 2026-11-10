@@ -415,6 +415,7 @@ menu "Espressif Camera Sensors Configurations"
         depends on SOC_ISP_SUPPORTED
         
         rsource "leds/ir2835/Kconfig.ir2835"
+        rsource "leds/tcj60/Kconfig.tcj60"
 
         config CAMERA_LED_DEVICE_USED
             bool

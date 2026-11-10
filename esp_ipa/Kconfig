@@ -44,6 +44,12 @@ menu "Espressif Image Process Algorithm Configuration"
         bool "IR Algorithm"
         default y
 
+    config ESP_IPA_WL_ALGORITHM
+        bool "White Light Algorithm"
+        default y
+        help
+            Switch the white fill light based on environment luma calculated by IAN.
+
     config ESP_IPA_EXT_CONFIG
         bool "Extended Configuration"
         default y

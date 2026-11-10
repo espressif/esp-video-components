@@ -3526,6 +3526,287 @@ TEST_CASE("IR NIGHT_SWITCH_DAY snapshot keeps zero saturation", "[IPA][IR]")
     TEST_ESP_OK(esp_ipa_pipeline_destroy(handle));
 }
 
+#if CONFIG_ESP_IPA_WL_ALGORITHM
+#define WL_TEST_K           40.0f   /* Light contribution to E at full brightness */
+#define WL_TEST_LIGHT_CT    5000
+#define WL_TEST_MAX_FRAMES  200
+
+static const char *s_wl_test_names[] = {"esp_ipa_wl", "esp_ipa_awb"};
+static const esp_ipa_ian_luma_env_config_t s_wl_test_env = {
+    .k = 1.0f,
+    .speed_param = (const float[]){1.0f},
+    .speed_param_size = 1,
+};
+static const esp_ipa_ian_luma_config_t s_wl_test_luma = {.env = &s_wl_test_env};
+static const esp_ipa_ian_config_t s_wl_test_ian = {.luma = &s_wl_test_luma};
+
+/* 5000K is interpolated in mired between the two points: t = 0.6, so rg = 0.58, bg = 0.57 */
+static const esp_ipa_awb_ct_point_t s_wl_test_ref_points[] = {
+    {.ct = 4000, .rg = 0.70f, .bg = 0.45f, .radius = 0.1f},
+    {.ct = 6000, .rg = 0.50f, .bg = 0.65f, .radius = 0.1f},
+};
+
+typedef struct {
+    esp_ipa_config_t cfg;
+    esp_ipa_wl_config_t wl;
+    esp_ipa_awb_config_t awb;
+    esp_ipa_pipeline_handle_t handle;
+    esp_ipa_metadata_t metadata;
+    esp_ipa_stats_t stats;
+    float ambient;                  /* Ambient part of E, the light part follows the applied brightness */
+} wl_test_t;
+
+static void wl_test_setup(wl_test_t *t)
+{
+    const esp_ipa_config_t *base = esp_ipa_pipeline_get_config(IPA_TARGET_NAME);
+
+    TEST_ASSERT_NOT_NULL(base);
+    TEST_ASSERT_NOT_NULL(base->awb);
+    memset(t, 0, sizeof(*t));
+    memcpy(&t->cfg, base, sizeof(t->cfg));
+    t->cfg.names = s_wl_test_names;
+    t->cfg.nums = sizeof(s_wl_test_names) / sizeof(s_wl_test_names[0]);
+    t->cfg.ian = &s_wl_test_ian;
+    t->cfg.ir = NULL;
+
+    t->wl = (esp_ipa_wl_config_t) {
+        .enable = true,
+        .enter_luma = 4.0f,
+        .exit_luma = 16.0f,
+        .verify_ratio = 1.5f,
+        .k_tolerance = 0.1f,
+        .enter_frames = 3,
+        .exit_frames = 3,
+        .settle_frames = 2,
+        .settle_max_frames = 20,
+        .settle_tolerance = 0.02f,
+        .probe_period_s = 0,
+        .light = {.ct = WL_TEST_LIGHT_CT},
+    };
+    t->cfg.wl = &t->wl;
+
+    memcpy(&t->awb, base->awb, sizeof(t->awb));
+    t->awb.model = ESP_IPA_AWB_MODEL_2;
+    t->awb.enable_sub_win = false;
+    t->awb.startup_zone_enabled = false;
+    t->awb.startup_hold_frames = 0;
+    t->awb.red_gain_scale = 1.0f;
+    t->awb.blue_gain_scale = 1.0f;
+    t->awb.export_ct = true;
+    t->awb.ref_points = s_wl_test_ref_points;
+    t->awb.ref_points_count = sizeof(s_wl_test_ref_points) / sizeof(s_wl_test_ref_points[0]);
+    t->cfg.awb = &t->awb;
+
+    /* Only AE statistics: AWB model 2 does not estimate, so the gains come from the lock only */
+    t->stats.flags = IPA_STATS_FLAGS_AE;
+}
+
+static void wl_test_start(wl_test_t *t)
+{
+    TEST_ESP_OK(esp_ipa_pipeline_create(&t->cfg, &t->handle));
+    TEST_ESP_OK(esp_ipa_pipeline_init(t->handle, &s_esp_ipa_sensor, &t->metadata));
+}
+
+static int32_t wl_test_state(wl_test_t *t)
+{
+    return esp_ipa_get_int32(t->handle->ipa_array[0], "wl.state");
+}
+
+/* One frame: E is measured with the brightness applied by the previous frame, as on the device */
+static void wl_test_frame(wl_test_t *t)
+{
+    float e = t->ambient + WL_TEST_K * t->metadata.wl.brightness / 100.0f;
+
+    esp_ipa_set_float(t->handle->ipa_array[0], "env.luma.avg", e);
+    t->metadata.flags = 0;
+    TEST_ESP_OK(esp_ipa_pipeline_process(t->handle, &t->stats, &s_esp_ipa_sensor, &t->metadata));
+}
+
+/* Run until WL reaches state with brightness, return the frames it took */
+static int wl_test_run_until(wl_test_t *t, esp_ipa_wl_state_t state, uint8_t brightness)
+{
+    for (int i = 1; i <= WL_TEST_MAX_FRAMES; i++) {
+        wl_test_frame(t);
+        if (wl_test_state(t) == (int32_t)state && t->metadata.wl.brightness == brightness) {
+            return i;
+        }
+    }
+    TEST_FAIL_MESSAGE("WL did not reach the expected state");
+    return -1;
+}
+
+static void wl_test_enter_night(wl_test_t *t)
+{
+    t->ambient = 1.0f;
+    TEST_ASSERT_EQUAL(3, wl_test_run_until(t, ESP_IPA_WL_STATE_NIGHT_ENTER, 50));
+    TEST_ASSERT_NOT_EQUAL_HEX32(0, t->metadata.flags & IPA_METADATA_FLAGS_WL);
+    wl_test_run_until(t, ESP_IPA_WL_STATE_NIGHT_ENTER, 100);
+    /* K from off -> on and K from 50% -> on agree for a static scene, so no probe is needed */
+    for (int i = 0; i < WL_TEST_MAX_FRAMES && wl_test_state(t) == ESP_IPA_WL_STATE_NIGHT_ENTER; i++) {
+        wl_test_frame(t);
+    }
+    TEST_ASSERT_EQUAL_INT32(ESP_IPA_WL_STATE_NIGHT, wl_test_state(t));
+    TEST_ASSERT_EQUAL_UINT8(100, t->metadata.wl.brightness);
+    TEST_ASSERT_FLOAT_WITHIN(0.01f, WL_TEST_K, esp_ipa_get_float(t->handle->ipa_array[0], "wl.k"));
+    TEST_ASSERT_FLOAT_WITHIN(0.01f, t->ambient, esp_ipa_get_float(t->handle->ipa_array[0], "wl.ambient"));
+}
+
+/* AWB publishes awb.fixed = 1 while ESP_IPA_AWB_S_CT holds a CT */
+static int32_t wl_test_awb_fixed(wl_test_t *t)
+{
+    esp_ipa_t *ipa = t->handle->ipa_array[0];
+
+    return esp_ipa_has_int32_var(ipa, "awb.fixed") ? esp_ipa_get_int32(ipa, "awb.fixed") : 0;
+}
+
+TEST_CASE("WL enter and exit night", "[IPA][WL]")
+{
+    static wl_test_t t;
+
+    wl_test_setup(&t);
+    wl_test_start(&t);
+
+    /* Init turns the light off, it may be left on by the modules rebuilt at night */
+    TEST_ASSERT_NOT_EQUAL_HEX32(0, t.metadata.flags & IPA_METADATA_FLAGS_WL);
+    TEST_ASSERT_EQUAL_UINT8(0, t.metadata.wl.brightness);
+    TEST_ASSERT_EQUAL_INT32(ESP_IPA_WL_STATE_DAY, wl_test_state(&t));
+    TEST_ASSERT_EQUAL_INT32(0, wl_test_awb_fixed(&t));
+
+    /* Bright enough: stay in day */
+    t.ambient = 10.0f;
+    for (int i = 0; i < 10; i++) {
+        wl_test_frame(&t);
+    }
+    TEST_ASSERT_EQUAL_INT32(ESP_IPA_WL_STATE_DAY, wl_test_state(&t));
+    TEST_ASSERT_EQUAL_UINT8(0, t.metadata.wl.brightness);
+
+    /* Dark: off -> 50% -> 100%, K measured from the steps */
+    wl_test_enter_night(&t);
+
+    /* Ambient rises above exit_luma + k_tolerance * K: probe 50%, then off, and back to day */
+    t.ambient = 30.0f;
+    wl_test_run_until(&t, ESP_IPA_WL_STATE_PROBE, 50);
+    wl_test_run_until(&t, ESP_IPA_WL_STATE_PROBE, 0);
+    wl_test_run_until(&t, ESP_IPA_WL_STATE_DAY, 0);
+    TEST_ASSERT_EQUAL_INT32(0, wl_test_awb_fixed(&t));
+
+    /* Dark again, then the ambient drops while the light is off in the probe: enter night again */
+    wl_test_enter_night(&t);
+    t.ambient = 30.0f;
+    wl_test_run_until(&t, ESP_IPA_WL_STATE_PROBE, 0);
+    t.ambient = 2.0f;
+    wl_test_run_until(&t, ESP_IPA_WL_STATE_NIGHT_ENTER, 50);
+    wl_test_run_until(&t, ESP_IPA_WL_STATE_NIGHT, 100);
+    TEST_ASSERT_FLOAT_WITHIN(0.01f, WL_TEST_K, esp_ipa_get_float(t.handle->ipa_array[0], "wl.k"));
+
+    TEST_ESP_OK(esp_ipa_pipeline_destroy(t.handle));
+}
+
+TEST_CASE("WL K mismatch probes before night", "[IPA][WL]")
+{
+    static wl_test_t t;
+
+    wl_test_setup(&t);
+    wl_test_start(&t);
+
+    /*
+     * The ambient rises from 1 to 11 between the 50% and the 100% steps: E_0 = 1, E_p = 21, E_n = 51, so K from
+     * off -> on is 50 but K from 50% -> on is 60. They differ by more than max(enter_luma, k_tolerance * K), so the
+     * probe measures K again at 50%: (51 - 31) / 0.5 = 40, A = 11 is still dark, and night goes on with K = 40.
+     */
+    t.ambient = 1.0f;
+    wl_test_run_until(&t, ESP_IPA_WL_STATE_NIGHT_ENTER, 100);
+    t.ambient = 11.0f;
+    wl_test_run_until(&t, ESP_IPA_WL_STATE_PROBE, 50);
+    wl_test_run_until(&t, ESP_IPA_WL_STATE_NIGHT, 100);
+    TEST_ASSERT_FLOAT_WITHIN(0.01f, WL_TEST_K, esp_ipa_get_float(t.handle->ipa_array[0], "wl.k"));
+    TEST_ASSERT_FLOAT_WITHIN(0.01f, t.ambient, esp_ipa_get_float(t.handle->ipa_array[0], "wl.ambient"));
+
+    TEST_ESP_OK(esp_ipa_pipeline_destroy(t.handle));
+}
+
+TEST_CASE("WL locks AWB model 2 to the light CT", "[IPA][WL][AWB]")
+{
+    static wl_test_t t;
+
+    wl_test_setup(&t);
+    wl_test_start(&t);
+    esp_ipa_set_int32(t.handle->ipa_array[0], "ct", 1234);
+
+    /* NIGHT_ENTER sends ESP_IPA_AWB_S_CT, AWB sets the gains interpolated from ref_points in the same frame */
+    t.ambient = 1.0f;
+    wl_test_run_until(&t, ESP_IPA_WL_STATE_NIGHT_ENTER, 50);
+    TEST_ASSERT_EQUAL_INT32(1, wl_test_awb_fixed(&t));
+    TEST_ASSERT_EQUAL_HEX32(IPA_METADATA_FLAGS_RG | IPA_METADATA_FLAGS_BG,
+                            t.metadata.flags & (IPA_METADATA_FLAGS_RG | IPA_METADATA_FLAGS_BG));
+    TEST_ASSERT_FLOAT_WITHIN(1e-4f, 1.0f / 0.58f, t.metadata.red_gain);
+    TEST_ASSERT_FLOAT_WITHIN(1e-4f, 1.0f / 0.57f, t.metadata.blue_gain);
+    TEST_ASSERT_EQUAL_INT32(WL_TEST_LIGHT_CT, esp_ipa_get_int32(t.handle->ipa_array[0], "ct"));
+
+    /* The gains are published once and kept in night */
+    wl_test_run_until(&t, ESP_IPA_WL_STATE_NIGHT, 100);
+    wl_test_frame(&t);
+    TEST_ASSERT_EQUAL_HEX32(0, t.metadata.flags & (IPA_METADATA_FLAGS_RG | IPA_METADATA_FLAGS_BG));
+    TEST_ASSERT_FLOAT_WITHIN(1e-4f, 1.0f / 0.58f, t.metadata.red_gain);
+    TEST_ASSERT_EQUAL_INT32(1, wl_test_awb_fixed(&t));
+
+    /* Back to day: ESP_IPA_AWB_S_RESET releases AWB, which stops publishing the light CT */
+    t.ambient = 30.0f;
+    wl_test_run_until(&t, ESP_IPA_WL_STATE_DAY, 0);
+    TEST_ASSERT_EQUAL_INT32(0, wl_test_awb_fixed(&t));
+    esp_ipa_set_int32(t.handle->ipa_array[0], "ct", 1234);
+    wl_test_frame(&t);
+    TEST_ASSERT_EQUAL_INT32(1234, esp_ipa_get_int32(t.handle->ipa_array[0], "ct"));
+
+    TEST_ESP_OK(esp_ipa_pipeline_destroy(t.handle));
+
+    /* Model 0 rejects ESP_IPA_AWB_S_CT, WL goes on without the lock */
+    wl_test_setup(&t);
+    t.awb.model = ESP_IPA_AWB_MODEL_0;
+    wl_test_start(&t);
+    wl_test_enter_night(&t);
+    TEST_ASSERT_EQUAL_INT32(0, wl_test_awb_fixed(&t));
+    t.ambient = 30.0f;
+    wl_test_run_until(&t, ESP_IPA_WL_STATE_DAY, 0);
+    TEST_ESP_OK(esp_ipa_pipeline_destroy(t.handle));
+}
+
+TEST_CASE("WL disabled and exclusive with IR", "[IPA][WL]")
+{
+    static wl_test_t t;
+
+    /* Disabled: the light is turned off at init and never changed, nothing is published */
+    wl_test_setup(&t);
+    t.wl.enable = false;
+    wl_test_start(&t);
+    TEST_ASSERT_NOT_EQUAL_HEX32(0, t.metadata.flags & IPA_METADATA_FLAGS_WL);
+    TEST_ASSERT_EQUAL_UINT8(0, t.metadata.wl.brightness);
+    t.ambient = 1.0f;
+    for (int i = 0; i < 50; i++) {
+        wl_test_frame(&t);
+        TEST_ASSERT_EQUAL_HEX32(0, t.metadata.flags & IPA_METADATA_FLAGS_WL);
+    }
+    TEST_ASSERT_EQUAL_UINT8(0, t.metadata.wl.brightness);
+    TEST_ASSERT_FALSE(esp_ipa_has_int32_var(t.handle->ipa_array[0], "wl.state"));
+    TEST_ASSERT_EQUAL_INT32(0, wl_test_awb_fixed(&t));
+    TEST_ESP_OK(esp_ipa_pipeline_destroy(t.handle));
+
+#if CONFIG_ESP_IPA_IR_ALGORITHM
+    /* Both switch day and night, so the pipeline is not created */
+    {
+        const esp_ipa_config_t *base = esp_ipa_pipeline_get_config(IPA_TARGET_NAME);
+        esp_ipa_pipeline_handle_t handle = NULL;
+
+        TEST_ASSERT_NOT_NULL(base->ir);
+        wl_test_setup(&t);
+        t.cfg.ir = base->ir;
+        TEST_ASSERT_NOT_EQUAL(ESP_OK, esp_ipa_pipeline_create(&t.cfg, &handle));
+        TEST_ASSERT_NULL(handle);
+    }
+#endif
+}
+#endif /* CONFIG_ESP_IPA_WL_ALGORITHM */
+
 TEST_CASE("Extended configuration test", "[IPA]")
 {
     esp_ipa_pipeline_handle_t handle = NULL;

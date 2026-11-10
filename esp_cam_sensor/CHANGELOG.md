@@ -7,6 +7,7 @@
 - Added AP1511B IR-CUT driver.
 - Added PT1411 ALS(Ambient Light Sensor) driver.
 - Added IR2835 LED driver.
+- Added TCJ60 white fill light driver dimmed by LEDC PWM, the brightness has 3 levels: off, half and full. The LEDC timer, channel, frequency and polarity are set in menuconfig.
 - Added SC2337P IR control JSON file for esp_ipa.
   - The control logic relies on IR-CUT hardware currently supported by this component.
 - Fixed the OV5647 camera sensor driver to use non-continuous clock and no-line-sync mode.

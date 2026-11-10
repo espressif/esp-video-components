@@ -108,6 +108,7 @@ static esp_video_init_ircut_config_t s_csi_ircut_config = {
 static esp_video_init_led_config_t s_csi_led_config = {
     .gpio_ctrl = EXAMPLE_MIPI_CSI_CAM_LED_CTRL_PIN,
     .gpio_en = EXAMPLE_MIPI_CSI_CAM_LED_EN_PIN,
+    .type = EXAMPLE_MIPI_CSI_CAM_LED_TYPE,
 };
 #endif /* EXAMPLE_ENABLE_MIPI_CSI_CAM_LED */
 

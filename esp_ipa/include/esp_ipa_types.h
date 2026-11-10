@@ -70,6 +70,7 @@ extern "C" {
 #define IPA_METADATA_FLAGS_BLC      (1 << 19)   /*!< Meta data has BLC */
 #define IPA_METADATA_FLAGS_DPC      (1 << 20)   /*!< Meta data has DPC */
 #define IPA_METADATA_FLAGS_IR       (1 << 21)   /*!< Meta data has IR mode */
+#define IPA_METADATA_FLAGS_WL       (1 << 22)   /*!< Meta data has white light */
 
 
 #define IPA_GAMMA_FLAGS_RED         (1 << 0)   /*!< GAMMA red channel needs to update */
@@ -419,6 +420,15 @@ typedef struct esp_ipa_dpc {
 } esp_ipa_dpc_t;
 
 /**
+ * @brief White light parameters
+ */
+typedef struct esp_ipa_wl {
+    uint8_t brightness;                     /*!< Fill light brightness, percent of the full brightness, 0 ~ 100. The LED
+                                                 output must be linear to it, the algorithm separates the light
+                                                 contribution from the ambient luma with the ratio of two levels */
+} esp_ipa_wl_t;
+
+/**
  * @brief IPA meta data, these data are calculated by IPA and configured to ISP hardware
  */
 typedef struct esp_ipa_metadata {
@@ -462,6 +472,8 @@ typedef struct esp_ipa_metadata {
     esp_ipa_dpc_t dpc;                      /*!< DPC dynamic correction parameters */
 
     bool ir_enable;                         /*!< true: IR mode on; false: normal mode */
+
+    esp_ipa_wl_t wl;                        /*!< White light parameters */
 } esp_ipa_metadata_t;
 
 /**
@@ -1081,6 +1093,56 @@ typedef struct esp_ipa_atc_config {
 } esp_ipa_atc_config_t;
 
 /**
+ * @brief White light algorithm state, published as int32_t environment variable "wl.state" every frame
+ */
+typedef enum esp_ipa_wl_state {
+    ESP_IPA_WL_STATE_DAY = 0,                   /*!< Day, fill light off */
+    ESP_IPA_WL_STATE_NIGHT_ENTER,               /*!< Night, turning on the fill light and measuring K */
+    ESP_IPA_WL_STATE_NIGHT,                     /*!< Night, fill light on */
+    ESP_IPA_WL_STATE_PROBE,                     /*!< Night, fill light dimmed or off to measure the ambient luma */
+} esp_ipa_wl_state_t;
+
+/**
+ * @brief White light lamp configuration
+ */
+typedef struct esp_ipa_wl_light_config {
+    uint32_t ct;                                /*!< Fill light color temperature, Kelvin; 0: unknown, AWB is not locked.
+                                                     Out of DAY, WL locks AWB to it by ESP_IPA_AWB_S_CT and releases
+                                                     it by ESP_IPA_AWB_S_RESET in DAY; only AWB model 2 supports it */
+} esp_ipa_wl_light_config_t;
+
+/**
+ * @brief White light enter night gate configuration
+ */
+typedef struct esp_ipa_wl_gate_config {
+    bool enable;                                /*!< Require gain and exposure near maximum to enter night */
+    float min_gain_of_max;                      /*!< Minimum cur_gain as a fraction of sensor max gain, 0 ~ 1 */
+    float min_exposure_of_max;                  /*!< Minimum cur_exposure as a fraction of sensor max exposure, 0 ~ 1 */
+} esp_ipa_wl_gate_config_t;
+
+/**
+ * @brief White light algorithm configuration
+ */
+typedef struct esp_ipa_wl_config {
+    bool enable;                                /*!< Enable white light algorithm, only takes effect at init; false: the
+                                                     module does nothing and the fill light stays off */
+    float enter_luma;                          /*!< Enter night when luma is below this value */
+    float exit_luma;                            /*!< Exit night: start probe when ambient luma is above this value */
+    float verify_ratio;                         /*!< Leave night when luma with light off is above enter_luma * verify_ratio */
+    float k_tolerance;                          /*!< Allowed measurement error of K as a fraction of K, 0 ~ 1; the threshold is max(enter_luma, k_tolerance * K) */
+    uint16_t enter_frames;                      /*!< Consecutive frames required to enter night */
+    uint16_t exit_frames;                       /*!< Consecutive frames required to start probe */
+    uint16_t settle_frames;                     /*!< Frames with unchanged gain and exposure regarded as AE stable */
+    uint16_t settle_max_frames;                 /*!< Maximum frames to wait for AE stable, and then for E stable */
+    float settle_tolerance;                     /*!< E regarded as stable when it stays within max(enter_luma, settle_tolerance * E) for settle_frames, 0 ~ 1 */
+    uint32_t probe_period_s;                    /*!< Probe in night when K was measured this long ago, recovers from an overestimated K; 0: disable */
+    esp_ipa_wl_light_config_t light;            /*!< Fill light configuration */
+    esp_ipa_wl_gate_config_t gate;              /*!< Enter night gate configuration */
+
+    bool enable_log;                            /*!< Enable white light algorithm log */
+} esp_ipa_wl_config_t;
+
+/**
  * @brief IPA extended configuration
  */
 typedef struct esp_ipa_ext_config {
@@ -1192,6 +1254,7 @@ typedef struct esp_ipa_config {
     const esp_ipa_atc_config_t *atc;            /*!< Auto sensor AE target level control algorithm configuration */
     const esp_ipa_dpc_config_t *dpc;            /*!< Dead pixel correction algorithm configuration */
     const esp_ipa_ir_config_t  *ir;             /*!< IR algorithm configuration */
+    const esp_ipa_wl_config_t  *wl;             /*!< White light algorithm configuration */
 
     const esp_ipa_ext_config_t *ext;            /*!< Image extended configuration */
 } esp_ipa_config_t;
@@ -1208,6 +1271,7 @@ typedef struct esp_ipa_ops {
                                                                3: AWB,
                                                                4: ACC,
                                                                5: IAN,
+                                                               6: WL,
                                                                others: reserved */
 
     /**

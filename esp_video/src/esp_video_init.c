@@ -656,7 +656,7 @@ static esp_err_t init_cam_led(const esp_video_init_led_config_t *led_config,
 
     esp_cam_led_device_t *led_dev = NULL;
     esp_cam_led_config_t cfg = {
-        .type = ESP_CAM_LED_HW_TYPE_GPIO,
+        .type = led_config->type,
         .gpio_ctrl = led_config->gpio_ctrl,
         .gpio_en = led_config->gpio_en,
     };

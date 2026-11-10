@@ -42,6 +42,10 @@
 #define TLINE_NS_UNIT               1000
 #define REG_TO_US(reg, isp)         ((reg) * (isp)->sensor_tline_ns / TLINE_NS_UNIT)
 
+#if CONFIG_ESP_VIDEO_ENABLE_LED_SUPPORT && CONFIG_ESP_IPA_WL_ALGORITHM
+#define ISP_PIPELINE_CONTROL_WL_LED 1
+#endif
+
 typedef struct esp_video_isp {
     int isp_fd;
     esp_video_isp_stats_t *isp_stats[ISP_METADATA_BUFFER_COUNT];
@@ -931,7 +935,7 @@ static void config_dpc(esp_video_isp_t *isp, esp_ipa_metadata_t *metadata)
 }
 #endif
 
-#if CONFIG_ESP_VIDEO_ENABLE_LED_SUPPORT
+#if CONFIG_ESP_VIDEO_ENABLE_LED_SUPPORT && CONFIG_ESP_VIDEO_ENABLE_IRCUT_SUPPORT
 static void config_ir_led(esp_video_isp_t *isp, bool enable)
 {
     struct v4l2_ext_controls controls;
@@ -954,6 +958,33 @@ static void config_ir_led(esp_video_isp_t *isp, bool enable)
          * ran with the previous state; the next cycle sees this LED state. */
         isp->sensor.ir_led_on = enable;
         ESP_LOGD(TAG, "IR LED set to %s", enable ? "on" : "off");
+    }
+}
+#endif
+
+#if ISP_PIPELINE_CONTROL_WL_LED
+static void config_wl_led(esp_video_isp_t *isp, esp_ipa_metadata_t *metadata)
+{
+    struct v4l2_ext_controls controls;
+    struct v4l2_ext_control control[1];
+    uint32_t percent;
+
+    if (!(metadata->flags & IPA_METADATA_FLAGS_WL) || !isp->sensor_attr.ir_led) {
+        return;
+    }
+
+    /* IPA gives the white light brightness in percent, the LED reports its own range */
+    percent = MIN(metadata->wl.brightness, 100);
+    memset(&controls, 0, sizeof(controls));
+    memset(&control, 0, sizeof(control));
+    controls.count = 1;
+    controls.controls = control;
+    control[0].id = V4L2_CID_IR_LED_BRIGHTNESS;
+    control[0].value = isp->ir_led_min + (int32_t)((percent * (uint32_t)(isp->ir_led_max - isp->ir_led_min) + 50) / 100);
+    if (ioctl(isp->cam_fd, VIDIOC_S_EXT_CTRLS, &controls) != 0) {
+        ESP_LOGE(TAG, "failed to set white light LED");
+    } else {
+        ESP_LOGD(TAG, "white light LED set to %" PRIu32 "%%, brightness %" PRIi32, percent, control[0].value);
     }
 }
 #endif
@@ -1019,6 +1050,9 @@ static void config_isp_and_camera(esp_video_isp_t *isp, esp_ipa_metadata_t *meta
 #endif
 #if CONFIG_ESP_VIDEO_ENABLE_IRCUT_SUPPORT
     config_ir_cut(isp, metadata);
+#endif
+#if ISP_PIPELINE_CONTROL_WL_LED
+    config_wl_led(isp, metadata);
 #endif
 }
 
