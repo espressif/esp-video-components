@@ -22,6 +22,10 @@
 #if CONFIG_CAM_LED_IR2835
 #include "ir2835.h"
 #endif
+
+#if CONFIG_CAM_LED_TCJ60
+#include "tcj60.h"
+#endif
 #endif // CONFIG_SOC_ISP_SUPPORTED
 
 #include "unity.h"
@@ -357,6 +361,37 @@ TEST_CASE("Camera led detect test", "[video]")
     TEST_ASSERT_MESSAGE(led != NULL, "detect fail");
     TEST_ESP_OK(esp_cam_led_del_dev(led));
 }
+
+#if CONFIG_CAM_LED_TCJ60
+TEST_CASE("Camera tcj60 led detect test", "[video]")
+{
+    esp_cam_led_config_t led_config = {
+        .type = ESP_CAM_LED_HW_TYPE_LEDC,
+        .gpio_ctrl = 15,
+        .gpio_en = -1,
+        .platform_data = NULL,
+    };
+    esp_cam_led_device_t *led = tcj60_detect(&led_config);
+    TEST_ASSERT_MESSAGE(led != NULL, "detect fail");
+    TEST_ESP_OK(esp_cam_led_del_dev(led));
+
+    /*
+     * Some resources are lazy allocated in LEDC driver at the first use, and LEDC driver does not provide
+     * context free mechanism, so the leak is checked after the first detect
+     */
+    before_free_8bit = heap_caps_get_free_size(MALLOC_CAP_8BIT);
+    before_free_32bit = heap_caps_get_free_size(MALLOC_CAP_32BIT);
+    uint32_t size = esp_get_free_heap_size();
+
+    // detect and delete for 10 times to test whether memory leaking exists
+    for (int i = 0; i < 10; i++) {
+        led = tcj60_detect(&led_config);
+        TEST_ASSERT_MESSAGE(led != NULL, "detect fail");
+        TEST_ESP_OK(esp_cam_led_del_dev(led));
+    }
+    TEST_ASSERT_INT32_WITHIN(100, size, esp_get_free_heap_size());
+}
+#endif
 #endif
 
 void app_main(void)

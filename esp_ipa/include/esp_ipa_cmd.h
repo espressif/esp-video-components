@@ -63,6 +63,11 @@ extern "C" {
 #define ESP_IPA_IAN_S_CT_STATUS     ESP_IPA_IOW(ESP_IPA_IOC_TYPE_IAN,  0, int) /* 0 stops IAN color-temperature estimation; non-zero runs it and sets the CT index to -1 */
 #define ESP_IPA_IAN_G_CT_STATUS     ESP_IPA_IOR(ESP_IPA_IOC_TYPE_IAN,  1, int)
 
+#define ESP_IPA_IOC_TYPE_WL         6
+
+#define ESP_IPA_WL_S_CONFIG         ESP_IPA_IOW(ESP_IPA_IOC_TYPE_WL,   0, esp_ipa_wl_config_t)
+#define ESP_IPA_WL_G_CONFIG         ESP_IPA_IOR(ESP_IPA_IOC_TYPE_WL,   1, esp_ipa_wl_config_t)
+
 #ifdef __cplusplus
 }
 #endif

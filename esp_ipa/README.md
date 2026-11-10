@@ -15,6 +15,7 @@ Espressif image process algorithm component provides a suit of image process alg
 | Image Analyze | Calculate image color temperature and luma |
 | Auto Sensor AE Target Control | This is added for the sensors supported AEG/AGC by themselves |
 | IR Control | Switch between day and night from environment luma. Night also requires AWB statistics with non-zero R and G sums |
+| White Light Control | Switch the white fill light from environment luma, separating the light contribution from the ambient luma |
 
 ## 2. Pipeline Global Variable
 
@@ -1319,7 +1320,88 @@ The switch to night stops AWB (`ESP_IPA_AWB_S_STATUS`), IAN color-temperature es
 
 ---
 
-#### 3.2.10 Extended Control
+#### 3.2.10 White Light Control
+
+---
+
+```json
+"SC2337P":
+{
+    "ian": { "luma": { "env": { ... } } },
+    "wl":
+    {
+        "enter_luma": 4.0,
+        "exit_luma": 16.0,
+        "light": { "ct": 5000 }
+    },
+    "awb": { ... },
+    "agc": { ... },
+    "acc": { ... }
+}
+```
+
+| Parameter | Type | Range | Description |
+|:-:|:-:|:-:|:-|
+| wl | Object | / | White fill light control configuration parameters |
+
+---
+
+```json
+"wl":
+{
+    "enable": true,
+    "enter_luma": 4.0,
+    "exit_luma": 16.0,
+    "verify_ratio": 1.5,
+    "k_tolerance": 0.1,
+    "enter_frames": 30,
+    "exit_frames": 30,
+    "settle_frames": 5,
+    "settle_max_frames": 60,
+    "settle_tolerance": 0.02,
+    "probe_period_s": 600,
+    "light":
+    {
+        "ct": 5000
+    },
+    "gate":
+    {
+        "enable": false,
+        "min_gain_of_max": 0.8,
+        "min_exposure_of_max": 0.9
+    },
+    "enable_log": false
+}
+```
+
+| Parameter | Type | Range | Description |
+|:-:|:-:|:-:|:-|
+| enable | Boolean | true or false | Enable the algorithm, only takes effect at init. `false`: the module does nothing and the fill light stays off. Default `true` |
+| enter_luma | Float | >0 | Required. Enter night when environment luma `E` is below this value for `enter_frames` |
+| exit_luma | Float | >enter_luma | Required. Start a probe when the ambient luma `A = E - K` is above this value for `exit_frames` |
+| verify_ratio | Float | ≥1 | Leave night when the luma with the light off is above `enter_luma * verify_ratio`. Default `1.5` |
+| k_tolerance | Float | [0, 1) | Allowed measurement error of the light contribution `K` as a fraction of `K`, the mismatch threshold is `max(enter_luma, k_tolerance * K)`. Default `0.1` |
+| enter_frames | Integer | >0 | Consecutive frames to enter night. Default `30` |
+| exit_frames | Integer | >0 | Consecutive frames to start a probe. Default `30` |
+| settle_frames | Integer | ≥0 | Frames with unchanged gain and exposure regarded as AE stable. Default `5` |
+| settle_max_frames | Integer | >0 | Maximum frames to wait for AE stable, and then for `E` stable. Default `60` |
+| settle_tolerance | Float | [0, 1) | `E` is stable when it stays within `max(enter_luma, settle_tolerance * E)` for `settle_frames`. Default `0.02` |
+| probe_period_s | Integer | ≥0 | Probe in night when `K` was measured this long ago, recovers from an overestimated `K`; `0` disables. Default `600` |
+| light | Object | / | Fill light parameters |
+| ct | Integer | ≥0 | Fill light color temperature, Kelvin; `0`: unknown. Out of day, AWB is locked to it by `ESP_IPA_AWB_S_CT`, see AWB model 2 fixed color temperature. Default `0` |
+| gate | Object | / | Enter night gate parameters |
+| enable(gate) | Boolean | true or false | Also require gain and exposure near the sensor maximum to enter night. Default `false` |
+| min_gain_of_max | Float | [0, 1] | Minimum current gain as a fraction of the sensor maximum gain. Default `0.8` |
+| min_exposure_of_max | Float | [0, 1] | Minimum current exposure as a fraction of the sensor maximum exposure. Default `0.9` |
+| enable_log | Boolean | true or false | Enable the algorithm debug log |
+
+The environment luma is `E = A + K`, the ambient luma plus the light contribution. Entering night turns the light on in two steps, off → 50% → 100%, and measures `K` from the luma of each step after AE settles. In night, `A = E - K` decides when to probe: the light is dimmed to 50% to measure the ambient luma again, and the night is left only when the luma with the light off confirms it. The brightness is published in percent by `metadata.wl.brightness` (`IPA_METADATA_FLAGS_WL`); the camera driver converts it to the LED output, which must be linear to it. The state is published to pipeline variable **`wl.state`** (`esp_ipa_wl_state_t`). When WL leaves day, it locks AWB to `light.ct` by `ESP_IPA_AWB_S_CT`, and when it returns to day, it releases AWB by `ESP_IPA_AWB_S_RESET`; nothing is sent if `light.ct` is `0`. AWB model 0 and model 1 reject the command, and WL goes on without the lock. The application should not send `ESP_IPA_AWB_S_CT` / `ESP_IPA_AWB_S_RESET` while WL is enabled, because WL releases AWB when it returns to day.
+
+**Note**: WL requires IAN `luma.env`, which publishes `env.luma.avg`, so it must be put after IAN in the Json configuration file. Putting it before AWB lets AWB follow the lock in the same frame, otherwise one frame later. WL and IR are exclusive.
+
+---
+
+#### 3.2.11 Extended Control
 
 ---
 

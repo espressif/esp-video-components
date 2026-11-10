@@ -203,23 +203,45 @@ menu "Example Video Initialization Configuration"
                 bool "Enable LED Control"
                 default n
                 depends on ESP_VIDEO_ENABLE_MIPI_CSI_LED_SUPPORT
-                depends on EXAMPLE_ENABLE_MIPI_CSI_CAM_IRCUT
                 help
                     Enable the supplemental LED for the MIPI-CSI camera sensor.
 
-                    The LED turns on when IR-CUT switches to night mode and turns
-                    off when IR-CUT switches to day mode.
+                    With IR-Cut control, the LED turns on when IR-CUT switches to night
+                    mode and turns off when IR-CUT switches to day mode.
+                    With the IPA white light algorithm, the LED brightness follows the
+                    IPA white light metadata.
 
                     Enable LED support in Espressif Video Configuration and select
                     an LED driver before using this option.
 
             if EXAMPLE_ENABLE_MIPI_CSI_CAM_LED
+                choice EXAMPLE_MIPI_CSI_CAM_LED_TYPE
+                    prompt "LED Hardware Type"
+                    default EXAMPLE_MIPI_CSI_CAM_LED_TYPE_GPIO if CAM_LED_IR2835
+                    default EXAMPLE_MIPI_CSI_CAM_LED_TYPE_LEDC
+                    help
+                        Select the LED hardware type. It selects the LED driver.
+
+                    config EXAMPLE_MIPI_CSI_CAM_LED_TYPE_GPIO
+                        bool "GPIO (IR2835)"
+                        depends on CAM_LED_IR2835
+                        help
+                            The LED is switched on and off by a GPIO.
+
+                    config EXAMPLE_MIPI_CSI_CAM_LED_TYPE_LEDC
+                        bool "LEDC (TCJ60)"
+                        depends on CAM_LED_TCJ60
+                        help
+                            The LED brightness is controlled by an LEDC PWM output.
+                endchoice
+
                 config EXAMPLE_MIPI_CSI_CAM_LED_CTRL_PIN
                     int "LED Control Pin"
                     default -1
                     range -1 ENV_GPIO_RANGE_MAX
                     help
-                        GPIO pin that turns the supplemental LED on and off.
+                        GPIO pin that controls the supplemental LED. It is the switch pin
+                        for GPIO type and the PWM output pin for LEDC type.
                         Set to -1 to skip LED initialization.
 
                 config EXAMPLE_MIPI_CSI_CAM_LED_EN_PIN
@@ -229,8 +251,8 @@ menu "Example Video Initialization Configuration"
                     help
                         LED enable pin passed to the LED driver. Set to -1 if not used.
 
-                        The current IR2835 driver does not drive this pin. A later
-                        LED driver may use it to enable the LED supply.
+                        IR2835 does not drive this pin. TCJ60 drives it high to enable
+                        the LED supply.
             endif
 
             if EXAMPLE_SELECT_CUSTOMIZED_DEV_BOARD

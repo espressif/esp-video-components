@@ -7,6 +7,8 @@
 - Added optional AWB model 2 `startup_zone` and `startup_hold_frames` to initialize gains and CT from a selected zone and hold startup WBG while AWB calculation continues; normal startup is preserved when omitted
 - Updated AWB model 2 reference counters with low white-point counts to reduce stale statistics that delay recovery after lens occlusion
 - Added support for the DPC (Defective Pixel Correction) control algorithm
+- Added the WL (white light) algorithm to switch the white fill light from environment luma
+- WL locks AWB to the fill light CT by `ESP_IPA_AWB_S_CT` out of day, and releases it by `ESP_IPA_AWB_S_RESET` in day
 - IR: added day/night IR mode switching from environment luma, with AWB G/R checked only when `esp_ipa_sensor_t::ir_led_on` is true (a G/R of 0 skips that check); hold time and enter/exit delay still apply
 - IR: day/night switching uses the `luma_env` variable. Model 0 parameters are `model0_param`
     - A bright night frame starts leaving only when AWB statistics are present and both R and G are non-zero. Missing AWB, R=0, or G=0 stays in night

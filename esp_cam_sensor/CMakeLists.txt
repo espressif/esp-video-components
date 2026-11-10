@@ -279,6 +279,11 @@ if(CONFIG_CAM_LED_IR2835)
     list(APPEND include_dirs "leds/ir2835/include")
 endif()
 
+if(CONFIG_CAM_LED_TCJ60)
+    list(APPEND srcs "leds/tcj60/tcj60.c")
+    list(APPEND include_dirs "leds/tcj60/include")
+endif()
+
 if(CONFIG_CAMERA_PIVARIETY)
     list(APPEND srcs "sensors/arducam/pivariety/pivariety.c")
     list(APPEND include_dirs "sensors/arducam/pivariety/include")

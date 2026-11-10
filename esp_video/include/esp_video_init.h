@@ -28,6 +28,9 @@
 #endif
 #include "esp_video_caps.h"
 #include "esp_cam_sensor_xclk.h"
+#if CONFIG_ESP_VIDEO_ENABLE_LED_SUPPORT
+#include "esp_cam_led_types.h"
+#endif
 
 #ifdef __cplusplus
 extern "C" {
@@ -82,12 +85,14 @@ typedef struct esp_video_init_ircut_config {
  * @brief Supplemental LED initialization configuration
  *
  * Night IR-CUT mode turns the LED on. Day IR-CUT mode turns it off.
+ * With the IPA white light algorithm, the brightness follows the IPA white light metadata.
  */
 #if CONFIG_ESP_VIDEO_ENABLE_LED_SUPPORT
 typedef struct esp_video_init_led_config {
     gpio_num_t gpio_ctrl;                       /*!< LED control pin. Set to -1 if the hardware has no LED */
     gpio_num_t gpio_en;                         /*!< LED enable pin passed to the driver. Set to -1 if not used.
                                                      IR2835 does not drive this pin. A later LED driver may. */
+    esp_cam_led_hw_type_t type;                 /*!< LED hardware type, it selects the LED driver. Default 0 is ESP_CAM_LED_HW_TYPE_GPIO */
 } esp_video_init_led_config_t;
 #endif /* CONFIG_ESP_VIDEO_ENABLE_LED_SUPPORT */
 

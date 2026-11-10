@@ -34,6 +34,9 @@
     - The ISP pipeline turns the LED on with night IR-CUT mode and off with day IR-CUT mode. IR-CUT is an electromagnetic device and its switching time cannot be controlled, so the LED is switched independently of the IR-CUT
     - `esp_ipa_sensor_t::ir_led_on` follows the brightness read at init and each successful LED ioctl, so IPA checks AWB G/R only while the IR LED is on
     - CSI deinit keeps the LED handle until the driver has driven the control pin low
+    - `esp_video_init_led_config_t::type` selects the LED driver, e.g. `ESP_CAM_LED_HW_TYPE_LEDC` for TCJ60; the default is `ESP_CAM_LED_HW_TYPE_GPIO`
+    - With the IPA white light algorithm, the ISP pipeline scales the white light brightness (percent) to the LED range and applies it through `V4L2_CID_IR_LED_BRIGHTNESS`
+    - MIPI-CSI LED support no longer depends on MIPI-CSI IR-Cut support, so the white light LED can be used without an IR-Cut device
 - Added APIs to save and restore IPA pipeline state for fast startup
     - `esp_video_isp_pipeline_get_ipa_state()` reads the computed IPA state while the ISP pipeline is initialized
     - `esp_video_isp_pipeline_set_ipa_state()` writes a saved state to the ISP and camera. Call it after the pipeline is initialized and before `VIDIOC_STREAMON` of the frame that must use the restored parameters

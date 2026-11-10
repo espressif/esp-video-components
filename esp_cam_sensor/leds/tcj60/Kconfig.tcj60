@@ -1,0 +1,40 @@
+menuconfig CAM_LED_TCJ60
+    bool "TCJ60"
+    default n
+    select CAMERA_LED_DEVICE_USED
+    help
+        Enable support for the TCJ60 white fill light dimmed by LEDC PWM, e.g. driven by a MOSFET or a
+        constant current driver with a PWM dimming input. Use ESP_CAM_LED_HW_TYPE_LEDC, the control
+        pin is the PWM output and the enable pin is optional.
+
+if CAM_LED_TCJ60
+    config CAM_LED_TCJ60_LEDC_TIMER
+        int "LEDC timer"
+        range 0 3
+        default 1
+        help
+            LEDC low speed timer used by the fill light. It must not be shared with a channel of
+            another frequency, e.g. the camera XCLK, which defaults to timer 0 in the examples.
+
+    config CAM_LED_TCJ60_LEDC_CHANNEL
+        int "LEDC channel"
+        range 0 7
+        default 1
+        help
+            LEDC low speed channel used by the fill light. It must not be used by the camera XCLK,
+            which defaults to channel 0 in the examples.
+
+    config CAM_LED_TCJ60_FREQ_HZ
+        int "PWM frequency (Hz)"
+        range 100 100000
+        default 25000
+        help
+            PWM frequency of the fill light. A frequency well above the frame rate avoids banding in
+            the image. The duty resolution is the highest one the LEDC clock allows at this frequency.
+
+    config CAM_LED_TCJ60_OUTPUT_INVERT
+        bool "Low level turns the LED on"
+        default n
+        help
+            Invert the PWM output if a low level turns the LED on.
+endif
