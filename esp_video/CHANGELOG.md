@@ -1,4 +1,4 @@
-## Unreleased
+## 2.6.0
 
 - Set the focus step to one code when AF is enabled and the camera has no focus motor; skip focus motor ioctls on the stub path so logs are not flooded
 - Added ISP pipeline AWB `set_awb_ct` / `set_awb_reset` (model 2 resumes stats; model 3 restores `default_ct`)
