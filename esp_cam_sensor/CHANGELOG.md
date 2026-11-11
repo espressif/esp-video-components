@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- Removed the duplicate ADN module from the SC202CS default IPA JSON
+
 ## 2.7.0
 
 - Updated JX-H63P default IPA JSON: AWB model 2, adjusted AGC, LSC, and CCM, and an AF window of 320x240 at (160,120) that fits both 640x480 and 1280x720
