@@ -526,6 +526,7 @@ ioctl 调用关系如下图：
 仓库中的示例如下，可与上文 :ref:`数据通路 <esp-video-data-path>`、:ref:`缓冲队列 <esp-video-buffer-queues>` 两节对照阅读。
 
 * `capture_stream <https://github.com/espressif/esp-video-components/tree/master/esp_video/examples/capture_stream>`__ 演示如何打开视频设备并采集图像。
+* `software_aov/deep_sleep <https://github.com/espressif/esp-video-components/tree/master/esp_video/examples/software_aov/deep_sleep>`__ 与 `software_aov/light_sleep <https://github.com/espressif/esp-video-components/tree/master/esp_video/examples/software_aov/light_sleep>`__ 演示软件 AOV 的低帧率采集和睡眠，不是硬件原生 AOV，也不含识别与分析。采集可以部署在 MIPI-CSI、DVP 或其他接口的摄像头上，相邻帧之间有时间空隙。需要 ESP-IDF v5.5.2 及以上。两种睡眠的差别与功耗数据见 :doc:`../Solutions/software_aov`。
 * `m2m <https://github.com/espressif/esp-video-components/tree/master/esp_video/examples/m2m>`__ 演示如何通过 M2M 设备完成三种处理：采集后使用硬件进行 JPEG/H.264 编码、使用硬件解码 JPEG 码流，以及先解码 JPEG 再编码 H.264。
 * `image_storage <https://github.com/espressif/esp-video-components/tree/master/esp_video/examples/image_storage>`__ 演示如何将图像和视频流存储到 SD 卡或 flash。
 * `fast_startup/deep_sleep <https://github.com/espressif/esp-video-components/tree/master/esp_video/examples/fast_startup/deep_sleep>`__ 演示快速启动：色温收敛后把 IPA 状态保存到 RTC memory，deep sleep 唤醒后写回并保存第一张图片。

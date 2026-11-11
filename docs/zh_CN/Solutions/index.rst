@@ -11,3 +11,4 @@
 
    红外夜视 <ir_night_vision>
    快速启动 <fast_startup>
+   软件 AOV <software_aov>

@@ -4,6 +4,8 @@
 - Added `examples/manual_exp_gain` to preview on a MIPI DSI panel through `esp_board_manager` and set exposure/gain from the serial console with AGC off
 - Fixed `examples/manual_exp_gain` to use only `V4L2_CID_EXPOSURE_ABSOLUTE` for exposure and to release mmap buffers after the capture task exits
 - Enabled ESP32-S3 DVP YUV422 YUYV to RGB565 format conversion when `CAM_CTRL_DVP_ENABLE` is selected (ESP-IDF >= 5.5.2)
+- Added `examples/fast_startup/nvs` to keep IPA state in NVS across power off, save the first frame on the next boot to the SD card, and rewrite NVS only when brightness or color temperature has changed beyond a threshold
+- Added `examples/software_aov/deep_sleep` and `examples/software_aov/light_sleep` (ESP-IDF >= 5.5.2), a software AOV flow rather than hardware-native AOV. The application captures one frame per cycle and sleeps for a menuconfig interval in milliseconds, so the same schedule can run on MIPI-CSI, DVP, or another camera interface. Successive frames are separated by that sleep and restart gap. The examples cover low-rate capture and sleep only, not recognition or analysis. Deep sleep restores IPA state from RTC memory after timer wakeup; light sleep keeps that state in RAM and reapplies it on the next STREAMON. If light sleep fails while the stream is on, it stops the stream before releasing buffers
 
 ## 2.6.0
 
@@ -49,7 +51,6 @@
     - `esp_video_isp_pipeline_set_ipa_state()` writes a saved state to the ISP and camera. Call it after the pipeline is initialized and before `VIDIOC_STREAMON` of the frame that must use the restored parameters
     - The same `esp_ipa_state_t` and the same IPA configuration, width and height are required between the two calls. A version or CRC mismatch returns `ESP_ERR_INVALID_VERSION` or `ESP_ERR_INVALID_CRC`
 - Added `examples/fast_startup/deep_sleep` to store IPA state in RTC memory across deep sleep and save the first frame after wakeup to the SD card
-- Added `examples/fast_startup/nvs` to keep IPA state in NVS across power off, save the first frame on the next boot to the SD card, and rewrite NVS only when brightness or color temperature has changed beyond a threshold
 - Updated `esp_video_isp_pipeline_get_env_int32()` and `esp_video_isp_pipeline_get_env_float()` to look up typed IPA variables
 - Updated the minimum camera exposure value in the `examples/v4l2_cmd/README.md`.
 - Added I3C as one of the options for SCCB

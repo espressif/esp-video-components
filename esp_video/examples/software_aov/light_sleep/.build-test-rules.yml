@@ -1,0 +1,8 @@
+esp_video/examples/software_aov/light_sleep:
+  enable:
+    - if: IDF_TARGET in ["esp32p4"] and IDF_VERSION >= "5.5.2"
+      reason: esp_sleep_get_wakeup_causes() requires ESP-IDF >= 5.5.2
+  depends_components:
+    - esp_video
+    - esp_cam_sensor
+    - esp_sccb_intf

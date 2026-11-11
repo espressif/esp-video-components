@@ -1,0 +1,41 @@
+menu "Example Configuration"
+    config EXAMPLE_SLEEP_TIME_MS
+        int "Deep sleep time (ms)"
+        default 1000
+        range 1 86400000
+        help
+            Timer wakeup interval after one frame is captured.
+            The unit is milliseconds. The timer starts when deep sleep begins.
+            The full software AOV cycle is this interval plus camera init and capture time.
+
+    config EXAMPLE_CT_MIN
+        int "Minimum color temperature (K)"
+        default 3000
+        range 2000 20000
+        help
+            Cold boot keeps streaming until the IPA color temperature is at least this value.
+            The saved state is what makes the first frame after the next wakeup usable.
+
+    config EXAMPLE_CT_MAX
+        int "Maximum color temperature (K)"
+        default 8000
+        range EXAMPLE_CT_MIN 20000
+        help
+            Cold boot keeps streaming until the IPA color temperature is at most this value.
+
+    config EXAMPLE_CT_WAIT_MS
+        int "Color temperature wait timeout (ms)"
+        default 30000
+        range 1000 300000
+        help
+            Give up this boot if color temperature is still outside the range after this time.
+            The device does not save IPA state and does not enter deep sleep.
+
+    config EXAMPLE_RECV_TIMEOUT_MS
+        int "Frame receive timeout (ms)"
+        default 1000
+        range 10 60000
+        help
+            DQBUF timeout. During the cold-boot color-temperature wait, each DQBUF uses
+            the smaller of this value and the remaining wait deadline.
+endmenu
