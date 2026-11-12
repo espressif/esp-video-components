@@ -22,3 +22,15 @@ for EXAMPLE_PATH in $EXAMPLE_PATHS; do
     DIR=$(dirname $EXAMPLE_PATH)
     sed -i '/example_video_common/d' $DIR/main/idf_component.yml
 done
+
+# 4. Copy fast_startup_common to the fast_startup examples that use it
+
+FAST_STARTUP_COMPONENT_PATH=esp_video/examples/fast_startup/common_components/fast_startup_common
+
+for DIR in esp_video/examples/fast_startup/*/; do
+    [ -f $DIR/main/idf_component.yml ] || continue
+    grep -q fast_startup_common $DIR/main/idf_component.yml || continue
+    mkdir -p $DIR/components
+    cp -r $FAST_STARTUP_COMPONENT_PATH $DIR/components/
+    sed -i '/fast_startup_common/d' $DIR/main/idf_component.yml
+done

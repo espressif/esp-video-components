@@ -245,11 +245,21 @@
 
 ``sdkconfig.defaults.esp32p4`` 面向 ESP32-P4 Function EV Board v1.5 与 SC2336（1920×1080），已经使能 ISP 流水线控制器，并把 SCCB 频率设为 400 kHz。它还打开 ``CONFIG_BOOTLOADER_SKIP_VALIDATE_IN_DEEP_SLEEP``，关闭 ROM 日志，把 bootloader 日志降到 ERROR，用来缩短深度睡眠后的唤醒时间（更多选项见 `减少启动时间 <https://docs.espressif.com/projects/esp-idf/en/latest/esp32p4/api-guides/performance/speed.html#improving-startup-time>`__）。应用日志默认是 ERROR，最高是 WARN。只有 ``LOG_LOCAL_LEVEL`` 至少为 ``ESP_LOG_DEBUG`` 时，才会编译 ``fast_startup`` 和 ``ISP`` 的调试输出，并在启动时抬高这两个 tag。
 
+仓库示例 `esp_video/examples/fast_startup/nvs <https://github.com/espressif/esp-video-components/tree/master/esp_video/examples/fast_startup/nvs>`__ 面向两次抓拍之间整机断电的场景。它把已稳定的 IPA 状态存进独立的 ``ipa_nvs`` 分区，下次上电在开流前写回，从而在第一帧就得到颜色、亮度正常的图像。示例只依赖 ``set_ipa_state()`` 自身的检查，修改 IPA JSON 后需先执行 ``idf.py erase-flash``。
+
+曝光、传感器增益和色温的帧间变化都在 menuconfig 设定的容差内，并连续保持 **Stable frames in a row** 帧，即视为稳定。AWB 不输出色温时（只有 model 2 且打开 ``export_ct`` 才输出），只判断曝光和增益。
+
+NVS 中没有缓存或写回被拒绝时走冷启动：开流，等到稳定后存一张图，停流后调用 ``get_ipa_state`` 写入 NVS。超时仍未稳定则停止本次启动，不存图，也不写 NVS。
+
+缓存可用时，在 ``VIDIOC_STREAMON`` 之前调用 ``set_ipa_state``，把相机第一次 ``DQBUF`` 得到的帧存为 ``/sdmmc/<Image file name>_no.<index>.jpg``。随后继续收帧，等到稳定后停流、 ``get_ipa_state``，与缓存相比总增益或色温的变化超过 menuconfig 门限时才重写 NVS；场景基本不变时不写 Flash。超时仍未稳定则保留已存的图片，不改动 NVS。
+
+``sdkconfig.defaults.esp32p4`` 面向 ESP32-P4 Function EV Board v1.5 与 SC2336（1920×1080），已经使能 ISP 流水线控制器，并把 SCCB 频率设为 400 kHz。它还打开 ``CONFIG_BOOTLOADER_SKIP_VALIDATE_ON_POWER_ON``，关闭 ROM 日志，把 bootloader 日志降到 ERROR，用来缩短上电启动时间。
+
 注意事项
 --------
 
 - 方案 1 假设休眠前后环境接近。间隔很长或室外光照剧变时，第一帧可能偏亮、偏暗或偏色；此时应重新收敛，或叠加方案 2 的光感预估，而不是一味加大缓存命中预期。
 - ``get`` / ``set`` 之间保持同一份 IPA JSON 和同一采集分辨率。分辨率，以及配置版本、模块集合、已纳入校验的调参表发生变化时，写回会失败。其余 JSON 字段变化时，``set_ipa_state()`` 仍可能成功，并把旧状态按新配置下发。升级固件或修改 JSON 后，用应用自己的配置 ID 或指纹判断缓存是否仍匹配，不匹配就废弃并重新收敛。
-- ``esp_ipa_state_t`` 体积较大（各模块数组按最大容量存放）。放入 RTC 前确认剩余 RTC 内存足够；完全断电场景再考虑 Flash，并控制写入频率。
+- ``esp_ipa_state_t`` 体积较大（各模块数组按最大容量存放，当前约 11 KB）。放入 RTC 前确认剩余 RTC 内存足够；完全断电场景再考虑 Flash，并控制写入频率。
 - 写回只恢复计算状态并清空部分帧计数与延时时钟；滤光片、补光灯等产品外设仍由应用按自身策略控制。
 - 提高 SCCB 频率与状态缓存彼此独立：前者缩短“传感器能出图”的时间，后者缩短“图可用”的时间。只做其中一项往往不够。

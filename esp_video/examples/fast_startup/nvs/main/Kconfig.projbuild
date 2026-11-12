@@ -1,0 +1,97 @@
+menu "Example Configuration"
+    config EXAMPLE_STABLE_FRAMES
+        int "Stable frames in a row"
+        default 6
+        range 2 100
+        help
+            The IPA counts as stable when exposure, gain and color temperature have each
+            stayed within their tolerance for this many frames in a row. The AGC holds
+            for exposure_frame_delay/gain_frame_delay frames after every update (3 for
+            SC2336), so keep this value larger than that delay.
+
+    config EXAMPLE_STABLE_AE_TOL_PCT
+        int "Stable tolerance: exposure and gain (%)"
+        default 2
+        range 0 100
+        help
+            Largest frame-to-frame change of exposure and of sensor gain that still counts
+            as stable. 0 requires the values to stay exactly the same.
+
+    config EXAMPLE_STABLE_CT_TOL_K
+        int "Stable tolerance: color temperature (K)"
+        default 300
+        range 0 5000
+        help
+            Largest frame-to-frame change of the AWB color temperature that still counts
+            as stable. Not checked when the AWB does not publish a color temperature
+            (only AWB model 2 with export_ct does).
+
+    config EXAMPLE_STABLE_WAIT_MS
+        int "Stable wait timeout (ms)"
+        default 30000
+        range 1000 300000
+        help
+            Give up waiting for the IPA to become stable after this time. Cold boot then
+            stops without a picture. Warm boot keeps its picture and leaves the NVS cache
+            unchanged.
+
+    config EXAMPLE_RECV_TIMEOUT_MS
+        int "Frame receive timeout (ms)"
+        default 1000
+        range 10 60000
+        help
+            DQBUF timeout applied to the camera and JPEG devices after open. One frame
+            that does not arrive within that time stops this boot.
+
+    config EXAMPLE_CACHE_BRIGHTNESS_DIFF_PCT
+        int "NVS rewrite threshold: brightness change (%)"
+        default 20
+        range 1 1000
+        help
+            Rewrite the NVS cache when the AGC total gain (exposure and sensor gain
+            together) differs from the cached value by at least this percentage.
+            Larger values mean fewer flash writes.
+
+    config EXAMPLE_CACHE_CT_DIFF_K
+        int "NVS rewrite threshold: color temperature change (K)"
+        default 300
+        range 1 20000
+        help
+            Rewrite the NVS cache when the color temperature differs from the cached value
+            by at least this amount. Larger values mean fewer flash writes.
+
+    config EXAMPLE_JPEG_COMPRESSION_QUALITY
+        int "JPEG compression quality (%)"
+        default 80
+        range 1 100
+        help
+            JPEG quality of the saved picture.
+
+    config EXAMPLE_IMAGE_FILE_NAME
+        string "Image file name"
+        default "fast_startup_nvs"
+        help
+            Base name of the saved JPEG, stored as <mount point>/<name>_no.<index>.jpg.
+            Each boot uses the first index whose <name>_no.<index>.jpg does not exist yet.
+
+    config EXAMPLE_SAVE_COLD_FIRST_FRAME
+        bool "Save first frame on cold boot"
+        default y
+        help
+            On cold boot, also save the first frame, before the IPA is stable, as
+            <name>_no.<index>_cold_first.jpg. Compare it with a warm-boot picture of the
+            same scene to see what the NVS cache changes in the first frame.
+
+    config EXAMPLE_RESTART_AFTER_CAPTURE
+        bool "Restart after capture"
+        default n
+        help
+            Call esp_restart() after each capture to test the warm path in a loop
+            without cutting power.
+
+    config EXAMPLE_RESTART_DELAY_MS
+        int "Restart delay (ms)"
+        default 3000
+        range 0 600000
+        depends on EXAMPLE_RESTART_AFTER_CAPTURE
+endmenu
