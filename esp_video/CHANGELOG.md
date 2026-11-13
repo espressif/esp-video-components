@@ -1,3 +1,8 @@
+## Unreleased
+
+- Added `examples/manual_exp_gain` to preview on a MIPI DSI panel through `esp_board_manager` and set exposure/gain from the serial console with AGC off
+- Fixed `examples/manual_exp_gain` to use only `V4L2_CID_EXPOSURE_ABSOLUTE` for exposure and to release mmap buffers after the capture task exits
+
 ## 2.6.0
 
 - Set the focus step to one code when AF is enabled and the camera has no focus motor; skip focus motor ioctls on the stub path so logs are not flooded

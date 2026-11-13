@@ -1283,6 +1283,11 @@ static esp_err_t sc2337p_get_para_value(esp_cam_sensor_device_t *dev, uint32_t i
         *(uint32_t *)arg = cam_sc2337p->sc2337p_para.gain_index;
         break;
     }
+    case ESP_CAM_SENSOR_EXPOSURE_US: {
+        uint32_t val = cam_sc2337p->sc2337p_para.exposure_val;
+        *(uint32_t *)arg = EXPOSURE_SC2337P_TO_V4L2(val, dev->cur_format);
+        break;
+    }
     default: {
         ret = ESP_ERR_NOT_SUPPORTED;
         break;

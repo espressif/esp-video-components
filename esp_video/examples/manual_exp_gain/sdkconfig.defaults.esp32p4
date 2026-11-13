@@ -1,0 +1,34 @@
+# Appended after board_manager.defaults in CI; LARGE must win over board SINGLE_APP.
+CONFIG_PARTITION_TABLE_SINGLE_APP=n
+CONFIG_PARTITION_TABLE_SINGLE_APP_LARGE=y
+
+# This P4 board is silicon rev v3.0; IDF default is v3.1 and esptool refuses flash.
+CONFIG_ESP32P4_REV_MIN_300=y
+
+# Do not drive a focus motor. The camera sensor comes from the board profile.
+CONFIG_CAM_MOTOR_DW9714=n
+CONFIG_ESP_VIDEO_ENABLE_CAMERA_MOTOR_CONTROLLER=n
+CONFIG_ESP_VIDEO_ISP_PIPELINE_CONTROL_CAMERA_MOTOR=n
+CONFIG_EXAMPLE_ENABLE_MIPI_CSI_CAM_MOTOR=n
+
+CONFIG_EXAMPLE_SELECT_ESP32P4_FUNCTION_EV_BOARD_V1_5=y
+CONFIG_ESP_VIDEO_ENABLE_MIPI_CSI_VIDEO_DEVICE=y
+CONFIG_EXAMPLE_ENABLE_MIPI_CSI_CAM_SENSOR=y
+CONFIG_ESP_VIDEO_ENABLE_ISP_VIDEO_DEVICE=y
+CONFIG_ESP_VIDEO_ENABLE_ISP_PIPELINE_CONTROLLER=y
+# Board manager owns LDO_MIPI (chan 3).
+CONFIG_EXAMPLE_MIPI_CSI_VIDEO_DEVICE_DONT_INIT_LDO=y
+
+CONFIG_IDF_EXPERIMENTAL_FEATURES=y
+
+# DPI framebuffers need PSRAM. HEX matches the 1024x600 DSI panel bring-up.
+CONFIG_SPIRAM=y
+CONFIG_SPIRAM_MODE_HEX=y
+CONFIG_SPIRAM_SPEED_250M=y
+
+CONFIG_ESP_MAIN_TASK_STACK_SIZE=16384
+
+# UART0 is not wired to the host on this board. USB Serial/JTAG is the
+# flash port, and it has to be the primary console or stdin never sees
+# the exp/gain commands. The secondary USB port is output only.
+CONFIG_ESP_CONSOLE_USB_SERIAL_JTAG=y

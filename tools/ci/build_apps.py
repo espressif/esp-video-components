@@ -57,7 +57,7 @@ def get_mr_components(modified_files: str) -> str:
 
     return list(components)
 
-BMGR_EXAMPLES = ('ae_meter', 'touch_3a')
+BMGR_EXAMPLES = ('ae_meter', 'touch_3a', 'manual_exp_gain')
 BMGR_BOARD = 'esp32_p4_function_ev_board'
 BMGR_OVERLAY_MARK = '# --- example sdkconfig.defaults.esp32p4 ---'
 
@@ -65,10 +65,12 @@ BMGR_OVERLAY_MARK = '# --- example sdkconfig.defaults.esp32p4 ---'
 def prepare_board_manager(apps):
     """Generate board-manager sources before idf.py build.
 
-    A clean checkout has no components/gen_bmgr_codes. ae_meter and touch_3a
-    include dev_display_lcd.h from that generated component. board_manager.defaults
-    is applied after the project defaults and selects SC2336, so the example
-    sdkconfig.defaults.esp32p4 is appended and wins.
+    A clean checkout has no components/gen_bmgr_codes. ae_meter, touch_3a,
+    and manual_exp_gain include dev_display_lcd.h from that generated
+    component.     board_manager.defaults is applied after the project defaults and
+    selects the board sensor. sdkconfig.defaults.esp32p4 is appended so
+    partition, LDO, and console settings win. The example does not
+    select a camera sensor.
     """
     prepared = set()
     assist_ready = False

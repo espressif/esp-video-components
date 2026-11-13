@@ -7,6 +7,8 @@
 
 * [touch_3a](https://github.com/espressif/esp-video-components/tree/master/esp_video/examples/touch_3a) shows the camera on a MIPI DSI panel with GT911 touch for AE spot metering, AF near/far focus on `af_win0`, AWB color temperature buttons, and a sun/reset bar.
 
+* [manual_exp_gain](https://github.com/espressif/esp-video-components/tree/master/esp_video/examples/manual_exp_gain) shows the camera on a MIPI DSI panel, disables AGC, and sets sensor exposure and gain from the serial console.
+
 * [image_storage](https://github.com/espressif/esp-video-components/tree/master/esp_video/examples/image_storage) demonstrates how to store image data and video stream data to an SD card or flash.
 
 * [fast_startup/deep_sleep](https://github.com/espressif/esp-video-components/tree/master/esp_video/examples/fast_startup/deep_sleep) demonstrates fast startup after deep sleep by restoring IPA state from RTC memory and saving the first frame to an SD card.
