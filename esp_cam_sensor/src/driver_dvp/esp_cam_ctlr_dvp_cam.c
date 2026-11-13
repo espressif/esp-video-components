@@ -127,6 +127,9 @@ typedef struct dvp_cam_ctlr {
     size_t dma_desc_index;                              /*!< DVP cache buffer DMA description index */
 
     size_t fb_size_in_bytes;                            /*!< DVP frame buffer size in bytes */
+    uint32_t h_res;                                     /*!< Horizontal resolution in pixels */
+    uint32_t v_res;                                     /*!< Vertical resolution in lines */
+    uint32_t pixel_bpp;                                 /*!< Output pixel bits per pixel, 0 for JPEG */
 
     struct {
         uint32_t pic_format_jpeg : 1;                   /*!< Input picture format is JPEG, if set this flag and "input_data_color_type" will be ignored */
@@ -172,7 +175,7 @@ static void cam_hal_start_streaming_ext(cam_hal_context_t *hal, size_t size)
  * @return
  *      - ESP_OK on success
  *      - Others if failed
-*/
+ */
 static esp_err_t dvp_dma_deinit(gdma_channel_handle_t gdma_chan)
 {
     if (gdma_chan) {
@@ -301,6 +304,26 @@ static uint32_t dvp_calculate_jpeg_size(const uint8_t *buffer, uint32_t size)
 }
 
 /**
+ * @brief Get bits per pixel of a camera controller color type
+ *
+ * @param color_type Camera controller color type
+ *
+ * @return Bits per pixel, or 0 if the format is not supported
+ */
+static uint32_t dvp_get_pixel_bpp(cam_ctlr_color_t color_type)
+{
+#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(6, 0, 0)
+    return color_hal_pixel_format_fourcc_get_bit_depth(color_type);
+#else
+    color_space_pixel_format_t pixel_format = {
+        .color_type_id = color_type
+    };
+
+    return color_hal_pixel_format_get_bit_depth(pixel_format);
+#endif
+}
+
+/**
  * @brief CAM DVP calculate frame receive buffer size.
  *
  * @param config  CAM DVP controller configurations
@@ -317,16 +340,8 @@ static esp_err_t dvp_get_frame_size(const esp_cam_ctlr_dvp_config_t *config, siz
     if (config->pic_format_jpeg) {
         *p_size = config->h_res * config->v_res;
     } else {
-        uint32_t depth;
+        uint32_t depth = dvp_get_pixel_bpp(config->input_data_color_type);
 
-#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(6, 0, 0)
-        depth = color_hal_pixel_format_fourcc_get_bit_depth(config->input_data_color_type);
-#else
-        color_space_pixel_format_t pixel_format = {
-            .color_type_id = config->input_data_color_type
-        };
-        depth = color_hal_pixel_format_get_bit_depth(pixel_format);
-#endif
         if (!depth) {
             return ESP_ERR_INVALID_ARG;
         }
@@ -372,6 +387,71 @@ static void dvp_config_dma_desc(dma_descriptor_t *dma_desc, uint32_t desc_size, 
 
     dma_desc[n - 1].dw0.suc_eof = 1;
     dma_desc[n - 1].next = next;
+}
+
+/**
+ * @brief Allocate DVP DMA receive buffer and description list.
+ *
+ *        Previously allocated DMA buffer resources are replaced on success.
+ *        When DVP hardware has received half size of data, DVP DMA triggers
+ *        interrupt to send event "DVP_CAM_EVENT_RECV_DATA" to DVP task, and
+ *        DVP task copies that half size from the DMA receive buffer to the
+ *        user buffer.
+ *
+ * @param ctlr             DVP controller
+ * @param fb_size_in_bytes Frame size in bytes
+ * @param jpeg             Frame data format is JPEG
+ *
+ * @return
+ *      - ESP_OK on success
+ *      - ESP_ERR_INVALID_ARG if DMA buffer half size is 0
+ *      - ESP_ERR_NO_MEM if allocation failed
+ */
+static esp_err_t dvp_alloc_dma_buffer(dvp_cam_ctlr_t *ctlr, size_t fb_size_in_bytes, bool jpeg)
+{
+    const size_t buffer_align_size = 4; /**< ESP32-S3 SRAM is 4 bytes aligned */
+    size_t dma_buffer_hsize;
+    size_t dma_buffer_size;
+    size_t dma_desc_size;
+    size_t dma_desc_hcnt;
+    size_t dma_desc_buffer_size;
+    uint8_t *dma_buffer;
+    dma_descriptor_t *dma_desc;
+
+    dma_buffer_hsize = dvp_get_dma_buffer_hsize(DVP_CAM_DMA_BUFFER_SIZE, buffer_align_size, fb_size_in_bytes, jpeg);
+    ESP_RETURN_ON_FALSE(dma_buffer_hsize > 0, ESP_ERR_INVALID_ARG, TAG, "invalid argument: dma_buffer_hsize is 0");
+    dma_buffer_size = dma_buffer_hsize * DVP_CAM_BUFFER_COUNT;
+
+    dma_buffer = heap_caps_aligned_alloc(buffer_align_size, dma_buffer_size, MALLOC_CAP_DMA | MALLOC_CAP_INTERNAL);
+    ESP_RETURN_ON_FALSE(dma_buffer, ESP_ERR_NO_MEM, TAG, "no mem for CAM DVP DMA receive buffer");
+    memset(dma_buffer, 0, dma_buffer_size);
+
+    dma_desc_size = jpeg ? DVP_CAM_JPEG_DMA_DESC_SIZE : DVP_CAM_DMA_DESC_BUFFER_SIZE;
+    dma_desc_hcnt = (dma_buffer_hsize + dma_desc_size - 1) / dma_desc_size;
+    dma_desc_buffer_size = DVP_CAM_UP_ALIGN(DVP_CAM_BUFFER_COUNT * dma_desc_hcnt * sizeof(dma_descriptor_t), buffer_align_size);
+    dma_desc = heap_caps_aligned_alloc(buffer_align_size, dma_desc_buffer_size, MALLOC_CAP_DMA);
+    if (!dma_desc) {
+        heap_caps_free(dma_buffer);
+        ESP_LOGE(TAG, "no mem for CAM DVP DMA receive description");
+        return ESP_ERR_NO_MEM;
+    }
+
+    dvp_config_dma_desc(dma_desc, dma_desc_size, dma_buffer, dma_buffer_hsize, &dma_desc[dma_desc_hcnt]);
+    dvp_config_dma_desc(&dma_desc[dma_desc_hcnt], dma_desc_size, &dma_buffer[dma_buffer_hsize], dma_buffer_hsize, dma_desc);
+
+    heap_caps_free(ctlr->dma_desc);
+    heap_caps_free(ctlr->dma_buffer);
+
+    ctlr->dma_buffer = dma_buffer;
+    ctlr->dma_buffer_size = dma_buffer_size;
+    ctlr->dma_buffer_hsize = dma_buffer_hsize;
+    ctlr->dma_desc = dma_desc;
+    ctlr->dma_desc_size = dma_desc_size;
+    ctlr->dma_desc_hcnt = dma_desc_hcnt;
+    ctlr->dma_desc_index = 0;
+    ctlr->fb_size_in_bytes = fb_size_in_bytes;
+
+    return ESP_OK;
 }
 
 /**
@@ -673,6 +753,64 @@ static esp_err_t dvp_cam_ctlr_disable(esp_cam_ctlr_handle_t handle)
 }
 
 /**
+ * @brief Configure format conversion
+ *
+ * @param cam_handle Camera controller handle
+ * @param config Format conversion configuration
+ *
+ * @return
+ *        - ESP_OK on success
+ *        - ESP_ERR_INVALID_ARG: Invalid argument
+ *        - ESP_ERR_INVALID_STATE: Output bpp changed after the controller was started
+ *        - ESP_ERR_NO_MEM: No memory to reallocate the DMA buffer
+ */
+#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 5, 2)
+static esp_err_t esp_cam_ctlr_dvp_format_conversion(esp_cam_ctlr_handle_t cam_handle,
+        const cam_ctlr_format_conv_config_t *config)
+{
+    ESP_RETURN_ON_FALSE(cam_handle, ESP_ERR_INVALID_ARG, TAG, "invalid argument: cam_handle is null");
+    ESP_RETURN_ON_FALSE(config, ESP_ERR_INVALID_ARG, TAG, "invalid argument: config is null");
+
+    dvp_cam_ctlr_t *ctlr = (dvp_cam_ctlr_t *)cam_handle;
+
+    ESP_LOGD(TAG, "Configure format conversion: %d -> %d", config->src_format, config->dst_format);
+
+    if (config->src_format == config->dst_format) {
+        return ESP_OK;
+    }
+
+    if (config->src_format == CAM_CTLR_COLOR_YUV420) {
+        ESP_LOGE(TAG, "YUV420 is not allowed for source format");
+        return ESP_ERR_INVALID_ARG;
+    }
+
+    uint32_t dst_bpp = dvp_get_pixel_bpp(config->dst_format);
+
+    ESP_RETURN_ON_FALSE(dst_bpp, ESP_ERR_INVALID_ARG, TAG, "invalid argument: destination pixel format is not supported");
+
+    if (dst_bpp != ctlr->pixel_bpp) {
+        size_t fb_size_in_bytes = (size_t)ctlr->h_res * ctlr->v_res * dst_bpp / 8;
+        esp_err_t ret;
+
+        ESP_RETURN_ON_FALSE(ctlr->dvp_fsm == DVP_CAM_FSM_INIT, ESP_ERR_INVALID_STATE, TAG, "invalid state: cannot change DMA buffer after start");
+        ESP_RETURN_ON_FALSE(fb_size_in_bytes, ESP_ERR_INVALID_ARG, TAG, "invalid argument: frame size is 0");
+
+        ESP_LOGD(TAG, "output bpp %u -> %u, frame size %u", ctlr->pixel_bpp, dst_bpp, (unsigned)fb_size_in_bytes);
+        ret = dvp_alloc_dma_buffer(ctlr, fb_size_in_bytes, false);
+        if (ret != ESP_OK) {
+            return ret;
+        }
+        ctlr->pixel_bpp = dst_bpp;
+    }
+
+    // Configure color format conversion
+    cam_hal_color_format_convert(&ctlr->hal, config);
+
+    return ESP_OK;
+}
+#endif /* ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 5, 2) */
+
+/**
  * @brief DVP receive signal and data task, this function will call receive callback
  *        function if one complete frame is received or error triggers
  *
@@ -834,9 +972,7 @@ esp_err_t esp_cam_new_dvp_ctlr_ext(const esp_cam_ctlr_dvp_config_t *config, esp_
 {
     esp_err_t ret;
     dvp_cam_ctlr_t *ctlr;
-    size_t buffer_align_size = 4; /**< ESP32-S3 SRAM is 4 bytes aligned */
     size_t fb_size_in_bytes;
-    size_t dma_buffer_max_size = DVP_CAM_DMA_BUFFER_SIZE;
 
     ESP_RETURN_ON_FALSE(config && ret_handle, ESP_ERR_INVALID_ARG, TAG, "invalid argument: config or ret_handle is null");
     ESP_RETURN_ON_FALSE(config->ctlr_id < LCD_CAM_PERIPH_NUM, ESP_ERR_INVALID_ARG, TAG, "invalid argument: ctlr_id >= %d", LCD_CAM_PERIPH_NUM);
@@ -849,36 +985,20 @@ esp_err_t esp_cam_new_dvp_ctlr_ext(const esp_cam_ctlr_dvp_config_t *config, esp_
     ctlr = heap_caps_calloc(1, sizeof(dvp_cam_ctlr_t), MALLOC_CAP_8BIT | MALLOC_CAP_INTERNAL);
     ESP_RETURN_ON_FALSE(ctlr, ESP_ERR_NO_MEM, TAG, "no mem for CAM DVP controller context");
 
-    /**
-     * Calculate actually receive frame size, when DVP hardware has received half size of data,
-     * DVP DMA triggers interrupt to send event "DVP_CAM_EVENT_RECV_DATA" to DVP task, and DVP task
-     * need copy half size of data from DMA receive buffer to user buffer which is added by
-     * API "dvp_device_add_buffer".
-     */
-
-    ctlr->dma_buffer_hsize = dvp_get_dma_buffer_hsize(dma_buffer_max_size, buffer_align_size, fb_size_in_bytes, config->pic_format_jpeg);
-    ESP_GOTO_ON_FALSE(ctlr->dma_buffer_hsize > 0, ESP_ERR_INVALID_ARG, fail0, TAG, "invalid argument: dma_buffer_hsize is 0");
-    ctlr->dma_buffer_size = ctlr->dma_buffer_hsize * DVP_CAM_BUFFER_COUNT;
-
-    ctlr->dma_buffer = heap_caps_aligned_alloc(buffer_align_size, ctlr->dma_buffer_size, MALLOC_CAP_DMA | MALLOC_CAP_INTERNAL);
-    ESP_GOTO_ON_FALSE(ctlr->dma_buffer, ESP_ERR_NO_MEM, fail0, TAG, "no mem for CAM DVP DMA receive buffer");
-    memset(ctlr->dma_buffer, 0, ctlr->dma_buffer_size);
-
-    ctlr->dma_desc_size = config->pic_format_jpeg ? DVP_CAM_JPEG_DMA_DESC_SIZE : DVP_CAM_DMA_DESC_BUFFER_SIZE;
-    ctlr->dma_desc_hcnt = (ctlr->dma_buffer_hsize + ctlr->dma_desc_size - 1) / ctlr->dma_desc_size;
-
-    size_t dma_desc_buffer_size = DVP_CAM_UP_ALIGN(DVP_CAM_BUFFER_COUNT * ctlr->dma_desc_hcnt * sizeof(dma_descriptor_t), buffer_align_size);
-    ctlr->dma_desc = heap_caps_aligned_alloc(buffer_align_size, dma_desc_buffer_size, MALLOC_CAP_DMA);
-    ESP_GOTO_ON_FALSE(ctlr->dma_desc, ESP_ERR_NO_MEM, fail1, TAG, "no mem for CAM DVP DMA receive description");
-
-    dvp_config_dma_desc(ctlr->dma_desc, ctlr->dma_desc_size, ctlr->dma_buffer, ctlr->dma_buffer_hsize, &ctlr->dma_desc[ctlr->dma_desc_hcnt]);
-    dvp_config_dma_desc(&ctlr->dma_desc[ctlr->dma_desc_hcnt], ctlr->dma_desc_size, &ctlr->dma_buffer[ctlr->dma_buffer_hsize], ctlr->dma_buffer_hsize, ctlr->dma_desc);
+    ret = dvp_alloc_dma_buffer(ctlr, fb_size_in_bytes, config->pic_format_jpeg);
+    if (ret != ESP_OK) {
+        goto fail0;
+    }
 
     ctlr->vsync_pin = config->pin ? config->pin->vsync_io : s_vsync_io;
     ESP_GOTO_ON_FALSE(ctlr->vsync_pin != GPIO_NUM_NC, ESP_ERR_INVALID_ARG, fail2, TAG, "vsync_pin is not set");
     ctlr->pic_format_jpeg = config->pic_format_jpeg;
+    ctlr->h_res = config->h_res;
+    ctlr->v_res = config->v_res;
+    if (!config->pic_format_jpeg) {
+        ctlr->pixel_bpp = dvp_get_pixel_bpp(config->input_data_color_type);
+    }
     ctlr->spinlock = (portMUX_TYPE)portMUX_INITIALIZER_UNLOCKED;
-    ctlr->fb_size_in_bytes = fb_size_in_bytes;
     ctlr->dvp_fsm = DVP_CAM_FSM_INIT;
 
     /* Ignore result if this calling fails, maybe users call this in previous step */
@@ -921,7 +1041,9 @@ esp_err_t esp_cam_new_dvp_ctlr_ext(const esp_cam_ctlr_dvp_config_t *config, esp_
     ctlr->base.get_internal_buffer = NULL;
     ctlr->base.get_buffer_len = NULL;
     ctlr->base.alloc_buffer = NULL;
-    ctlr->base.format_conversion = NULL;
+#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 5, 2)
+    ctlr->base.format_conversion = esp_cam_ctlr_dvp_format_conversion;
+#endif /* ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 5, 2) */
 
     ret = xTaskCreate(dvp_task, DVP_CAM_TASK_NAME, DVP_CAM_TASK_STACK_SIZE, ctlr, DVP_CAM_TASK_PRIORITY, &ctlr->task_handle);
     ESP_GOTO_ON_FALSE(ret == pdPASS, ESP_ERR_NO_MEM, fail6, TAG, "failed to create DVP task");
@@ -942,7 +1064,6 @@ fail3:
     gpio_isr_handler_remove(ctlr->vsync_pin);
 fail2:
     heap_caps_free(ctlr->dma_desc);
-fail1:
     heap_caps_free(ctlr->dma_buffer);
 fail0:
     heap_caps_free(ctlr);
