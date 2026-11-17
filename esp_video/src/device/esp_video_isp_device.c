@@ -481,11 +481,13 @@ static esp_err_t isp_stats_done(struct isp_video *isp_video, const void *buffer,
     esp_err_t ret = ESP_OK;
     uint32_t target_flags = ISP_STATS_FLAGS;
 
+    /* Checked under the lock: isp_video_stop() may run on the other core and clear stats_buffer */
+    portENTER_CRITICAL(&isp_video->spinlock);
     if (!isp_video->capture_meta) {
-        return false;
+        portEXIT_CRITICAL(&isp_video->spinlock);
+        return ESP_OK;
     }
 
-    portENTER_CRITICAL(&isp_video->spinlock);
     if (!isp_video->stats_buffer) {
         struct esp_video_buffer_element *element;
 
