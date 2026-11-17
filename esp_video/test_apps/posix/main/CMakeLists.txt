@@ -16,7 +16,7 @@ if (CONFIG_ESP_VIDEO_ENABLE_ISP_VIDEO_DEVICE)
 endif()
 
 if (CONFIG_ESP_VIDEO_ENABLE_ISP_PIPELINE_CONTROLLER AND CONFIG_ESP_VIDEO_ENABLE_MIPI_CSI_VIDEO_DEVICE)
-    list(APPEND srcs "test_isp_pipeline_controller.c")
+    list(APPEND srcs "test_isp_pipeline_controller.c" "test_video_owner.c")
 endif()
 
 if (CONFIG_ESP_VIDEO_ENABLE_H264_VIDEO_DEVICE)

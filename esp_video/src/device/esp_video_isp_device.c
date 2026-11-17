@@ -481,11 +481,12 @@ static esp_err_t isp_stats_done(struct isp_video *isp_video, const void *buffer,
     esp_err_t ret = ESP_OK;
     uint32_t target_flags = ISP_STATS_FLAGS;
 
+    portENTER_CRITICAL(&isp_video->spinlock);
     if (!isp_video->capture_meta) {
-        return false;
+        ret = ESP_ERR_INVALID_STATE;
+        goto exit;
     }
 
-    portENTER_CRITICAL(&isp_video->spinlock);
     if (!isp_video->stats_buffer) {
         struct esp_video_buffer_element *element;
 
@@ -1729,7 +1730,10 @@ static esp_err_t isp_video_start(struct esp_video *video, uint32_t type)
     ISP_LOCK(isp_video);
 
     if (type == V4L2_BUF_TYPE_META_CAPTURE) {
+        portENTER_CRITICAL(&isp_video->spinlock);
+        isp_video->stats_buffer = NULL;
         isp_video->capture_meta = true;
+        portEXIT_CRITICAL(&isp_video->spinlock);
     }
 
     ISP_UNLOCK(isp_video);
