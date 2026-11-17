@@ -1744,7 +1744,11 @@ static esp_err_t isp_video_stop(struct esp_video *video, uint32_t type)
     ISP_LOCK(isp_video);
 
     if (type == V4L2_BUF_TYPE_META_CAPTURE) {
+        /* Drop a frame of statistics only partly written, its buffer may be freed after the stop */
+        portENTER_CRITICAL(&isp_video->spinlock);
         isp_video->capture_meta = false;
+        isp_video->stats_buffer = NULL;
+        portEXIT_CRITICAL(&isp_video->spinlock);
     }
 
     ISP_UNLOCK(isp_video);
