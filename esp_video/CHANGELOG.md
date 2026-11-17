@@ -2,6 +2,7 @@
 
 - Added `examples/manual_exp_gain` to preview on a MIPI DSI panel through `esp_board_manager` and set exposure/gain from the serial console with AGC off
 - Fixed `examples/manual_exp_gain` to use only `V4L2_CID_EXPOSURE_ABSOLUTE` for exposure and to release mmap buffers after the capture task exits
+- Fixed the ISP video device keeping `stats_buffer` when the metadata stream stopped in the middle of a frame's statistics: after the ISP pipeline started again, the statistics were written into the freed metadata buffer and corrupted the heap
 
 ## 2.6.0
 
