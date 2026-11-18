@@ -1,0 +1,72 @@
+name: Cleanup legacy issue labels (one-time)
+on:
+  push:
+    branches: [chore/bootstrap-issue-labels-20261118]
+permissions:
+  contents: read
+  issues: write
+  pull-requests: read
+jobs:
+  cleanup:
+    if: github.repository == 'espressif/esp-video-components'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Rename, migrate, delete, and verify labels
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const repoKey = "espressif/esp-video-components";
+            if (context.repo.owner+"/"+context.repo.repo !== repoKey) throw Error("Wrong repo");
+            const {owner,repo}=context.repo;
+            const renames=[{"old":"breaking-change 💥","name":"impact:breaking-change","color":"D93F0B","description":"Breaking API or behavior change that requires migration guidance."},{"old":"good first issue","name":"community:good-first-issue","color":"7057FF","description":"Suitable for a first-time project contributor."},{"old":"help wanted","name":"community:help-wanted","color":"008672","description":"Contributions or external technical help are welcome."},{"old":"Resolution: Duplicate","name":"resolution:duplicate","color":"C2E0C6","description":"Closed as a duplicate; link the canonical issue."},{"old":"Resolution: Cannot Reproduce","name":"resolution:cannot-reproduce","color":"C2E0C6","description":"Closed because the reported behavior could not be reproduced."},{"old":"Resolution: Won't Do","name":"resolution:wont-do","color":"C2E0C6","description":"Closed because the requested change will not be pursued."}];
+            const deletions=["Awaiting Response","bug 🐞","documentation 📝","question","Status: Awaiting Response","Status: Done","Status: In Progress","Status: Selected for Development","Resolution: Done","Type: Bug","Type: Doc","Type: Feature Request"];
+            const retained=["type:bug","type:feature","type:support","type:docs","priority:P1","priority:P2","priority:P3","area:esp_video","area:esp_cam_sensor","area:esp_ipa","area:uvc","area:h264","status:need-info","status:in-progress","status:verification","resolution:fixed","resolution:answered","resolution:unsupported"];
+            const allLabels=()=>github.paginate(github.rest.issues.listLabelsForRepo,{owner,repo,per_page:100});
+            const allIssues=()=>github.paginate(github.rest.issues.listForRepo,{owner,repo,state:"all",per_page:100});
+            const allPRs=()=>github.paginate(github.rest.pulls.list,{owner,repo,state:"all",per_page:100});
+            const before=await allLabels();
+            const names=new Set(before.map(l=>l.name));
+            const expected=[...retained,...renames.map(r=>r.old),...deletions];
+            if(before.length!==36||names.size!==36||expected.some(name=>!names.has(name)))
+              throw Error("Preflight label set mismatch: "+JSON.stringify(before.map(l=>l.name)));
+            const items=(await allIssues()).filter(x=>!x.pull_request);
+            const prs=await allPRs();
+            const legacyUses=items.flatMap(i=>i.labels.filter(l=>deletions.includes(l.name)||renames.some(r=>r.old===l.name)).map(l=>({n:i.number,state:i.state,label:l.name})));
+            const actualUses=legacyUses.map(x=>x.n+":"+x.label).sort();
+            const expectedUses=[...([66,52,41,38,31].map(n=>n+":Status: Awaiting Response")),...([1,2,4].flatMap(n=>[n+":Status: Done",n+":Resolution: Done"]))].sort();
+            if(JSON.stringify(actualUses)!==JSON.stringify(expectedUses))
+              throw Error("Unexpected legacy labels on Issues: "+JSON.stringify(legacyUses));
+            const oldNames=new Set([...renames.map(r=>r.old),...deletions]);
+            const prsWithLegacy=prs.filter(p=>p.labels.some(l=>oldNames.has(l.name))).map(p=>p.number);
+            if(prsWithLegacy.length)throw Error("Unexpected legacy labels on PRs "+prsWithLegacy.join(","));
+            const issue4=items.find(i=>i.number===4);
+            if(!issue4||issue4.state!=="closed"||!issue4.labels.some(l=>l.name==="Resolution: Done"))
+              throw Error("Issue #4 changed before migration");
+            console.log("PREFLIGHT OK: labels="+before.length+", issues="+items.length+", PRs="+prs.length+", legacy issue uses="+legacyUses.length+", PR legacy uses=0");
+            for(const r of renames){
+              await github.rest.issues.updateLabel({owner,repo,name:r.old,new_name:r.name,color:r.color,description:r.description});
+              console.log("RENAMED "+r.old+" => "+r.name);
+            }
+            await github.rest.issues.addLabels({owner,repo,issue_number:4,labels:["resolution:fixed"]});
+            console.log("MIGRATED issue #4 Resolution: Done => resolution:fixed (before legacy label deletion)");
+            for(const name of deletions){
+              await github.rest.issues.deleteLabel({owner,repo,name});
+              console.log("DELETED "+name);
+            }
+            const after=await allLabels();
+            const afterNames=new Set(after.map(l=>l.name));
+            const finalNames=[...retained,...renames.map(r=>r.name)];
+            if(after.length!==24 || afterNames.size!==24 || finalNames.some(n=>!afterNames.has(n)))
+              throw Error("Final labels mismatch: "+JSON.stringify(after.map(l=>l.name)));
+            const verifyItems=(await allIssues()).filter(x=>!x.pull_request);
+            const verifyIssue4=verifyItems.find(x=>x.number===4);
+            if(!verifyIssue4.labels.some(x=>x.name==="resolution:fixed"))
+              throw Error("Issue #4 migration missing");
+            const openItems=verifyItems.filter(x=>x.state==="open");
+            if(openItems.some(x=>!x.labels.some(l=>l.name.startsWith("type:"))||!x.labels.some(l=>l.name.startsWith("area:"))))
+              throw Error("Open Issue classification missing");
+            if(verifyItems.some(x=>x.labels.some(l=>deletions.includes(l.name)||renames.some(r=>r.old===l.name))))
+              throw Error("Deprecated labels remain on issues");
+            console.log("VERIFIED FINAL LABELS="+after.length+"; open="+openItems.length+"; issue4 migrated; renamed=6; deleted=12; added=0.");
+            
