@@ -1259,7 +1259,7 @@ static esp_err_t init_cam_dev(const esp_video_isp_config_t *config, esp_video_is
     print_dev_info(fd);
 
     ret = ioctl(fd, VIDIOC_SET_OWNER, &owner);
-    ESP_GOTO_ON_FALSE(ret == 0, ESP_ERR_NOT_SUPPORTED, fail_0, TAG, "failed to set owner");
+    ESP_GOTO_ON_FALSE(ret == 0, ESP_ERR_NOT_SUPPORTED, fail_0, TAG, "failed to set owner=0");
 
     qctrl.id = V4L2_CID_GAIN;
     ret = ioctl(fd, VIDIOC_QUERY_EXT_CTRL, &qctrl);
@@ -1709,6 +1709,7 @@ fail_0:
 esp_err_t esp_video_isp_pipeline_deinit(void)
 {
     int ret;
+    int owner = 1;
     int type = V4L2_BUF_TYPE_META_CAPTURE;
 
     _lock_acquire(&s_isp_lock);
@@ -1721,6 +1722,12 @@ esp_err_t esp_video_isp_pipeline_deinit(void)
     ret = ioctl(isp->isp_fd, VIDIOC_STREAMOFF, &type);
     ESP_GOTO_ON_FALSE(ret == 0, ESP_FAIL, fail_0, TAG, "failed to stop stream");
     vTaskDelay(ISP_METADATA_BUFFER_COUNT * 50 / portTICK_PERIOD_MS);
+
+    /**
+     * Set owner=1 to the camera sensor to avoid closing the camera sensor although the application is using it.
+     */
+    ret = ioctl(isp->cam_fd, VIDIOC_SET_OWNER, &owner);
+    ESP_GOTO_ON_FALSE(ret == 0, ESP_ERR_NOT_SUPPORTED, fail_0, TAG, "failed to set owner=1");
 
     vTaskDelete(isp->task_handler);
     vTaskDelay(1);
