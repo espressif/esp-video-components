@@ -5,6 +5,7 @@
 - Fixed SC2337P V4L2_CID_EXPOSURE_ABSOLUTE readback to return exposure in 100-us V4L2 units
 - Fixed SC2336 V4L2_CID_EXPOSURE_ABSOLUTE readback to return exposure in 100-us V4L2 units
 - Removed the duplicate ADN module from the SC202CS default IPA JSON
+- Added color format conversion support to the ESP32-S3 DVP driver
 
 ## 2.7.0
 

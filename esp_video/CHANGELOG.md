@@ -3,6 +3,7 @@
 - Supported `esp_video_isp_pipeline_deinit()` and `esp_video_isp_pipeline_init()` while the application keeps the camera device open. Capture format and buffers stay valid, so streaming can continue across the restart
 - Added `examples/manual_exp_gain` to preview on a MIPI DSI panel through `esp_board_manager` and set exposure/gain from the serial console with AGC off
 - Fixed `examples/manual_exp_gain` to use only `V4L2_CID_EXPOSURE_ABSOLUTE` for exposure and to release mmap buffers after the capture task exits
+- Enabled ESP32-S3 DVP YUV422 YUYV to RGB565 format conversion when `CAM_CTRL_DVP_ENABLE` is selected (ESP-IDF >= 5.5.2)
 
 ## 2.6.0
 
