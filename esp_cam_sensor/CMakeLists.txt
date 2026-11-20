@@ -210,6 +210,12 @@ if(CONFIG_CAMERA_BF3925)
     list(APPEND priv_include_dirs "sensors/bf3925/private_include")
 endif()
 
+if(CONFIG_CAMERA_MAT130A)
+    list(APPEND srcs "sensors/mat130a/mat130a.c")
+    list(APPEND include_dirs "sensors/mat130a/include")
+    list(APPEND priv_include_dirs "sensors/mat130a/private_include")
+endif()
+
 if(CONFIG_CAMERA_MIRA220)
     list(APPEND srcs "sensors/mira220/mira220.c")
     list(APPEND include_dirs "sensors/mira220/include")
@@ -432,6 +438,10 @@ if(CONFIG_CAMERA_SENSOR_MOTOR_DETECT_METHOD_DYNAMIC_LINK)
 
     if(CONFIG_CAMERA_BF3A03_AUTO_DETECT_DVP_INTERFACE_SENSOR)
         target_link_libraries(${COMPONENT_LIB} INTERFACE "-u bf3a03_detect")
+    endif()
+
+    if(CONFIG_CAMERA_MAT130A_AUTO_DETECT_DVP_INTERFACE_SENSOR)
+        target_link_libraries(${COMPONENT_LIB} INTERFACE "-u mat130a_detect")
     endif()
 
     if(CONFIG_CAMERA_MIRA220_AUTO_DETECT_MIPI_INTERFACE_SENSOR)

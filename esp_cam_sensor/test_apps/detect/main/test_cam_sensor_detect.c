@@ -68,6 +68,9 @@
 #elif CONFIG_CAMERA_JXH63P
 #include "jxh63p.h"
 #define SCCB0_CAM_DEVICE_ADDR JXH63P_SCCB_ADDR
+#elif CONFIG_CAMERA_MAT130A
+#include "mat130a.h"
+#define SCCB0_CAM_DEVICE_ADDR MAT130A_SCCB_ADDR
 #elif CONFIG_CAMERA_MIRA220
 #include "mira220.h"
 #define SCCB0_CAM_DEVICE_ADDR MIRA220_SCCB_ADDR
@@ -242,6 +245,8 @@ TEST_CASE("Camera sensor detect test", "[video]")
     cam0 = gc2607_detect(&cam0_config);
 #elif CONFIG_CAMERA_JXH63P
     cam0 = jxh63p_detect(&cam0_config);
+#elif CONFIG_CAMERA_MAT130A
+    cam0 = mat130a_detect(&cam0_config);
 #elif CONFIG_CAMERA_MIRA220
     cam0 = mira220_detect(&cam0_config);
 #elif CONFIG_CAMERA_MIT245

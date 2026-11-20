@@ -1,0 +1,52 @@
+menuconfig CAMERA_MAT130A
+    bool "MAT130A"
+    default n
+    depends on SOC_LCDCAM_CAM_SUPPORTED
+    help
+        Enable support for the MAT130A CMOS image sensor.
+        The module Flash must contain the vendor DVP firmware matching the
+        24 MHz MCLK, 78 MHz PCLK, 1280x720@25fps, YUV422 UYVY profile.
+
+if CAMERA_MAT130A
+    menu "Auto detect MAT130A"
+        config CAMERA_MAT130A_AUTO_DETECT_DVP_INTERFACE_SENSOR
+            bool "Detect for DVP interface sensor"
+            default y
+            help
+                When enabled, the MAT130A sensor will be automatically detected
+                and initialized on the DVP interface at startup without requiring
+                manual detection call(mat130a_detect) in your application.
+    endmenu
+
+    menu "Choose supported formats for DVP interface"
+        config CAMERA_MAT130A_DVP_YUV422_1280X720_25FPS
+            bool "DVP 8-bit, 24M input, 1280x720 25fps, YUV422 (UYVY)"
+            default y
+            help
+                YUV422(UYVY) color format at 1280x720 resolution (HD) with 25fps framerate.
+                Requires 8-bit DVP interface with 24MHz input clock.
+                Profile supplied for the MAT130A module: about 78 MHz PCLK,
+                mirror/flip disabled.
+    endmenu
+
+    choice CAMERA_MAT130A_DVP_DEFAULT_FMT
+        prompt "Select default output format for DVP interface"
+        default CAMERA_MAT130A_DVP_DEFAULT_FMT_YUV422_1280X720_25FPS
+        help
+            This option allows you to select the default video format for the MAT130A sensor
+            when it is initialized on the DVP interface. The selected format will be used
+            when the sensor is detected and initialized, and can be changed later when the
+            sensor is in stream off state.
+
+        config CAMERA_MAT130A_DVP_DEFAULT_FMT_YUV422_1280X720_25FPS
+            bool "DVP 8-bit, 24M input, 1280x720 25fps, YUV422 (UYVY)"
+            depends on CAMERA_MAT130A_DVP_YUV422_1280X720_25FPS
+    endchoice # CAMERA_MAT130A_DVP_DEFAULT_FMT
+
+    config CAMERA_MAT130A_DVP_IF_FORMAT_INDEX_DEFAULT
+        int
+        default 0 if CAMERA_MAT130A_DVP_DEFAULT_FMT_YUV422_1280X720_25FPS
+        help
+            Sets the default configuration for the DVP interface.
+            Use query_support_formats() API to get more format options.
+endif
