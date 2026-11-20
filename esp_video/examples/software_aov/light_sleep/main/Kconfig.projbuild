@@ -1,0 +1,41 @@
+menu "Example Configuration"
+    config EXAMPLE_SLEEP_TIME_MS
+        int "Light sleep time (ms)"
+        default 1000
+        range 1 86400000
+        help
+            How long to stay in light sleep after one frame is captured.
+            The unit is milliseconds. The timer starts when esp_light_sleep_start()
+            is called. The full software AOV cycle is this interval plus one capture.
+
+    config EXAMPLE_CT_MIN
+        int "Minimum color temperature (K)"
+        default 3000
+        range 2000 20000
+        help
+            After init, keep streaming until the IPA color temperature is at least this value.
+            Later captures reuse the registers kept across light sleep.
+
+    config EXAMPLE_CT_MAX
+        int "Maximum color temperature (K)"
+        default 8000
+        range EXAMPLE_CT_MIN 20000
+        help
+            After init, keep streaming until the IPA color temperature is at most this value.
+
+    config EXAMPLE_CT_WAIT_MS
+        int "Color temperature wait timeout (ms)"
+        default 30000
+        range 1000 300000
+        help
+            Stop this boot if color temperature is still outside the range after this time.
+            The device does not capture a frame and does not enter light sleep.
+
+    config EXAMPLE_RECV_TIMEOUT_MS
+        int "Frame receive timeout (ms)"
+        default 1000
+        range 10 60000
+        help
+            DQBUF timeout. While waiting for color temperature, each DQBUF uses
+            the smaller of this value and the remaining wait deadline.
+endmenu

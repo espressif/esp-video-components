@@ -14,6 +14,8 @@
 * [fast_startup/deep_sleep](https://github.com/espressif/esp-video-components/tree/master/esp_video/examples/fast_startup/deep_sleep) demonstrates fast startup after deep sleep by restoring IPA state from RTC memory and saving the first frame to an SD card.
 * [fast_startup/nvs](https://github.com/espressif/esp-video-components/tree/master/esp_video/examples/fast_startup/nvs) demonstrates fast startup after power off by restoring IPA state from NVS and saving the first frame to an SD card.
 
+* [software_aov/deep_sleep](https://github.com/espressif/esp-video-components/tree/master/esp_video/examples/software_aov/deep_sleep) and [software_aov/light_sleep](https://github.com/espressif/esp-video-components/tree/master/esp_video/examples/software_aov/light_sleep) are a software AOV flow, not hardware-native AOV. They capture one frame per sleep cycle on MIPI-CSI, DVP, or another camera interface, with a time gap between frames, and do not include recognition or analysis. ESP-IDF v5.5.2 or later is required. See the [Software AOV solution](../../docs/zh_CN/Solutions/software_aov.rst).
+
 * [Memory To Memory](https://github.com/espressif/esp-video-components/tree/master/esp_video/examples/m2m) demonstrates how to encode or decode streams using the M2M video devices.
 
 * [simple_video_server](https://github.com/espressif/esp-video-components/tree/master/esp_video/examples/simple_video_server) shows how to set up a local server and then preview and download images through the server.

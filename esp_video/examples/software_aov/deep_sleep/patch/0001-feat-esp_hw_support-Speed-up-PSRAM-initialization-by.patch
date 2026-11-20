@@ -1,0 +1,360 @@
+---
+ components/esp_hw_support/CMakeLists.txt      |  4 +
+ .../mspi_timing_tuning/mspi_timing_tuning.c   | 15 ++++
+ .../port/esp32s3/mspi_timing_by_mspi_delay.c  | 19 +++++
+ .../esp_private/mspi_timing_psram_cache.h     | 70 +++++++++++++++++
+ .../tuning_scheme_impl/mspi_timing_by_dqs.c   | 21 +++++
+ .../mspi_timing_by_mspi_delay.c               | 20 +++++
+ .../mspi_timing_psram_cache.c                 | 76 +++++++++++++++++++
+ components/esp_psram/Kconfig.spiram.common    | 18 +++++
+ examples/system/deep_sleep/CMakeLists.txt     |  2 +-
+ 9 files changed, 244 insertions(+), 1 deletion(-)
+ create mode 100644 components/esp_hw_support/mspi_timing_tuning/tuning_scheme_impl/include/esp_private/mspi_timing_psram_cache.h
+ create mode 100644 components/esp_hw_support/mspi_timing_tuning/tuning_scheme_impl/mspi_timing_psram_cache.c
+
+diff --git a/components/esp_hw_support/CMakeLists.txt b/components/esp_hw_support/CMakeLists.txt
+index 131f6a4edc7..f9c648dceba 100644
+--- a/components/esp_hw_support/CMakeLists.txt
++++ b/components/esp_hw_support/CMakeLists.txt
+@@ -148,6 +148,10 @@ if(NOT non_os_build)
+         if(CONFIG_SOC_MEMSPI_TIMING_TUNING_BY_FLASH_DELAY)
+             list(APPEND srcs "mspi_timing_tuning/tuning_scheme_impl/mspi_timing_by_flash_delay.c")
+         endif()
++
++        if(CONFIG_SPIRAM_TIMING_TUNING_CACHE_IN_RTC)
++            list(APPEND srcs "mspi_timing_tuning/tuning_scheme_impl/mspi_timing_psram_cache.c")
++        endif()
+     endif()
+ 
+     if(CONFIG_SOC_RTC_FAST_MEM_SUPPORTED AND CONFIG_ESP_ROM_SUPPORT_DEEP_SLEEP_WAKEUP_STUB)
+diff --git a/components/esp_hw_support/mspi_timing_tuning/mspi_timing_tuning.c b/components/esp_hw_support/mspi_timing_tuning/mspi_timing_tuning.c
+index 1f20d4a0369..f7d30445f92 100644
+--- a/components/esp_hw_support/mspi_timing_tuning/mspi_timing_tuning.c
++++ b/components/esp_hw_support/mspi_timing_tuning/mspi_timing_tuning.c
+@@ -32,6 +32,9 @@
+ #if SOC_MEMSPI_TIMING_TUNING_BY_MSPI_DELAY || SOC_MEMSPI_TIMING_TUNING_BY_DQS || SOC_MEMSPI_TIMING_TUNING_BY_FLASH_DELAY
+ #include "mspi_timing_tuning_configs.h"
+ #endif
++#if CONFIG_SPIRAM_TIMING_TUNING_CACHE_IN_RTC
++#include "esp_private/mspi_timing_psram_cache.h"
++#endif
+ #if SOC_MEMSPI_CLK_SRC_IS_INDEPENDENT
+ #include "hal/spimem_flash_ll.h"
+ #endif
+@@ -402,6 +405,14 @@ void mspi_timing_flash_tuning(void)
+ #if MSPI_TIMING_PSRAM_NEEDS_TUNING
+ void mspi_timing_psram_tuning(void)
+ {
++#if CONFIG_SPIRAM_TIMING_TUNING_CACHE_IN_RTC
++    if (mspi_timing_psram_cache_try_restore()) {
++        ESP_EARLY_LOGI(TAG, "Restore PSRAM timing tuning from RTC cache");
++        mspi_timing_enter_high_speed_early();
++        return;
++    }
++#endif
++
+     /**
+      * set MSPI related regs to 20mhz configuration, to write reference data to PSRAM
+      * see detailed comments in this function (`mspi_timing_enter_low_speed_early`)
+@@ -470,6 +481,10 @@ void mspi_timing_psram_tuning(void)
+     s_do_tuning(reference_data, &timing_configs, false);
+ #endif
+ 
++#if CONFIG_SPIRAM_TIMING_TUNING_CACHE_IN_RTC
++    mspi_timing_psram_cache_save();
++#endif
++
+     mspi_timing_enter_high_speed_early();
+ }
+ 
+diff --git a/components/esp_hw_support/mspi_timing_tuning/port/esp32s3/mspi_timing_by_mspi_delay.c b/components/esp_hw_support/mspi_timing_tuning/port/esp32s3/mspi_timing_by_mspi_delay.c
+index b00e8d1581e..c7574737f47 100644
+--- a/components/esp_hw_support/mspi_timing_tuning/port/esp32s3/mspi_timing_by_mspi_delay.c
++++ b/components/esp_hw_support/mspi_timing_tuning/port/esp32s3/mspi_timing_by_mspi_delay.c
+@@ -596,6 +596,25 @@ void mspi_timing_psram_set_best_tuning_config(const void *configs, uint8_t best_
+     s_psram_best_timing_tuning_config = ((const mspi_timing_config_t *)configs)->tuning_config_table[best_id];
+ }
+ 
++#if CONFIG_SPIRAM_TIMING_TUNING_CACHE_IN_RTC
++#include "esp_private/mspi_timing_psram_cache.h"
++
++void mspi_timing_psram_export_best_params(mspi_timing_psram_cache_params_t *params)
++{
++    params->scheme = MSPI_TIMING_PSRAM_CACHE_SCHEME_MSPI_DELAY;
++    params->mspi_delay.spi_din_mode = s_psram_best_timing_tuning_config.spi_din_mode;
++    params->mspi_delay.spi_din_num = s_psram_best_timing_tuning_config.spi_din_num;
++    params->mspi_delay.extra_dummy_len = s_psram_best_timing_tuning_config.extra_dummy_len;
++}
++
++void mspi_timing_psram_import_best_params(const mspi_timing_psram_cache_params_t *params)
++{
++    assert(params->scheme == MSPI_TIMING_PSRAM_CACHE_SCHEME_MSPI_DELAY);
++    s_psram_best_timing_tuning_config.spi_din_mode = params->mspi_delay.spi_din_mode;
++    s_psram_best_timing_tuning_config.spi_din_num = params->mspi_delay.spi_din_num;
++    s_psram_best_timing_tuning_config.extra_dummy_len = params->mspi_delay.extra_dummy_len;
++}
++#endif // CONFIG_SPIRAM_TIMING_TUNING_CACHE_IN_RTC
+ 
+ /*-------------------------------------------------------------------------------------------------
+  * Best Timing Tuning Params Clear / Set
+diff --git a/components/esp_hw_support/mspi_timing_tuning/tuning_scheme_impl/include/esp_private/mspi_timing_psram_cache.h b/components/esp_hw_support/mspi_timing_tuning/tuning_scheme_impl/include/esp_private/mspi_timing_psram_cache.h
+new file mode 100644
+index 00000000000..1ba42745078
+--- /dev/null
++++ b/components/esp_hw_support/mspi_timing_tuning/tuning_scheme_impl/include/esp_private/mspi_timing_psram_cache.h
+@@ -0,0 +1,70 @@
++/*
++ * SPDX-FileCopyrightText: 2026 Espressif Systems (Shanghai) CO LTD
++ *
++ * SPDX-License-Identifier: Apache-2.0
++ */
++
++#pragma once
++
++#include <stdint.h>
++#include <stdbool.h>
++#include "sdkconfig.h"
++
++#ifdef __cplusplus
++extern "C" {
++#endif
++
++#if CONFIG_SPIRAM_TIMING_TUNING_CACHE_IN_RTC
++
++typedef enum {
++    MSPI_TIMING_PSRAM_CACHE_SCHEME_MSPI_DELAY = 1,
++    MSPI_TIMING_PSRAM_CACHE_SCHEME_DQS = 2,
++} mspi_timing_psram_cache_scheme_t;
++
++typedef struct {
++    uint8_t spi_din_mode;
++    uint8_t spi_din_num;
++    uint8_t extra_dummy_len;
++} mspi_timing_psram_cache_mspi_delay_t;
++
++typedef struct {
++    uint8_t phase;
++    uint8_t data_delayline;
++    uint8_t dqs_delayline;
++} mspi_timing_psram_cache_dqs_t;
++
++typedef struct {
++    mspi_timing_psram_cache_scheme_t scheme;
++    union {
++        mspi_timing_psram_cache_mspi_delay_t mspi_delay;
++        mspi_timing_psram_cache_dqs_t dqs;
++    };
++} mspi_timing_psram_cache_params_t;
++
++/**
++ * @brief Try to restore PSRAM timing tuning params from RTC cache on deep sleep wakeup.
++ *
++ * @return true if cached params were restored, false otherwise.
++ */
++bool mspi_timing_psram_cache_try_restore(void);
++
++/**
++ * @brief Save current PSRAM timing tuning params into RTC cache.
++ */
++void mspi_timing_psram_cache_save(void);
++
++/**
++ * @brief Export current best PSRAM timing params for RTC cache storage.
++ */
++void mspi_timing_psram_export_best_params(mspi_timing_psram_cache_params_t *params);
++
++/**
++ * @brief Import PSRAM timing params from RTC cache into runtime state.
++ */
++void mspi_timing_psram_import_best_params(const mspi_timing_psram_cache_params_t *params);
++
++#endif // CONFIG_SPIRAM_TIMING_TUNING_CACHE_IN_RTC
++
++#ifdef __cplusplus
++}
++#endif
+diff --git a/components/esp_hw_support/mspi_timing_tuning/tuning_scheme_impl/mspi_timing_by_dqs.c b/components/esp_hw_support/mspi_timing_tuning/tuning_scheme_impl/mspi_timing_by_dqs.c
+index 79ec3b0db9e..0f13946b02b 100644
+--- a/components/esp_hw_support/mspi_timing_tuning/tuning_scheme_impl/mspi_timing_by_dqs.c
++++ b/components/esp_hw_support/mspi_timing_tuning/tuning_scheme_impl/mspi_timing_by_dqs.c
+@@ -196,6 +196,27 @@ void mspi_timing_psram_set_best_tuning_delayline(const void *configs, uint8_t be
+     s_psram_best_delayline = ((mspi_timing_config_t *)configs)->delayline_table[best_id];
+ }
+ 
++#if CONFIG_SPIRAM_TIMING_TUNING_CACHE_IN_RTC
++#include "esp_private/mspi_timing_psram_cache.h"
++
++void mspi_timing_psram_export_best_params(mspi_timing_psram_cache_params_t *params)
++{
++    params->scheme = MSPI_TIMING_PSRAM_CACHE_SCHEME_DQS;
++    params->dqs.phase = s_psram_best_phase;
++    params->dqs.data_delayline = s_psram_best_delayline.data_delayline;
++    params->dqs.dqs_delayline = s_psram_best_delayline.dqs_delayline;
++}
++
++void mspi_timing_psram_import_best_params(const mspi_timing_psram_cache_params_t *params)
++{
++    assert(params->scheme == MSPI_TIMING_PSRAM_CACHE_SCHEME_DQS);
++    assert(params->dqs.phase < MSPI_LL_DQS_PHASE_MAX);
++    s_psram_best_phase = (mspi_ll_dqs_phase_t)params->dqs.phase;
++    s_psram_best_delayline.data_delayline = params->dqs.data_delayline;
++    s_psram_best_delayline.dqs_delayline = params->dqs.dqs_delayline;
++}
++#endif // CONFIG_SPIRAM_TIMING_TUNING_CACHE_IN_RTC
++
+ void mspi_timing_psram_config_clear_tuning_regs(bool control_both_mspi)
+ {
+     mspi_timing_ll_set_dqs_phase(MSPI_LL_DQS_ID_0, 0);
+diff --git a/components/esp_hw_support/mspi_timing_tuning/tuning_scheme_impl/mspi_timing_by_mspi_delay.c b/components/esp_hw_support/mspi_timing_tuning/tuning_scheme_impl/mspi_timing_by_mspi_delay.c
+index 9404717201d..bb98244dc85 100644
+--- a/components/esp_hw_support/mspi_timing_tuning/tuning_scheme_impl/mspi_timing_by_mspi_delay.c
++++ b/components/esp_hw_support/mspi_timing_tuning/tuning_scheme_impl/mspi_timing_by_mspi_delay.c
+@@ -331,6 +331,26 @@ void mspi_timing_psram_set_best_tuning_config(const void *configs, uint8_t best_
+     s_psram_best_timing_tuning_config = ((const mspi_timing_config_t *)configs)->tuning_config_table[best_id];
+ }
+ 
++#if CONFIG_SPIRAM_TIMING_TUNING_CACHE_IN_RTC
++#include "esp_private/mspi_timing_psram_cache.h"
++
++void mspi_timing_psram_export_best_params(mspi_timing_psram_cache_params_t *params)
++{
++    params->scheme = MSPI_TIMING_PSRAM_CACHE_SCHEME_MSPI_DELAY;
++    params->mspi_delay.spi_din_mode = s_psram_best_timing_tuning_config.spi_din_mode;
++    params->mspi_delay.spi_din_num = s_psram_best_timing_tuning_config.spi_din_num;
++    params->mspi_delay.extra_dummy_len = s_psram_best_timing_tuning_config.extra_dummy_len;
++}
++
++void mspi_timing_psram_import_best_params(const mspi_timing_psram_cache_params_t *params)
++{
++    assert(params->scheme == MSPI_TIMING_PSRAM_CACHE_SCHEME_MSPI_DELAY);
++    s_psram_best_timing_tuning_config.spi_din_mode = params->mspi_delay.spi_din_mode;
++    s_psram_best_timing_tuning_config.spi_din_num = params->mspi_delay.spi_din_num;
++    s_psram_best_timing_tuning_config.extra_dummy_len = params->mspi_delay.extra_dummy_len;
++}
++#endif // CONFIG_SPIRAM_TIMING_TUNING_CACHE_IN_RTC
++
+ /*-------------------------------------------------------------------------------------------------
+  * Best Timing Tuning Params Clear / Set
+  *-------------------------------------------------------------------------------------------------*/
+diff --git a/components/esp_hw_support/mspi_timing_tuning/tuning_scheme_impl/mspi_timing_psram_cache.c b/components/esp_hw_support/mspi_timing_tuning/tuning_scheme_impl/mspi_timing_psram_cache.c
+new file mode 100644
+index 00000000000..70ae3e29a29
+--- /dev/null
++++ b/components/esp_hw_support/mspi_timing_tuning/tuning_scheme_impl/mspi_timing_psram_cache.c
+@@ -0,0 +1,76 @@
++/*
++ * SPDX-FileCopyrightText: 2026 Espressif Systems (Shanghai) CO LTD
++ *
++ * SPDX-License-Identifier: Apache-2.0
++ */
++
++#include "sdkconfig.h"
++#include "esp_attr.h"
++#include "esp_rom_sys.h"
++#include "soc/reset_reasons.h"
++#include "esp_private/mspi_timing_psram_cache.h"
++
++#if CONFIG_SPIRAM_TIMING_TUNING_CACHE_IN_RTC
++
++#define MSPI_TIMING_PSRAM_CACHE_MAGIC   0x50535443  // 'PSTC'
++#define MSPI_TIMING_PSRAM_CACHE_VERSION 1
++
++typedef struct {
++    uint32_t magic;
++    uint32_t version;
++    uint32_t fingerprint;
++    mspi_timing_psram_cache_params_t params;
++} mspi_timing_psram_cache_t;
++
++static RTC_NOINIT_ATTR mspi_timing_psram_cache_t s_psram_timing_cache;
++
++static uint32_t s_get_config_fingerprint(void)
++{
++    return ((uint32_t)CONFIG_SPIRAM_SPEED)
++#if CONFIG_SPIRAM_MODE_OCT
++           | (1u << 8)
++#elif CONFIG_SPIRAM_MODE_HEX
++           | (2u << 8)
++#elif CONFIG_SPIRAM_MODE_QUAD
++           | (3u << 8)
++#endif
++           ;
++}
++
++static bool s_is_cache_valid(const mspi_timing_psram_cache_t *cache)
++{
++    return cache->magic == MSPI_TIMING_PSRAM_CACHE_MAGIC
++           && cache->version == MSPI_TIMING_PSRAM_CACHE_VERSION
++           && cache->fingerprint == s_get_config_fingerprint()
++           && (cache->params.scheme == MSPI_TIMING_PSRAM_CACHE_SCHEME_MSPI_DELAY
++               || cache->params.scheme == MSPI_TIMING_PSRAM_CACHE_SCHEME_DQS);
++}
++
++static bool s_is_deep_sleep_wakeup(void)
++{
++    return esp_rom_get_reset_reason(0) == RESET_REASON_CORE_DEEP_SLEEP;
++}
++
++bool mspi_timing_psram_cache_try_restore(void)
++{
++    if (!s_is_deep_sleep_wakeup() || !s_is_cache_valid(&s_psram_timing_cache)) {
++        return false;
++    }
++
++    mspi_timing_psram_import_best_params(&s_psram_timing_cache.params);
++    return true;
++}
++
++void mspi_timing_psram_cache_save(void)
++{
++    mspi_timing_psram_cache_t cache = {
++        .magic = MSPI_TIMING_PSRAM_CACHE_MAGIC,
++        .version = MSPI_TIMING_PSRAM_CACHE_VERSION,
++        .fingerprint = s_get_config_fingerprint(),
++    };
++
++    mspi_timing_psram_export_best_params(&cache.params);
++    s_psram_timing_cache = cache;
++}
++
++#endif // CONFIG_SPIRAM_TIMING_TUNING_CACHE_IN_RTC
+diff --git a/components/esp_psram/Kconfig.spiram.common b/components/esp_psram/Kconfig.spiram.common
+index ac60dec87f3..6b3d971504a 100644
+--- a/components/esp_psram/Kconfig.spiram.common
++++ b/components/esp_psram/Kconfig.spiram.common
+@@ -195,3 +195,21 @@ config SPIRAM_ENC_EXEMPT_SIZE
+         of the MMU page size (typically 64 KB).
+         The region is registered as a separate heap pool, accessible only via
+         MALLOC_CAP_SPIRAM_NO_ENC.
++
++config SPIRAM_TIMING_TUNING_CACHE_IN_RTC
++    bool "Cache PSRAM MSPI timing tuning results in RTC memory"
++    default n
++    depends on SPIRAM && (SOC_MEMSPI_TIMING_TUNING_BY_MSPI_DELAY || SOC_MEMSPI_TIMING_TUNING_BY_DQS) \
++        && (SOC_RTC_FAST_MEM_SUPPORTED || SOC_RTC_SLOW_MEM_SUPPORTED)
++    help
++        When enabled, PSRAM MSPI timing tuning results are stored in RTC noinit
++        memory after a successful tuning run. On subsequent wake-up from deep sleep,
++        the cached parameters are restored directly and the tuning procedure is
++        skipped to reduce boot time.
++
++        The cache is validated using a magic number and the current PSRAM speed/mode
++        configuration. If validation fails, tuning is performed again and the cache
++        is updated.
++
++        Note: RTC noinit memory is retained across deep sleep wake-up, but not
++        guaranteed across power-on reset.
+diff --git a/examples/system/deep_sleep/CMakeLists.txt b/examples/system/deep_sleep/CMakeLists.txt
+index 06c8f963554..23231ffcf1d 100644
+--- a/examples/system/deep_sleep/CMakeLists.txt
++++ b/examples/system/deep_sleep/CMakeLists.txt
+@@ -4,5 +4,5 @@ cmake_minimum_required(VERSION 3.16)
+ 
+ include($ENV{IDF_PATH}/tools/cmake/project.cmake)
+ # "Trim" the build. Include the minimal set of components, main, and anything it depends on.
+-idf_build_set_property(MINIMAL_BUILD ON)
++# idf_build_set_property(MINIMAL_BUILD ON)
+ project(deep_sleep)
+-- 
+2.43.0
+

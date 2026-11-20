@@ -9,6 +9,7 @@ Application Solutions
 
    Infrared Night Vision <ir_night_vision>
    Fast Startup <fast_startup>
+   Software AOV <software_aov>
 
 .. note::
 
